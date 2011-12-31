@@ -1,0 +1,5 @@
+/* this test requires libimg to compile, which requires Qt to exist */
+int main() {
+    image_create(4, 4);
+    return 0;
+}

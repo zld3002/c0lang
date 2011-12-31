@@ -1,0 +1,6 @@
+// uses library
+//test return 1
+// bool sanity
+int main () {
+    return booltoint (inttobool (5));
+}

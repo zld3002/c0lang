@@ -1,0 +1,22 @@
+$(SML_LIB)/basis/basis.mlb
+$(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+../core/sources.mlb
+
+local
+  ../util/growarray-sig.sml
+  ../util/growarray.sml
+  cfg.sml
+  mkgraph.sml
+  flatten.sml
+in
+  structure CFG
+  structure MkGraph
+  structure Flatten
+end
+
+local
+  opsem-sig.sml
+  opsem.sml
+in
+  functor OpSemFn
+end

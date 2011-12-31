@@ -1,0 +1,31 @@
+#use <img>
+#use <conio>
+
+void dim_img(string id, image_t I)
+//@requires I != NULL;
+{
+  print(id); print(" ");
+  printint(image_width(I)); print(" x ");
+  printint(image_height(I)); print("\n");
+  return;
+}
+
+int main() {
+  image_t A = image_create(3, 5);
+  dim_img("A", A);
+  image_t B = image_subimage(A, 2, 3, 4, 6);  /* ok */
+  dim_img("B", B);
+  image_t C = image_subimage(A, 4, 6, 8, 12); /* source too large */
+  dim_img("C", C);
+  image_t D = image_subimage(A, 3, 5, 2, 3);  /* dest too small */
+  dim_img("D", D);
+  image_t E = image_load("/Users/fp/courses/15-122/hw-f11/2/asciitable.jpg");
+  dim_img("asciitable.jpg", E);
+  int[] E_array = image_data(E);
+  //@assert \length(E_array) == image_width(E) * image_height(E);
+  image_t F = image_load("/Users/fp/courses/15-122/hw-f11/2/asciitale.jpg");
+  assert(F != NULL);
+  dim_img("asciitale", F);
+  print("No errors encountered!\n");
+  return 0;
+}

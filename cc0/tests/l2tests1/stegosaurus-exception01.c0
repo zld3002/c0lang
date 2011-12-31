@@ -1,0 +1,11 @@
+//test div-by-zero
+/* Basic division by zero. */
+
+int main () {
+  int a = 6;
+  int b;
+  for (b = 3; a > 0; b--) {
+    a -= b;
+  }
+  return 3 / a;
+}

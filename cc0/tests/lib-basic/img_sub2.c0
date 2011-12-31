@@ -1,0 +1,28 @@
+int main() {
+  image_t img = image_create(3, 3);
+  int[] imgdata = image_data(img);
+
+  image_t img2;
+  int[] imgdata2;
+
+  imgdata[4] = 23;
+  imgdata[7] = 19;
+
+  img2 = image_subimage(img, 1, 1, 1, 2);
+  imgdata2 = image_data(img2);
+
+  assert(1 == image_width(img2)); // "Width was not what we asked for"
+  assert(2 == image_height(img2)); // "Height was not what we asked for"
+
+  assert(imgdata[4] == imgdata2[0]); // "Pixel 1 should match"
+  assert(imgdata[7] == imgdata2[1]); // "Pixel 2 should match"
+
+  imgdata[7] = 18;
+  assert(imgdata[7] != imgdata2[1]); // "subimage data should not be shared"
+
+  image_destroy(img);
+  image_destroy(img2);
+
+  return 0;
+}
+

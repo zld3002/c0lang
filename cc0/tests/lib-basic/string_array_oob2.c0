@@ -1,0 +1,18 @@
+// testing conversion between string and character arrays
+// same as string_array_oob.c0, but compiled with -d to incur contract failure 
+// cc0 -lstring -d
+
+int main () {
+  string test = "test";
+  char[] test_array = string_to_chararray(test);
+  assert(test_array[0] == 't');
+  assert(test_array[1] == 'e');
+  assert(test_array[2] == 's');
+  assert(test_array[3] == 't');
+  assert(test_array[4] == '\0');
+  test_array[4] = '\n';
+  //@assert(\length(test_array) == 5);
+  // crash with out-of-bounds in next line
+  assert(string_equal(string_from_chararray(test_array), test));
+  return 0;
+}

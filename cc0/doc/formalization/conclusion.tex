@@ -1,0 +1,104 @@
+\section{Related work}
+Projects like SAFECode \cite{SAFECode} and CCured \cite{Necula02ccured} are also
+attempts to produce safe C-like imperative languages. Unlike \langname{}, they
+are aimed more at verifying or porting existing C programs. Another attempt at
+an imperative systems language is Google's Go Language \cite{GoLang} which
+breaks away from C but it does contain additional features which are only useful
+for writing larger programs than those in 15-122. Go also does not have
+assertions or exception built into the language, preferring instead to return
+error codes and propagate or handle them explicitly without assistance from the
+compiler. The designers' goal is to force programmers to think about proper error
+handling whereas the intended focus of 15-122 is to encourage students to reason
+about the correctness of their code.
+
+Processing.org \cite{Processing} is another take on providing an easy and simple
+programming environment for novice programmers. It specializes in programming
+graphical applications such as games or visualizations. Though it simplifies
+away some of its Java roots by eliminating the need for a driver class, it is by
+its own admission "just Java, but with a new graphics and utility API along with
+some simplifications."
+
+\section{Future work and speculation}
+The work presented in this thesis is intended to be only the start of a larger
+project. Due to the time constraints of needing the language and compiler to be
+finished in time for the course in the Fall of 2010, several interesting
+projects and ideas have been given little attention. These include a static
+prover for assertions, a module system for the language to replace the one found
+in C, and using a precise garbage collector in the runtime as well as other more
+advanced garbage collection techniques.
+
+\subsection{Static prover for assertions}
+\langname{} is likely simple enough to do some strong analysis of programs to
+prove invariants and assertions will hold at runtime. The lack of an address-of
+and cast operators limits aliasing and the local variables can be hoisted to the
+heap by rewriting the program without changing any discernible semantics. As a
+project for a graduate program analysis class, Karl Naden, Anvesh Komuravelli
+and Sven Stork built a small static verification tool for programs.  They
+annotated programs with assertions and invariants using JML-style notation.
+The work at the end of the course showed promise towards being to be able to
+prove some of the invariants relevant to the data structures used in the course.
+
+\subsection{Module system \& Polymorphism}
+C's module system has well known faults and both C and \langname{} lack a decent
+means of supporting polymorphism. I did some preliminary work towards defining a
+module system that was simple enough to be used by the course's students but
+powerful enough to allow for abstract polymorphism. The intention was to allow
+students to write generic data structures. Combined with the aforementioned
+static verification tool, students would be able to write assertions and
+independently check that their generic data structure or algorithm was correct.
+
+\subsection{Precise collector}
+Though the conservative collector in the runtime is adequate for most purposes
+of the course, it is not ideal. Since there is no casting or internal aliasing,
+it's possible to construct a more precise collector that can analyze the stack
+layout and walk the heap efficiently. Using a precise collector would also
+necessitate a change to the runtime interface to allow the garbage collector to
+walk library-defined types and provide a rooting API.
+
+\subsection{Dynamically check explicit deallocation}
+
+Tools like Valgrind are often used on C and C++ programs to check for common
+mistakes such as double frees and use-after-free bugs. \langname{} could be
+augmented with the ability to explicitly free memory and at runtime (if not
+statically) assert that the program does not use memory after freeing it or
+free memory twice. This would bring the language closer to C without
+compromising on safety.
+
+\subsection{Convenient \langtext{printf} support}
+
+One of the notable features absent from C in \langname{} is support for
+variadic functions like \langtext{printf}. Supporting these functions while
+maintaining type safety is rather non-trivial. Attempt to support it in
+languages like SML have been tried by reformulating the format string as higher
+order functions but that approach does not suit \langname{}.
+
+\subsection{Formatting/style checker}
+
+Good code hygiene is an often overlooked aspect of computer science education.
+Though there is no single style for writing good C code, there are several
+popular styles and techniques for all languages. Some upper level courses such
+as Operating Systems include a code review as part of the grading mechanism.
+Though quite time consuming, it provides generally helpful feedback to students
+in ways that an automatic grader usually does not. Some languages such as Go
+\cite{GoLang} include a formatting program which automatically
+rewrites source files to a pre-defined style. The former is time consuming and
+prone to divergent styles/feedback and the latter does not encourage/require
+students to learn proper styling. A program which could consistently
+verify/grade the style of student code and generate useful human readable
+feedback, would be of enormous value to both the students and the course staff.
+
+\subsection{Interactive debugger}
+
+Asking students to run \langtext{gdb} on the compiled binaries is asking too
+much of them. We can produce a debugger for \langname{} programs that can
+provide a friendlier interface than GDB and enable additional features such as
+reversible debugging. Some work on this was started before the course by Rob
+Simmons.
+
+\subsection{Feedback on the course and its use of \langnameb{}}
+
+At the time of this publication, it is too early to know what impact choice of
+\langname{} will have. Getting feedback from the students over the course of
+their time at Carnegie Mellon will provide valuable data. Already from the first
+few weeks, suggestions for incremental changes to the language and compiler have
+been made from both students and staff.

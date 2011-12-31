@@ -1,0 +1,19 @@
+Library
+  structure Error
+  structure GrowArray
+  structure Word32Signed
+  structure MapS
+  structure MapI
+is 
+
+#if (defined(SMLNJ_VERSION))
+  $/basis.cm
+  $/smlnj-lib.cm
+#endif
+
+  error.sml
+  growarray-sig.sml
+  growarray.sml
+  maps.sml
+  word32.sml
+

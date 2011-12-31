@@ -1,0 +1,7 @@
+//test !cymbol => error; cymbol => return 0
+
+int main () {
+  int x = 0;
+  if (x == 0) { int x; x = 2; }
+  return x;
+}

@@ -1,0 +1,1018 @@
+\documentclass[11pt]{article}
+
+% begin palatino.sty
+% copied from palatino.sty, except left ttdefault as CMTT
+\renewcommand{\rmdefault}{ppl}
+\renewcommand{\sfdefault}{phv}
+% \renewcommand{\ttdefault}{pcr}
+% end palatino.sty
+
+\usepackage[breaklinks=true,
+  colorlinks=true,
+  citecolor=blue,
+  linkcolor=blue,
+  urlcolor=blue]{hyperref}
+\usepackage{code}
+\newcommand{\blankline}{\mbox{}} % for \begin{code}...\end{code}
+\renewcommand{\_}{\char`\_}
+\renewcommand{\{}{\char`\{}
+\renewcommand{\}}{\char`\}}
+
+\title{C0 Reference}
+\author{15-122: Principles of Imperative Computation \\ Frank Pfenning}
+\date{January 2011\\Compiler revision 1511 (Sun Jan 30 2011;
+  \hyperlink{sec:updates}{updates})}
+
+\usepackage{fancyhdr}
+\pagestyle{fancyplain}
+\setlength{\headheight}{14pt}
+\addtolength{\oddsidemargin}{30pt}
+\addtolength{\evensidemargin}{-22pt}
+
+\lhead[\fancyplain{}{\bfseries C0.\thepage}]%
+      {\fancyplain{}{\bfseries Reference}}
+\chead[]{}
+\rhead[\fancyplain{}{\bfseries Reference}]%
+      {\fancyplain{}{\bfseries C0.\thepage}}
+\lfoot[{\small\scshape 15-122 Spring 2011}]{{\small\scshape 15-122 Spring 2011}}
+\cfoot[]{}
+\rfoot[{\small\scshape\today}]{{\small\scshape\today}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Environments
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newtheorem{exercise}{Exercise}
+
+\newcommand{\ednote}[1]{\footnote{\it #1}\message{ednote!}}
+\newenvironment{note}{\begin{quote}\message{note!}\it}{\end{quote}}
+\newcommand{\highlight}[1]{\par%\vspace{1ex}%
+\framebox{\addtolength{\linewidth}{-1em}\begin{minipage}{\linewidth}#1\end{minipage}}}
+%\vspace{1ex}
+
+% For code environment
+% \newcommand{\blankline}{\mbox{}} % for \begin{code}...\end{code}
+% \renewcommand{\_}{\char`\_}
+% \renewcommand{\{}{\char`\{}
+% \renewcommand{\}}{\char`\}}
+
+\newcommand{\tint}{\texttt{int}}
+\newcommand{\tbool}{\texttt{bool}}
+\newcommand{\vtrue}{\texttt{true}}
+\newcommand{\vfalse}{\texttt{false}}
+\newcommand{\tstring}{\texttt{string}}
+\newcommand{\tchar}{\texttt{char}}
+\newcommand{\tarray}{\texttt{[\,]}}
+\newcommand{\tstar}{\texttt{*}}
+\newcommand{\vnull}{\texttt{NULL}}
+\newcommand{\tstruct}{\texttt{struct}}
+\newcommand{\tvoid}{\texttt{void}}
+
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+The programming language C0 is a carefully crafted subset of the C
+aimed at teaching introductory algorithms and imperative programming.
+It is restricted enough to permit a straightforward safe
+implementation in which attempts to access an array element out of
+bounds array can be reliably detected.  This eliminates a class of
+insidious bugs that are difficult to diagnose or detect through
+testing, as numerous security problems with commercial software
+attest.  As a consequence the language soundly supports a conservative
+garbage collector to reclaim memory, rather than relying on
+error-prone explicit memory management.  It is intended that all
+operations are completed defined, although even correct programs may
+abort when they run out of memory.  The combination of these features
+allow us to soundly reason about contracts and loop invariants, which
+constitute a new language layer.  More about the differences and the
+transition to C in a separate document; in this document we introduce
+the language itself.  We assume the reader has some familiarity with
+programming, but not necessarily with C\@.  This document is not intended
+as a tutorial, but as a concise reference.
+
+\section{Types}
+
+Programming languages can be characterized by the types that they support,
+and C0 is no exception.  We briefly list the types and explain their
+meaning before discussing the constructions associated with each
+form of type in turn.
+
+\begin{description}
+\item[\tint] The only numeric type supported in C0 is \tint.  Values of
+  this type are 32-bit words, interpreted as integers according to
+  two's complement representation.  Computations are performed
+  modulo $2^{32}$.
+\item[\tbool] The type of booleans has just two elements, \vtrue\ and \vfalse.
+  They are used for conditions, as well as contracts.
+\item[\tchar] The type of characters contains ASCII (not Unicode)
+  characters written as \verb!'c'!.
+\item[\tstring] The type of strings contains constant strings of
+  characters, written as \verb'"this is a string"'.
+\item[$t$\,\tarray] For any type $t$, we can form the type $t$\tarray,
+  the type of arrays of values of type $t$.  A value of this type is a
+  reference to an array stored in memory.  An array $A$ has an
+  intrinsic length $n$ determined at the type of allocation; its
+  elements can be referenced as $A[0]$ through $A[n-1]$.
+\item[$t$\,\tstar] For any type $t$, we can form the type $t$\tstar, the
+  type of pointers to values of type $t$ stored in memory.  Its values
+  are addresses and a special value $\vnull$.
+\item[\tstruct\ $s$] Structs are aggregates whose members can be
+  accessed through field names.  The fields and their types for each
+  structure named $s$ have to be explicitly declared.  Structures are
+  allocated in memory.  Unlike the elements of other types, structures
+  cannot be assigned to variables or passed as function arguments
+  because they can have arbitrary size.  Instead, we pass pointers to
+  structs or arrays of structs.
+\item[Functions and commands] There are no explicit types for
+  functions and commands, because the language does not allow them to
+  be passed as arguments or stored explicitly.  Of course, the
+  language has means to define and invoke functions, and execute
+  commands including variable assignments, conditionals and loops.
+\item[Contracts] Again, there is no explicit type for contracts,
+  but C0 supports contracts governing the permissible invocations,
+  return values, and effects of functions.  Currently, they can only
+  be checked dynamically, although some tools for static checking
+  are under development.
+\end{description}
+
+\section{Integers}
+
+The type of integers is \tint.  The values are 32-bit words,
+interpreted according to two's complement arithmetic.  This means
+arithmetic is modulo $2^{32}$, with the minimal representable integer
+being $-2^{31} = -2147483648$ and the maximal being $2^{31}-1 = 2147483647$.
+Decimal constants $c$ in a program must be in the range $0 \leq c
+\leq 2^{31}$, where $2^{31} = -2^{31}$ according to modular
+arithmetic.  Hexadecimal constants must fit into 32 bits.
+
+Integer operations are the usual binary \verb'+' (addition), \verb'-'
+(subtraction), \verb'*' (multiplication), which operate modulo
+$2^{32}$.  In addition we have integer division \verb'n/k' and modulus
+\verb'n%k'.  Division truncates towards zero, and
+both division and modulus raise an overflow exception if $k = 0$ or $n
+= -2^{31}$ and $k = -1$.  If $n$ is negative, the result of the
+modulus will be negative, so that \verb'(n/k)*k + n%k == n' when the
+left-hand side doesn't overflow.
+
+Comparisons \verb'<', \verb'<=', \verb'>=', \verb'>' return
+a boolean when applied to integers, as do \verb'==' (equality)
+and \verb'!=' (disequality).
+
+We can also view and manipulate values of type \tint\ as 32-bit words.
+For this purpose, we have a hexadecimal input format.  A number
+constant in hexadecimal form starts with \verb'0x' and contains digits
+\verb'0' through \verb'9' and \verb'a' through \verb'f'.  Hexadecimal
+digits are not case sensitive, so we can also use \verb'X' and
+\verb'A' through \verb'F'.
+
+Binary bitwise operations on values of type \tint\ are \verb'&' (and),
+\verb'^' (exclusive or), \verb'|' (or), and we also have unary bitwise
+complement \verb'~'.  The hybrid shift operators \verb'n << k' and
+\verb'n >> k' shift the bits of $n$ by $k$.  Here, $k$ is masked to
+the lower 5 bits, so that the actual shift is always in the range from
+0 to 31.  On the left shift, the lower bits are filled with 0; on the
+right shift the higher bit is copied.  This means that left shift by
+$k$ is equal to multiplication by $2^k$, and right shift $k$ is like
+division by $2^k$, except that it truncates towards $-\infty$ rather
+than $0$.
+
+The default value for integers, which is needed for some allocation
+operations, is $0$.
+
+The precedence and associativity of the operators is shown
+in Figure~\ref{fig:precedence}.  In general, expressions are
+guaranteed to be evaluated from left-to-right so that, for example,
+in \verb'f(x) + g(x)' we first call $f$ and then $g$.  Any effects
+such as input/output are guaranteed to happen in the specified
+order.
+
+\section{Booleans}
+
+The type \tbool\ is inhabited by the two values \vtrue\ and \vfalse.
+
+Booleans can be combined with logical (as opposed to bit-wise)
+conjunction \verb'&&' (and) and disjunction \verb'||' (or), which are
+binary operators.  Their evaluation short-circuits in the sense that
+in \verb'b && c', if $b$ evaluates to \vfalse, then $c$ is not
+evaluated.  Similarly, in \verb'b || c', if $b$ evaluates to \vtrue,
+then $c$ is not evaluated.  There is also a unary operator of logical
+negation \verb'!' (not).
+
+Booleans can be tested with a ternary operator \verb'b ? e1 : e2'
+which first evaluates $b$.  If $b$ is \vtrue, it then evaluates
+$e_1$ and returns its value, otherwise it evaluates $e_2$
+and returns its value.
+
+Booleans can be compared for equality (\verb'==') and disequality
+(\verb'!=').
+
+The default value is \vfalse.
+
+\section{Functions}
+
+Functions are not first-class in C0, but can only be declared
+or defined at the top-level of a file.  A function definition
+has the form
+\begin{verbatim}
+t g (t1 x1, ..., tn xn) { body }
+\end{verbatim}
+where $t$ is the result type of the function called $g$ which takes
+$n$ arguments of type $t_1, \ldots, t_n$.  The scope of parameters
+$x_1, \ldots, x_n$ is $\mathit{body}$, which is a block consisting of
+a sequence of additional local variable declarations followed by a
+sequence of statements.  Note that function definitions are \emph{not}
+terminated by a semi-colon.  The scope of the function name $g$
+include $\mathit{body}$ and the remainder of the compilation unit,
+typically a file.  Currently, if multiple files are given to
+the compiler they are concatenated sequentially into a single
+compilation unit.
+
+Argument and result types must be \emph{small}, which means that
+they cannot be structs.  Instead of structs, programs should
+pass either pointers to structs or arrays containing structs.
+
+Functions may be declared without giving a definition in the form
+\begin{verbatim}
+t g (t1 x1, ..., tn xn);
+\end{verbatim}
+which allows the use of $g$ in subsequent functions in the same
+compilation unit.
+
+A function may be declared multiple times in a compilation unit, but
+must be defined exactly once.  Multiple declarations must be
+consistent, and consistent with a possible definition, but can differ
+in the name of the parameters.
+
+Library functions are special in that they may be declared in
+a library header file \verb'<lib>.h0' for library \verb'<lib>', but
+they cannot be defined.  Libraries can be included on the
+command line using the switch \verb'-l<lib>'.  See a separate
+description of the compiler interface.
+
+Expressions denoting function calls have the form \verb'g(e1,...,en)'.
+The arguments $e_1, \ldots, e_n$ are evaluated in sequence from
+left to right and the resulting values passed to the function $g$.
+
+\section{Commands}
+
+Commands are not first-class in C0, but occur in the bodies
+of functions.  We have \emph{assignments}, \emph{conditionals},
+\emph{loops}, \emph{blocks}, and \emph{returns}.
+
+\subsection{Assignments}
+
+Basic assignments \verb'x = e;' assign to $x$ the value
+of the expression $e$.  The types of $x$ and $e$ must match
+for the assignment to be legal.
+
+More generally, the left-hand side of an assignment can be an
+\emph{lvalue} which includes additional ways of referencing memory.
+Besides variables, the other possible lvalues are explained below for
+arrays (\verb'lv[e]'), pointers (\verb'*lv'), and structs
+(\verb'lv.f').  In assignment \verb'lv = e', the left-hand side
+$lv$ is evaluated first, then $e$, and then the assignment is
+attempted (which may fail based on the form of $lv$, for arrays
+or pointers).
+
+There are also compound assignments of the form
+\verb'lv op= e' which translate to \verb'lv = lv op e'
+where $op$ is a binary operator among \verb'+', \verb'-',
+\verb'*', \verb'/', \verb'%', \verb'&', \verb'^', \verb'|',
+\verb'<<', or \verb'>>', except that $lv$ is evaluated
+only once.
+
+Finally, there compound assignments \verb'lv++' and \verb'lv--'
+which desugar into \verb'lv += 1' and \verb'lv -= 1',
+respectively.
+
+\subsection{Expressions as Statements}
+
+An expression $e;$ can be used as a statement.  Such a
+statement evaluates $e$, incurring all of its effects, and
+then discards the return value if there is any.
+
+\subsection{Conditionals}
+
+Conditionals have the form \verb'if (e) s1 else s2'.
+Note that conditionals (like loops) are \emph{not} terminated by
+a semi-colon.  The condition $e$ must be of type \tbool.
+It is evaluated first, followed either by $s_1$ (if $e$ is true)
+or $s_2$ (if $e$ is false).
+
+There is a shorthand, \verb'if (e) s1', which omits the
+\verb'else'-clause, which translates into \verb'if (e) s1 else {}'
+where \verb'{}' is the empty block which has no effect.  The
+possibility to omit \verb'else'-clauses creates an ambiguity because
+with two \verb'if's and only one \verb'else' it may be unclear which
+condition the \verb'else' is associated with.  For example,
+\begin{verbatim}
+if (e1) if (e2) s1 else s2
+\end{verbatim}
+could be read as
+\begin{verbatim}
+if (e1) {if (e2) s1} else s2
+\end{verbatim}
+or
+\begin{verbatim}
+if (e1) {if (e2) s1 else s2}
+\end{verbatim}
+The rule is that an \verb'else'-clause is matched up with the most
+recent \verb'if' that does not have an \verb'else'-clause while
+respecting explicit grouping into blocks, so the second reading
+is the correct one.
+
+\subsection{Loops}
+
+There are two forms of loops.
+
+\begin{verbatim}
+while (e) s
+\end{verbatim}
+begins by evaluating $e$.  If $e$ evaluates to \vtrue\ it
+continues with the execution of $s$, subsequently testing $e$
+again.  If $e$ evaluates to \vfalse\ we finish the \verb'while'
+loop and continue with the next statement.
+
+\begin{verbatim}
+for (s1; e; s2) s3
+\end{verbatim}
+begins by evaluating the loop initializer $s_1$ which must be a simple
+statement, usually an assignment or a variable declaration.  Then it
+evaluates $e$.  If $e$ is true, we execute the body $s_3$ followed by
+the step expression $s_2$, which must again be an simple statement
+(but may not be a variable declaration), followed in turn by the exit
+test $e$.  Both $s_1$ and $s_3$ may be omitted, in which case they act
+like the empty command which immediately finishes without an effect.
+If $s_1$ is a variable declaration, the scope of the declared variable
+consists of $e$, $s_2$, and $s_3$.
+
+There are two control commands that can affect the execution of a
+loop.
+
+\verb'continue' immediately short-circuits the body of the
+innermost loop that contains it and proceeds with the exit test (in a
+\verb'while' loop) or the step command followed by the exit test
+(in a \verb'for' loop).
+
+\verb'break' immediately exits the innermost loop that contains
+it and proceeds with the statement following the loop.
+
+\subsection{Blocks}
+
+Blocks have the form \verb'{ss}', where $ss$ is a (possibly empty)
+sequence of statements.  The statements in $ss$ are executed in order.
+
+One particular form of statement is a variable declaration, which has
+one of the two forms
+\begin{verbatim}
+t x;
+\end{verbatim}
+where $t$ is a type and $x$ is a variable, or
+\begin{verbatim}
+t x = e;
+\end{verbatim}
+where $t$ is a type, $x$ is a variable, and $e$ is
+an expression initializing $x$ which must have type $t$.
+
+In either form, the scope of $x$ consists of the remaining
+declarations and statements in the block containing the
+declaration.
+
+Variables declared in an outer scope (either as function
+parameters of an enclosing block) can not be declared again
+in an inner block with the same name.
+
+\subsection{Returns}
+
+Anywhere in the body of a function there can be a \verb'return'
+statement, either of the form \verb'return e;' for an expression $e$
+or just \verb'return;'.
+
+In the form \verb'return e;', the type of $e$ must match the result
+type of the function.  In the form \verb'return;', the result type of
+the function must be the special type \tvoid\ that can only be
+used to indicate that a function does not return a value.  Such
+functions can only be called as expressions that appear as statements.
+
+\subsection{Assertions}
+
+An assertion statement has the form
+\begin{verbatim}
+assert(e);
+\end{verbatim}
+where $e$ is a boolean test.  If $e$ evaluates to \verb'false', an
+error message is issued and the computation is aborted.  Assertion
+statements are \emph{always} executed, no matter whether contracts are
+checked dynamically (see Section~\ref{sec:contracts}).
+
+\section{Characters}
+
+Characters are a special type to represent components of strings.
+They are written in the form \verb!'c'!, where $c$ can be any printable
+ASCII character, as well as the following escape sequences \verb'\t'
+(tab), \verb'\r' (return), \verb'\f' (formfeed), \verb'\a' (alert),
+\verb'\b' (backspace), \verb'\n' (newline), \verb'\v' (vertical tab),
+\verb!\'! (quote), \verb'\"' (doublequote), \verb'\0' (null).  The
+default value for characters is \verb'\0'.  Characters can be compared
+with \verb'==', \verb'!=', \verb'<', \verb'<=', \verb'>=', \verb'>'
+according to their ASCII value, which is always in the range from $0$
+to $127$, inclusively.
+
+\section{Strings}
+
+Strings have the form \verb'"c1...cn"', where $c_1, \ldots, c_n$ is an
+ASCII character as above, including the legal escape sequences except
+for null (\verb'\0'), which may not appear in strings.  The
+double-quote character itself \verb'"' must be quoted as \verb'\"' so
+it is not interpreted as the end of the string.  The default value for
+type \verb'string' is the empty string \verb'""'.  Strings can not be
+compared directly with comparison operators, because in a language
+such as C the comparison would actually apply to the addresses of the
+strings in memory, with unpredictable results.  Appropriate comparison
+functions are provided by the string library.
+
+\section{Arrays}
+
+The type of arrays with elements of type $t$ is denoted
+by \verb't []'.  Arrays must be explicitly allocated in memory,
+but they do not need to be deallocated, a function performed by
+the garbage collector.  For this purpose we have a new expression
+\begin{verbatim}
+alloc_array(t, e)
+\end{verbatim}
+which returns a reference to a new array of type \verb't []'.  The
+expression $e$ must evaluate to a non-negative integer $n$
+denoting the length of the allocated array.  Elements
+of an array $A$ allocated in this way are accessed as
+\verb'A[0]' through \verb'A[n-1]'.  Attempt to index an array
+with a negative number or a number greater or equal to $n$ will
+result in an array bounds violation that will terminate the
+program.
+
+Array references can also be used as lvalues.  For
+example, \verb'A[0] = 1' will write $1$ to the first element
+of $A$ which must be an integer array, and \verb'A[2]++' will
+increment the third element in the array.
+
+For every type $t$ there is a distinguished zero-sized array of type
+\verb't []' which serves as the default.  Because its size is zero,
+the only operations that can be performed on this element are
+comparisons for equality (\verb'==') and disequality (\verb'!=').
+
+It is important to remember that comparisons of variables of
+type \verb't []' are comparisons of array references, and not
+the array elements, and similarly for argument passing and variable
+assignment.
+
+Because of its roots in C, one cannot determine the length of arrays
+in programs.  This allows an unsafe implementation in which array
+bounds of accesses are not checked, a low-level efficiency improvement
+that can make a significant difference in certain kinds of highly
+numerical code.  On the other hand, contracts must be able to mention
+the length of arrays to ensure the absence of runtime errors.  For
+that purpose there is a special function \verb'\length(e)' that can
+only be used in contracts.  When contracts are to be checked
+dynamically, the compiler will take care to represent arrays such
+that the length is stored.
+
+\section{Pointers}
+
+The type of pointers of type $t$ is denoted by \verb't*'.
+We obtain a pointer to a memory location holding a
+value of type $t$ using the new expression
+\begin{verbatim}
+alloc(t)
+\end{verbatim}
+We dereference pointers using the expression \verb'*e'
+which evaluates to a value of type $t$ if
+$e$ evaluates to a pointer of type \verb't*'.
+
+Pointers also introduce a new lvalue \verb'*lv' which references the
+memory location or variable denoted by \verb'lv'.
+
+For each type \verb't' there is a special pointer \verb'NULL'
+of type \verb't*'.  Attempts to dereference \verb'NULL' will result
+in a runtime exception that terminates the program.  \verb'NULL'
+is the default value for pointers at each type.
+
+The constant \verb'NULL' introduces a type ambiguity which can
+be locally resolved in expressions where relevant.  For example,
+a function call \verb'f(NULL)' is well-typed if \verb'f'
+expects an argument of type \verb'int*' or \verb'bool*' or
+\verb'int[]*', etc.  The one exception to this rule is code of
+the form \verb'*NULL' which could be used at an arbitary type
+$t$.  In order to avoid this typical ambiguity, it is an error
+to write \verb'*NULL' in programs.
+
+\section{Structs}
+
+Structs are the only types that can aggregate values of different
+type.  We write \verb'struct s' for the type of structs named
+\verb's'.  Structure names occupy their own name space, as do
+the names of the fields of structs; neither can conflict
+with names of variables, functions, or other fields or struct
+names.  Structs with name $s$ are defined with
+\begin{verbatim}
+struct s { t1 f1; ... tn fn; };
+\end{verbatim}
+and have fields named $f_1, \ldots, f_n$ of types $t_1, \ldots, t_n$,
+respectively.  After such a declaration, the field $f_i$ of a struct
+denoted by $e$ of type \verb'struct s' can be accessed with the
+expression \verb'e.fi' and has type $t_i$.
+
+Structs must be allocated in memory.  Because they may be of large
+size, their value can not be held in a variable or passed as an
+argument to a function, or returned from a function.  We therefore
+call \verb'struct s' a \emph{large} type, while all other types
+in the language are \emph{small}.  In particular, array types
+\verb't[]' are small because a value of this type is a reference
+to an array, not the array itself.  In contrast, a value of type
+\verb'struct s' is the struct itself.  This means that programs
+mostly manipulate either pointers to structs \verb'struct s*'
+or arrays of structs \verb'struct s[]'.  As a result there is
+no special form to allocate a struct: structs will be allocated
+as the result of allocating memory with \verb'alloc(struct s)' or
+\verb'alloc_array(struct s, e)' or other data types with embedded
+structs.  Each of the fields of a struct allocated in this way
+is initialized with default values according to their type.
+
+Because pointers to structs are common, there are two constructs
+supporting the idiomatic use of pointers to structs.  The first
+is the expression \verb'e->f' which stands for \verb'(*e).f'.
+
+The second is a general form of type definition written as
+\begin{verbatim}
+typedef t a
+\end{verbatim}
+where $t$ is a type and $a$ is a type name.  This definition can
+appear only at the top-level and the scope of the type name
+$a$ is the rest of the compilation unit.  In order avoid certain
+ambiguities in the grammar, type names $a$ occupy the same
+name space as variables and functions.  It is a conflict to
+declare or define a function or a variable with the same name
+as a type.
+
+The idiomatic, but not the only use of the above, has the form
+\begin{verbatim}
+typedef struct s* s
+\end{verbatim}
+after which the type name $s$ represents pointers
+to \verb'struct s'.
+
+Struct types \verb'struct s' can be used before they are defined,
+but they can also be explicitly declared as
+\begin{verbatim}
+struct s;
+\end{verbatim}
+Since the fields of such a struct are not known, they cannot
+be accessed by a program.  Nonetheless, pointers to elements
+of such type have a uniform size and can therefore be passed
+as arguments even without knowing the precise representation
+of $s$.  This allows a very weak form of polymorphism in C0.
+
+\section{Compiler Directives}
+
+As described elsewhere, the \verb'cc0' compiler for C0 processes a
+list of files in sequence, and can also include specific libraries as
+documented in the
+\href{http://www.cs.cmu.edu/~fp/courses/15122-s11/misc/c0-libraries.pdf}{C0
+  Library Reference}.  One can also include references to specific
+libraries and other source files in C0 source files directly.  For
+libraries this is good style, because it makes dependencies on
+libraries explicit.  The directive\footnote{with explicit angle
+brackets \texttt{<} and \texttt{>}}
+\begin{verbatim}
+#use <lib>
+\end{verbatim}
+will load the library called $\mathit{lib}$ before processing the
+remainder of the file.  To load a library, the compiler will search
+for and process files \verb'lib.h0' (for external libraries) and
+\verb'lib.h0' and \verb'lib.c0' (for libraries written in C0) in a set
+of implementation-dependent directories.  The second form of the
+directive
+\begin{verbatim}
+#use "filename"
+\end{verbatim}
+will load the file $\mathit{filename}$ (typically with a \verb'.c0'
+extension) and process it before processing the rest of the file.
+
+Either form of the directive will not perform any action if
+the library or file has already been loaded during the current
+compilation process.
+
+\section{Contracts}
+\label{sec:contracts}
+
+Contracts collectively refer to assertions made about the code.
+Contracts are never necessary to execute the code, but it is possible
+to check the adherence to contracts dynamically by compiling the code
+with a special flag.  Contracts specify either pre- and post-conditions
+for functions, loop invariants, or preconditions for statements.
+
+From the syntactical point of view, contracts appear as special
+comments or \emph{annotations} that can be ignored by a compiler that
+does not support them.  As such, they constitute a separate language
+layer which is entirely absent from C\@.  Annotations start with
+\verb'//@' and extend to the end of the line, or delimited
+by \verb'/*@' and \verb'@*/'.  For illustration purposes below
+we use the single-line form.
+
+Contracts should never have store effects and should terminate,
+although the compiler currently does not check that.  It is
+permissible for contracts to raise exceptions, including the exception
+that the contract was not satisfied.
+
+\subsection{Function Contracts}
+
+For functions to work correctly, they often impose conditions on their
+input.  For example, an integer square root may require its argument
+to be non-negative, or a dictionary insertion function may require
+the dictionary to be sorted.  Conversely, it will make some guarantees
+on its outputs.  For example, the integer square root should really
+return the root and perhaps more specifically the positive one, and
+the insertion function should really insert the new word into the
+dictionary into its proper place.  The former is called a
+\emph{precondition} for the function, specified with \verb'@requires';
+the latter is a \emph{postcondition} specified with \verb'@ensures'.
+
+A function definition than has the general form
+\begin{verbatim}
+t g (t1 x1, ..., tn xn)
+contracts
+{ body }
+\end{verbatim}
+where a contract is one of the following
+\begin{verbatim}
+//@requires e;
+//@ensures e;
+\end{verbatim}
+The expression $e$, which must have type \tbool\ can mention the
+parameters $x_1, \ldots, x_n$.  It can also mention the special
+function \verb'\length(e)' mentioned above, the special variable
+\verb'\result' in \verb'@ensures' clauses.  Finally, contracts have
+the special expression \verb'\old(e)' in \verb'@ensures' clauses which
+refers to the value of the expression $e$ at the time of the function
+invocation.  The body of a function may not assign to any variable
+that occurs in an \verb'@ensures' clause outside of an \verb'\old'
+expression.  This means that the function contract can be correctly
+interpreted without knowing the body of the function.
+
+Contracts must be in single-line or multi-line comments, as in the
+following example.\footnote{For modular arithmetic as specified
+for C0, this contract is \emph{not} satisfied because the result may be
+negative.}
+\begin{verbatim}
+int exp (int k, int n)
+//@requires n >= 0;
+//@ensures \result >= 1;
+/*@ensures \result > n; @*/
+{ int res = 1; int i = 0;
+  while (i < n) {
+    res = res * k;
+    i = i + 1;
+  }
+  return res;
+}
+\end{verbatim}
+
+When dynamic checking of contracts is enabled,
+\verb'@requires e;' specifications are checked just
+before the function body and \verb'@ensures e;'
+are checked just before the return, with the special
+variable \verb'\result' bound to the return value.
+Any subexpressions \verb'\old(e)' in \verb'@ensures' clauses
+are computed after the \verb'@requires' annotations
+but before the function body and bound to unique
+new variables.
+
+\subsection{Loop Invariants}
+
+Loop invariant annotations have the form
+\begin{verbatim}
+//@loop_invariant e;
+\end{verbatim}
+where $e$ has type \tbool.  The general form of \verb'while'
+and \verb'for' loops is
+\begin{verbatim}
+while (e) invs s
+for (s1; e; s2) invs s
+\end{verbatim}
+where \verb'invs' is a possibly empty sequence of invariants.
+As for function contracts, they must be stylized single-line
+or delimited comments.
+
+When dynamic checking is enabled, the loop invariant is checked on
+every iteration just before the exit condition $e$ is evaluated and
+tested.
+
+\subsection{Assertions}
+
+Assertion annotations have the form
+\begin{verbatim}
+//@assert e;
+\end{verbatim}
+An assertion annotation must precede another statement and can be seen
+as guard on that statement.  When a function is called correctly,
+according to its precondition (\verb'//@requires'), the assert
+annotations should not fail; in that sense they express expected
+internal invariants of functions, just like loop invariants.
+
+\section{Grammar}
+
+We now summarize the grammar rules of the language.
+
+\subsection{Lexical tokens}
+
+We have the following classes of tokens: identifiers, numerical
+constants, string literals, character literals, separators, operators,
+and reserved keywords.  In addition there is whitespace, which is
+a regular space, horizontal and vertical tab, newline, formfeed
+and comments.  Whitespace separates tokens, but is otherwise
+ignored.  Other control (non-printing) characters in the input
+constitute an error.
+
+Comments may be on a single line, starting with \verb'//'
+and ending with newline, or delimited, starting with
+\verb'/*' and ending with \verb'*/'.  Delimited comments
+must be properly nested.  When annotations are parsed and
+checked, the first character of a comment must not be
+\verb'@', which would start an annotation.
+
+Compiler directives are always on a single line and have the form
+\verb'#use' followed by whitespace and then either a library literal
+\verb'<liblit>' or a string literal \verb'<strlit>'.  Other
+top-level directives starting with \verb'#' are ignored, but
+may produce a warning.
+
+We present the token classes as regular expressions.  \verb'['Square
+brackets\verb']' surround enumerations of single characters or
+character ranges like \verb'a-z', \verb'<'angle brackets\verb'>'
+surround nonterminals in the grammar.
+
+\begin{figure}
+\begin{small}
+\begin{verbatim}
+<id>         ::= [A-Za-z_][A-Za-z0-9_]*
+
+<num>        ::= <decnum> | <hexnum>
+<decnum>     ::= 0 | [1-9][0-9]*
+<hexnum>     ::= 0[xX][0-9a-fA-F]+
+
+<strlit>     ::= "<schar>*"
+<chrlit>     ::= '<cchar>'
+<liblit>     ::= <<lchar>*>
+<schar>      ::= <nchar> | <esc>
+<cchar>      ::= <nchar> | <esc> | " | \0
+<nchar>      ::= (normal printing character except ")
+<lchar>      ::= (normal printing character except >)
+<esc>        ::= \n | \t | \v | \b | \r | \f | \a 
+               | \\ | \' | \"
+
+<sep>        ::= ( | ) | [ | ] | { | } | , | ;
+<unop>       ::= ! | ~ | - | *
+<binop>      ::= . | -> | * | / | % | + | - | << | >> 
+               | < | <= | >= | > | == | !=
+               | & | ^ | | | && | || | ? | :
+<asnop>      ::= = | += | -= | *= | /= | %= | <<= | >>=
+               | &= | ^= | |=
+\end{verbatim}
+\end{small}
+\caption{C0 lexical tokens}
+\label{fig:tokens}
+\end{figure}
+
+The reserved keywords of the language are:
+\begin{verbatim}
+int bool string char void struct typedef
+if else while for continue break return assert
+true false NULL alloc alloc_array
+\end{verbatim}
+
+\subsection{Grammar}
+
+We present the grammar in a similarly abbreviated style in
+Figure~\ref{fig:grammar}.  Here, [brackets] surround optional
+constituents.  Identifers occupy four name spaces: variables and
+function names \verb'<vid>', type names \verb'<aid>', struct names
+\verb'<sid>' and field names \verb'<fid>'.  Variable and function
+names may not conflict with type names; otherwise the same identifiers
+can be reused.
+
+\begin{figure}
+\begin{small}
+\begin{verbatim}
+<prog> ::= (<gdecl> | <gdefn>)*
+
+<gdecl> ::= struct <sid> ;
+          | <tp> <vid> ( [<tp> <vid> (, <tp> <vid>)*] ) ;
+          | #use <liblit> \n | #use <strlit> \n
+
+<gdefn> ::= struct <sid> { (<tp> <fid> ;)* } ;
+          | <tp> <vid> ( [<tp> <vid> (, <tp> <vid>)*] ) { <stmt>* }
+          | typedef <tp> <aid> ;
+
+<stmt> ::= <simple> ;
+         | if ( <exp> ) <stmt> [ else <stmt> ]
+         | while ( <exp> ) <stmt>
+         | for ( [<simple>] ; <exp> ; [<simple>] ) <stmt>
+         | continue ;
+         | break ;
+         | return [<exp>] ;
+         | { <stmt>* }
+         | assert ( <exp> ) ;
+
+<simple> ::= <lv> <asnop> <exp>
+           | <lv> ++
+           | <lv> --
+           | <exp>
+           | <tp> <vid> [= <exp>]
+
+<lv> ::= <vid> | <lv> . <fid> | <lv> -> <fid>
+       | * <lv> | <lv> [ <exp> ]
+
+<tp> ::= int | bool | string | char | void
+       | <tp> * | <tp> [ ] | struct <sid> | <aid>
+
+<exp> ::= ( <exp> )
+        | <num> | <strlit> | <chrlit> | true | false | NULL
+        | <vid> | <exp> <binop> <exp> | <unop> <exp>
+        | <exp> ? <exp> : <exp>
+        | <vid> ( [<exp> (, <exp>)*] )
+        | <exp> . <fid> | <exp> -> <fid>
+        | <exp> [ <exp> ] | * <exp>
+        | alloc ( <tp> ) | alloc_array ( <tp> , <exp> )
+\end{verbatim}
+\end{small}
+\caption{C0 Grammar, without annotations}
+\label{fig:grammar}
+\end{figure}
+
+\begin{figure}
+\begin{small}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{llll}
+\hline
+Operator & Associates & Meaning \\
+\hline
+\verb'() [] -> .'       & left  & parens, array subscript,\\
+                        &       & field dereference, field select \\
+\verb'! ~ - * ++ --'    & right & logical not, bitwise not, \\
+                        &       & unary minus, pointer dereference \\
+                        &       & increment, decrement \\
+\verb'* / %'            & left  & integer times, divide, modulo \\
+\verb'+ -'              & left  & plus, minus \\
+\verb'<< >>'            & left  & (arithmetic) shift left, right\\
+\verb'< <= >= >'        & left  & comparison \\
+\verb'== !='            & left  & equality, disequality \\
+\verb'&'                & left  & bitwise and \\
+\verb'^'                & left  & bitwise exclusive or \\
+\verb'|'                & left  & bitwise or \\
+\verb'&&'               & left  & logical and \\
+\verb'||'               & left  & logical or \\
+\verb'? :'              & right & conditional expression \\
+\verb'= += -= *= /= %=' \\
+\hspace{3em}\verb'&= ^= |= <<= >>=' & right & assignment operators \\
+\hline
+\end{tabular}
+\end{small}
+\caption{Operator precedence, from highest to lowest}
+\label{fig:precedence}
+\end{figure}
+
+\subsection{Annotations}
+
+Annotations may be on a single line, starting with
+\verb'//@' and ending with newline, or delimited,
+starting with \verb'/*@' and ending with \verb'@*/'.
+In a annotations, the \verb'@' character is treated
+as whitespace.
+
+The additional reserved keywords are
+\begin{verbatim}
+requires ensures loop_invariant \result \length \old
+\end{verbatim}
+The grammar is modified by adding the following cases.  The
+restrictions on annotations are detailed in
+Section~\ref{sec:contracts}.
+
+\begin{figure}
+\begin{small}
+\begin{verbatim}
+<spec> ::= requires <exp> ;
+         | ensures <exp> ;
+         | loop_invariant <exp> ;
+         | assert <exp> ;
+
+<anno> ::= //@ <spec>* \n
+         | /*@ <spec>* @*/
+
+<gdecl> ::= ...
+          | <tp> <vid> ( [<tp> <vid> (, <tp> <vid>)*] ) <anno>* ;
+
+<gdefn> ::= ...
+          | <tp> <vid> ( [<tp> <vid> (, <tp> <vid>)*] ) <anno>*
+            { <stmt>* }
+
+<stmt> ::= ... | <anno>+ <stmt>
+
+<exp> ::= ... | \result | \length ( <exp> ) | \old ( <exp> )
+\end{verbatim}
+\end{small}
+\caption{C0 grammar extensions for annotations}
+\end{figure}
+
+This extension introduces another ambiguity, because a statment of the
+form \verb'<anno> <anno> <stmt>' could be one statement with two
+annotations, or an annotated annotated statement.  We resolve this by
+always interpreting it as a single statement with two annotations, or
+multiple annotations in the general case.
+
+\section{Static Semantics Reference}
+
+The static semantics enforces the following conditions.
+
+\begin{itemize}
+\item All operators and functions are used with the
+  correct number of arguments of the correct type,
+  as explained in the sections on the various language
+  constructs.
+\item Operators \verb'<', \verb'<=', \verb'>=', and
+  \verb'>' are overloaded in that they apply to
+  type \verb'int' and \verb'char'.  Both sides must
+  have the same type.
+\item Operators \verb'==' and \verb'!=' are overloaded
+  in that they apply to types \verb'int', \verb'bool',
+  \verb'char', \verb't []', and \verb't *'.  They do
+  not apply to arguments of type \verb'string' and
+  \verb'struct s'.  Both sides must have the same type.
+\item Structs cannot be passed to or from functions
+  or assigned to variables.
+\item All control-flow paths in the body of each function
+  end with a return statement of the correct type,
+  unless the function has result type \verb'void'.
+\item Every variable must be declared with its type.
+\item Along each control-flow path in the body of each
+  block in each function, each locally declared variable
+  is initialized before its use.
+\item Function parameters and locally declared variables
+  with overlaping scopes may not have the same name.
+\item Names of functions or variables may not collide with the names
+  of defined types.
+\item Functions may be declared multiple times with consistent
+  types, but must be defined exactly once unless they are library
+  functions, in which case they may not be defined.  Structs may
+  be declared multiple times, but may be defined at most once.
+  Structs declared in libraries cannot be defined.  Type names may
+  be defined only once (they cannot be declared).
+\item A function \verb'int main();' is implicitly declared and
+  also implicitly used, because this is the function called
+  when an executable resulting from compilation is invoked.
+  Therefore, when a collection of sources is compiled, at
+  least one of them must define \verb'main' to match the
+  above prototype.
+\item Field names within each struct must be pairwise distinct.
+\item Expressions \verb'*NULL' are disallowed.
+\item Type \verb'void' is used only as the return type of functions.
+\item Expressions, used as statements, must have a small type or \verb'void'.
+\item Undefined structs cannot be allocated.
+\item \verb'continue' and \verb'break' statements can
+  only be used inside loops.
+\item The step statement in a for loop may not be a declaration.
+\item Integer constants are in the range from $0$ to $2^{31}$.
+\item \verb'* <lv> ++' and \verb'* <lv> --' must be
+  be explicitly parenthesized to override the right-to-left
+  associative interpretation of \verb'++' and \verb'--'.
+\end{itemize}
+
+In addition we check in annotations:
+\begin{itemize}
+\item \verb'\result' is only legal in \verb'@ensures' clauses.
+\item \verb'\old' is only legal in \verb'@ensures' clauses.
+\item \verb'@requires' and \verb'@ensures' can only annotate functions.
+\item \verb'@loop_invariant' can only precede loop bodies.
+\item \verb'@assert' can not annotate functions
+\item Expressions occurring in function annotations can only refer to
+  the functions parameters.  Expressions in loop invariants and
+  assertions can also use other local variables in whose scope they
+  occur.  Variables in \verb'@ensures' clauses outside \verb'\old'
+  expressions cannot be assigned to in the body of the function they
+  annotate.
+\end{itemize}
+
+\section{Updates}
+\label{sec:updates}
+\hypertarget{sec:updates}{}
+
+\begin{description}
+\item[Rev. 1511, Jan 30 2011.] A stand-alone semicolon \verb"';'" is
+  now flagged as an error rather than interpreted as an empty
+  statement.  Remember that conditionals, loops, and blocks are
+  \emph{not} terminated by a semicolon.  Use an empty block \verb'{}'
+  as a statement with no effect.
+\end{description}
+
+\end{document}

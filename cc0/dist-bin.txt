@@ -1,0 +1,8 @@
+c0/bin/cc0
+c0/bin/cc0.heap.x86-darwin
+c0/bin/coin
+c0/bin/coin.exe
+c0/lib
+c0/runtime
+c0/include
+c0/c0-mode

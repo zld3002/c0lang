@@ -1,0 +1,8 @@
+//test error
+//declaration of y is not at the start
+int continue(int x, int y);
+
+int main()
+{
+  return 5;
+}  

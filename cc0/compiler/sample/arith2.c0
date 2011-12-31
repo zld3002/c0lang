@@ -1,0 +1,125 @@
+/*
+  Some simple modular bit arithmetic
+  This uses output arguments to avoid
+  extraneous allocation
+*/
+
+#include <string.h0>
+#include <conio.h0>
+
+typedef int bit;  /* bits */
+
+bool is_bit(int n) {
+  return (n == 0 || n == 1);
+}
+
+/* is_num(x,n) == true iff x is a bitstring of precision n */
+bool is_num (bit[] x, int n)
+//@requires n <= \length(x);
+{
+  int i;
+  for (i = 0; i < n; i++)
+    if (!is_bit(x[i])) return false;
+  return true;
+}
+
+// x+=y;
+void plus(bit[] x, bit[] y, int n)
+//@requires is_num(x,n) && is_num(y,n);
+//@modifies x;
+//@ensures is_num(y,n);
+{ int i;
+  int carry = 0; int b = 0;
+  for (i = 0; i < n; i++)
+    //@loop_invariant is_bit(carry);
+    {
+      b = (x[i] ^ y[i]) ^ carry; /* order is important for aliasing! */
+      carry = (x[i] & (y[i] | carry))
+	| (y[i] & carry);
+      x[i] = b;
+    }
+  // last carry is overflow bit; ignore
+  return;
+}
+
+// x<<=k
+void shift_left(bit[] x, int n, int k)
+//@requires k >= 0;
+//@requires is_num(x,n);
+//@ensures is_num(x,n);
+{ int i; int limit;
+  for (i = (n-1)-k; i >= 0; i--)
+    //@loop_invariant k-1 <= i+k && i+k <= n-1;
+    x[i+k] = x[i];
+  limit = (k >= n) ? n : k;
+  //@assert limit <= n && limit <= k;
+  for (i = 0; i < limit; i++)
+    x[i] = 0;
+  return;
+}
+
+void copy_num (bit[] dest, bit[] src, int n)
+//@requires is_num(src,n);
+//@modifies dest;
+//@ensures is_num(dest,n);
+{ int i;
+  for (i = 0; i < n; i++)
+    dest[i] = src[i];
+}
+
+// x *= y
+void times(bit[] x, bit[] y, int n)
+//@requires is_num(x,n) && is_num(y,n);
+//@requires x != y;
+//@ensures is_num(x,n);
+{ int i;
+  bit[] result = alloc_array(bit, n); /* temp, init'd to 0 */
+  bit[] summand = alloc_array(bit, n); /* temp */
+  copy_num(summand, y, n); /* summand <- y */
+  for (i = 0; i < n; i++)
+    {
+      if (x[i] == 1) plus(result, summand, n);
+      shift_left(summand, n, 1);
+    }
+  copy_num(x, result, n); /* x <- result */
+  return;
+}
+
+string num2string (bit[] x, int n)
+//@requires is_num(x,n);
+{
+  int i; 
+  string s = "";
+  for (i = 0; i < n; i++) {
+    s = string_join(string_fromint(x[i]),s);
+  }
+  return s;
+}
+
+bit[] int2num (int k, int n)
+//@requires n > 0;
+//@ensures is_num(\result,n);
+{ int i;
+  bit[] x = alloc_array(bit, n);
+  for (i = 0; i < n; i++) {
+    x[i] = k & 0x1;
+    k = k >> 1;
+  }
+  return x;
+}
+
+int main () {
+  int n = 64;
+  bit[] x = int2num(-1, n);
+  bit[] y = int2num(1, n);
+  print(num2string(x,n)); print("\n");
+  print(num2string(y,n)); print("\n");
+  plus(x,y,n); // x += y;
+  print(num2string(x,n)); print("\n");
+  x = int2num(0x7fffffff,n);
+  y = int2num(0x7fffffff,n);
+  times(x,y,n); // x *= y
+  print(num2string(x,n)); print("\n");
+  print(num2string(y,n)); print("\n");
+  return 0;
+}

@@ -1,0 +1,10 @@
+// Annotations must guard actual statements, so go() is an error.
+
+void go() {
+  //@assert true;
+}
+
+int main() {
+  go();
+  return 0;
+}

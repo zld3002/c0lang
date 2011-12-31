@@ -1,0 +1,8 @@
+#test error
+// declaration in body
+int main() {
+  int x;
+  x = 4;
+  int y;
+  return 0;
+}

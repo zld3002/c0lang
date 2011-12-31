@@ -1,0 +1,15 @@
+//test return 12
+//declaration of y is not at the start
+// allowed as of Jan 2011
+
+int main()
+{
+  int x;
+  
+  x = 7;
+  x += 5;
+
+  int y;
+
+  return x;
+}  

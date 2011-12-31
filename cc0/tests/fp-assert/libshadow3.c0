@@ -1,0 +1,15 @@
+// should produce error
+// cc0 -lfile -lstring lib-shadow.c0
+
+string file_readline(file_t g);
+string file_readline(file_t f) {
+   return "abc";
+}
+
+int main () {
+   string s = file_readline (NULL);
+   if (string_equal(s,"abc"))
+     return 0;
+   else
+     return 1;
+}

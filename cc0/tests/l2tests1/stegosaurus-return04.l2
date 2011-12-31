@@ -1,0 +1,565 @@
+#test return -2147483648
+/* Got enough while loops? */
+
+int main () {
+  int a = 1;
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while(true){while(true){while(true){while(true){while(true){while(true){
+  while         (true)        {while         (true){      while  (true  ){
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;;  ;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  ;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while         (true)        {while         (true)        {;;;    ;;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;  ;;;;;;
+  while  (true)  {;;;;  while  (true)  {while(true)  {;;;  ;;;;  ;;  while 
+  (true  ){;;;   while  (true  ){;;;;  while(true){  ;;;;  ;;;;  ;;;  ;;;;
+  while          (true  ){;;;  while(        true){  ;;;;  ;;;;  ;;;;  ;;;
+  while(true){while(true){while(true){while(true){while(true){a<<=1;break;}
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}break;}break;}break;}break;}break;}break;}break;}break;}break;};;
+  break;}
+  return a;
+}

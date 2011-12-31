@@ -1,0 +1,11 @@
+#test error
+
+/* no declarations after statements in block body */
+int main(){
+  {
+    int x = 1;
+    x *= 2;
+    int y = x;
+  }
+  return 0;
+}

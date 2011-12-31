@@ -1,0 +1,10 @@
+#use <conio>
+#use <string>
+
+int main() {
+  print("abc\n");
+  printchar(string_charat("abc", 37));
+  printchar(string_charat("abc",1));
+  print("\n");
+  return 0;
+}

@@ -1,0 +1,14 @@
+Group is
+
+  $/basis.cm
+  ../util/sources.cm
+  ../lang/sources.cm
+  ../parser/sources.cm
+  ../cfg/sources.cm
+  ../concrete/sources.cm
+  server.sml
+  sigint-smlnj.sml
+  runline.sml
+
+  go-nj.sml
+

@@ -1,0 +1,10 @@
+abort                ~ assert-notok.c0 -d
+return 15            ~ assert-ok.c0
+return 5             ~ big-loop.c0
+return 208           ~ collatz.c0
+lib => return 1      ~ defaults.c0 -lstring
+div-by-zero          ~ div-by-zero.c0
+return 5             ~ little-loop.c0
+return -2072745074   ~ overflow.c0
+segfault             ~ pointer-fail.c0
+div-by-zero          ~ underflow.c0

@@ -1,0 +1,19 @@
+$(SML_LIB)/basis/basis.mlb
+$(SML_LIB)/mlyacc-lib/mlyacc-lib.mlb
+../lang/sources.mlb
+../util/sources.mlb
+
+local
+  safe-io.sml
+  mark.sml
+  parsestate.sml
+  errormsg.sml
+
+  c0.grm.sig
+  c0.grm.sml
+  c0.lex.sml
+  parser.sml
+in
+  structure Parser
+  structure Mark
+end

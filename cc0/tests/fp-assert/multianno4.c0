@@ -1,0 +1,13 @@
+
+// should raise SIGABRT
+// with -d an assertion failures, without -d an error message from library
+// -lfile
+
+int main () {
+  file_t f = file_read("tests/fp-assert/multianno4.c0");
+  while (!file_eof(f))
+    file_readline(f);
+  // next line should fail assertion
+  file_readline(f);
+  return 0;
+}

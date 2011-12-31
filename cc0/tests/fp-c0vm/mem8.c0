@@ -1,0 +1,6 @@
+int main () {
+  bool[] A = alloc_array(bool, 42);
+  A[0] = true;
+  A[41] = true;
+  return A[41] ? 0 : 1;
+}

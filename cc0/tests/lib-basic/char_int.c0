@@ -1,0 +1,8 @@
+int main () {
+  int i;
+  for (i = 0; i < 128; i++)
+    assert(char_ord(char_chr(i)) == i);
+  assert(char_ord('\n') == 10);
+  assert(char_ord('A') == 65);
+  return 0;
+}

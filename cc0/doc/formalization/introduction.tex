@@ -1,0 +1,224 @@
+Designing a new language is not something one does lightly. There are hundreds
+of existing languages to choose from with many different properties so it seems
+reasonable to assume that there must exist some language suitable for teaching
+introductory data structures. Many of these langauges were not designed with
+pedagogical purposes in mind. They may have historical or designer quirks and
+features that no longer (or never did) make sense. They are not usually designed
+with novice programmers in mind but to accomplish some particular task or set of
+tasks. In the case of Carnegie Mellon's introductory data structures course, a
+suitable language would need to be easily accessible by programmers with
+minimal experience and it must be able to adequately express the data
+structures used in the course.
+
+\section{Motivation}
+
+Carnegie Mellon is revising its early undergraduate curriculum. In particular,
+they are bringing Jeanette Wing's \cite{Henderson2007Computational} idea of
+computational thinking to both majors and nonmajors, increase focus on software
+reliability and integrate parallelism into the core curriculum. These changes
+involve restructuring the course sequence and content.
+
+The first course, 15-110, in the sequence is intended for nonmajors and majors
+with no programming experience. It is intended to be an introductory computer
+science course containing the basic principles including an emphasis on
+computational thinking.  The next course, 15-122, focuses on writing imperative
+programs with fundamental data structures and algorithms and reasoning about
+them. Students also take a functional programming course, 15-150, which focuses
+on working with immutable data and the concepts of modularity and abstraction.
+Following 15-122 and 15-150, students take 15-210 where they continue to learn
+more advanced data structures as in 15-122 though with an additional emphasis
+on parallel programming. 15-213 remains an introductory systems course and
+15-214 focuses on designing large-scale systems and includes content on
+object-oriented programming and distributed concurrency.
+
+For this thesis, we focus on 15-122 and the choice of programming language for
+its assignments.
+
+\section{Language Requirements}
+
+To formulate the requirements, we must first examine the types of programs that
+students will be assigned to write for the course. The assignments are intended
+to assess and educate students according to the learning goals of the course.
+
+The majority of students taking 15-122 will have scored well on the AP test
+which currently uses Java. Those that have not will have taken a semester-long
+basic programming course taught using Python as the primary language for
+assignments.  Though students should be able to write basic programs upon entry
+to this course, we do not assume that they will have had much experience in
+debugging or using the intermediate or advanced features of either language.
+This course is intended to instruct students in the basic data structures and
+algorithms used in computer science. This includes:
+
+\begin{itemize}
+
+\item Stacks and Queues
+
+\item Binary Search
+
+\item Sorting
+
+\item Priority queues
+
+\item Graph traversal / shortest path
+
+\item Balanced binary trees
+
+\item Game tree search
+
+\item String searching
+
+\end{itemize}
+
+By the end of the course, students should be able to:
+
+\begin{itemize}
+
+\item For the aforementioned data structures, explain the basic performance
+characteristics for various operations and write imperative code that implements
+these data structures.
+
+\item Using their knowledge of the basic performance characteristics, choose
+appropriate data structures to solve common computer science problems.
+
+\item Be able to reason about their programs using invariants, assertions,
+preconditions and postconditions.
+
+\end{itemize}
+
+Based on the learning goals of the course and its place in the course sequence,
+I formulated the following design requirements for the language and
+compiler/interpreter:
+
+\begin{description}
+
+\item[Simple as possible] The languages used in industry are aimed at
+professionals and problems in software engineering, not necessarily computer
+science. Many of these languages impose design requirements which, though often
+valuable for software engineering purposes, are unnecessary cognitive overhead
+for students to learn and comprehend. Explaining these features takes time away
+from teaching the intended topics of the course.
+
+\item[Friendly error messages]
+Compilers are also not known for giving helpful or useful
+error messages to novices. Most SML and C++ compilers are notorious in the
+academic and industrial worlds for giving cryptic error messages that only
+begin to make sense once a deep understanding of the language is obtained.
+
+\item[Similar enough to languages used in industry] Students often want to
+search for internships in the summer following their first year as an
+undergraduate. It does not help them in their search if they have learned an
+obscure or irrelevant programming language in this course. Thus our choice of
+language must be or be similar enough to an existing language that is used in
+industry so that students can legitimately claim, based on their coursework,
+that they have a marketable skill.
+
+\end{description}
+
+\subsection{Simplicity}
+\begin{quote}
+{\it "Il semble que la perfection soit atteinte non quand il n'y a plus
+rien \`a ajouter, mais quand il n'y a plus rien \`a retrancher" - Antoine de Saint
+Exup\'ery}
+\end{quote}
+
+Some languages have low cognitive overhead because they can be taught in
+layers, starting with simple concepts and introducing new features that build
+upon these basics.  Algebra is often taught this way to high school students by
+starting with the concepts of variables and the basic axioms and gradually
+moving onto harder problems.  Carnegie Mellon's sophomore-level Principles of
+Programming course teaches Standard ML this way: the first assignment has
+students writing simple values and expressions in the language and then moves
+on to functions and more complicated data structures like lists and
+trees\footnote{Also see {\tt tryhaskell.org} for a compressed approach with
+Haskell}.  Though these sorts of languages are often amenable to including an
+interpreter, it is by no means a requirement.
+
+Though languages like Java are quite popularly used in introductory data
+structures courses, that does not mean they are a good choice.  Programming
+even the tiniest bit in Java requires using classes, objects. For basic IO,
+packages are needed.  Take the example of writing a linked list type and
+calculating the length of a one element instance. The Java\cite{JavaSpec}
+version (~\ref{javall}) requires 3 classes and the explanation of member
+variables and methods. Compare this to the conceptual size of comparable code
+in C\cite{ISO:C99} (~\ref{cll}) and Standard ML\cite{mthm97} (~\ref{smlll})
+which just require understanding functions (and in ML's case, a recursively
+defined one - more on this later).  Notice in particular how the Java
+definition requires a separate Node and List class because methods such as
+\langtext{length()} cannot be invoked on null objects\footnote{In C++ you can
+get away with having a single class in most implementations since non-virtual
+methods don't require a non-null \langtext{this}}.
+
+\langsample{ll.java}{Java}{Simple linked list written in Java}{javall}
+\langsample{ll.c}{C}{Simple linked list written in C}{cll}
+\langsample{ll.sml}{ML}{Simple linked list written in SML}{smlll}
+
+Looking at the course content, all that is needed to express the mathematical
+ideas is relatively simple data structures and functions to modify and query
+them. Furthermore, object-oriented programming is covered in a subsequent
+couse. Thus our desired language need not support objects and should not
+require them.
+
+Functional programming languages like SML, Haskell and F\# are generally still
+problematic for students new to programming. The majority (if not all) of
+students taking 15-122 will have been taught a language like Python or Java and
+likely have no experience working in a functional programming language. Often
+the basic programming tasks in these functional languages require defining
+simple functions recursively as in ~\ref{smlll} or using functions as first
+class values which are difficult concepts for novices to understand. Though
+understanding these concepts is important for their overall education, they are
+not key towards understanding the material in the course. The functional
+programming course, 15-150, will cover this material and functional programming
+is also heavily used in the subsequent parallel data structures and algorithms
+course, 15-210.
+
+It is also often the case that many algorithms are given in terms of an
+imperative pseudo-code with mutable variables and loops. These features are
+desirable to have in our language as well to minimize the student's burden of
+transferring their knowledge into code.
+
+\subsection{Friendly Error Messages}
+
+Error messages are a frequent source of frustration for introductory computer
+science students. Even professionals find them unhelpful or even misleading.
+Though some work has been done recently in production compilers
+\footnote{http://clang.llvm.org/diagnostics.html}, many compilers produce
+technically worded errors which are sometimes not even local to the actual
+problem! Thus the compiler for 15-122 should produce friendly error messages
+whenever possible. They should point to the precise source of the problem and
+offer suggestions to fixes. Note that we don't want to automatically fix these
+errors - the compiler may not always be able to choose the right fix to apply
+and fixing problems in the source is an important skill for students to have.
+For some languages, this can be rather difficult due to extensive elaboration or
+other transformations of the source prior to typechecking.
+
+\subsection{Similarity to a Real Industrial Language}
+
+Carnegie Mellon undergraduates often take summer internships and end up taking a
+fulltime job in the software industry upon graduation. While one could argue
+that the purpose of a university education is not to be job training, it is
+important that motivated freshmen should be able to obtain an internship after
+their first year. It helps tremendously to be able to claim experience with a
+well-known language used in industry. Though ideally the language used for the
+assignments would be an industrial language, for previously mentioned reasons
+most, if not all, of the popular languages in industry are so far unsuitable.
+Going down the path of picking an unpopular language requires an eventual
+transition to a real industrial language. The more similarities between our
+language and some existing one allows for a easier transition for students. The
+difficulty lies in balancing this requirement with the aforementioned ones, in
+particular simplicity.
+
+Carnegie Mellon's systems courses heavily use C for their assignments. Given
+that 15-122 is a prerequisite for these courses and C's heavy use in industry,
+it is the natural choice. Using a C-like language early in the curriculum may
+have the added benefit of increasing students' proficiency with the language due
+to the extra time they spend using the language.
+
+\vspace{3em}
+
+This thesis is organized as follows: Chapter 2 presents the language with
+concrete syntax and a prose description of the semantics. Chapter 3 introduces
+the abstract syntax and presents the progress and preservation properties.
+Chapter 4 covers the implementation details of our reference compiler and
+runtime. Chapter 5 introduces the standard libraries used by assignments in the
+course.  Chapter 6 covers the differences between \langname{} and C and presents
+ideas for future work.

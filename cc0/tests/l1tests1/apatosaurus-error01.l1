@@ -1,0 +1,16 @@
+#test error
+//declaration out of place 
+
+int main()
+{
+  int x;
+  int y;
+
+  x = 5;
+  y = 10;
+
+  int uhoh;
+  uhoh = x/y;
+
+  return uhoh;
+}

@@ -1,0 +1,6 @@
+//test segfault
+int main ()
+{
+	main ();
+	return 0;
+}

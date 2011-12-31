@@ -1,0 +1,8 @@
+// Expected behavior: failure
+// Tests correct behavior for division by zero
+
+int main() {
+  int i = 0;
+  int j = 6;
+  return j/i;
+}

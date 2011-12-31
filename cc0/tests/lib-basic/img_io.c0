@@ -1,0 +1,34 @@
+int compute_hash(int[] data, int width, int height) {
+  int y = 0;
+  int x;
+  int hash = 0;
+  for (; y < height; y++)
+    for(x = 0; x < width; x++)
+      hash ^= data[y*width + x];
+  return hash;
+}
+
+int main() {
+  int x;
+  int y;
+  int width = 19;
+  int height = 47;
+  int hash;
+  image_t img = image_create(width, height);
+  int[] imgdata = image_data(img);
+
+  for (y = 0; y < height; y++)
+    for (x = 0; x < width; x++)
+      imgdata[y*width+x] = x*height+y;
+  hash = compute_hash(imgdata, width, height);
+  image_save(img, "test.png");
+  image_destroy(img);
+  img = image_load("test.png");
+  imgdata = image_data(img);
+
+  assert(width == image_width(img)); // "width of loaded image should match"
+  assert(height == image_height(img)); // "height of loaded image should match"
+  assert(hash == compute_hash(imgdata, width, height)); // "Image contents should be identical");
+
+  return hash;
+}

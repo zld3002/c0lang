@@ -1,0 +1,4 @@
+int main() {
+    error("Program too short");
+    return 0;
+}

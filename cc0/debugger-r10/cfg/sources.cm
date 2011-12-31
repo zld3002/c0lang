@@ -1,0 +1,15 @@
+Library
+  structure CFG
+  structure MkGraph
+  structure CFGViz
+is
+
+#if (defined(SMLNJ_VERSION))
+  $/basis.cm
+#endif
+
+  ../util/sources.cm
+  ../lang/sources.cm
+  cfg.sml
+  mkgraph.sml
+  cfgviz.sml  

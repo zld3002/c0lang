@@ -1,0 +1,14 @@
+coin-core.mlb
+
+(* Front-end *)
+local
+   $(SML_LIB)/basis/mlton.mlb
+   server.sml
+   sigint-mlton.sml
+   coin.sml
+   mlton-go.sml
+in
+   functor Server
+   structure SigINT
+   signature RUNLINE
+end

@@ -1,0 +1,24 @@
+C0 mode - Major mode for editing and debugging C0
+
+Author: Jakob Uecker <jakob.uecker@gmail.com>
+
+------------------------------------------------------------
+Installation
+------------------------------------------------------------
+Run 'configure' from this directory to obtain the necessary
+lines to add to your .emacs file.
+
+------------------------------------------------------------
+Debugging
+------------------------------------------------------------
+While editing a .c0 file, do
+  M-x c0de-enter-debug
+this will save the file and run the debugger. You can not
+edit the file while debugging. Available commands and their
+corresponding keys are:
+  -step to next instruction : s or RET
+  -continue until next breakpoint : c
+  -evaluate expression : e
+  -quit : q
+  -Interrupt : i
+  
