@@ -1,0 +1,5 @@
+//test div-by-zero
+int main() {
+	int autolab = 1 / 0;
+	return autolab;
+}

@@ -1,0 +1,10 @@
+//test div-by-zero
+
+int main()
+{
+    int meowmix = 3;
+    int meowmix2 = 5;
+    for (; (meowmix / meowmix) > 0; meowmix2--)
+        meowmix--;
+    return 3;
+}

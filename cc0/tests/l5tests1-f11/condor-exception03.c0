@@ -1,0 +1,6 @@
+//test segfault
+
+int main () {
+    int * * badInt = alloc(int *);
+    return **badInt;
+}

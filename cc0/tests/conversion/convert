@@ -1,5 +1,7 @@
 #! /bin/csh -f
 # use this to convert the 15-411 format heuristically to the C0 test form
+# change convert.sed to map //test exception to //test segfault for
+# labs 3, 4, 5
 
 foreach f (*.l?)
 #

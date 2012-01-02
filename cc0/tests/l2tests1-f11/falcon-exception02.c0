@@ -1,0 +1,13 @@
+//test div-by-zero
+int main() {
+	bool y = true;
+	bool n = false;
+
+	int x = 0;
+
+	if(y && !n) {
+		return 1/x;
+	} else {
+		return 1;
+	}
+}

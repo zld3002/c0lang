@@ -1,0 +1,8 @@
+//test segfault
+// infinite recursion
+
+int main()
+{
+  return main();
+}
+

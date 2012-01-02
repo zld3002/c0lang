@@ -1,0 +1,11 @@
+//test segfault
+
+struct exstruct {
+    int a;
+};
+
+int main() {
+    struct exstruct *p = NULL;
+    p->a = 1;
+    return 1;
+}

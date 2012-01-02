@@ -1,0 +1,11 @@
+//test div-by-zero
+
+int exeffect(){
+    1/0;
+    return 0;
+}
+
+int main(){
+    exeffect();
+    return 10;
+}
