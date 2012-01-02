@@ -8,8 +8,12 @@ Installation
 Run 'configure' from this directory to obtain the necessary
 lines to add to your .emacs file.
 
+After that, visiting a file with extension ".c0" will
+switch to C0 mode, which is derive from C mode.
+
+
 ------------------------------------------------------------
-Debugging
+Debugging [OBSOLETE]
 ------------------------------------------------------------
 While editing a .c0 file, do
   M-x c0de-enter-debug
@@ -21,4 +25,3 @@ corresponding keys are:
   -evaluate expression : e
   -quit : q
   -Interrupt : i
-  

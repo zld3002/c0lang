@@ -76,6 +76,7 @@ Include files in include/* are installed as $(PREFIX)/include/*.
 
 Removed prototypes/ subdirectory as of revision > 2412.
 
+[ OBSOLETE, see next remark:
 dist-bin.txt is the list of files for a binary distribution of
 coin and cc0.  It was used to create
 http://www.cs.cmu.edu/~fp/misc/c0-v2379-osx10.5.8-bin.tgz
@@ -83,6 +84,10 @@ on Sep 26, 2011 on Mac OS X 10.5.8 (Leopard), svn revision
 2379 with
 cd ..
 tar --exclude-vcs --files-from=c0/dist-bin.txt -cvzf c0-v2379-osx10.5.8-bin.tgz
+]
+cc0 version 4, on Jan 2, 2012 on Mac OS X 10.6.8 (Snow Leopard) svn
+revision 4 with
+tar --exclude .svn -p -T cc0/dist-bin.txt -cvzf cc0-v0004-osx10.6.8-bin.tgz
 
 http://www.cs.cmu.edu/~fp/misc/c0-v2379-osx10.5.8-bin.tgz
 http://www.cs.cmu.edu/~fp/misc/c0-v2403-osx10.6.8-bin.tgz
