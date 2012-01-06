@@ -4,7 +4,7 @@
 // -lfile
 
 int main () {
-  file_t f = file_read("tests/fp-assert/multianno4.c0");
+  file_t f = file_read("multianno4.c0");
   while (!file_eof(f))
     file_readline(f);
   // next line should fail assertion

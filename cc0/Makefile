@@ -8,7 +8,7 @@ CPP     = cpp
 
 DEPTH = .
 
-all: cc0 config.mk libs
+all: cc0 config.mk libpng libs
 
 config.mk: configure
 	./configure
