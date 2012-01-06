@@ -1,50 +1,45 @@
-Requirements:
+Requirements for source distribution:
+
 Standard GNU/Unix-like environment (rm, cp, GNU make, etc...)
-SML/NJ 110.67 or higher
-MLton (needed for the Coin interactive toplevel and interpreter)
+SML/NJ 110.67 or higher (can be replaced by mlton)
+MLton (needed for the Coin interactive toplevel and c0vm)
 
-Build instructions:
+Requirements for binary distribution:
 
-    $ ./configure   # decide whether a Qt build is necessary and set paths
+gcc (which comes with the Xcode developer tools under Mac OS X)
 
-If you don't have Qt 4.6 or higher installed, run:
 
-    $ make qt
+Qt: as of C0 r7, Qt is no longer part of the distribution or standard
+libraries.  It's use in the <img> image library has been replaces by
+libpng.  Some information on Qt can be found in the qt/ subdirectory
 
-edit Makefile, set PREFIX to your desired installation directory
+gc: On Mac OS X 10.7 (Lion), make gc will fail.  The latest version of
+libgc works under Lion, but we have been unable to installed the update
+so far.
 
-NB from William Lovas: On Mac OS X, if you have installed a binary
-version of Qt before, you need to uninstall it first, because the
-build will look in the wrong place.  sudo
-/Developer/Tools/uninstall-qt.py before running ./configure.
+----------------------------------------------------------------------
+Checking binary distribution
+----------------------------------------------------------------------
 
-NB from Ron Garcia: BTW, regarding QT, I have gotten it to build on
-Mac OS X 10.6 Snow Leopard.  I ultimately had to make a change to the
-build process to do this.  In the Makefile for c0, I had to add "-arch
-x86_64" to the configure spec for Qt.  Apparently Qt builds in 32-bit
-mode by default under Snow Leopard, but gcc/g++ compiles in 64-bit
-mode by default.  I had to explicitly build it in 64-bit mode.
-Addendum by fp: see Makefile.snow_leopard
+    $ make check
+    
+    $ coin -l conio
+    --> print("Hello World!\n");
+    Hello World!
+    --> #quit
 
-Using libpng as a replacement for qt, depends on zcat ?
+----------------------------------------------------------------------
+Building from source
+----------------------------------------------------------------------
 
-NB from Ron Garcia: on Mac OS X 10.6 (Snow Leopard), make gc
-will fail out of the box.  Either edit ../externals/gc/os_dep.c
-and ../externals/gc/mac_dep.c to change <ucontext.h> to
-<sys/ucontext.h>, or use gc7.2alpha
-(see http://code.google.com/p/uhc/issues/detail?id=20)
+    $ ./configure
 
-Upgraded to gc7.2alpha, Nov 3, 2011, so the comment
-above is now obsolete. -fp
-
-Then:
-    $ make            # build the compiler, gc, and runtimes
-    $ make libs       # build the libraries (Qt required for libimg)
-  [ $ make cc0-mlton  # build cc0 with mlton, for standalone binary export
-  [ $ make cc0-test   # build the testing framework ]
+    $ make            # build the cc0 compiler, gc, runtimes, and libraries
+  [ $ make libs       # build the libraries separately (libpng required for libimg) ]
+  [ $ make cc0-mlton  # build cc0 with mlton, for standalone binary export ]
     $ make check      # run the regression suite
 
-  [ $ make coin       # build the interactive toplevel ]
+    $ make coin       # build the interactive toplevel
   [ $ make coin-exec  # build the interpreter ]
   [ $ make checkcoin  # run the regression suite on the interpreter ]
 
@@ -59,88 +54,65 @@ Alternatively, to only roll out the current libraries, you can run:
 
     $ make install-libs
 
-NB: to run make cc0-test, you may need to put MLton on your PATH, e.g., by
+NB: to run make check, you may need to put MLton on your PATH, e.g., by
 adding /afs/andrew/usr/wlovas/public/mlton/usr/bin to it on Andrew.
-
-NB: running "make cc0-test" before "make check" is optional -- the Makefile
-target for "make check" should rebuild the cc0-test framework if necessary.
 
 NB: "make check" tests the default runtime.  You can also run "make checkbare"
 to test the bare runtime, "make checkc0rt" to test the c0rt runtime, or "make
 checkunsafe" to check the unsafe runtime.  "make checkall" tests them all.
+The regression testing for the unsafe runtime has falled behind: some test
+cases should be disabled for this.  We recommend only c0rt (the default)
+and bare (omitting the garbage collector).
 
-Compiler is built as bin/cc0, installed as $(PREFIX)/bin/cc0.
+The compiler is built as bin/cc0, installed as $(PREFIX)/bin/cc0.
 Libraries and runtimes are placed in lib/* and runtime/*, and
 are installed as $(PREFIX)/lib/* and $(PREFIX)/runtime/*, respectively.
 Include files in include/* are installed as $(PREFIX)/include/*.
 
-Removed prototypes/ subdirectory as of revision > 2412.
-
-[ OBSOLETE, see next remark:
-dist-bin.txt is the list of files for a binary distribution of
-coin and cc0.  It was used to create
-http://www.cs.cmu.edu/~fp/misc/c0-v2379-osx10.5.8-bin.tgz
-on Sep 26, 2011 on Mac OS X 10.5.8 (Leopard), svn revision
-2379 with
-cd ..
-tar --exclude-vcs --files-from=c0/dist-bin.txt -cvzf c0-v2379-osx10.5.8-bin.tgz
-]
+----------------------------------------------------------------------
+Creating a binary distribution
+----------------------------------------------------------------------
 cc0 version 4, on Jan 2, 2012 on Mac OS X 10.6.8 (Snow Leopard) svn
 revision 4 with
 tar --exclude .svn -p -T cc0/dist-bin.txt -cvzf cc0-v0004-osx10.6.8-bin.tgz
 
+Older versions:
+
 http://www.cs.cmu.edu/~fp/misc/c0-v2379-osx10.5.8-bin.tgz
 http://www.cs.cmu.edu/~fp/misc/c0-v2403-osx10.6.8-bin.tgz
-Requirements:
+
+Requirements for building a binary distribution
 - cc0 : you need Xcode.  Get it from your MacOS X install disk
   or download from the Apple Developers website.
 - coin : you need gmp.  First download and install
   MacPorts, then do "sudo /opt/local/bin/port install gmp"
 - c0-mode : for editing C0 code with Acquamacs or Emacs
 
---------------------------------------------------
-For a preliminary source dist, without qt:
+Step 1. Get and install the *statically linked* version of
+MLton from mlton.org
+
+Step 2. Delete all *libgmp* files in /opt/local/lib *except* libgmp.a
+(on OS X).
+
+Step 3. make cc0-mlton
+
+----------------------------------------------------------------------
+Source distribution
+----------------------------------------------------------------------
+Access at https://svn.concert.cs.cmu.edu/c0, username c0guest.
+Ask fp@cs.cmu.edu for the password
+
+Older versions:
 
 tar -cvzf c0-src-v2760.tgz --exclude .svn --exclude vm 15-122/externals/gc 15-122/c0
 
---------------------------------------------------
-To build a standalone executable, cc0 should be compiled
-with mlton.  However, notice the following remarks regarding
-mlton, since some version like to link the libgmp library
-dynamically, which many systems don't have.
-From: Rob Simmons
-
-Step 1: Get and install the *statically linked* version of MLton from
-mlton.org.
-
-Step 2: Rename *every* libgmp thing in my /opt/local/lib
-(see bin/hide-libgmp)
-
-$ ls -la /opt/local/lib | grep gmp
--rwxr-xr-x   1 root  admin   453736 Jul 22 15:23 libgmpxxx.10.dylib
-lrwxr-xr-x   1 root  admin       12 Jul 22 15:23 libgmpxxx.3.dylib ->
-libgmp.dylib
--rwxr-xr-x   1 root  admin    22160 Jul 22 15:23 libgmpxxx.4.dylib
--rw-r--r--   1 root  admin   802384 Jul 22 15:23 libgmpxxx.a
-lrwxr-xr-x   1 root  admin       15 Jul 22 15:23 libgmpxxx.dylib ->
-libgmp.10.dylib
--rwxr-xr-x   1 root  admin      927 Jul 22 15:23 libgmpxxx.la
-
-Step 3: Confirm that "make cc0-mlton" still works but produces a
-link error - this meant that it couldn't find any libgmp to link
-against whatsoever.
-
-$ sudo mv /opt/local/lib/libgmpxxx.a /opt/local/lib/libgmp.a
-$ make cc0-mlton
-
-Since the latter command then succeeds, I have to assume it's linking
-(statically, as it must) against libgmp.a.
 --------------------------------------------------
 To set svn properties:
 
 svn propset svn:svnignore -F svnignore .
 ----------------------------------------------------------------------
-
+The C0 to C# compiler is no longer current; the instructions
+need to be updated
 
 To build the C0 to C# compiler, use "make csharp". This will replace bin/cc0,
 so you'll need to run make again to get the normal compiler back. To run the
@@ -156,3 +128,4 @@ Environment variables:
           aborted with some kind of exception
         - if the result file has all 5 bytes, the C0 program finished
           successfully
+----------------------------------------------------------------------

@@ -10,7 +10,7 @@ include $(DEPTH)/util.mk
 TARGET = $(call dllname,$(LIBNAME))
 
 # These libs are handled specially by this file
-NATIVELIBS = gc ncurses
+NATIVELIBS = gc QtCore QtGui ncurses
 C0LIBS = $(filter-out $(NATIVELIBS),$(REQUIRES))
 LIBS = -L$(abspath $(DEPTH)/lib) $(patsubst %,$(DEPTH)/lib/$(call dllname,%),$(C0LIBS))
 LDFLAGS = 
@@ -45,8 +45,36 @@ CFLAGS += -I$(DEPTH)/../externals/gc/include
 LIBS += -lgc -lpthread
 endif
 
+ifeq ($(findstring QtCore,$(REQUIRES)),QtCore)
+REQUIRES_QT = yes
+CFLAGS += -I $(QT_INCLUDE)/QtCore
+ifeq ($(PLATFORM),osx)
+LIBS += -framework QtCore
+else
+LIBS += -lQtCore
+endif
+endif
+
+ifeq ($(findstring QtGui,$(REQUIRES)),QtGui)
+REQUIRES_QT = yes
+CFLAGS += -I $(QT_INCLUDE)/QtGui
+ifeq ($(PLATFORM),osx)
+LIBS += -framework QtGui
+else
+LIBS += -lQtGui
+endif
+endif
+
 ifeq ($(findstring ncurses,$(REQUIRES)),ncurses)
 LIBS += -lncurses
+endif
+
+ifeq ($(REQUIRES_QT),yes)
+ifeq ($(PLATFORM),osx)
+LDFLAGS += -F$(QT_LIB)
+endif
+LDFLAGS += -L$(QT_LIB) -Wl,-rpath $(abspath $(QT_LIB))
+CFLAGS += -I $(QT_INCLUDE)
 endif
 
 all: $(TARGET)

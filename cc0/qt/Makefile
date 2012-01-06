@@ -8,7 +8,7 @@ CPP     = cpp
 
 DEPTH = .
 
-all: cc0 config.mk libpng libs
+all: cc0 config.mk libs
 
 config.mk: configure
 	./configure
@@ -53,6 +53,16 @@ $(LIBPNGDIR)/Makefile:
 libpng: zlib $(LIBPNGDIR)/Makefile
 	$(MAKE) -C $(LIBPNGDIR)
 	$(MAKE) -C $(LIBPNGDIR) install
+
+QTDIR = ../externals/qt
+
+$(QTDIR)/Makefile:
+	(cd $(QTDIR); ./configure -arch $(MACHINE) -shared -opensource -no-accessibility -no-qt3support -no-xmlpatterns -no-multimedia -no-phonon -no-svg -no-webkit -no-script -no-scripttools -no-declarative -prefix $(abspath $(QTBUILDDIR)) -fast -nomake examples -nomake demos -nomake docs -nomake translations -nomake tools -no-pch -R $(abspath ./lib) )
+
+.PHONY: qt
+qt: $(QTDIR)/Makefile
+	$(MAKE) -C $(QTDIR)
+	$(MAKE) -C $(QTDIR) install
 
 RUNTIMES = bare c0rt unsafe
 all: $(RUNTIMES)
@@ -150,8 +160,10 @@ clean: libsclean
 .PHONY: reallyclean
 reallyclean: clean
 	$(MAKE) -C $(GCDIR) distclean
-	$(MAKE) -C $(ZLIBDIR) distclean
-	$(MAKE) -C $(LIBPNGDIR) distclean
+ifeq ($(BUILD_QT),yes)
+	$(MAKE) -C $(QTDIR) distclean
+endif
+
 
 ## Coin - The C0 Interpreter
 
@@ -170,6 +182,7 @@ coin: bin
 coin-exec: bin
 	$(MAKE) -C compiler buildid
 	$(MLTON_NATIVE) bin/coin-exec coin/coin-exec.mlb $(NATIVE_COIN)
+
 
 ## Testing harnesses
 
@@ -208,6 +221,7 @@ TESTDIRS = rjs-basic fp-simple fp-basic wjl-basic lib-basic
 TESTFILES = tests/*/*.c0 tests/*/*.test # $(patsubst %,tests/%/sources.test tests/%/*.c0,$(TESTDIRS))
 .PHONY: check checkunsafe checkc0rt checkall checkvm checkcsharp checkcoin
 check: bin/cc0-test
+#	@if [ ! -e bin/cc0-test ]; then $(MAKE) cc0-test; fi
 	bin/cc0-test $(TESTFILES)
 checkbare: bin/cc0-test
 	bin/cc0-test -r bare $(TESTFILES)
@@ -233,6 +247,7 @@ PREFIX=../..
 install: install-libs install-c0-mode
 	mkdir -p $(PREFIX)/bin $(PREFIX)/runtime $(PREFIX)/include
 	$(COPY) bin/* $(PREFIX)/bin
+#	$(COPY) lib/* $(PREFIX)/lib
 	$(COPY) runtime/* $(PREFIX)/runtime
 	$(COPY) include/* $(PREFIX)/include
 
@@ -245,3 +260,24 @@ install-c0-mode:
 install-libs:
 	mkdir -p $(PREFIX)/lib
 	$(COPY) lib/* $(PREFIX)/lib
+
+
+# weird target to build and install (to a special location) 32 bit libraries
+# for the c0vm, but then clean up after itself so the libs don't accidentally
+# get installed elsewhere.
+# THIS IS OBSOLETE SINCE WE USE WRAPPERGEN
+.PHONY: c0vm-libs
+c0vm-libs:
+	# clean up any old lib and bare builds
+	$(MAKE) libsclean
+	$(MAKE) -C bare clean
+	# build new 32-bit versions
+	for l in libs/*; do $(MAKE) $$l LIB32=yes; done
+	$(MAKE) bare LIB32=yes
+	# install all .so's into lib32
+	mkdir -p $(PREFIX)/lib32
+	$(COPY) lib/*.so $(PREFIX)/lib32
+	$(COPY) runtime/libbare.so $(PREFIX)/lib32
+	# clean up after ourselves so nobody else notices
+	$(MAKE) libsclean
+	$(MAKE) -C bare clean
