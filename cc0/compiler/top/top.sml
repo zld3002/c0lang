@@ -100,6 +100,7 @@ struct
 
   fun extract_wrappers (Ast.Pragma (Ast.UseLib (library, SOME(gdecls)), _)::libs) =
         List.filter is_fundef gdecls @ extract_wrappers libs
+    | extract_wrappers (_::libs) = raise Fail("internal error: library misconfiguration")
     | extract_wrappers nil = nil
 
   val lib_file = "stdc0.h0"

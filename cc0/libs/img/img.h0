@@ -9,18 +9,18 @@ typedef struct image* image_t;
 /* Retrieves the width of the given image */
 int image_width(image_t image)
   //@requires image != NULL;
-  //@ensures \result >= 0;
+  //@ensures \result > 0;
   ;
 
 /* Retrieves the height of the given image */
 int image_height(image_t image)
   //@requires image != NULL;
-  //@ensures \result >= 0;
+  //@ensures \result > 0;
   ;
 
 /* Creates an ARGB image with dimensions width * height */
 image_t image_create(int width, int height)
-  //@requires 0 <= width && 0 <= height;
+  //@requires 0 < width && 0 < height;
   //@ensures \result != NULL;
   //@ensures image_width(\result) == width && image_height(\result) == height;
   ;
@@ -32,7 +32,7 @@ image_t image_clone(image_t image)
   //@ensures image_height(\result) == image_height(image);
   ;
 
-/* Destroys an image. No further operations can be performed */
+/* Deprecated.  Functions as a no-op since images are now garbage collected */
 void image_destroy(image_t image);
 
 /* Returns a copy of a subrectangle of the given image. The new image has
@@ -46,11 +46,10 @@ image_t image_subimage(image_t image, int x, int y, int width, int height)
   ;
 
 /* Loads an image from the given path and convert it if need be to an ARGB image.
- * If the file does not exist, it creates a 0 x 0 image.
+ * If the file does not exist, it returns NULL.  Aborts, if the file has
+ * the wrong format.
  */
-image_t image_load(string path)
-  //@ensures \result != NULL;
-  ;
+image_t image_load(string path);
 
 /* Saves the given image to disk, inferring the file type from the file
  * extension given in the path.

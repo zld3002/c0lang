@@ -149,7 +149,7 @@ structure Flags :> FLAGS = struct
      {short = "O", long=["optimize"],
       desc=GetOpt.ReqArg 
                ((fn (s) => (opt_level := parse_opt_level(s))), "<opt>"),
-      help="Optimize to level <opt> (default 0, >0 may be unsound)"},
+      help="Optimize to level <opt> (default 0, >2 may be unsound)"},
      {short = "b", long=["bytecode"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_bytecode),
       help="Generate bytecode instead of executable"},

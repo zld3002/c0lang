@@ -1,5 +1,0 @@
-int main() {
-  image_t img = image_create(3, 3);
-  image_destroy(img);
-  return image_width(img);
-}

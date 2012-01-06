@@ -34,6 +34,26 @@ gc: lib $(GCDIR)/Makefile
 	$(MAKE) -C $(GCDIR)
 	$(COPY) $(GCDIR)/.libs/libgc.a lib
 
+ZLIBDIR = ../externals/zlib
+
+$(ZLIBDIR)/Makefile:
+	(cd $(ZLIBDIR); ./configure --prefix=$(abspath $(ZLIBDIR)/build) --libdir=$(abspath ./lib) --sharedlibdir=$(abspath ./lib) --includedir=$(abspath ./include) )
+
+.PHONY: zlib
+zlib: $(ZLIBDIR)/Makefile
+	$(MAKE) -C $(ZLIBDIR)
+	$(MAKE) -C $(ZLIBDIR) install
+
+LIBPNGDIR = ../externals/libpng
+
+$(LIBPNGDIR)/Makefile:
+	(cd $(LIBPNGDIR); ./configure --prefix=$(abspath $(LIBPNGDIR))/build --libdir=$(abspath ./lib) --includedir=$(abspath ./include) )
+
+.PHONY: libpng
+libpng: zlib $(LIBPNGDIR)/Makefile
+	$(MAKE) -C $(LIBPNGDIR)
+	$(MAKE) -C $(LIBPNGDIR) install
+
 QTDIR = ../externals/qt
 
 $(QTDIR)/Makefile:

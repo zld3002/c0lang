@@ -38,3 +38,7 @@ abort  		    ~ string-oob2.c0 -d
 lib => return 0	    ~ sort-test.c0 -d
 lib => return 0     ~ imgtest1.c0 -d
 lib => abort        ~ imgtest2.c0 -d
+lib => return 0     ~ imgtest3.c0 -d
+lib => return 0     ~ filetest1.c0 -d
+lib => abort        ~ filetest2.c0 -d
+lib => abort        ~ filetest3.c0 -d

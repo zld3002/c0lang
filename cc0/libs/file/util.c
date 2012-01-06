@@ -53,4 +53,3 @@ c0_string freadline(FILE *f) {
     free(buffer);
   return c0str;
 }
-

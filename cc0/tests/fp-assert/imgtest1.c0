@@ -19,13 +19,21 @@ int main() {
   dim_img("C", C);
   image_t D = image_subimage(A, 3, 5, 2, 3);  /* dest too small */
   dim_img("D", D);
-  image_t E = image_load("/Users/fp/courses/15-122/hw-f11/2/asciitable.jpg");
-  dim_img("asciitable.jpg", E);
+  image_t E = image_load("asciitable.png"); /* or: tests/fp-assert/asciitable.png? */
+  dim_img("asciitable.png", E);
   int[] E_array = image_data(E);
+  int e_width = image_width(E);
+  int e_height = image_height(E);
+  for (int j = e_height/4; j < 3*e_height/4; j++)
+    for (int i = e_width/4; i < 3*e_width/4; i++)
+      E_array[i+j*e_width] = 0xFFAAAAAA;
+  image_save(E, "asciitable2.png");
   //@assert \length(E_array) == image_width(E) * image_height(E);
-  image_t F = image_load("/Users/fp/courses/15-122/hw-f11/2/asciitale.jpg");
+  /*
+  image_t F = image_load("tests/fp-assert/asciitale.png");
   assert(F != NULL);
   dim_img("asciitale", F);
+  */
   print("No errors encountered!\n");
   return 0;
 }
