@@ -1,3 +1,17 @@
+For users:
+
+http://c0.typesafety.net           - Information on C0 and courses using it
+http://c0.typesafety.net/tutorial  - C0 language tutorial
+http://c0.typesafety.net/doc/c0-reference.pdf - C0 language reference
+http://c0.typesafety.net/doc/c0-libraries.pdf - C0 library reference
+
+reference/c0-reference.pdf - C0 language reference
+reference/c0-libraries.pdf - C0 library reference
+src/*                      - examples from tutorial
+
+----------------------------------------------------------------------
+For developers:
+
 notes/ - notes on further tools and language developments
 reference/ - rigorous language and library reference
 C0-Tutorial.wiki/ - copy of a tutorial on github

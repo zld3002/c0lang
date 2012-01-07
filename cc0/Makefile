@@ -37,22 +37,30 @@ gc: lib $(GCDIR)/Makefile
 ZLIBDIR = ../externals/zlib
 
 $(ZLIBDIR)/Makefile:
-	(cd $(ZLIBDIR); ./configure --prefix=$(abspath $(ZLIBDIR)/build) --libdir=$(abspath ./lib) --sharedlibdir=$(abspath ./lib) --includedir=$(abspath ./include) )
+	(cd $(ZLIBDIR); ./configure --prefix=$(abspath $(ZLIBDIR)/installdir) )
 
+# copy .a and .h files manually, so that dynamic libraries
+# are not available to the linker
 .PHONY: zlib
 zlib: $(ZLIBDIR)/Makefile
 	$(MAKE) -C $(ZLIBDIR)
 	$(MAKE) -C $(ZLIBDIR) install
+	$(COPY) $(ZLIBDIR)/installdir/lib/*.a lib
+	$(COPY) $(ZLIBDIR)/installdir/include/*.h include
 
 LIBPNGDIR = ../externals/libpng
 
 $(LIBPNGDIR)/Makefile:
-	(cd $(LIBPNGDIR); ./configure --prefix=$(abspath $(LIBPNGDIR))/build --libdir=$(abspath ./lib) --includedir=$(abspath ./include) )
+	(cd $(LIBPNGDIR); ./configure --prefix=$(abspath $(LIBPNGDIR)/installdir) )
 
+# copy .a and .h files manually, so that dynamic libraries
+# are not available to the linker
 .PHONY: libpng
 libpng: zlib $(LIBPNGDIR)/Makefile
 	$(MAKE) -C $(LIBPNGDIR)
 	$(MAKE) -C $(LIBPNGDIR) install
+	$(COPY) $(LIBPNGDIR)/installdir/lib/*.a lib
+	$(COPY) $(LIBPNGDIR)/installdir/include/*.h include
 
 RUNTIMES = bare c0rt unsafe
 all: $(RUNTIMES)

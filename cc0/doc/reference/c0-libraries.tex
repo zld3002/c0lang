@@ -12,11 +12,12 @@
   citecolor=blue,
   linkcolor=blue,
   urlcolor=blue]{hyperref}
-\usepackage{code}
-\newcommand{\blankline}{\mbox{}} % for \begin{code}...\end{code}
-\renewcommand{\_}{\char`\_}
-\renewcommand{\{}{\char`\{}
-\renewcommand{\}}{\char`\}}
+
+% \usepackage{code}
+% \newcommand{\blankline}{\mbox{}} % for \begin{code}...\end{code}
+% \renewcommand{\_}{\char`\_}
+% \renewcommand{\{}{\char`\{}
+% \renewcommand{\}}{\char`\}}
 
 \title{C0 Libraries}
 \author{15-122: Principles of Imperative Computation \\ Frank Pfenning}
@@ -37,24 +38,6 @@
 \lfoot[{\small\scshape 15-122 Fall 2011}]{{\small\scshape 15-122 Fall 2011}}
 \cfoot[]{}
 \rfoot[{\small\scshape\today}]{{\small\scshape\today}}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Environments
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\newtheorem{exercise}{Exercise}
-
-\newcommand{\ednote}[1]{\footnote{\it #1}\message{ednote!}}
-\newenvironment{note}{\begin{quote}\message{note!}\it}{\end{quote}}
-\newcommand{\highlight}[1]{\par%\vspace{1ex}%
-\framebox{\addtolength{\linewidth}{-1em}\begin{minipage}{\linewidth}#1\end{minipage}}}
-%\vspace{1ex}
-
-% For code environment
-% \newcommand{\blankline}{\mbox{}} % for \begin{code}...\end{code}
-% \renewcommand{\_}{\char`\_}
-% \renewcommand{\{}{\char`\{}
-% \renewcommand{\}}{\char`\}}
 
 \newcommand{\tint}{\texttt{int}}
 \newcommand{\tbool}{\texttt{bool}}
@@ -407,14 +390,12 @@ int[] image_data(image_t image)
 \label{sec:updates}
 \hypertarget{sec:updates}{}
 
-\emph{None yet.}
-
-% \begin{description}
-% \item[Rev. 1511, Jan 30 2011.] A stand-alone semicolon \verb"';'" is
-%   now flagged as an error rather than interpreted as an empty
-%   statement.  Remember that conditionals, loops, and blocks are
-%   \emph{not} terminated by a semicolon.  Use an empty block \verb'{}'
-%   as a statement with no effect.
-% \end{description}
+\begin{description}
+\item[Rev. C0.0011, Jan 06, 2012.]  Image Library.
+  \verb'image_destroy' has been deprecated, since images are now
+  garbage collected.  Contracts on image functions have been sharpened
+  to require strictly positive height and width.  \verb'image_load'
+  returns \verb'NULL' if the file does not exist or is not readable.
+\end{description}
 
 \end{document}

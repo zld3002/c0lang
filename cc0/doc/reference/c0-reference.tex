@@ -12,11 +12,12 @@
   citecolor=blue,
   linkcolor=blue,
   urlcolor=blue]{hyperref}
-\usepackage{code}
-\newcommand{\blankline}{\mbox{}} % for \begin{code}...\end{code}
-\renewcommand{\_}{\char`\_}
-\renewcommand{\{}{\char`\{}
-\renewcommand{\}}{\char`\}}
+
+% \usepackage{code}
+% \newcommand{\blankline}{\mbox{}} % for \begin{code}...\end{code}
+% \renewcommand{\_}{\char`\_}
+% \renewcommand{\{}{\char`\{}
+% \renewcommand{\}}{\char`\}}
 
 \title{C0 Reference}
 \author{15-122: Principles of Imperative Computation \\ Frank Pfenning}
@@ -38,24 +39,6 @@
 \cfoot[]{}
 \rfoot[{\small\scshape\today}]{{\small\scshape\today}}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Environments
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\newtheorem{exercise}{Exercise}
-
-\newcommand{\ednote}[1]{\footnote{\it #1}\message{ednote!}}
-\newenvironment{note}{\begin{quote}\message{note!}\it}{\end{quote}}
-\newcommand{\highlight}[1]{\par%\vspace{1ex}%
-\framebox{\addtolength{\linewidth}{-1em}\begin{minipage}{\linewidth}#1\end{minipage}}}
-%\vspace{1ex}
-
-% For code environment
-% \newcommand{\blankline}{\mbox{}} % for \begin{code}...\end{code}
-% \renewcommand{\_}{\char`\_}
-% \renewcommand{\{}{\char`\{}
-% \renewcommand{\}}{\char`\}}
-
 \newcommand{\tint}{\texttt{int}}
 \newcommand{\tbool}{\texttt{bool}}
 \newcommand{\vtrue}{\texttt{true}}
@@ -67,7 +50,6 @@
 \newcommand{\vnull}{\texttt{NULL}}
 \newcommand{\tstruct}{\texttt{struct}}
 \newcommand{\tvoid}{\texttt{void}}
-
 
 \begin{document}
 

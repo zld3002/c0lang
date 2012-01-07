@@ -1,31 +1,36 @@
 Requirements for source distribution:
 
-Standard GNU/Unix-like environment (rm, cp, GNU make, etc...)
-SML/NJ 110.67 or higher (can be replaced by mlton)
-MLton (needed for the Coin interactive toplevel and c0vm)
+    Standard GNU/Unix-like environment (rm, cp, GNU make, etc...)
+    SML/NJ 110.67 or higher (can be replaced by mlton)
+    MLton (needed for the Coin interactive toplevel and c0vm)
 
 Requirements for binary distribution:
 
-gcc (which comes with the Xcode developer tools under Mac OS X)
-
+    gcc (which comes with the Xcode developer tools under Mac OS X)
 
 Qt: as of C0 r7, Qt is no longer part of the distribution or standard
-libraries.  It's use in the <img> image library has been replaces by
+libraries.  It's use in the <img> image library has been replaced by
 libpng.  Some information on Qt can be found in the qt/ subdirectory
 
-gc: On Mac OS X 10.7 (Lion), make gc will fail.  The latest version of
+gc: On Mac OS X 10.7 (Lion), 'make gc' will fail.  The latest version of
 libgc works under Lion, but we have been unable to installed the update
-so far.
+so far.  The binary distribution for Mac OS X 10.6 (Snow Leopard) has
+been reported to run under Lion.
 
 ----------------------------------------------------------------------
-Checking binary distribution
+Minimal check of binary distribution
 ----------------------------------------------------------------------
 
-    $ make check
-    
-    $ coin -l conio
+    $ bin/cc0 -d doc/src/exp.c0 doc/src/exp-test.c0
+    $ ./a.out
+    All tests passed!
+    0
+
+    $ bin/coin -l conio doc/src/exp.c0
     --> print("Hello World!\n");
     Hello World!
+    --> exp(2,3);
+    8 (int)
     --> #quit
 
 ----------------------------------------------------------------------
@@ -74,7 +79,14 @@ Creating a binary distribution
 ----------------------------------------------------------------------
 cc0 version 4, on Jan 2, 2012 on Mac OS X 10.6.8 (Snow Leopard) svn
 revision 4 with
+  cd cc0/doc/reference ; pdflatex c0-reference.tex ; pdflatex c0-reference.tex
+  pdflatex c0-libraries.tex pdflatex c0-libraries.tex
+  rm -f *.aux *.log *.out *.synctex.gz
+  cd ../../..
 tar --exclude .svn -p -T cc0/dist-bin.txt -cvzf cc0-v0004-osx10.6.8-bin.tgz
+
+Find version with
+svn info https://svn.concert.cs.cmu.edu/c0
 
 Older versions:
 

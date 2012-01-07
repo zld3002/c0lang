@@ -8,4 +8,4 @@ include ../../lib.mk
 LIBS += -lpng -lz
 
 CFLAGS += -std=c99 -pedantic
-LDFLAGS += -L$(DEPTH)/lib
+LDFLAGS += -search_paths_first -L$(DEPTH)/lib
