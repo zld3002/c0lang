@@ -43,7 +43,7 @@ $(ZLIBDIR)/Makefile:
 # are not available to the linker (for standalone binary export)
 # we copy the *.so file (if it exists) to work around a Linux problem
 .PHONY: zlib
-zlib: $(ZLIBDIR)/Makefile
+zlib: lib $(ZLIBDIR)/Makefile
 	$(MAKE) -C $(ZLIBDIR)
 	$(MAKE) -C $(ZLIBDIR) install
 	$(COPY) $(ZLIBDIR)/installdir/lib/*.a lib
@@ -59,7 +59,7 @@ $(LIBPNGDIR)/Makefile:
 # are not available to the linker (for standalone binary export)
 # we copy the *.so file (if it exists) to work around a Linux problem
 .PHONY: libpng
-libpng: zlib $(LIBPNGDIR)/Makefile
+libpng: zlib lib $(LIBPNGDIR)/Makefile
 	$(MAKE) -C $(LIBPNGDIR)
 	$(MAKE) -C $(LIBPNGDIR) install
 	$(COPY) $(LIBPNGDIR)/installdir/lib/*.a lib
