@@ -41,7 +41,7 @@ $(ZLIBDIR)/Makefile:
 
 # copy .a and .h files manually, so that dynamic libraries
 # are not available to the linker (for standalone binary export)
-# we copy the *.so file (if it exists) to work around a Linux problem
+# we copy the *.so* files (if they exist) to work around a Linux problem
 .PHONY: zlib
 zlib: lib $(ZLIBDIR)/Makefile
 	$(MAKE) -C $(ZLIBDIR)
@@ -57,7 +57,7 @@ $(LIBPNGDIR)/Makefile:
 
 # copy .a and .h files manually, so that dynamic libraries
 # are not available to the linker (for standalone binary export)
-# we copy the *.so file (if it exists) to work around a Linux problem
+# we copy the *.so* files (if they exist) to work around a Linux problem
 .PHONY: libpng
 libpng: zlib lib $(LIBPNGDIR)/Makefile
 	$(MAKE) -C $(LIBPNGDIR)

@@ -75,6 +75,28 @@ are installed as $(PREFIX)/lib/* and $(PREFIX)/runtime/*, respectively.
 Include files in include/* are installed as $(PREFIX)/include/*.
 
 ----------------------------------------------------------------------
+Known problems
+----------------------------------------------------------------------
+There are some issues with configuring zlib and libpng so they work
+reliably on Linux and Darwin (Mac OS X).  Some expert help on this
+would be appreciated.
+
+Darwin: If they are configured with dynamic linking, then they
+cannot be found when a binary distribution is unpacked and built.
+So I configured them for static linking (since they are not part
+of Xcode, as far as I can determine), which appears to work.
+
+Linux: The static linking option seems to fail under Linux (it
+complains some code is not position independent).  So I also copy the
+files for dynamic linking (*.so*) into the cc0/lib/ directory, under
+Linux only.  This succeeds, but I suspect a standalone executable
+could not be produced from this.
+
+Alternatively, we could just postulate that zlib and libpng are
+available under Linux (are they, usually?) and not even build
+them.
+
+----------------------------------------------------------------------
 Creating a binary distribution
 ----------------------------------------------------------------------
 cc0 version 4, on Jan 2, 2012 on Mac OS X 10.6.8 (Snow Leopard) svn
