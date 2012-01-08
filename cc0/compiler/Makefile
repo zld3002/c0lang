@@ -28,7 +28,7 @@ parsefiles: parse1/c0.lex.sml parse1/c0.grm.sml
 # always build buildid.sml
 .PHONY: buildid
 buildid:
-	-rm top/buildid.sml
+	rm -f top/buildid.sml
 	bin/buildid >top/buildid.sml
 
 clean:
