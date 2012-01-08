@@ -40,27 +40,31 @@ $(ZLIBDIR)/Makefile:
 	(cd $(ZLIBDIR); ./configure --prefix=$(abspath $(ZLIBDIR)/installdir) )
 
 # copy .a and .h files manually, so that dynamic libraries
-# are not available to the linker
+# are not available to the linker (for standalone binary export)
+# we copy the *.so file (if it exists) to work around a Linux problem
 .PHONY: zlib
 zlib: $(ZLIBDIR)/Makefile
 	$(MAKE) -C $(ZLIBDIR)
 	$(MAKE) -C $(ZLIBDIR) install
 	$(COPY) $(ZLIBDIR)/installdir/lib/*.a lib
 	$(COPY) $(ZLIBDIR)/installdir/include/*.h include
+	-$(COPY) $(ZLIBDIR)/installdir/lib/*.so lib
 
 LIBPNGDIR = ../externals/libpng
 
 $(LIBPNGDIR)/Makefile:
-	(cd $(LIBPNGDIR); ./configure --prefix=$(abspath $(LIBPNGDIR)/installdir) )
+	(cd $(LIBPNGDIR); ./configure --with-pic --with-zlib-prefix=$(abspath $(ZLIBDIR)/installdir) --prefix=$(abspath $(LIBPNGDIR)/installdir) )
 
 # copy .a and .h files manually, so that dynamic libraries
-# are not available to the linker
+# are not available to the linker (for standalone binary export)
+# we copy the *.so file (if it exists) to work around a Linux problem
 .PHONY: libpng
 libpng: zlib $(LIBPNGDIR)/Makefile
 	$(MAKE) -C $(LIBPNGDIR)
 	$(MAKE) -C $(LIBPNGDIR) install
 	$(COPY) $(LIBPNGDIR)/installdir/lib/*.a lib
 	$(COPY) $(LIBPNGDIR)/installdir/include/*.h include
+	-$(COPY) $(LIBPNGDIR)/installdir/lib/*.so lib
 
 RUNTIMES = bare c0rt unsafe
 all: $(RUNTIMES)
