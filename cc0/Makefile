@@ -48,7 +48,7 @@ zlib: $(ZLIBDIR)/Makefile
 	$(MAKE) -C $(ZLIBDIR) install
 	$(COPY) $(ZLIBDIR)/installdir/lib/*.a lib
 	$(COPY) $(ZLIBDIR)/installdir/include/*.h include
-	-$(COPY) $(ZLIBDIR)/installdir/lib/*.so lib
+	-$(COPY) -a $(ZLIBDIR)/installdir/lib/*.so* lib
 
 LIBPNGDIR = ../externals/libpng
 
@@ -64,7 +64,7 @@ libpng: zlib $(LIBPNGDIR)/Makefile
 	$(MAKE) -C $(LIBPNGDIR) install
 	$(COPY) $(LIBPNGDIR)/installdir/lib/*.a lib
 	$(COPY) $(LIBPNGDIR)/installdir/include/*.h include
-	-$(COPY) $(LIBPNGDIR)/installdir/lib/*.so lib
+	-$(COPY) -a $(LIBPNGDIR)/installdir/lib/*.so* lib
 
 RUNTIMES = bare c0rt unsafe
 all: $(RUNTIMES)
