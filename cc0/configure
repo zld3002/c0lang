@@ -8,10 +8,12 @@ case `uname -s` in
     Darwin)
       PLATFORM=osx
       DLLSUFFIX=.dylib
+      EXTERNALS=libpng
       ;;
     *)
       PLATFORM=linux
       DLLSUFFIX=.so
+      EXTERNALS=
       ;;
 esac
 
@@ -34,4 +36,5 @@ cat >$DIR/config.mk <<EOF
 PLATFORM = $PLATFORM
 DLLSUFFIX = $DLLSUFFIX
 MACHINE = $MACHINE
+EXTERNALS = $EXTERNALS
 EOF

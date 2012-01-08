@@ -8,7 +8,13 @@ CPP     = cpp
 
 DEPTH = .
 
-all: cc0 config.mk libpng libs
+# $EXTERNALS is set by ./configure in config.mk
+# currently libpng for mac os x, empty for linux
+
+all: config.mk cc0 externals libs
+
+.PHONY: externals
+externals: $(EXTERNALS)
 
 config.mk: configure
 	./configure
@@ -41,14 +47,13 @@ $(ZLIBDIR)/Makefile:
 
 # copy .a and .h files manually, so that dynamic libraries
 # are not available to the linker (for standalone binary export)
-# we copy the *.so* files (if they exist) to work around a Linux problem
 .PHONY: zlib
 zlib: lib $(ZLIBDIR)/Makefile
 	$(MAKE) -C $(ZLIBDIR)
 	$(MAKE) -C $(ZLIBDIR) install
 	$(COPY) $(ZLIBDIR)/installdir/lib/*.a lib
 	$(COPY) $(ZLIBDIR)/installdir/include/*.h include
-	-$(COPY) -a $(ZLIBDIR)/installdir/lib/*.so* lib
+#	-$(COPY) -a $(ZLIBDIR)/installdir/lib/*.so* lib
 
 LIBPNGDIR = ../externals/libpng
 
@@ -57,14 +62,13 @@ $(LIBPNGDIR)/Makefile:
 
 # copy .a and .h files manually, so that dynamic libraries
 # are not available to the linker (for standalone binary export)
-# we copy the *.so* files (if they exist) to work around a Linux problem
 .PHONY: libpng
 libpng: zlib lib $(LIBPNGDIR)/Makefile
 	$(MAKE) -C $(LIBPNGDIR)
 	$(MAKE) -C $(LIBPNGDIR) install
 	$(COPY) $(LIBPNGDIR)/installdir/lib/*.a lib
 	$(COPY) $(LIBPNGDIR)/installdir/include/*.h include
-	-$(COPY) -a $(LIBPNGDIR)/installdir/lib/*.so* lib
+#	-$(COPY) -a $(LIBPNGDIR)/installdir/lib/*.so* lib
 
 RUNTIMES = bare c0rt unsafe
 all: $(RUNTIMES)
