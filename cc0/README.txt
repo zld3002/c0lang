@@ -103,11 +103,17 @@ cc0 version 4, on Jan 2, 2012 on Mac OS X 10.6.8 (Snow Leopard) svn
 revision 4 with
   cd cc0/doc/reference ; pdflatex c0-reference.tex ; pdflatex c0-reference.tex
   pdflatex c0-libraries.tex pdflatex c0-libraries.tex
-  rm -f *.aux *.log *.out *.synctex.gz
+  [rm -f *.aux *.log *.out]
   cd ../../..
-tar --exclude .svn -p -T cc0/dist-bin.txt -cvzf cc0-v0004-osx10.6.8-bin.tgz
 
-Find version with
+  ./configure
+  make
+  make cc0-mlton
+  make coin
+  cd ..
+  tar --exclude .svn -p -T cc0/dist-bin.txt -cvzf cc0-v????-osx10.6.8-bin.tgz
+
+Find version ???? with
 svn info https://svn.concert.cs.cmu.edu/c0
 
 Older versions:
