@@ -11,17 +11,14 @@ DEPTH = .
 # $EXTERNALS is set by ./configure in config.mk
 # currently libpng for mac os x, empty for linux
 
-all: config.mk cc0 externals libs
+# Include the platform-specific configuration from ./configure
+include config.mk
+include util.mk
+
+all: cc0 externals libs
 
 .PHONY: externals
 externals: $(EXTERNALS)
-
-config.mk: configure
-	./configure
-
-# Include the platform-specific configuration from ./configure
--include config.mk
-include util.mk
 
 bin:
 	mkdir -p bin
@@ -161,7 +158,6 @@ clean: libsclean
 	$(MAKE) -C compiler clean
 	$(RM) -f lib/*$(DLLSUFFIX) lib/*.a lib/*.h0
 	$(RM) -rf bin runtime
-	-$(RM) -f a.out config.mk
 
 .PHONY: reallyclean
 reallyclean: clean

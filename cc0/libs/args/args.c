@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <assert.h>
+#include <ctype.h>
 
 /* lib/cc0main.c defined these */
 extern int c0_argc;
