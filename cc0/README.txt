@@ -112,6 +112,7 @@ revision 4 with
   make coin
   cd ..
   tar --exclude .svn -p -T cc0/dist-bin.txt -cvzf cc0-v????-osx10.6.8-bin.tgz
+  scp cc0-v????-osx10.6.8-bin.tgz c0.typesafety.net:/home/www/c0/dist/
 
 Find version ???? with
 svn info https://svn.concert.cs.cmu.edu/c0

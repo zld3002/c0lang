@@ -312,20 +312,21 @@ fun finalize {library_headers} =
                 let fun sanitize_char #"'" = #"#"
                       | sanitize_char c = c
                     fun shell_quote s = "'" ^ String.map sanitize_char s ^ "'"
-                    val {dir, ...} = OS.Path.splitDirFile (CommandLine.name ())
+		    val cmd_name = abspath (CommandLine.name ())
+                    val {dir, ...} = OS.Path.splitDirFile (cmd_name)
                     val cpfiles_bin = path_concat (dir, "cpfiles")
+		    val cmd = (cpfiles_bin
+                               ^ " "
+                               ^ shell_quote (String.concatWith " "
+						(CommandLine.name () ::
+						 CommandLine.arguments ()))
+                               ^ " "
+                               ^ String.concatWith " " (map shell_quote sources))
+		    (* val _ = print (cmd ^ "\n") *)
                 in
-                    if OS.FileSys.access (cpfiles_bin, [OS.FileSys.A_READ]) then
-                        ignore (OS.Process.system
-                            (cpfiles_bin
-                            ^ " "
-                            ^ shell_quote (String.concatWith " "
-                                               (CommandLine.name () ::
-                                                CommandLine.arguments ()))
-                            ^ " "
-                            ^ String.concatWith " " (map shell_quote sources)))
-                    else
-                        ()
+                    if OS.FileSys.access (cpfiles_bin, [OS.FileSys.A_READ,OS.FileSys.A_EXEC])
+		    then ignore (OS.Process.system cmd)
+                    else ()
                 end
 
         (* Declare main before loading any libraries *)
