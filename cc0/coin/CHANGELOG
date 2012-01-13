@@ -88,3 +88,7 @@ Aug 19, 2011: Change native interface to remove assembly code dependency
 0.2.8 --> 0.2.9
 Oct 25, 2011: Rewrite coin.sml to use the parse3 architecture
               Make the main coin operation a bit less stateful
+
+0.2.9 --> 0.2.10
+Jan 13, 2011: Fix bug where the second argument to alloc_array was evaluated
+              two times.

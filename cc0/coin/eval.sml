@@ -136,7 +136,7 @@ structure Eval = struct
          let val i = S.to_int (ev_exp exp) in
             if D.to_int i < 0 
             then raise Error.ArraySizeNegative (D.to_int i) 
-            else S.alloc_array (state, ty, S.to_int (ev_exp exp))
+            else S.alloc_array (state, ty, i)
          end
 
        (* State access *)
