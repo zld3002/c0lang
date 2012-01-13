@@ -124,7 +124,7 @@ http://www.cs.cmu.edu/~fp/misc/c0-v2403-osx10.6.8-bin.tgz
 
 Requirements for building a binary distribution
 - cc0 : you need Xcode.  Get it from your MacOS X install disk
-  or download from the Apple Developers website.
+  or download from the Apple Developers website / the Mac App Store.
 - coin : you need gmp.  First download and install
   MacPorts, then do "sudo /opt/local/bin/port install gmp"
 - c0-mode : for editing C0 code with Acquamacs or Emacs
