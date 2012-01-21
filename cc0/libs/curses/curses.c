@@ -1,4 +1,9 @@
+#ifdef CYGWIN
+#include <ncurses/curses.h>
+#else
 #include <curses.h>
+#endif
+
 #include <c0runtime.h>
 
 WINDOW *c_initscr() { return initscr(); }

@@ -52,12 +52,16 @@ struct
   fun readable file = OS.FileSys.access (file, [OS.FileSys.A_READ])
 
   val lib_ext =
-      case List.find (fn (x, y) => x = "sysname") (Posix.ProcEnv.uname ()) of
-          SOME (_, "Darwin") => ".dylib"
-        | SOME (_, "Linux") => ".so"
-        (* XXX these should be some actual exception *)
-        | SOME (_, sysname) => raise Fail ("unknown system type, " ^ sysname)
-        | _ => raise Fail ("Posix.ProcEnv.uname did not return sysname!")
+      if Flag.isset Flags.flag_static then 
+        ".a"
+      else
+        case List.find (fn (x, y) => x = "sysname") (Posix.ProcEnv.uname ()) of
+            SOME (_, "Darwin") => ".dylib"
+          | SOME (_, "Linux") => ".so"
+          | SOME (_, "CYGWIN_NT-6.1") => ".a"
+          (* XXX these should be some actual exception *)
+          | SOME (_, sysname) => raise Fail ("unknown system type, " ^ sysname)
+          | _ => raise Fail ("Posix.ProcEnv.uname did not return sysname!")
 
   fun native_lib_name name = "lib" ^ name ^ lib_ext
 
@@ -393,15 +397,51 @@ fun finalize {library_headers} =
 
         val absBaseDir = abspath (!Flags.base_dir)
         val runtimeDir = OS.Path.concat (absBaseDir, "runtime")
-        (* Invoke GCC *)
-        val gcc_command =
-            "gcc"
-            ^ " -std=c99 -g -o " ^ (!Flags.a_out)
-	    ^ " -O" ^ Int.toString (!Flags.opt_level)
 
+        val cflags = 
+            " -std=c99 -g"
 	    (* Oct 26, 2011, this allows C0 int to be represented as C int *)
             (* because two's-complement arithmetic is specified *)
             ^ " -fwrapv"
+            ^ " -O" ^ Int.toString (!Flags.opt_level)
+            ^ " -o " ^ (!Flags.a_out)
+
+        (* gcc command for linking with static libraries *)
+	val gcc_static_lib_command = fn () =>
+            "gcc"
+            ^ cflags
+
+            (* Location of cc0lib.h and <runtime>.h *)
+	    ^ " -I" ^ path_concat (!Flags.base_dir, "include") 
+	    ^ " -I" ^ path_concat (!Flags.base_dir, "runtime") 
+
+            (* add lib and runtime directories to search path *)
+            ^ " " ^ String.concatWith " " (map (fn p => "-L" ^ (abspath p)) (!Flags.search_path))
+            ^ " -L" ^ (!Flags.base_dir ^ "/runtime")
+
+            (* Use the cc0lib *)
+            ^ " " ^ path_concat3 (!Flags.base_dir, "lib", cc0_lib ^ ".c")
+
+            (* Finally, use the cc0main.c file *)
+            ^ " " ^ path_concat3 (!Flags.base_dir, "lib", cc0_main)
+
+            (* The actual c0 main file *)
+            ^ " " ^ path_concat (out_dir, cname)
+
+            (* C0 librarires *)
+            ^ " " ^ String.concatWith " " (map (fn l => "-l" ^ l) (!Flags.libraries))
+            (* Link C0 runtime *)
+            ^ " -l" ^ !Flags.runtime
+            (* Link libpng if necessary *)
+            ^ (if List.exists (fn l => l = "img") (!Flags.libraries) then " -lpng" else "")
+            (* Link gc if needed *)
+            ^ (if !Flags.runtime <> "bare" then " -lgc" else "")
+
+        (* Invoke GCC *)
+        (* gcc command for linking with dynamic libraries *)
+        val gcc_dynamic_lib_command = fn () =>
+            "gcc"
+            ^ cflags
 
             (* Location of cc0lib.h and <runtime>.h *)
 	    ^ " -I" ^ path_concat (!Flags.base_dir, "include") 
@@ -420,6 +460,11 @@ fun finalize {library_headers} =
             ^ " -L" ^ (!Flags.base_dir ^ "/runtime")
             ^ " -Wl,-rpath " ^ runtimeDir
             ^ " " ^ (abspath (path_concat (runtimeDir, native_lib_name (!Flags.runtime))))
+
+        val gcc_command = (if Flag.isset Flags.flag_static then 
+                             gcc_static_lib_command ()
+                           else
+                             gcc_dynamic_lib_command ())
 
         val () = Flag.guard Flags.flag_verbose (fn () => say ("% " ^ gcc_command)) ()
         val status = OS.Process.system gcc_command

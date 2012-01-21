@@ -13,6 +13,7 @@ signature FLAGS = sig
   val flag_save_files : Flag.flag
   val flag_exec : Flag.flag
   val flag_bytecode : Flag.flag 
+  val flag_static : Flag.flag
   val opt_level : int ref
   val base_dir : string ref
   val search_path : string list ref
@@ -48,6 +49,7 @@ structure Flags :> FLAGS = struct
   val flag_save_files = Flag.flag "save-files"
   val flag_exec = Flag.flag "exec"
   val flag_bytecode = Flag.flag "bytecode"
+  val flag_static = Flag.flag "static"
   val opt_level = ref 0		(* default is opt level 0 *)
 
   val base_dir = ref ""                       (* see reset_flags ()        *)
@@ -87,6 +89,12 @@ structure Flags :> FLAGS = struct
           (* Set default search path using base_dir *)
           search_path := 
           [ OS.Path.mkCanonical (OS.Path.concat (!base_dir, "lib")) ];
+
+          (* decide if static or dynamic libraries should be used *)
+          case List.find (fn (x, y) => x = "sysname") (Posix.ProcEnv.uname ()) of
+              SOME (_, "CYGWIN_NT-6.1") => Flag.set flag_static
+            | SOME _ => ()
+            | _ => raise Fail ("Posix.ProcEnv.uname did not return sysname!");
 
           (* Unset all flags *)
           List.app Flag.unset [flag_verbose, flag_help,

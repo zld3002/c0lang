@@ -10,6 +10,11 @@ case `uname -s` in
       DLLSUFFIX=.dylib
       EXTERNALS=libpng
       ;;
+    CYGWIN_NT-6.1)
+      PLATFORM=cygwin
+      DLLSUFFIX=.dll
+      EXTERNALS=gc
+      ;;
     *)
       PLATFORM=linux
       DLLSUFFIX=.so
@@ -37,4 +42,8 @@ PLATFORM = $PLATFORM
 DLLSUFFIX = $DLLSUFFIX
 MACHINE = $MACHINE
 EXTERNALS = $EXTERNALS
+
+ifeq (\$(PLATFORM),cygwin)
+STATIC=1
+endif
 EOF

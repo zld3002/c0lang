@@ -6,6 +6,7 @@ MLTON   = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUni
 MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -rdynamic" -cc-opt -Iinclude -default-ann "allowFFI true" -output 
 CPP     = cpp
 
+
 DEPTH = .
 
 # $EXTERNALS is set by ./configure in config.mk
@@ -13,6 +14,7 @@ DEPTH = .
 
 # Include the platform-specific configuration from ./configure
 include config.mk
+
 include util.mk
 
 all: cc0 externals libs
@@ -72,10 +74,17 @@ all: $(RUNTIMES)
 
 define runtime_template
 .PHONY: $(1)
+ifdef STATIC
+$(1)/$(call staticlibname,$(1)): $(1)/$(1).h include/c0runtime.h
+	$(MAKE) -C $(1)
+$(1): runtime $(1)/$(call staticlibname,$(1))
+	$(COPY) $(1)/$(call staticlibname,$(1)) $(1)/$(1).h runtime
+else
 $(1)/$(call dllname,$(1)): $(1)/$(1).h include/c0runtime.h
 	$(MAKE) -C $(1)
 $(1): runtime $(1)/$(call dllname,$(1))
 	$(COPY) $(1)/$(call dllname,$(1)) $(1)/$(1).h runtime
+endif
 endef
 
 $(foreach rt,$(RUNTIMES),$(eval $(call runtime_template,$(rt))))
@@ -139,7 +148,11 @@ bin/wrappergen: makelibs/* bin
 .PHONY: libs/*
 libs/*: bin/wrappergen
 	$(MAKE) -C $@
+ifdef STATIC
+	$(COPY) $@/$(notdir $@).h0 $@/$(call staticlibname,$(notdir $@)) lib
+else
 	$(COPY) $@/$(notdir $@).h0 $@/$(call dllname,$(notdir $@)) lib
+endif
 
 .PHONY: libs
 libs: bin/wrappergen

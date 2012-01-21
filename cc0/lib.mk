@@ -1,3 +1,4 @@
+AR = ar
 CC = gcc
 CXX = g++
 LD = g++
@@ -7,7 +8,11 @@ DEPTH ?= ../..
 include $(DEPTH)/config.mk
 include $(DEPTH)/util.mk
 
+ifdef STATIC
+TARGET = $(call staticlibname,$(LIBNAME))
+else
 TARGET = $(call dllname,$(LIBNAME))
+endif
 
 # These libs are handled specially by this file
 NATIVELIBS = gc ncurses
@@ -15,7 +20,15 @@ C0LIBS = $(filter-out $(NATIVELIBS),$(REQUIRES))
 LIBS = -L$(abspath $(DEPTH)/lib) $(patsubst %,$(DEPTH)/lib/$(call dllname,%),$(C0LIBS))
 LDFLAGS = 
 
+# -fPIC is not supported on Windows and is not necessary there because we link statically
+# on Windows
+# define CYGWIN so that libs/curses can use the proper location for curses.h
+ifeq ($(PLATFORM),cygwin)
+CFLAGS = -g -I$(DEPTH)/include $(patsubst %,-I../%/,$(C0LIBS)) -DCYGWIN
+else
 CFLAGS = -g -fPIC -I$(DEPTH)/include $(patsubst %,-I../%/,$(C0LIBS))
+endif
+
 ifeq ($(PLATFORM),osx)
 LDFLAGS += -dynamiclib
 LDFLAGS += -install_name @rpath/$(TARGET)
@@ -53,7 +66,11 @@ all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
 	for l in $(C0LIBS); do $(MAKE) -C $(DEPTH)/libs/$$l; done
+ifdef STATIC
+	$(AR) rcs $(TARGET) $(OBJECTS)
+else
 	$(LD) $(LDFLAGS) -o $(TARGET) $(OBJECTS) $(LIBS)
+endif
 
 $(LIBNAME)_c0ffi.o: $(LIBNAME).h0
 	$(DEPTH)/bin/wrappergen $(LIBNAME)

@@ -103,6 +103,7 @@ val lib_ext =
    case List.find (fn (x, y) => x = "sysname") (Posix.ProcEnv.uname ()) of
       SOME (_, "Darwin") => ".dylib"
     | SOME (_, "Linux") => ".so"
+    | SOME (_, "CYGWIN_NT-6.1") => ".dll"
     (* XXX these should be some actual exception *)
     | SOME (_, sysname) => 
       raise Error.Internal ("unknown system type, " ^ sysname)

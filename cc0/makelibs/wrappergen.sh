@@ -5,6 +5,7 @@ case `uname -s` in
 Linux) SUFFIX=linux; ;;
 FreeBSD) SUFFIX=bsd ;;
 Darwin) SUFFIX=darwin ;;
+CYGWIN_NT-6.1) SUFFIX=cygwin ;;
 *) echo "Unknown OS!" ;;
 esac
 

@@ -5,7 +5,8 @@
 # William Lovas, 08-27-2010
 #
 
-REV=`svnversion`
+# remove CR on Cygwin
+REV=`svnversion | sed 's/\013//g'`
 DATE=`date`
 HOST=`hostname`
 
