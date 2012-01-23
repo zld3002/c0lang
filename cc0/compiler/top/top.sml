@@ -403,6 +403,7 @@ fun finalize {library_headers} =
 	    (* Oct 26, 2011, this allows C0 int to be represented as C int *)
             (* because two's-complement arithmetic is specified *)
             ^ " -fwrapv"
+	    ^ (if Flag.isset Flags.flag_verbose then " -Wall -Wextra" else " -w")
             ^ " -O" ^ Int.toString (!Flags.opt_level)
             ^ " -o " ^ (!Flags.a_out)
 
