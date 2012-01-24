@@ -10,7 +10,7 @@ case `uname -s` in
       DLLSUFFIX=.dylib
       EXTERNALS=libpng
       ;;
-    CYGWIN_NT-6.1)
+    CYGWIN*)
       PLATFORM=cygwin
       DLLSUFFIX=.dll
       EXTERNALS=gc

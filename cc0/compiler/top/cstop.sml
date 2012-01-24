@@ -47,13 +47,16 @@ struct
   fun readable file = OS.FileSys.access (file, [OS.FileSys.A_READ])
 
   val lib_ext =
-      case List.find (fn (x, y) => x = "sysname") (Posix.ProcEnv.uname ()) of
-          SOME (_, "Darwin") => ".dylib"
-        | SOME (_, "Linux") => ".so"
-	| SOME (_, "CYGWIN_NT-6.1") => ".dll"
-        (* XXX these should be some actual exception *)
-        | SOME (_, sysname) => raise Fail ("unknown system type, " ^ sysname)
-        | _ => raise Fail ("Posix.ProcEnv.uname did not return sysname!")
+      (* On Cygwin, static libraries are used (see top/flags.sml) *)
+      if Flag.isset Flags.flag_static then
+        ".a"
+      else
+        case List.find (fn (x, y) => x = "sysname") (Posix.ProcEnv.uname ()) of
+            SOME (_, "Darwin") => ".dylib"
+          | SOME (_, "Linux") => ".so"
+          (* XXX these should be some actual exception *)
+          | SOME (_, sysname) => raise Fail ("unknown system type, " ^ sysname)
+          | _ => raise Fail ("Posix.ProcEnv.uname did not return sysname!")
 
   fun native_lib_name name = ("lib" ^ name ^ lib_ext)
 

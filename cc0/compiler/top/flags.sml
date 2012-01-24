@@ -92,8 +92,7 @@ structure Flags :> FLAGS = struct
 
           (* decide if static or dynamic libraries should be used *)
           case List.find (fn (x, y) => x = "sysname") (Posix.ProcEnv.uname ()) of
-              SOME (_, "CYGWIN_NT-6.1") => Flag.set flag_static
-            | SOME _ => ()
+              SOME (_, id) => if String.isPrefix "CYGWIN" id then Flag.set flag_static else () 
             | _ => raise Fail ("Posix.ProcEnv.uname did not return sysname!");
 
           (* Unset all flags *)
