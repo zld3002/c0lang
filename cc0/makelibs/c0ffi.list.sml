@@ -4,9 +4,27 @@ SplaySetFn (struct type ord_key = string val compare = String.compare end)
 structure Map = 
 SplayMapFn (struct type ord_key = string val compare = String.compare end)
 
-structure C0ffiList = 
+structure C0ffiList:> sig
+   (* read (ROOTDIR: string): Set.set Map.map
+    * 
+    * Collect lines from ROOTDIR/lib/c0ffi.list into a single datastructure    
+    * that maps the name of every known C0 library to the set of functions that
+    * are implemented by that library. *)
+   val read: string -> Set.set Map.map
+
+   (* write (ROOTDIR: string) (c0ffi_libs: Set.set Map.map): unit 
+    * 
+    * Given ROOTDIR and the kind of datastructure produced from c0ffi.list by
+    * the read function, this function outputs the following: 
+      * ROOTDIR/lib/c0ffi.list (write_c0ffi_list)
+      * ROOTDIR/vm/c0vm_c0ffi.h (write_c0vm_c0ffi_h)
+      * ROOTDIR/vm/c0vm_c0ffi.c (write_c0vm_c0ffi_c)
+      * ROOTDIR/compiler/c0vm/c0vm-c0vffi.sml (write_c0vm_c0ffi_sml) *)
+   val write: 
+end = 
 struct
 
+(* Given ROOTDIR, returns ROOTDIR/lib/c0ffi.list *)
 fun get_filename rootdir = 
    let
       val dirname = OS.Path.joinDirFile {dir = rootdir, file = "lib"}
@@ -15,14 +33,16 @@ fun get_filename rootdir =
       filename
    end
 
+(* Some local state used hackishly to make generated code a bit prettier *)
 local
-val buf = ref 0
+(* Given a map from libraries to functions, what's the longest function? *)
 val maxLen = 
    Map.foldr 
       (fn (set, max) =>
           Set.foldr (fn (s, max) => Int.max (size s, max)) max set)
       0
-val cnt = ref 0
+val buf = ref 0 (* setBuf sets this to the length of the longest filename *)
+val cnt = ref 0 (* setBuf sets this to the total number of library functions *)
 in
 fun setBuf c0ffi_list =
  ( buf := maxLen c0ffi_list
@@ -32,6 +52,7 @@ fun getBuf s =
 fun getCount () = !cnt
 end
 
+(* writes lib/c0ffi.list *)
 fun write_c0ffi_list rootdir c0ffi_list = 
    let 
       val file = TextIO.openOut (get_filename rootdir)
@@ -48,6 +69,7 @@ fun write_c0ffi_list rootdir c0ffi_list =
     ; TextIO.closeOut file)
    end
 
+(* writes vm/c0vm_c0ffi.h *)
 fun write_c0vm_c0ffi_h rootdir c0ffi_list = 
    let 
       val dirname = OS.Path.joinDirFile {dir = rootdir, file = "vm"}
@@ -85,6 +107,7 @@ fun write_c0vm_c0ffi_h rootdir c0ffi_list =
     ; TextIO.closeOut h)
    end
 
+(* writes vm/c0vm_c0ffi.c *)
 fun write_c0vm_c0ffi_c rootdir c0ffi_list = 
    let 
       val dirname = OS.Path.joinDirFile {dir = rootdir, file = "vm"}
@@ -111,6 +134,7 @@ fun write_c0vm_c0ffi_c rootdir c0ffi_list =
     ; TextIO.closeOut c)
    end
 
+(* writes compiler/c0vm/c0vm-c0ffi.sml *)
 fun write_c0vm_c0ffi_sml rootdir c0ffi_list = 
    let 
       val dirname = OS.Path.joinDirFile {dir = rootdir, file = "compiler"}
@@ -148,7 +172,6 @@ fun write_c0vm_c0ffi_sml rootdir c0ffi_list =
     ; TextIO.closeOut file)
    end
 
-
 fun write rootdir c0ffi_list = 
  ( setBuf c0ffi_list
  ; write_c0ffi_list rootdir c0ffi_list
@@ -168,7 +191,13 @@ fun read rootdir =
       fun merge_accum NONE libs_accum = libs_accum
         | merge_accum (SOME (lib, funcs)) libs_accum =
              Map.insert (libs_accum, lib, funcs)
-
+ 
+      (* Collect lines from lib/c0ffi.list into a single datastructure, a
+       * Set.set Map.map, which maps the name of each filename to the set
+       * of functions that are implemented by that library.
+         * file: TextIO.instream - the unread portion of the file
+         * lib_accum: string * Set.set - (current library, functions seen)
+         * libs_accum: Set.set Map.map - already seen libraries *)
       fun loop file lib_accum libs_accum = 
          case tokenize (TextIO.inputLine file) of
             NONE => merge_accum lib_accum libs_accum before TextIO.closeIn file

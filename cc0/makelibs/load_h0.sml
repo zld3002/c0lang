@@ -10,9 +10,12 @@ fun error s =
    (TextIO.output (TextIO.stdErr, "ERROR: " ^ s ^ "\n") 
     ; raise Fail s)
 
+(* This function uses state to output to libs/foo/foo_c0ffi.c *)
 val outstream = ref TextIO.stdOut
 fun print_endline s = TextIO.output (!outstream, s ^ "\n")
 
+(* This part needs to be knowledgable about the correspondence between C types
+ * and C0 types *)
 fun string_of_type tp = 
    case tp of 
       Int => "int"
@@ -52,6 +55,7 @@ fun cast_into_type tp =
     | Void => error "No cast for void"
     | Any => error "No name for 'any'"
 
+(* Output the header information (if any) associated with a header *)
 fun output_header data = 
    case data of 
       Pragma _ => ()
@@ -81,6 +85,7 @@ fun output_header data =
                         ^ "(" ^ args ^ ");")
       end
  
+(* Output the function body (if any) associated with a header *)
 fun output_wrapper data = 
    case data of 
       Pragma _ => ()
@@ -116,12 +121,14 @@ fun output_wrapper data =
 	 ; print_endline ""
       end
 
+(* Filter out a header file to get the list of functions *)
 fun collect_funs (decl, set) = 
    case decl of 
       Function (fun_name, result, params, stm, specs, is_extern, mark) =>
          Set.add (set, Symbol.name fun_name)
     | _ => set
 
+(* Output the entire file libs/foo/c0ffi_foo.c for the foo library *)
 fun load_and_output lib file =
    let 
       val decls = direct_load file
@@ -147,6 +154,7 @@ fun load_and_output lib file =
       ; foldl collect_funs Set.empty decls
    end 
 
+(* Main function *)
 fun wrappergen (filename, args) =
    let
       val lib = 
@@ -179,6 +187,7 @@ fun wrappergen (filename, args) =
       val () = TextIO.output (TextIO.stdErr, "Writing " ^ c0_file ^ "\n")
       val funcs_in_lib = load_and_output lib h0_file
    in
+      (* Only do something if the public interface has changed *)
       ( if Map.inDomain (c0ffi_list, lib) 
            andalso Set.equal (funcs_in_lib, Map.lookup (c0ffi_list, lib)) 
         then ()
