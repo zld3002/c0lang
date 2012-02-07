@@ -81,17 +81,6 @@ lib parse
 parse_bool
 parse_int
 
-lib pngimg
-image_clone
-image_create
-image_data
-image_destroy
-image_height
-image_load
-image_save
-image_subimage
-image_width
-
 lib string
 char_chr
 char_ord

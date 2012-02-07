@@ -19,6 +19,7 @@ local
    impl-native.sml
 
    extern-sig.sml
+   extern-native.sml
    extern-lib-native.sml
    extern-call-native.sml
 in

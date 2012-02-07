@@ -1,7 +1,7 @@
-structure NativeLibrary :> NATIVELIBRARY where type function = MLton.Pointer.t =
+structure NativeLibrary :> NATIVELIBRARY where type function = NativeFn.t =
 struct
   type library = MLton.Pointer.t
-  type function = MLton.Pointer.t
+  type function = NativeFn.t
 
   fun to_mangled_function_name s = "__c0ffi_" ^ s ^ "\000"
   fun tocstr s = s ^ "\000"
@@ -35,8 +35,10 @@ struct
 
   val close = _import "dlclose" : library -> unit;
 
-  val get_ = _import "dlsym" : library * string -> function;
+  val get_ = _import "dlsym" : library * string -> MLton.Pointer.t;
   fun get lib sym = 
      let val fptr = get_ (lib, to_mangled_function_name sym) 
-     in if MLton.Pointer.null = fptr then NONE else SOME fptr end
+     in if MLton.Pointer.null = fptr then NONE 
+        else SOME (NativeFn.FnPtr fptr) 
+     end
 end

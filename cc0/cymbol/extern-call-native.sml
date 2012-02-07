@@ -1,13 +1,12 @@
 (* Facilities for calling dynamically-loaded functions *)
 structure NativeCall :> NATIVECALL
-                            where type function = MLton.Pointer.t
+                            where type function = NativeFn.t
                               and type native_pointer = MLton.Pointer.t =
 struct
 
   type args = MLton.Pointer.t
-  type fptr = MLton.Pointer.t
   type native_pointer = MLton.Pointer.t
-  type function = fptr
+  type function = NativeFn.t
 
   (* Create passes in the size of the returned value *)
   val create   = _import "args_create":   int -> args;
@@ -19,12 +18,15 @@ struct
   val add_char = _import "args_add_char": args * char * int -> unit;
   val add_ptr  = _import "args_add_ptr":  args * MLton.Pointer.t * int -> unit;
 
-  (* Call the funciton, get a MLton.Pointer.t to the the turned value *)
-  val prim_bool = _import "call_bool":    fptr * args -> bool;
-  val prim_int  = _import "call_int":     fptr * args -> Word32.word;
-  val prim_char = _import "call_char":    fptr * args -> char;
-  val prim_ptr  = _import "call_ptr":     fptr * args -> MLton.Pointer.t;
-  val prim_void = _import "call_void":    fptr * args -> unit;
+  (* Call the functon that is represented by a pointer *)
+  val apply   = _import "apply":     MLton.Pointer.t * args -> MLton.Pointer.t;
+
+  (* Cast a void* in the intended fashion *)
+  val to_bool = _import "cast_bool": MLton.Pointer.t -> bool;
+  val to_int  = _import "cast_int":  MLton.Pointer.t -> Word32.word;
+  val to_char = _import "cast_char": MLton.Pointer.t -> char;
+  val to_ptr  = fn x => x
+  val to_void = fn x => ()
 
   datatype arg
     = Bool   of bool
@@ -53,22 +55,25 @@ struct
 	loop (0, args); arr
      end
 
-  fun call (handler: fptr * args -> 'a) (fptr: fptr, args: arg list): 'a = 
-     let
-	val arr = mkargs args
-	val res = handler (fptr, arr)
-     in
-	destroy arr; res
-     end
+  fun call (caster: MLton.Pointer.t -> 'a) (fptr, args: arg list): 'a = 
+     case fptr of 
+        NativeFn.FnPtr t => 
+        let val arr = mkargs args
+        in caster (apply (t, arr)) before destroy arr
+        end
+      | NativeFn.Native f =>  
+        let val arr = mkargs args
+        in caster (f arr) before destroy arr 
+        end        
 
-  val call_bool   = call prim_bool
-  val call_int    = call prim_int
-  val call_char   = call prim_char
-  val call_ptr    = call prim_ptr
+  val call_bool   = call to_bool
+  val call_int    = call to_int
+  val call_char   = call to_char
+  val call_ptr    = call to_ptr
   val call_string =
      ConcreteNativeHeap.rep_to_str 
      o ConcreteNativeHeap.native_to_str 
-     o call prim_ptr
-  val call_void   = call prim_void
+     o call to_ptr
+  val call_void   = call to_void
 
 end

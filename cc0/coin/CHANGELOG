@@ -92,3 +92,6 @@ Oct 25, 2011: Rewrite coin.sml to use the parse3 architecture
 0.2.9 --> 0.2.10
 Jan 13, 2011: Fix bug where the second argument to alloc_array was evaluated
               two times.
+
+0.2.10 --> 0.3.0
+Feb 6, 2011:  Modify implementation to support different foreign functions.
