@@ -1,4 +1,23 @@
-structure Exec = 
+(* Exec implements the stateful operational semantics of commands in the 
+ * C0 intermediate language. *)
+
+structure Exec:>sig
+
+  (* The particular state that all computation is relative to *)
+  val state: (Symbol.symbol * Mark.ext) ConcreteState.state
+
+  (* Implements function calls (symbol * value list * Mark.Ext -> value) *)
+  val call: Eval.function_impl
+
+  (* Big-step implementaiton of running a command. The return value
+   * NONE is associated with the "void" return type of functions. *)
+  val exec: C0Internal.program -> ConcreteState.value option
+
+  (* Unwind the stack and any scopes (used to recover from exceptions and
+   * interrupts) *)
+  val reset: unit -> unit
+
+end = 
 struct
 
 structure State = ConcreteState

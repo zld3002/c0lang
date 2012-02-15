@@ -1,3 +1,5 @@
+(* Wraps the NativeCall structure defined in cymbol/extern-call-native.sml *)
+
 structure Calling :>
 sig
   val call: NativeCall.function * Ast.tp * (Ast.tp * ConcreteState.value) list

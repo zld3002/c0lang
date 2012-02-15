@@ -1,4 +1,51 @@
-structure Eval = struct
+(* Implement the operational semantics of C0 expressions *)
+
+(* If Coin is modified so that the Call expression is eliminated 
+ * in favor of a Call command, then the second argument to eval_exp and
+ * eval_lval could be eliminated; these are only passed around to handle
+ * possible function applications. - rjs 14 Feb 2012 *)
+
+(* The state is mostly passed around for its utility functions, but it is also
+ * necessary to update the state at times because the alloc() and alloc_array()
+ * primitive expressions are side-effecting. I don't know if the compiler code 
+ * that hoists functions also hoists alloc and alloc_array, but we should 
+ * answer that. - rjs 14 Feb 2012 *)
+
+structure Eval:> sig
+
+  datatype loc = 
+     NullLoc 
+   | StackLoc of Symbol.symbol
+   | HeapLoc of Ast.tp * ConcreteState.addr
+
+  type function_impl = 
+     Symbol.symbol * ConcreteState.value list * Mark.ext -> ConcreteState.value
+
+  val get: 'a ConcreteState.state * loc -> ConcreteState.value
+  val put: 'a ConcreteState.state * loc * ConcreteState.value -> unit
+
+  val eval_exp: 
+     'a ConcreteState.state * function_impl
+     -> C0Internal.exp 
+     -> ConcreteState.value
+
+  val eval_lval:
+     'a ConcreteState.state * function_impl
+     -> C0Internal.exp
+     -> loc
+
+  val eval_monop:
+     C0Internal.monop
+     -> ConcreteState.value
+     -> ConcreteState.value
+
+  val eval_binop:
+     C0Internal.binop
+     -> ConcreteState.value * ConcreteState.value
+     -> ConcreteState.value
+
+end = 
+struct
 
   structure D = ConcreteData
   structure S = ConcreteState
@@ -7,6 +54,8 @@ structure Eval = struct
   type 'a state = 'a S.state
   type addr = S.addr
   type value = S.value 
+
+  type function_impl = Symbol.symbol * value list * Mark.ext -> value
 
   datatype loc = NullLoc | StackLoc of Symbol.symbol | HeapLoc of Ast.tp * addr
 

@@ -72,7 +72,7 @@ local
    fun rp b = if b then ")" else ""
 in
 
-fun constToString c = 
+fun constToString (c: const): string = 
    case c of
       Bool true => "true"
     | Bool false => "false"
@@ -81,16 +81,17 @@ fun constToString c =
     | String s => "\"" ^ String.translate Char.toCString s ^ "\""
     | NullPointer => "NULL"
 
-fun binopToString oper = 
+fun binopToString (oper: binop): string = 
    case oper of Plus => "+" | Times => "*" | Minus => "-" | Div => "/" 
      | Mod => "%" | BitAnd => "&" | BitOr => "|" | BitXor => "^"
      | ShiftLeft => "<<" | ShiftRight => ">>" | Lt => "<" | Leq => "<=" 
      | Eq => "==" | Geq => ">=" | Gt => ">" | Neq => "!="
 
-fun monopToString oper = 
+fun monopToString (oper: monop): string = 
    case oper of LogicNot => "!" | ArithNeg => "-" | BitNot => "~"
 
-fun expToString b exp = 
+(* expToString b exp - the b determines whether enclosing parens are needed *)
+fun expToString (b: bool) (exp: exp) = 
    case exp of 
       Const c => constToString c
     | Var x => Symbol.name x
@@ -114,7 +115,7 @@ fun expToString b exp =
       ^ expToString false e1 ^ ")"
     | Length e1 => "\\length(" ^ expToString false e1 ^ ")"
 
-fun cmdToString cmd = 
+fun cmdToString (cmd: cmd): string = 
    case cmd of
       Label (l, "") => "Label: L" ^ Int.toString l 
     | Label (l, s) => "Label: L" ^ Int.toString l ^ " // " ^ s
@@ -143,7 +144,8 @@ fun cmdToString cmd =
     | PushScope => "{"
     | PopScope n => String.concat (List.tabulate (n, (fn _ => "}")))
 
-fun cmdPrint prefix (prog : program) = 
+(* cmdPrint prefix prog - the prefix determines the indentation *)
+fun cmdPrint (prefix: string) (prog : program): unit = 
    Vector.appi 
        (fn (i, cmd) =>
            print (prefix ^ Int.toString i ^ " - " ^ cmdToString cmd ^ "\n")) 
