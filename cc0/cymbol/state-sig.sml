@@ -60,6 +60,7 @@ signature STATE = sig
   val alloc_array    : 'a state * Ast.tp * int_rep -> value
   val get_addr       : 'a state * (Ast.tp * addr) -> value
   val put_addr       : 'a state * (Ast.tp * addr) * value -> unit
+  val array_size     : 'a state * addr -> int
 
   (* Stack manipulation *)
   val push_fun       : 'a state * Symbol.symbol * 'a -> unit

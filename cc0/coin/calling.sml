@@ -2,8 +2,10 @@
 
 structure Calling :>
 sig
-  val call: NativeCall.function * Ast.tp * (Ast.tp * ConcreteState.value) list
-            -> ConcreteState.value
+  val call: 
+     'a ConcreteState.state
+     -> NativeCall.function * Ast.tp * (Ast.tp * ConcreteState.value) list
+     -> ConcreteState.value
 end = 
 struct
 
@@ -30,9 +32,9 @@ fun mapArg (ty, v) =
     | Ast.String => NativeCall.String (S.to_string v)
     | _ => raise Error.Internal ("Bad argument type " ^ Ast.Print.pp_tp ty)
 
-val array_size = _import "c0_array_length" : MLton.Pointer.t -> int;
+(* val array_size = _import "c0_array_length" : MLton.Pointer.t -> int; *)
 
-fun call (fptr, retty, args) =
+fun call state (fptr, retty, args) =
    let 
       val args = map (fn (ty, v) => (find_ty ty, v)) args
       val retty = find_ty retty
@@ -46,7 +48,8 @@ fun call (fptr, retty, args) =
           S.pointer (find_ty ty, S.from_native (NativeCall.call_ptr call))
         | f (Ast.Array ty) = 
           let val p = NativeCall.call_ptr call
-          in S.array (find_ty ty, S.from_native p, array_size p) end
+          in S.array (find_ty ty, S.from_native p, 
+                      S.array_size (state, S.from_native p)) end
         | f _ = 
           raise Error.Internal ("Bad return type " ^ Ast.Print.pp_tp retty)
    in f retty end

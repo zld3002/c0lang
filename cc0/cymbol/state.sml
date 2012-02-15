@@ -325,6 +325,9 @@ functor StateFn (structure Data : DATA
       val loc = Heap.alloc_array (heap, size_t, Data.to_int i)
     in Array (ty, loc, Data.to_int i) end
 
+  fun array_size (S{heap, ...}, (loc, NONE, [])) = Heap.size (heap, loc)
+    | array_size _ = raise Error.Internal "array_size with an offset"
+
   fun get_addr (S{heap, typedefs, ...}, (ty, addr)) = 
     case typedefs ty of
       Ast.Void       => Unit

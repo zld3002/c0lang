@@ -93,7 +93,7 @@ fun call (fun_name, actual_args, pos) : State.value =
             val old_pos = !current_pos
             val () = current_pos := SOME ((0,0),(0,0),"< in native code >")
             val args = ListPair.zip (map #1 arg_tys, actual_args)
-            val res = Calling.call (fptr, return_ty, args)
+            val res = Calling.call state (fptr, return_ty, args)
         in 
             Flag.guard Flags.flag_trace
                (fn () => print ("Done with native " ^ f ^ "\n")) ()

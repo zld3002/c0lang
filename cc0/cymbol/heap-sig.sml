@@ -39,7 +39,7 @@ signature HEAP = sig
   val alloc_array : heap * size_t * int -> loc
 
   (* Size will safely return 0 given a null pointer               *)
-  val size : heap * loc -> int 
+  val size : heap * loc -> int (* Size of the array rooted at loc *)
   val null : loc -> bool
   val eq : loc * loc -> bool
 
