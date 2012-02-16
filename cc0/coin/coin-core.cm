@@ -11,3 +11,7 @@ Group is
       eval.sml
       codetab.sml
       exec.sml
+
+      version.sml
+
+      coin-exec.sml
