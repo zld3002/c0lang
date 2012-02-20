@@ -1,4 +1,9 @@
-structure CoinExec = 
+structure CoinExec:>sig
+
+   (* Type is a bit misleading: the function actually never returns *)
+   val go: string * string list -> unit
+  
+end = 
 struct
 
 (* Finishing with the right error messages *)
