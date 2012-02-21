@@ -458,7 +458,7 @@ struct
      * See c0/include/cc0lib.h and c0/include/c0rt.h *)
     fun pp_exp env (A.Var(id)) = pp_var id
       | pp_exp env (A.IntConst(w)) = (* bug workaround for gcc -fwrapv, Jan 22, 2012 *)
-	if (w = Word32Signed.TMIN) then "(1<<31)" else Word32Signed.toString w
+	if (w = Word32Signed.TMIN) then "(-2147483647-1)" else Word32Signed.toString w
       | pp_exp env (A.StringConst(s)) = "c0_string_fromliteral(\"" ^ String.toCString s ^ "\")"
       | pp_exp env (A.CharConst(c)) = "'" ^ Char.toCString c ^ "'"
       | pp_exp env (A.True) = "true"
