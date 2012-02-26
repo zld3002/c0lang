@@ -1,0 +1,16 @@
+Library
+  signature DATA
+  structure Concrete
+  functor State
+  functor Cymbol
+is
+
+#if (defined(SMLNJ_VERSION))
+  $/basis.cm
+#endif
+
+  ../util/sources.cm
+  ../lang/sources.cm
+  data.sml
+  state.sml
+  cymbol.sml

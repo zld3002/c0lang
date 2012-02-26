@@ -1,0 +1,13 @@
+Library
+  structure Test
+is
+  $/basis.cm
+  $/smlnj-lib.cm
+  word32.sml
+  fixity.sml
+  testing.sml
+
+  ../../cymbol-tools/core/sources.cm
+  ../../cymbol-tools/cfg/sources.cm
+  ../../cymbol-tools/use-functional.cm
+  cymbol-test.sml

@@ -1,0 +1,56 @@
+/* Test this by hand, since the testing 
+ * script currently cannot pass command line
+ * arguments
+ *
+ * -v : verbose
+ * -r n : "repeat" n
+ * -label msg : print label msg
+ * All remaining arguments must be integers, which are
+ * added up.
+ */
+
+#use <args>
+#use <parse>
+#use <conio>
+#use <string>
+
+int main() {
+  bool* verbose = alloc(bool);
+  args_flag("-v", verbose);
+
+  int* repeat = alloc(int);
+  *repeat = 1;
+  args_int("-r", repeat);
+
+  string* label = alloc(string);
+  args_string("-label", label);
+
+  args_t others = args_parse();
+
+  if (*verbose) {
+    print("Verbose mode\n");
+  }
+
+  if (!string_equal(*label,"")) {
+    print("Labeled with ");
+    print(*label);
+    print("\n");
+  } else {
+    print("Unlabeled\n");
+  }
+
+  print("Repeating "); printint(*repeat); print("\n");
+  
+  int sum = 0;
+  for (int i = 0; i < others->argc; i++) {
+    int* arg = parse_int(others->argv[i], 10);
+    if (arg == NULL) {
+      error("argument not an integer");
+    }
+    printint(sum); print(" + "); printint(*arg); print(" = ");
+    sum = sum + *arg;
+    printint(sum); print("\n");
+  }
+  return 0;
+}
+

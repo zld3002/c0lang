@@ -1,0 +1,31 @@
+void test_format() {
+  int i;
+  for (i = -200; i <= 200; i++) {
+    string s = string_fromint(i);
+    int *result = parse_int(s, 10);
+    assert(result != NULL); // "Could not parse string made from int"
+    assert(*result == i); // "The parsed integer did not match the original"
+  }
+  assert(string_equal("-2147483648", string_fromint(-2147483648)));
+  // "Formatting of -INT_MAX"
+}
+
+void test_chars() {
+  assert(string_equal(string_fromchar('c'), "c"));
+
+  for (int i = 0; i <= 127; i++) {
+    char c = char_chr(i);
+    char[] A = alloc_array(char, 2);
+    A[0] = c;
+    A[1] = '\0';
+    string s1 = string_fromchar(c);
+    string s2 = string_from_chararray(A);
+    assert(string_equal(s1, s2));
+  }
+}
+
+int main() {
+  test_format();
+  test_chars();
+  return 0;
+}

@@ -1,0 +1,11 @@
+// uncomment this line once the test harness ulimits
+//test abort
+
+int main () {
+  int n = 4; int i;
+  int size = 1<<18; // 1MB - okay, 4MB exhaust mem with ulimit -v 20000
+  int[][] AA = alloc_array(int[], n);
+  for (i = 0; i < n; i++)
+    AA[i] = alloc_array(int, size);
+  return 0;
+}

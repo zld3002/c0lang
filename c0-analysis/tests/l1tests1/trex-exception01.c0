@@ -1,0 +1,8 @@
+//test div-by-zero
+
+//divide exception from div
+
+int main()
+{
+   return 1 % (1 / 0);
+}

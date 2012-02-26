@@ -1,0 +1,10 @@
+Library
+  structure Test
+is
+  $/basis.cm
+  $/smlnj-lib.cm
+  word32.sml
+  fixity.sml
+  testing.sml
+
+  cc0-test.sml

@@ -1,0 +1,10 @@
+$(SML_LIB)/basis/basis.mlb
+
+core/sources.mlb
+cfg/sources.mlb
+(* NATIVE     *) native/cymbol-native.mlb
+(* NON-NATIVE *) (* cymbol.mlb *)
+cymbol.sml
+frontends/sources.mlb
+c0de.sml
+frontends/mlton-go.sml

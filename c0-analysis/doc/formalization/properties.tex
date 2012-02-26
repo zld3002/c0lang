@@ -1,0 +1,447 @@
+The prior section specified the behavior of \langname{} via examples and prose
+description. To make the specifications and expected behavior clear, we must
+define not only the concrete syntax, but also an abstract one whose semantics
+are unambiguously defined. The abstract syntax follows the concrete syntax
+fairly closely but omits some features from the concrete language such as
+strings, characters and annotations because they are not interesting or
+essential to the formal model.
+
+\section{Concrete syntax}
+
+The grammar specification below does not give definitions for the terminals
+\nt{identifier}, \nt{integer-constant}, \nt{character-constant} and
+\nt{string-constant}. These terminals are defined as follows:
+
+\begin{description}
+\item[\nt{identifier}]
+  An identifier is a sequence of letters, digits, and underscores. The first
+  character must be a letter. Identifiers are case sensitive.
+\item[\nt{integer-constant}]
+  Integer literals come in two forms. A decimal literal is a sequence of digits
+  (\langtext{0} through \langtext{9}) where the first digit is not 0.
+  Hexadecimal literals begin with the two character sequence 0x and are followed
+  by one or more hexadecimal digits (\langtext{0} through \langtext{9},
+  \langtext{a} through \langtext{f}). Hexadecimal literals are case insensitive.
+\item[\nt{character-constant}]
+  A character constant is a single ASCII character or one of the permitted
+  escape sequences enclosed in single quotes (\langtext{'x'}). The character
+  \langtext{'} must be escaped. The following escape sequences are
+  permitted:
+
+  \begin{tabular}{ll|ll}
+  \langtextish{\textbackslash{}t} & tab &
+  \langtextish{\textbackslash{}b} & backspace \\
+  \langtextish{\textbackslash{}r} & return &
+  \langtextish{\textbackslash{}n} & newline \\
+  \langtextish{\textbackslash{}'} & single quote &
+  \langtextish{\textbackslash{}"} & double quote \\
+  \langtextish{\textbackslash{}0} & null & \ & \ \\
+  \end{tabular}
+\item[\nt{string-constant}]
+  A string constant (or literal) is a sequence of characters and escape
+  sequences enclosed in double quotes (\langtext{"Hello"}). The set of
+  permitted escape sequences for strings is the same as for characters.
+\end{description}
+
+\grammarbegin
+\grmboolconst
+
+\declprod{pointer-constant}
+\proddef{\lit{NULL}}
+
+\declprod{constant}
+\proddef{\nt{bool-constant}}
+\proddef{\nt{integer-constant}}
+\proddef{\nt{character-constant}}
+\proddef{\nt{string-constant}}
+\proddef{\nt{pointer-constant}}
+
+\declprod{variable-name}
+\proddef{\nt{identifier}}
+
+\declprod{function-name}
+\proddef{\nt{identifier}}
+
+\declprod{type-name}
+\proddef{\nt{identifier}}
+
+\declprod{field-name}
+\proddef{\nt{identifier}}
+
+\declprod{monop}
+\proddef{any of \lit{* ! - \~{\ }}}
+
+\declprod{binop}
+\proddef{any of \lit{+ - * / \% \& | \^{\ } \&\& |\hspace{-1em}| => << >> < > <= >= == !=}}
+
+\declprod{assign-op}
+\proddef{any of \lit{= += -= *= /= \%= \&= |= \^{}= <<= >>=}}
+
+\declprod{post-op}
+\proddef{any of \lit{++ --}}
+
+\grmexprcommon
+\grmexprarray
+\proddef{\nt{function-name}}
+\proddef{\nt{call-expression}}
+\proddef{\nt{expression} \lit{->} \nt{field-name}}
+\proddef{\nt{expression} \lit{.} \nt{field-name}}
+\proddef{\nt{expression} \lit{?} \nt{expression} \lit{:} \nt{expression}}
+\proddef{\lit{alloc} \lit{(} \nt{ty} \lit{)}}
+\proddef{\lit{alloc\_array} \lit{(} \nt{ty} \lit{,} \nt{expression} \lit{)}}
+\proddef{\lit{(} \nt{expression} \lit{)}}
+
+\grmcallexpr
+
+\declprod{argument-list}
+\proddef{\nt{expression}}
+\proddef{\nt{argument-list} \lit{,} \nt{expression}}
+
+\grmaebasic
+\grmaeptr
+\grmaearr
+\grmaestr
+
+\grmlhsbasic
+\grmlhsptr
+
+\grmdeclstatement
+\grmdeclexpstatement
+
+\grmassignstatement
+\grmcallstm
+\proddef{\nt{atomic-expression} \nt{post-op}}
+
+\grminitializerstatement{}
+
+\declprod{jump-statement}
+\proddef{\lit{return} \maybe{\nt{expression}} \lit{;}}
+\grmbreakstatement
+\grmcontinuestatement
+
+\grmselectionstatement
+
+\declprod{iteration-statement}
+\grmwhilestatement
+\grmforstatement
+
+\grmcompoundstatement
+
+\declprod{statement}
+\proddef{\nt{initializer} \lit{;}}
+\proddef{\nt{jump-statement}}
+\proddef{\nt{selection-statement}}
+\proddef{\nt{iteration-statement}}
+\proddef{\nt{compound-statement}}
+
+\declprod{struct-decl}
+\proddef{\lit{struct} \nt{struct-name}}
+
+\declprod{ty}
+\proddef{\nt{type-name}}
+\proddef{\lit{void}}
+\proddef{\lit{bool}}
+\proddef{\lit{int}}
+\proddef{\nt{ty}\lit{*}}
+\proddef{\nt{ty}\lit{[]}}
+\proddef{\nt{struct-decl}}
+
+\declprod{struct-def}
+\proddef{\nt{struct-decl} \lit{\{} \maybe{\nt{struct-fields}} \lit{\}}}
+
+\declprod{struct-fields}
+\proddef{\nt{field-decl}}
+\proddef{\nt{struct-fields} \nt{field-decl}}
+
+\declprod{field-decl}
+\proddef{\nt{ty} \nt{field-name} \lit{;}}
+
+\grmfundecl
+
+\grmfundef
+
+\declprod{function-param}
+\proddef{\nt{ty} \nt{variable-name}}
+
+\declprod{function-params}
+\proddef{\nt{function-param}}
+\proddef{\nt{function-params} \lit{,} \nt{function-param}}
+
+\declprod{type-def}
+\proddef{\lit{typedef} \nt{ty} \nt{type-name} \lit{;}}
+
+\declprod{gdecl}
+\proddef{\nt{struct-decl} \lit{;}}
+\proddef{\nt{struct-def} \lit{;}}
+\proddef{\nt{type-def}}
+\proddef{\nt{function-def}}
+\proddef{\nt{function-decl} \lit{;}}
+
+\declprod{program}
+\proddef{\nt{gdecl}}
+\proddef{\nt{program} \nt{gdecl}}
+
+\grammarend
+
+The binary and unary operators have the following precedence and associativity in order from highest to least:\\
+\begin{tabular}{l|l}
+Operators & Associativity \\
+\hline
+\langtext{()} \langtext{[]} \langtext{->} \langtext{.} & Left \\
+\langtext{!} \langtext{\~{\ }} \langtext{-} \langtext{*} & Right \\
+\langtext{*} \langtext{/} \langtext{\%} & Left \\
+\langtext{+} \langtext{-} & Left \\
+\langtext{<<} \langtext{>>} & Left \\
+\langtext{<} \langtext{<=} \langtext{>} \langtext{>=} & Left \\
+\langtext{==} \langtext{!=} & Left \\
+\langtext{\&} & Left \\
+\langtextish{\^{}} & Left \\
+\langtextish{|} & Left \\
+\langtext{&&} & Left \\
+\langtext{||} & Left \\
+\langtext{=>} & Left \\
+\langtext{?} \langtext{:} & Right \\
+\langtext{=} \langtext{op=} & Right \\
+\end{tabular}
+
+There is one ambiguity in the grammar which is resolved as follows:
+\begin{description}
+\item[Matching \langtextish{else} branches in nested \langtextish{if} statements] \ \\
+As in C, in the case of \langsnippet{ifelseambiguity.c} the \langtext{else}
+branch is bound to the innermost \langtext{if} statement.
+\end{description}
+
+\subsection{Abstract syntax}
+
+We start with the abstract syntax's types $\tau$.  There are two basic types:
+\bool{} and \integer.  Given a type $\tau$ we can construct pointer and array
+types $\pointer{\tau}$ and $\arraytype{\tau}$.  Function types are denoted as
+\function{\tau'}{\tau} Structure types are represented as \struct{p} where $p$
+describes the fields.  $p$ is an ordered, possibly empty, mapping of field
+names to types. The definition of $p$ is written as follows:
+
+\classp
+
+Two other types are used internally in the abstract syntax - they cannot be
+writte in the concrete language. The first is the command type \commandty{}
+which represents the type of statements such as loops or declarations. The other
+is a tuple type \tuple{\tau_1, \ldots, \tau_n} which is composed of 0 or more
+types. These are used in the elaboration of the concrete \langtext{void} type
+and as the type for function arguments. The full definition of $\tau$ is written
+as follows:
+
+\classtau
+
+The heap is modeled as a mapping of addresses $a$ to values or functions. The
+addressing model in the abstract syntax is more expressive than that of the
+concrete syntax. In particular it allows addresses into arrays and structure
+fields. A basic address is just a label that identifies some value or function
+in the heap. These are obtained from evaluating \langtext{alloc}. An address may
+also be formed by combining a label and an integer offset. These are used in
+intermediate expressions involving arrays such as \langtext{a[i] += 9;} where a
+temporary pointer needs to be created to point to the \langtext{i}th index of
+\langtext{a}. Similarly, structure fields can be addressed by combining an
+address with a field name. Structure fields addresses need to use an arbitrary
+address instead of a label because structures can nest inside each other and can
+be used as the element type of an array. Thus the definition of addresses is
+writen as follows:
+
+\classa
+
+Values are rather straightforward. \true{} and \false{} are inhabitants of the
+\bool{} type. \intliteral{n} represents an integer $n$. \address{a} is a pointer
+with address $a$ with type $\pointer{\tau}$ where the value at address $a$ has
+type $\tau$. Similarly, \arrayval{a}{n} is a reference to an array with base
+address $a$ of length $n$. \structval{a} is a reference to a structure with base
+address $a$. \func{x_1, \ldots, x_n, e} represents a function with bound
+variables $x_1, \ldots x_n$ and function body $e$. Type \commandty{} has one
+value \nop{} which represents a command that does nothing. There are no values
+of type \tuple{\ldots} however the empty tuple \tuple{} is treated as a value
+for the purposes of returning from functions.
+
+\classv
+
+Unlike most other languages, expressions are permitted to have both local and
+non-local side effects. They encompass both statements and expressions in the
+concrete language. The simplest expressions are variables $x$ and values $v$.
+Binary and unary operations are represented with \binop{op}{e_1}{e_2} and
+\monop{op}{e}. Tuple expressions look just like their concrete counterpart.
+Function calls are represented as \call{e_f, e} where $e_f$ is an expression for
+a pointer to the function to be called and $e$ is the expression for the
+argument tuple. \langtext{if} statements and the conditional operator are
+represented by the \ifexp{e_c}{e_t}{e_f} structure. Variable declarations
+\decl{x}{\tau}{e} restrict the declared variable's scope to $e$. \assign{x}{e}
+represents assignments to local variables. \return{e} represents the
+\langtext{return} statement from the concrete language. \loopstm{e_c}{e}
+represents a basic \langtext{while} loop with condition $e_c$ and body $e$.
+\langtext{break} and \langtext{continue} are straightforward. \allocexp{\tau} is
+an expression whose evaluation allocates a value of type $\tau$ on the heap.
+Similarly, \allocarrayexp{\tau}{e} is an expression whose evaluation allocates
+an array of type \arraytype{\tau} with length given by the value of $e$.
+
+Noticeably missing from these expressions are memory reads/writes and sequencing
+of expressions. These operations are represented as binary and unary operations.
+The \opseq{} binary operator sequences two statements. The \opwrite{} binary
+operator takes an address and a value and writes the value to the address in
+memory (or generates an exception). Similarly, the \opread{} unary operator
+takes an address and produces the value at that address (or an exception). The
+unary \opfield{f} and binary \oparrayindex{} provide a means for "pointer
+arithmetic" so that addresses to fields of structures and elements of arrays
+can be produced. Finally, the \opign{} unary operator allows for the evaluation
+of an expression for its side effects to be treated as a command.
+
+\classe
+
+\classop
+
+To statically check if \breakstm{} and \continue{} are used in loops, this
+simple structure is used:
+
+\classL
+
+When evaluating a function, it is necessary to store some information such as
+pending expressions and the values of local variables. This information is
+stored in function frames $F$. A function frame is an ordered list of the
+following: variables that are declared but not assigned (\framevar{F}{x}{\tau}),
+the values of assigned variables (\frameval{F}{x}{\tau_x}{v}), expressions that are yet
+to be evaluated pending the evaluation of their subexpressions
+(\frameexp{F}{e}), and a construct to indicate a pending loop
+(\frameloop{F}{e_c}{e}). The latter is used for the execution of the \breakstm{}
+and \continue{} expressions.
+
+\classF
+
+A stack $K$ is an ordered list of function frames:
+
+\classK
+
+The top of the stack $t$ is represented explicitly. It is either an expression
+or an exception.
+
+\classt
+
+There is also a direction associated with the top to indicate if it is needs
+potentially further evaluation ($\rhd$) or if it is ready to be used in
+evaluating the rest of the call stack ($\lhd$).
+
+\classbowtie
+
+Evaluation involves two primary components:
+
+\begin{itemize}
+
+\item An abstract heap $\mu$ with signature $\Sigma$ containing values $v$ at
+addresses $a$.
+
+\item An abstract stack $K$ with top $t$ and direction $\bowtie$ yielding a value of type $\tau$.
+
+\end{itemize}
+
+The initial heap contains entries for the functions and globals defined by the
+program and the initial stack is empty and the initial top is a call to the
+"main" function of the program with no arguments.
+
+Evaluation terminates when either a value or exception is on top and the rest of
+the stack is empty.
+
+\section{Elaboration to Abstract Syntax}
+
+In order to formalize the language definition, we must provide an elaboration from the concrete syntax to the abstract syntax. Though mostly straightforward, there are some non-trivial portions of the elaboration:
+\begin{description}
+\item[Declarations]
+In the concrete syntax, declarations extend to the end of the block. In the abstract syntax, there is no notion of "block." Instead declaration statements explicitly contain the scope of the declaration. When elaborating a declaration in a block, the rest of the block is first elaborated into some abstract statement $s$ and then the declaration can then wrap $s$.
+\item[Short-circuit boolean operators]
+The abstract syntax has no notion of the short-circuiting logical boolean operators. Both of them can be desugared into a use of the ternary operator as follows:
+\begin{tabular}{lll}
+\langtext{a \&\& b} & $\Rightarrow$ & \langtext{a ? b : false} \\
+\langtext{a \|\| b} & $\Rightarrow$ & \langtext{a ? true : b} \\
+\end{tabular}
+
+The ternary operator \langtext{a ? b : c} elaborates to \ifexp{a}{b}{c}.
+\item[Empty statements]
+These elaborated to \monop{\opign}{\false}
+\item[For-loops]
+The \langtext{for} loop can be transformed into a \langtext{while} loop to elaborate it.
+The post-body statement is inserted into the loop body at the end and at every location with a non-nested \langtext{continue}. Call this \langtext{body'}.
+The loop \langtext{for (init; cond; post) body}
+
+is rewritten as \langtext{ init; while(cond) body' }.
+
+\item[Array indices]
+\langtext{a[i]} is elaborated as \monop{\opread}{\binop{\oparrayindex}{a}{i}} where $a$ and $i$ are the elaborations of \langtext{a} and \langtext{i} respectively.
+
+\item[Structure field projection]
+Field projection comes in two forms. The first \langtext{e->f} elaborates to \monop{\opread}{\monop{\opfield{f}}{e}}. The second \langtext{e.f} is trickier to handle since the type of $e$ in a well-typed program should be a structure type, not a pointer type. By induction on the elaboration of \langtext{e} we know that the elaboration of \langtext{e} can be canonicalized the form \monop{\opread}{e'}. Intuitively this makes sense since all structures are allocated on the heap. Thus, \langtext{e.f} elaborates to \monop{\opread}{\monop{\opfield{f}}{e'}}.
+
+\item[Compound assignment]
+For compound assignment, the elaboration depends on the left hand side.
+\begin{description}
+\item[\langtextish{x op= e}] This elaborates to \assign{x}{\binop{op}{x}{e}}.
+\item[\langtextish{*p op= e}] The left hand side elaborates to \monop{\opread}{p} where $p$ is the elaboration of \langtext{p}. Thus the elaboration becomes \\\decl{p'}{\tau*}{\binop{\opseq}{\assign{p'}{p}}{\monop{\opign}{\binop{\opwrite}{p'}{s}}}} where $p'$ is a fresh variable and $s = \binop{op}{\monop{\opread}{p'}}{e}$.
+\item[Arrays and structures]
+Since array index expressions and structure field projections elaborate to the same form as pointers, the procedure is the same as with pointers.
+\end{description}
+
+\item[Functions with \langtextish{void} return type]
+The \langtext{void} type is elaborated to \abslang{\tuple{}} and
+empty return statements are simply elaborated to \abslang{\return{\tupleexp{}}}.
+Since these functions are not required to have a return statement to terminate
+them, one is implicitly added to the end of the function body.
+
+\item[Structure type elaboration]
+Because the abstract syntax does not have nominal typing, structural types in
+the concrete syntax are elaborated by using the name of the structure to rename
+the fields of the structure. References in code to these fields must also be
+renamed. Structure types without any fields must remain distinct in the
+elaboration so a dummy field must be added to them prior to elaboration
+otherwise \langtext{struct F \{\}} and \langtext{struct G \{\}} would both
+elaborate to \struct{\cdot}. Here are some examples:
+
+\begin{tabular}{ll}
+Concrete & Abstract \\
+\langtext{struct F \{\};}
+  & \struct{\varctx{\cdot}{F\$\$dummy}{\bool}} \\
+\langtext{struct G \{ bool dummy; \}}
+  & \struct{\varctx{\cdot}{G\$dummy}{\bool}} \\
+\langtext{struct Point \{ int x; int y; \}}
+  & \struct{\varctx{\varctx{\cdot}{Point\$x}{\integer}}{Point\$y}{\integer}} \\
+\langtext{struct Size \{ int x; int y; \}}
+  & \struct{\varctx{\varctx{\cdot}{Size\$x}{\integer}}{Size\$y}{\integer}} \\
+%\langtext{struct Rect \{ struct Point p; struct Size s; \}} &
+\end{tabular}
+
+Since \$ is not permitted in field names or structure names in \langname{}, it
+is safe to use as a delimeter.
+
+\item[Order of declarations for functions/types and typedefs]
+The abstract syntax does not take the order of declarations into account. The
+elaborator can ignore the declarations and elaborate the definitions. Typedefs
+are resolved to their underlying structural type during elaboration.
+
+\end{description}
+
+\newcommand{\abstractstep}{
+$\prgstate{\mu}{K}{\bowtie}{t} \rightarrow \prgstate{\mu'}{K'}{\bowtie'}{t'}$
+}
+\newcommand{\progresstheorem}{ If $\mu : \Sigma$ and
+\rulecheckstatedefaultconclusion{} then either
+\rulefinalstatedefaultconclusion{} or \abstractstep{} for some
+$\mu'$, $K'$, $\bowtie'$, and $t'$. }
+
+\newcommand{\preservationtheorem}{
+If $\mu : \Sigma$ and \rulecheckstate{\Sigma}{K}{\tau}{\bowtie}{t} and \abstractstep{} then $\exists \Sigma'. \mu' : \Sigma'$ and \rulecheckstate{\Sigma'}{K'}{\tau}{\bowtie}{t'} and $\Sigma \le \Sigma'$.
+
+}
+
+\section{Proof of safety}
+
+The proof of safety for this abstract language is given by two theorems called progress and preservation. They are defined in \ref{progressproof} and \ref{preservationproof}.
+
+\begin{description}
+\item[Progress] \ \\
+\progresstheorem{}
+
+\item[Preservation] \ \\
+\preservationtheorem{}
+
+\end{description}

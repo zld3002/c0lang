@@ -1,0 +1,12 @@
+//test error
+
+int main(){
+
+    int x;
+    int y;
+    return 0;
+    if (x < y) {
+        int l;
+        l++;
+    }
+}

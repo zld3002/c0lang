@@ -1,0 +1,11 @@
+// should return 0
+// cc0 -lstring libshadow4.c0
+
+bool string_equal(string s1, string s2);
+
+int main () {
+  if (string_equal("ab", "ab"))
+    return 0;
+  else
+    return 1;
+}

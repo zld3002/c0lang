@@ -1,0 +1,8 @@
+#! /bin/csh -f
+# use this to quarantine 15-411 test files
+# using unsupported input or output
+
+foreach f (*.l?.in *.l?.out)
+echo "mv $f:r:r.c0 $f:r:r.c0.q"
+mv $f:r:r.c0 $f:r:r.c0.q
+end

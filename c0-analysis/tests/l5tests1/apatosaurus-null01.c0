@@ -1,0 +1,13 @@
+//test segfault
+    
+
+int main () {
+    int* p;
+
+    p = alloc(int);
+    *p = 8;
+    p = NULL;
+    *p;
+
+    return 0;
+}

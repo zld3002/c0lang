@@ -1,0 +1,11 @@
+
+// returns 10 without -d, aborts with -d
+// include multianno5a.h0 multianno5a.c0
+
+int main () {
+  point p = alloc(struct point);
+  p->x = 0;
+  p->y = 1;
+  mirror(p);
+  return 10*p->x + p->y;
+}

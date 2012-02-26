@@ -1,0 +1,33 @@
+// Test multiple declarations with contracts
+
+bool digit(int* x, int d) {
+  *x = 10*(*x)+d;
+  return true;
+}
+
+int f(int* x)
+//@requires digit(x, 2);
+//@ensures digit(x, 8);
+  ;
+
+int f(int* x)
+//@requires digit(x, 3);
+//@ensures digit(x, 7);
+{
+  return *x;
+}
+
+int f(int *x)
+//@requires digit(x, 1);
+//@ensures digit(x, 9);
+  ;
+
+int main () {
+  int* x = alloc(int);
+  int r;
+  *x = 0;
+  r = f(x);
+  // printint(r); print(" = 0 or 123 for -d\n");
+  // printint(*x); print(" = 0 or 123789 for -d\n");
+  return *x;
+}

@@ -1,0 +1,8 @@
+//test segfault
+// test fail allocation.
+
+int main () {
+    int [] haha = alloc_array(int, 0xffffffff);
+
+    return haha[0];
+}

@@ -1,0 +1,40 @@
+void test_join() {
+  string a = "asdf";
+  string aa = string_join(a,a);
+  int i;
+  assert(8 == string_length(aa)); // "String join length incorrect"
+  for (i = 0; i < string_length(a); i++) {
+    assert(string_charat(aa, i) == string_charat(aa,i+string_length(a)));
+    // "String was not joined properly"
+  }
+}
+
+void assertEmpty(string s) {
+  assert(string_length(s) == 0 && string_equal(s, "")); // "String is not empty"
+}
+
+void assertLength(int length, string s) {
+  assert(string_length(s) == length);
+  // string_join("Expecting string to have length ", string_fromint(length))
+}
+
+void test_substring() {
+  string a = "asdf";
+  /* assertEmpty(string_sub(a, -1, 3)); */
+  /* assertEmpty(string_sub(a, 3, 2)); */
+  assertEmpty(string_sub(a, 3, 3));
+  assertEmpty(string_sub(a, 4, 4));
+  assertLength(1, string_sub(a, 3, 4));
+  assertLength(2, string_sub(a, 2, 4));
+  /* assertLength(4, string_sub(a, 0, 9)); */
+  assertLength(4, string_sub(a, 0, 4));
+  /* assertLength(4, string_sub(a, 0, -1)); */
+  // commented entries now illegal
+}
+
+int main() {
+  test_join();
+  test_substring();
+  return 0;
+}
+

@@ -1,0 +1,97 @@
+0.1.1 --> 0.1.2 
+Jan 11, 2011: Reconfigured to use Spring 2011 variant of C0 and C0 compiler. 
+
+0.1.2 --> 0.1.3 
+Jan 11, 2011: Added versioning information
+              Changed prompt from ">>>" to "-->" to distinguish from Python
+              Added support for pragmas, though you can't actually #load.
+
+0.1.3 --> 0.1.4
+Jan 12, 2011: Fixed overzealous pragma parsing
+              Fixed octal number error messages to allow `0'
+              Introduced typechecking
+              Made top-level declarations with assignment atomic, so that no
+              variable is introduced in scope if the expression aborts.
+              Assignments now print out the assigned value
+              The expression is printed back out when entered on the toplevel
+              Improve value printout
+              Forbid "return" in the interactive toplevel
+
+0.1.4 --> 0.1.5
+Jan 13, 2011: Handle assertion language
+
+0.1.5 --> 0.1.6
+Jan 14, 2011: Integrate compiler infrastructrue
+              Compiler now loads structs and typedefs correctly
+              Better pretty-printing of e->f
+              
+0.1.6 --> 0.2.0
+Jan 14, 2011: Pre-populate tables with functions
+              Handle interpretedcalls correctly
+              Introduce --trace argument to trace through stuff
+              Make trace messages excellent
+
+0.2.0 --> 0.2.1
+Jan 15, 2011: Switch to the native heap
+
+0.2.1 --> 0.2.2 
+Jan 16, 2011: Deal with problem parsing annotations with declarations
+              Add --print-codes option
+              Search paths for the implementation of native libraries
+              Handling of native functions, somewhat
+              Fix printing of strings
+              Change (improve?) #help message
+              Implement #reload
+
+0.2.2 --> 0.2.3
+Jan 16, 2011: Add #functions, #structs, and #locals pragmas to Coin
+              Fixed problem with function calls not expanding typedefs
+              Change codename from "Pfennig" to "Penny" to avoid confusing 
+              the students, who have mostly thought it's "Pfenning" misspelled
+
+0.2.3 --> 0.2.4
+Jan 21, 2011: Fixed bug reported by Frank and William: function calls depended
+              on incorrect information 
+Feb 3, 2011:  Fixed bug reported by Karl: stack depth not reset when native
+              functions called. Also improved --trace messages, adding depth.
+Feb 4, 2011:  Make logical and/or parts of the internal language rather than
+              relying on ternary operator, also add parens in pretty-printing
+              of ternary operatory.
+Feb 11, 2011: Improved reporting of unitialized value errors
+              Made dynamic semantics errors more extreme, since they should be
+              precluded by typechecking in all instances.
+
+0.2.4 --> 0.2.5
+Feb 15, 2011: Typedefs now (correctly) expanded recursively, bug reported
+              by Karl Naden and Sean Donegan.
+
+0.2.5 --> 0.2.6
+Feb 23, 2011: Fixed terrible allocation bug that had existed in bare runtime
+              Added dynamic check to getting rid of variables at interface
+              Fixed bug where calling.sml was not expanding typedefs fully
+
+0.2.6 --> 0.2.7
+May 12, 2011: Null pointers were occasionally raising a dynamic typing error
+              instead of a null pointer exception.
+              Fix problems with function calls involving arrays
+              Distinguish negative sized array errors
+              Fix sign conversion issues for integers. 
+              Show caller when @requires assertions are violated
+Jun 6, 2011:  Make chars display as '\0' not '\000'
+              Refuse to print straings with non-displayable characters in 
+              Coin (these can appear thanks to the string library)
+
+0.2.7 --> 0.2.8
+Aug 19, 2011: Change native interface to remove assembly code dependency
+              Refactor dependencies between cymbol and coin
+
+0.2.8 --> 0.2.9
+Oct 25, 2011: Rewrite coin.sml to use the parse3 architecture
+              Make the main coin operation a bit less stateful
+
+0.2.9 --> 0.2.10
+Jan 13, 2011: Fix bug where the second argument to alloc_array was evaluated
+              two times.
+
+0.2.10 --> 0.3.0
+Feb 6, 2011:  Modify implementation to support different foreign functions.

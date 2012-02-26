@@ -1,0 +1,16 @@
+//test segfault
+
+
+struct s{
+       int[] yikes;
+};
+
+typedef struct s thing;
+
+int main()
+{
+	thing *strct = alloc(thing);
+
+	return strct->yikes[50];
+
+}

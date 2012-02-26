@@ -1,0 +1,19 @@
+/* 42 */
+/* -lconio -lstring */
+struct phone {
+  char alpha;
+  string name;
+  int number;
+  char omega;
+};
+typedef struct phone* phone;
+
+int main () {
+  int n = 6;
+  phone p = alloc(struct phone);
+  p->alpha = 'a';
+  p->name = "anatol";
+  p->number = 412;
+  p->omega = 'l';
+  return p->number;
+}

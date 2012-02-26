@@ -1,0 +1,12 @@
+// -lconio -lstring
+int main() {
+  string s1 = "abc";
+  string s2 = "defg";
+  string s3 = "h\ti\nj\\\"";
+  print(s1);
+  println(s2);
+  assert(string_length(s2) == 4, "wrong strlen");
+  print(string_join(s1,s2));
+  print("\n");
+  return 0;
+}

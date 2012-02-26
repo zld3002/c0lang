@@ -1,0 +1,12 @@
+$(SML_LIB)/basis/basis.mlb
+$(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+word32.sml
+fixity.sml
+testing.sml
+
+../../cymbol-tools/core/sources.mlb
+../../cymbol-tools/cfg/sources.mlb
+../../cymbol-tools/cymbol.mlb
+cymbol-test.sml
+
+mlton-go.sml

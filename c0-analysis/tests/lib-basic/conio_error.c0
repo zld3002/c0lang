@@ -1,0 +1,13 @@
+#use <conio>
+
+int f(int x) {
+  if (x == 2)
+    error("aargh!");
+  return 0;
+}
+
+int main() {
+  f(2);
+  error("Program too short");
+  return 0;
+}

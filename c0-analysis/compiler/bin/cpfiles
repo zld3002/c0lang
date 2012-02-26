@@ -1,0 +1,45 @@
+#!/bin/sh
+#
+# Copy cc0 input files to a dropbox directory, for later research
+# William Lovas <wlovas@cs.cmu.edu>, Fall 2010
+#
+
+# opt out: touch ~/.15122_no_log
+if [ -e $HOME/.15122_no_log ]; then
+    exit 0
+fi
+
+# private uuid file
+UUIDFILE=$HOME/private/.15122_uuid
+
+# generate uuid if none exists
+if [ -d `dirname $UUIDFILE` -a ! -e $UUIDFILE ]; then
+    uuidgen > $UUIDFILE
+fi
+
+# get uuid if readable; otherwise assume opt out
+if [ -r $UUIDFILE ]; then
+    UUID=`cat $UUIDFILE`
+else
+    exit 0
+fi
+
+# dropbox hardcoded to our Andrew space:
+DROPBOX='/afs/andrew.cmu.edu/course/15/122/submit/.compiler'
+
+# XXX only for testing:
+# DROPBOX='/Users/wlovas/work/intro/.compiler'
+
+CMDLINE=$1
+shift;
+
+if [ -e $DROPBOX ]; then
+    DATE=`date +'%Y-%m-%d.%H:%M:%S'`
+    DIR=`mktemp -qd "$DROPBOX/$DATE.XXXXXX"` &&
+    cat > "$DIR"/INFO.txt << EOF
+UUID: $UUID
+Host: `hostname`
+Command Line: $CMDLINE
+EOF
+    cp "$@" "$DIR" >/dev/null 2>&1
+fi

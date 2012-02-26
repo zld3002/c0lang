@@ -1,0 +1,10 @@
+//test segfault 
+int main()
+{
+  int* p;
+  if(true)
+    p = NULL;
+  else
+    p = NULL;
+  return *p;
+}

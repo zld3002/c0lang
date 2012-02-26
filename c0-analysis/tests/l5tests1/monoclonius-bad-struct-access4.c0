@@ -1,0 +1,9 @@
+//test segfault
+
+int main()
+{
+    int *intptr = NULL;
+    *intptr;
+    return 0;
+}
+

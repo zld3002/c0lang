@@ -1,0 +1,5 @@
+//test div-by-zero
+int main()
+{
+  return 1/(2/3);
+}

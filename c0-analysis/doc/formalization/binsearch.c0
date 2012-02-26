@@ -1,0 +1,103 @@
+bool is_sorted(int[] A, int n)
+  //@ requires \length(A) == n;
+{
+  int i;
+  int e;
+  if (n == 0)
+    return true;
+  e = A[0];
+  for (i = 1; i < n; i++) {
+    if (A[i] < e)
+      return false;
+    e = A[i];
+  }
+  return true;
+}
+
+bool contains(int[] A, int n, int e)
+  //@ requires \length(A) == n;
+{
+  int i;
+  for (i = 0; i < n; i++)
+    if (A[i] == e)
+      return true;
+  return false;
+}
+
+bool should_insert_at(int[] A, int n, int i, int e)
+  //@ requires \length(A) == n;
+  //@ requires 0 <= i && i <= n;
+{
+  if (n == 0)
+    return true;
+  if (i == 0)
+    return e > A[0];
+  if (i == n - 1)
+    return A[n-1] < e;
+  return A[i-1] < e && A[i+1] > e;
+}
+
+int binsearch(int[] A, int n, int e)
+  //@ requires \length(A) == n;
+  //@ requires is_sorted(A,n);
+  /*@ ensures \result >= 0
+            ? A[\result] == e
+            : (!contains(A, n, e) &&
+               should_insert_at(A, n, -\result-1, e));
+  */
+  //@ ensures \result >= 1 ? A[\result-1] < A[\result] : true;
+{
+  int low = 0;
+  int high = n-1;
+  while (low <= high)
+    //@ loop_invariant 0 <= low && high < n;
+    //@ loop_invariant low == 0 || A[low-1] < e;
+    //@ loop_invariant high == n-1 || e <= A[high+1];
+  {
+    int mid = low + (high - low)/2;
+    if (low == high)
+      if (A[mid] == e)
+        return mid;
+      else if (A[mid] < e)
+        return -1 - low;
+      else
+        return -low;
+    else if (e <= A[mid])
+      high = mid;
+    else if (e > A[mid])
+      low = mid+1;
+  }
+  return -1 - low;
+}
+
+void runtests(int n)
+  //@ requires n > 0;
+{
+  int[] A = alloc_array(int, n);
+  int i;
+  assert(0 == binsearch(A, n, 0), "Should fine the left-most 0");
+  for (i = 0; i < n; i++)
+    A[i] = i;
+  for (i = 0; i < n; i++)
+    assert(i == binsearch(A, n, i), "Should match");
+  if (n >= 4) {
+    for(i = 1; i < n; i++) {
+      if (i % 7 == 0 || i % 8 == 0 || i % 6 == 0)
+        A[i] = A[i-1];
+    }
+    for (i = 0; i < n; i++) {
+      binsearch(A, n, i);
+    }
+  }
+}
+
+int main() {
+  int i;
+  assert(-1 == binsearch(alloc_array(int,0), 0, 1), "Should handle empty array");
+  for (i = 1; i < 10000; i++) {
+    printint(i);
+    println("");
+    runtests(i);
+  }
+  return 0;
+}

@@ -1,0 +1,16 @@
+$(SML_LIB)/basis/basis.mlb
+$(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+
+local
+  error.sml
+  growarray-sig.sml
+  growarray.sml
+  maps.sml
+  word32.sml
+in
+  structure Error
+  structure GrowArray
+  structure Word32Signed
+  structure MapS
+  structure MapI
+end

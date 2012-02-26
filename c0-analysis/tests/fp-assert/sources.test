@@ -1,0 +1,44 @@
+safe => return 382  ~ blur.c0 -d
+safe => abort       ~ blur-fail.c0 -d
+return 46340        ~ isqrt.c0 -d
+abort               ~ isqrt-fail.c0 -d
+safe => return 9    ~ mergesort.c0 -d
+safe => abort       ~ mergesort-fail.c0 -d
+safe => return 1    ~ queue.c0 -d
+return 2            ~ stack.c0 -d
+safe => return 1    ~ unionfind.c0 -d
+safe => abort       ~ unionfind-fail.c0 -d
+lib => return 0     ~ libsym0.c0 -d -lstring
+lib => error        ~ libsym1.c0 -d -lstring
+lib => return 0     ~ hex.c0 -d -lstring -lconio
+lib => return 0     ~ rand.h0 lcg.c0 find.c0 -lconio
+lib => return 0     ~ rand.h0 mersenne.c0 find.c0 -lconio
+lib => error        ~ -lconio undefined-lib.c0
+safe, lib => return 0       ~ -lconio -lstring dfa.c0 -d
+return 0            ~ only-typedef.c0 only-main.c0
+lib => error        ~ libshadow1.c0 -lstring -lfile
+lib => error        ~ libshadow2.c0 -lstring -lfile
+lib => error        ~ libshadow3.c0 -lstring -lfile
+lib => return 0     ~ libshadow4.c0 -lstring
+return 0            ~ multianno1.c0
+return 123789       ~ multianno1.c0 -d
+return 91           ~ multianno2.c0
+abort               ~ multianno2.c0 -d
+return 91           ~ multianno3.c0
+return 91           ~ multianno3.c0 -d
+abort               ~ multianno4.c0 -lfile
+abort               ~ multianno4.c0 -lfile -d
+return 10	    ~ multianno5a.h0 multianno5a.c0 multianno5b.c0
+abort  		    ~ multianno5a.h0 multianno5a.c0 multianno5b.c0 -d
+return 4950	    ~ forloop4.c0 -d
+abort  		    ~ string-oob1.c0
+abort  		    ~ string-oob1.c0 -d
+abort  		    ~ string-oob2.c0
+abort  		    ~ string-oob2.c0 -d
+lib => return 0	    ~ sort-test.c0 -d
+lib => return 0     ~ imgtest1.c0 -d
+lib => abort        ~ imgtest2.c0 -d
+lib => return 0     ~ imgtest3.c0 -d
+lib => return 0     ~ filetest1.c0 -d
+lib => abort        ~ filetest2.c0 -d
+lib => abort        ~ filetest3.c0 -d

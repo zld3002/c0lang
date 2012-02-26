@@ -1,0 +1,13 @@
+//test segfault
+
+int foo(int **x) {
+    *x = NULL;
+    return 0;
+}
+
+int main() {
+    int **a = alloc(int*);
+    *a = alloc(int);
+    foo(a);
+    return **a;
+}

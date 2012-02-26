@@ -1,0 +1,9 @@
+//test div-by-zero
+struct s{int[] a;};
+
+int main()
+{
+  struct s* foo = alloc(struct s);
+  int x = foo->a[1/0];
+  return 0;
+}

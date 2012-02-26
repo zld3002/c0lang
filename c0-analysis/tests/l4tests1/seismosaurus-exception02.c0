@@ -1,0 +1,10 @@
+//test segfault
+
+int foo(int* i) {
+	return *i;
+}
+
+int main() {
+	int* a = NULL;
+	return foo(a);
+}

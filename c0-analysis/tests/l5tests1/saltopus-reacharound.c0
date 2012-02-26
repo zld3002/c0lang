@@ -1,0 +1,9 @@
+//test segfault
+
+/* test allocation with INT_MIN as the size */
+
+int main () {
+    alloc_array (int, 1 << 31);
+    return 0;
+}
+

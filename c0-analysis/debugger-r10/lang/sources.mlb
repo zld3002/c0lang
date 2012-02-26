@@ -1,0 +1,12 @@
+$(SML_LIB)/basis/basis.mlb
+$(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+
+local
+  ../util/sources.mlb
+  c0-report.sml
+in
+  structure C0
+  structure MapX
+end
+
+

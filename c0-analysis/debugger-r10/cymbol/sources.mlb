@@ -1,0 +1,15 @@
+$(SML_LIB)/basis/basis.mlb
+
+local
+  ../util/sources.mlb
+  ../lang/sources.mlb
+  ../cfg/sources.mlb
+  data.sml
+  state.sml
+  cymbol.sml
+in
+  signature DATA
+  structure Concrete
+  functor State
+  functor Cymbol
+end

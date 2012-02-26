@@ -1,0 +1,31 @@
+$(SML_LIB)/basis/basis.mlb
+$(SML_LIB)/basis/mlton.mlb
+$(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+../compiler/sources.mlb
+
+local
+   growarray-sig.sml
+   growarray.sml
+   
+   error.sml
+
+   data-sig.sml
+   heap-sig.sml
+   state-sig.sml
+   state.sml
+
+   data-concrete.sml
+   heap-native.sml
+   impl-native.sml
+
+   extern-sig.sml
+   extern-native.sml
+   extern-lib-native.sml
+   extern-call-native.sml
+in
+   structure Error
+   structure ConcreteData
+   structure ConcreteState
+   structure NativeLibrary
+   structure NativeCall
+end

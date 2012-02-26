@@ -1,0 +1,9 @@
+//test div-by-zero
+/*
+ * Divide by zero using conditional expressions. 
+ */
+
+int main()
+{
+	return 5 / (false ? 5 : 0);
+}

@@ -1,0 +1,20 @@
+$(SML_LIB)/basis/basis.mlb
+$(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+
+local
+   mark.sml
+   flag.sml
+   symbol.sml
+   errormsg.sml
+   safe-io.sml
+   word32.sml
+   char.sml
+in
+   structure Mark
+   structure Flag
+   structure Symbol
+   structure ErrorMsg
+   structure SafeIO
+   structure Word32Signed
+   structure C0Char
+end

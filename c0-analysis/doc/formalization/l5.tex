@@ -1,0 +1,40 @@
+\documentclass{article}
+\usepackage{lang_common}
+\usepackage{mathpartir}
+
+\title{${\rm C}_0$}
+\date{}
+\author{Rob Arnold}
+
+\begin{document}
+\maketitle
+
+%\newcommand{\ident}[1]{\ \tt #1\ }
+
+%\newcommand{\mayreturn}{\ident{mayreturn}}
+%\newcommand{\returns}{\ident{returns}}
+%\newcommand{\yields}{\ident{yields}}
+%\newcommand{\assigned}[1]{\ensuremath{\ident{assigned}(#1)}}
+%\newcommand{\scope}[1]{\ensuremath{\ident{scope}(#1)}}
+%\newcommand{\functions}[1]{\ensuremath{\ident{functions}(#1)}}
+%\newcommand{\gives}{\ident{gives}}
+%\newcommand{\ok}{\ident{ok}}
+%\newcommand{\shortcircuits}{\stepsto}
+%\newcommand{\makeframe}[2]{\aste{makeframe}{#1;#2}}
+%\newcommand{\names}[1]{\aste{names}{#1}}
+%\newcommand{\stepsto}{\rightarrow}
+
+\input{l5gen.tex}
+
+\newcommand{\startdef}[2]{\ensuremath{#1} & ::= & \ensuremath{#2} \\}
+\newcommand{\contdef}[1]{ &$\vert$ & \ensuremath{#1} \\}
+\newcommand{\OR}{\ensuremath{\ | \ }}
+\newcommand{\boxed}[1]{\fbox{\ensuremath{#1}}}
+
+\newcommand{\kw}[1]{{\bf #1}}
+\newcommand{\langname}{${\rm C}_0$}
+
+\input{l5proof}
+
+\end{document}
+

@@ -1,0 +1,25 @@
+int compute_hash(int[] data, int width, int height) {
+  int y = 0;
+  int x;
+  int hash = 0;
+  for (; y < height; y++)
+    for(x = 0; x < width; x++)
+      hash ^= data[y*width + x];
+  return hash;
+}
+
+int main() {
+  image_t img = image_create(3, 3);
+  int[] imgdata = image_data(img);
+
+  image_t img2 = image_subimage(img, 0, 0, 3, 3);
+  int[] imgdata2;
+
+  assert(compute_hash(image_data(img2), 3, 3) == compute_hash(imgdata, 3, 3));
+  // "hashes did not match"
+
+  image_destroy(img2);
+  image_destroy(img);
+
+  return 0;
+}

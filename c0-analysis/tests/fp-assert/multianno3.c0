@@ -1,0 +1,22 @@
+// should return 91, with -d or without
+
+int f(int x)
+//@requires x >= 0;
+  ;
+
+int f(int x)
+//@requires x >= 0;
+//@ensures \result >= 0;
+{
+  if (x == 0) return x;
+  else return x+f(x-1);
+}
+
+int f(int x)
+//@requires x > 0;
+//@ensures \result > 0;
+  ;
+
+int main () {
+  return f(13);
+}

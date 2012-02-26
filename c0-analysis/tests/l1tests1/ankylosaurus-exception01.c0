@@ -1,0 +1,12 @@
+//test div-by-zero
+// division by 0
+int main()
+{
+    int x;
+    int y;
+
+    x = 0;
+    y = 42;
+
+    return y / x;
+}

@@ -1,0 +1,14 @@
+typedef int pixel;
+
+int main() {
+    image_t img = image_create(1, 1);
+    pixel[] pixels = image_data(img);
+    pixel[] newpixels;
+
+    pixels[0] = ~pixels[0];
+    newpixels = image_data(img);
+    assert(pixels[0] == newpixels[0]); // "changed image datalost!"
+
+    return 0;
+}
+

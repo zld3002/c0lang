@@ -1,0 +1,11 @@
+Library
+  structure C0
+  structure MapX
+is 
+
+#if (defined(SMLNJ_VERSION))
+  $/basis.cm
+  $/smlnj-lib.cm
+#endif
+
+  c0-report.sml

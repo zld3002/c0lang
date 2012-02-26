@@ -1,0 +1,8 @@
+//test segfault
+
+int main () {
+    int [] * goodInt = alloc(int []);
+    *goodInt = alloc_array(int, 10);
+    
+    return (*goodInt)[-20];
+}

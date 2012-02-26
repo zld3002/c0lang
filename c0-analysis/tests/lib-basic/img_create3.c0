@@ -1,0 +1,5 @@
+int main() {
+  image_t zerowidth = image_create(0, 1);
+  image_save(zerowidth, "zerowidth.png");
+  return 0;
+}

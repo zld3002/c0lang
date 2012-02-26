@@ -1,0 +1,18 @@
+//test segfault
+
+int [] aa(int size)
+{
+	return alloc_array(int, size);
+}
+
+int [] get_array()
+{
+	/* INT_MIN */
+	return aa(1 << 31 >> 0);
+}
+
+int main()
+{
+	int [] a = get_array();
+	return a[0];
+}

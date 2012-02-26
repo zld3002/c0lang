@@ -1,0 +1,4 @@
+lib => return 0            ~ assert-true.c0
+lib => abort               ~ assert-false.c0
+lib => return 0            ~ imagecreate.c0 -limg
+return 0                   ~ alloc_array_char.c0

@@ -1,0 +1,19 @@
+This is the code from the now-defunct debugger; the easiest way to get it 
+running is likely to look into an old directory.
+
+ - Rob Simmons, Aug 19, 2011
+
+Old makefile magic:
+
+# Cymbol tools
+cymbol-mlton-parser:
+	mllex cymbol-tools/core/c0.lex
+	mlyacc cymbol-tools/core/c0.grm
+
+## HEY ROB CAN YOU FIX THIS AND DO THE SAME TO cymbol-native-test ?
+OSX_NATIVE_FILES = $(addprefix cymbol-tools/native/, native.c native-cstr.c lib.c call.c call.x86darwin.S)
+CODE_NATIVE_FILES = $(addprefix cymbol-tools/native/, native.c native-cstr.c lib.c call.c call.$(MACHINE).S)
+c0de-osx: cymbol-mlton-parser bin
+	$(MLTON) bin/c0de -link-opt "-lpthread -ldl -rdynamic" -cc-opt -Iinclude -default-ann "allowFFI true" cymbol-tools/c0de.mlb $(OSX_NATIVE_FILES)
+c0de: cymbol-mlton-parser bin
+	$(MLTON) bin/$@ -link-opt "-lpthread -ldl -rdynamic" -cc-opt -Iinclude -default-ann "allowFFI true" cymbol-tools/$@.mlb $(CODE_NATIVE_FILES)

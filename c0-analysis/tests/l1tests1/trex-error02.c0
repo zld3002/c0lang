@@ -1,0 +1,16 @@
+//test return 3
+
+//mixing declarations and code
+// allowed as of Jan 2011
+
+int main()
+{
+   int x;
+   
+   x = 1;
+   int y;
+
+   y = 2;
+
+   return x + y;
+}

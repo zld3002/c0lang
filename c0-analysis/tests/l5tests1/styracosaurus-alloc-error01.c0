@@ -1,0 +1,10 @@
+//test segfault
+
+int main()
+{
+	int[] A;
+
+	A = alloc_array(int, -1);
+
+	return 0;
+}

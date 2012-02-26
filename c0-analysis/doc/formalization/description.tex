@@ -1,0 +1,672 @@
+\langname{} is a statically typed imperative programming language. It strongly
+resembles C in syntax and semantics. In designing it, we tried to stay close to
+C's syntax and semantics in the hopes that students could simply include a
+header file in each \langname{} program and it would be accepted by a C
+compiler.  Unfortunately, some of \langname's semantics differ from those of C
+and in these cases, using C's syntax would be a confusing choice for students
+when it came time for them to learn C. Thus we changed the syntax for these
+constructs to the syntax of modern languages with similar semantics. This made
+it impossible for there to be a header that will allow \langname{} programs to
+be compiled as C.  However, the transformation remains a simple operation with a
+trivial {\tt sed} script or doing it by hand for small programs.
+
+\section{Basic data types and expressions}
+
+Expressions are evaluated in left-to-right order (that is, a post-order
+traversal of the abstract syntax tree). Expressions come in many forms. The
+common ones are:
+
+\grammarbegin
+\grmexprcommon
+\grammarend
+
+Expressions in \langname{} are not pure; they may have side effects such as
+modifying memory or raising exceptions.
+
+\subsection{Booleans}
+\langname{} has a few basic builtin types. The simplest of these is the boolean
+type. Similar to C++, Java and C\#, we write the type as \langtext{bool} and its
+two values are \langtext{true} and \langtext{false}.
+
+\grammarbegin
+\grmboolconst
+
+\declprod{constant}
+\proddef{\nt{bool-constant}}
+
+\declprod{ty}
+\proddef{\lit{bool}}
+\grammarend
+
+\langsampleinline{bool b = true \|\| false \&\& !(x == y);}
+
+The usual set of basic boolean operations are provided for logical and
+(\langtext{\&\&}), logical or (\langtext{\|\|}), logical not (\langtext{!}), and
+equality/inequality (\langtext{==},\langtext{!=}). As in many languages, these
+operators can "short circuit" their evaluation when the value from evaluating
+the left hand side determines the expression's value.
+
+There is also a conditional expression as in C and Java: \langtext{e ? a : b}
+where \langtext{e} is an expression that yields a boolean. If it evaluates to
+\langtext{true} then \langtext{a} is evaluated to be the result of the ternary
+expression. Otherwise \langtext{b} is evaluted to be the result of the ternary
+expression.
+
+\subsection{Integers}
+
+\langname{} has a single numerical type \langtext{int} which has a range of
+$[-2^{31},2^{31})$. It is represented as a signed 32 bit two's complement
+integer. We felt that it would be more helpful to specify the exact size,
+numerical range and representation of the integer type.  In addition, having a
+single numerical type greatly simplifies the language and cognitive requirements
+for students. It is an unfortunate limitation that the numerical type is
+integral as there are a number of interesting data structures and projects that
+would be much easier to represent as some non-integral type like IEEE 754
+floating point or .NET's decimal type.  The problem with these data types
+however is that they are only approximations of real numbers so students will
+need to be made aware of their underlying implementation and properties.  These
+properties are non-trivial and the cognitive overhead required for students to
+understand them is not worth the time and effort when there are already many
+interesting data structures within the scope of the course that work well with
+integers. Furthermore, these numerical types and their representations are
+covered in the subsequent introductory systems course, 15-213.
+
+Integer literals are written as a sequence of digits, either hexadecimal digits
+with an \langtext{0x} prefix as in C or decimal digits with an optional
+\langtext{-} prefix to indicate negative numbers. Basic arithmetic operations
+include modular addition, subtraction, negation, multiplication, division and
+remainder operations (\langtext{+ - * / \%}). For the division and remainder
+operations, if the divisor is 0 or additionally for
+negation if the result does not fall into the range of the \langtext{int} type,
+an exception is triggered which results in the termination of the program. The
+division and remainder operations round towards 0.
+
+\grammarbegin
+\declprod{ty}
+\proddef{\lit{int}}
+
+\declprod{constant}
+\proddef{\nt{integer-constant}}
+\grammarend
+
+\langsampleinline{int x = 0x123 + -456 * 20;}
+
+Basic bitwise operations are also supported: bitwise and (\langtext{\&}),
+bitwise or (\langtext{\|}), bitwise xor ({\tt \^{}}), bitwise inversion ({\tt \~{}}).
+Arithmetic shift operations are also supported with the \langtext{<<} and
+\langtext{>>} binary operators. Only the least significant 5 bits of the
+shift's two's complement binary representation are used to determine the number
+of bits that are shifted. These 5 bits are treated as an unsigned integer. For
+example, the expression \langtext{\~19 << 2} evaluates to \langtext{-80}.
+
+\subsection{Strings and Characters}
+
+\langname{} provides a basic opaque type \langtext{char} for representing
+characters. The exact representation is not defined however they may be
+specified by a printable ASCII character enclosed in single quotes such as
+\langtext{'a'} and \langtext{'9'}. To accommodate some useful but not printable
+ASCII characters, the following escape sequences are also permitted:
+\langtextish{\textbackslash{}t} (tab), \langtextish{\textbackslash{}r} (return),
+\langtextish{\textbackslash{}b} (backspace), \langtextish{\textbackslash{}n}
+(newline), \langtextish{\textbackslash{}'} (single quote),
+\langtextish{\textbackslash{}"} (double quote) and
+\langtextish{\textbackslash{}0} (null).
+
+\langname{} also defines an opaque immutable string type \langtext{string} which
+contains a sequence of characters. There is no direct conversion between strings
+and characters however several library functions such as
+\langtext{string_charat} and \langtext{string_to_chararray} provide access to
+the characters. String literals are written as a sequence of ASCII characters or
+permitted \langtext{char} escape sequences (except \langtextish{\textbackslash
+0}) enclosed in double quotes. Strings may be compared using the library
+functions \langtext{string_equal} and \langtext{string_compare}.
+
+\langtext{string s = "Hello world";}
+
+\grammarbegin
+\declprod{ty}
+\proddef{\lit{char}}
+\proddef{\lit{string}}
+
+\declprod{constant}
+\proddef{\nt{character-constant}}
+\proddef{\nt{string-constant}}
+\grammarend
+
+\subsection{Comparisons}
+
+Owing to its C heritage, \langname{} provides equality and inequality operators
+as \langtext{==} and \langtext{!=} respectively for expressions of the same
+type. These operators are defined for the \langtext{bool}, \langtext{int} and
+\langtext{char} types as well as pointer types. Pointer types are checked only
+for reference equality.  Comparisons on integers are also provided with the
+standard and self-explanatory concrete syntax from C (\langtext{< <= > >=}).
+
+\section{Variables \& Statements}
+
+For now we will consider only three kinds of statements: blocks, variable
+declarations and assignments. As in C, blocks are defined as a possibly empty
+sequence of statements enclosed in curly braces (\langtext{\{ \}}). They are
+used for grouping related statements and determining variable scope. A block
+statement is executed by executing each of its statements in sequence.
+
+\grammarbegin
+\grmcompoundstatement
+\grammarend
+
+Variables are automatically managed memory locations that hold values.
+Variables are identified using a sequence of alphanumeric characters (though
+the identifier must start with a letter). Variable declarations such as
+\langtext{int x;} introduce a new variable that can be used by expressions and
+assignments. As in C99, a variable's scope is defined as the statement
+following the variable declaration to the end of the innermost block the
+declaration occured in.
+
+\grammarbegin
+\grmdeclstatement
+\grammarend
+
+Variable declaration restrictions:
+\begin{enumerate}
+
+\item A variable may only be referenced by expressions and statements inside
+its scope.
+
+\item A variable may not be used in an expression if it cannot be statically
+verified that it has been assigned prior to use.  That is, an assignment
+statement must dominate all uses in the control flow graph of the block
+containing the variable's scope. Loops are assumed to potentially never run for
+the purpose of this analysis.
+
+\item Two variables of the same name may not have overlapping scopes.
+
+\item The variable's type must be \langtext{bool}, \langtext{int}, a pointer
+type or an array type.
+
+\end{enumerate}
+
+Ex:
+
+\langsnippet{assignmentsample.c}
+
+Assignment statements are used to update values stored in variables. The variable on the left hand
+side must be in scope.
+
+\grammarbegin
+\grmassignstatement
+
+\grmaebasic
+
+\grmlhsbasic
+
+\grammarend
+
+For convenience, there is also hybrid class of assignment statements that
+combine a binary operator with assignment for the common case where the left
+hand side of a binary operation is the left hand side of the assignment as well.
+For the assignment to variables, \langtext{x op=e} is simple syntactic sugar
+for \langtext{x = x op e}. Note that \langtext{ *p op= e } cannot
+simply desugar to \langtext{ *p = *p op e} when the evaluation of \langtext{p}
+may have side effects. For this reason, the left hand side is
+evaluated before the right hand side and only once.
+
+There is a hybrid statement that is formed by combining a variable declaration
+with an assignment:
+
+\grammarbegin
+\declprod{declaration}
+\grmdeclexpstatement
+\grammarend
+
+This is merely syntactic sugar: $\langtext{T x = e;} \equiv \langtext{T x; x =
+e;}$
+
+\section{Functions} Functions are the primary mechanism for abstracting
+computations and reusing code. A function declares parameters which behave much
+like variable declarations at the top of the function's body except that they
+are guaranteed to be assigned some value upon entry to the body of the function.
+A function's body is executed when the function is applied to some arguments.
+The arguments are evaluated to values in the conventional left-to-right
+ordering. These values are then bound to the function's parameters in the same
+order and the body of the function is then executed in a new scope where only
+those parameters are bound. This means that functions cannot refer to variables
+declared in other functions. Thus each function can be typechecked independently
+from the definitions (but not declarations) of other functions.
+
+\grammarbegin
+\grmcompoundstatement
+
+\grmfundecl
+
+\grmfundef
+\grammarend
+
+Function application may occur as a top-level statement (that is, for its
+side-effects only) or as part of an expression, including arguments to other
+function applications. As an expression, function application must evaluate to
+some value. To indicate this value, a function uses the \langtext{return}
+statement. The \langtext{return} statement evaluates an expression to a value
+and then aborts execution of the callee's body, yielding the value as the result
+of the function application in the caller. To indicate what type of value is
+returned, functions declare a return type. All functions must return a value and
+must only return values of the declared return type. As with checking for
+assignment before use for variables, a conservative analysis is used so loops
+are not considered to necessarily be run, even in the trivial cases.
+
+\grammarbegin
+\grmcallexpr
+
+\declprod{simple-statement}
+\grmcallstm
+\grammarend
+
+For example, suppose we have:
+
+\langsnippet{simplefunction.c}
+
+which is a function named \langtext{triarea} that returns a value of type
+\langtext{int} and has two parameters of type \langtext{int}, \langtext{b} and
+\langtext{h}. \langtext{triarea(3,4)} is an application of \langtext{triarea} to
+the expressions \langtext{3} and \langtext{4}. To evaluate this application, the
+arguments are evaluated into values which they already are, then they are bound
+in a new scope to the variables \langtext{b} and \langtext{h}. The return
+statement then evaluates \langtext{b*h/2} to a value (the integer represented by
+\langtext{6}) which then becomes the result of the original application.
+
+Since the parameters are bound to values, a callee cannot affect the variable
+bindings in its caller's scope\footnote{It can effect a change through the heap
+with more advanced types which refer to the heap such as pointers and arrays.
+The heap is discussed in section ~\ref{heapsection}}.
+
+Functions may be named with any identifier using the same rules as for
+variables. Function and variable names may not conflict. Like C, a function
+needs to be declared before it can be used in another function.
+
+\langsnippet{callbyvalue.c}
+
+\section{Conditionals}
+
+\langname{} offers a subset of the control flow statements in C that are found in
+other popular languages. The most basic one is \langtext{if} statement. The
+\langtext{if} statement allows execution the execution of a statement
+conditional upon some provided condition. It has two forms:
+
+\grammarbegin
+\grmselectionstatement
+\grammarend
+
+Each time the \langtext{if} statement is executed, the condition is evaluated
+and the corresponding inner statement (if there is one) is executed. To
+repeatedly execute a statement until a condition no longer holds, the
+\langtext{while} statement can be used. It behaves just like the first form of
+an \langtext{if} statement that is re-executed until the condition is false.
+
+\grammarbegin
+\declprod{iteration-statement}
+\grmwhilestatement
+\grammarend
+
+\langsnippet{whilesample.c}
+
+There are two additional statement types that are available for use within a
+loop: \langtext{break} and \langtext{continue}. Whenever a \langtext{continue}
+statement is executed, execution jumps to the top of the current innermost loop
+as if the body were done executing. Whenever a \langtext{break} is executed
+within a loop, the current innermost loop is "broken" and execution resumes at
+whatever statement or condition follows that loop, as if the condition were
+\langtext{false}.
+
+\grammarbegin
+\declprod{jump-statement}
+\grmbreakstatement
+\grmcontinuestatement
+\grammarend
+
+There is an additional form of loop, the \langtext{for} loop. It behaves much
+like C's: there is an initial statement that is executed before the loop, a
+condition that is checked before every iteration, much like the while loop, and
+a post-loop-body statement which is executed after the body of the loop.
+
+\grammarbegin
+\grminitializerstatement{}
+
+\declprod{iteration-statement}
+\grmforstatement
+\grammarend
+
+Either of the two statements may be omitted and if the condition is omitted, it
+is assumed to be \langtext{true}. The initial statement may be a declaration
+but the post statement may not. To give the same behavior as C99/C++, the for
+loop is wrapped in an implicit block so the scope of a declaration in the
+initial statement is limited to the condition, body, and post statement.
+
+As with \langtext{while} statements, the body is repeatedly executed while the
+condition is true. After the execution of the body, the post statement is run.
+The \langtext{continue} statement behaves slightly differently in a
+\langtext{for} loop; it jumps to the end of the body so that the post-loop-body
+statement is executed. The \langtext{break} statement behaviors exactly the
+same as in the \langtext{while} loop - it does not execute the post statement.
+
+\section{The Heap \& Pointers} \label{heapsection}
+
+The heap is a separate persistent memory store, accessible from any function.
+Access to values in the heap is done only through references. References to
+values in the heap (addresses) are stored as pointer values.  These pointer
+values may be copied around and passed to functions just as any other value is.
+They have a type dependent upon the type value they reference.  This type is
+written as \langtext{T*} where \langtext{T} is the type of the value pointed
+to.
+
+As with all local variables, pointers must be initialized before use. A pointer
+may be initialized to either a new value on the heap, the address of an existing
+value in the heap, or a special value called \langtext{NULL}. Attempts to
+reference the heap using \langtext{NULL} will abort execution. It exists solely
+to indicate an invalid reference.
+
+New values on the heap are created with the \langtext{alloc} keyword like so:
+
+\grammarbegin
+\declprod{expression}
+\proddef{\lit{alloc} \lit{(} \nt{ty} \lit{)}}
+\grammarend
+
+Because it is difficult to determine if a value in the heap is initialized
+before being used, all values in the heap are initialized to type-dependent
+default values as follows:
+
+\begin{tabular}{r|l}
+
+\langtext{bool} & \langtext{false} \\
+
+\langtext{int} & \langtext{0} \\
+
+\langtext{char} & \langtext{'\0'} \\
+
+\langtext{string} & \langtext{""} \\
+
+\langtext{T*} & \langtext{NULL} \\
+
+\langtext{T[]} & An array of dimension 0 \\
+
+\langtext{struct { ... } } & Each field initialized according to its type.  \\
+
+\end{tabular}
+
+Heap values may be read by de-referencing a pointer value. Because pointers
+always point to the heap, there is no explicit de-allocation of heap memory (no
+\langtext{free}, no casting of pointer types and no pointer arithmetic in the
+language, a pointer value is either \langtext{NULL} or a valid address in the
+heap. There is also no means to obtain a pointer to a variable. The reasons for
+this are discussed in section \ref{noaddressof}.
+
+\grammarbegin
+\declprod{monop}
+\proddef{\lit{*}}
+
+\declprod{lhs}
+\grmlhsptr
+\grammarend
+
+\langsnippet{heapsample.c}
+
+\section{Arrays}
+
+\langname{} supports variable-sized mono-typed-element arrays much like those
+found in Java or C\#. Array access is checked against the bound of the array,
+yielding a runtime error if the bounds are exceeded. Arrays are passed around by
+reference; their values are stored in the heap.
+
+Arrays have their element type declared as in Java: \langtext{int[] x;} This is
+a departure from the syntax of C but the semantics are also different. The
+semantics of \langname{} arrays are identical (modulo bounds checking) to those
+of pointers of the same base type in C.
+
+An array is created by the \langtext{alloc\_array} which takes the array's
+element type and the array dimensions. If the dimensions are less than 0, a
+runtime error is issued and program execution is aborted. Arrays of dimension 0
+are permitted but rather useless. All elements of the new array are initialized
+as described in section \ref{heapsection}.
+
+Array access uses the familiar C syntax:
+
+\grammarbegin
+\declprod{expression}
+\grmexprarray
+
+\declprod{atomic-expression}
+\grmaearr
+\grammarend
+
+\langsnippet{arraysample.c}
+
+\section{Structures}
+
+\langname{} includes structure types like those found in C - a nominally-typed
+set of name/value pairs (fields). Because structures allow for recursive types,
+there are some additional complications so that compatibility with C is
+maintained. Structure types may not be declared in functions - they are instead
+declared at the global scope along with functions.
+
+\grammarbegin
+\declprod{ty}
+\proddef{\nt{struct-decl}}
+
+\declprod{struct-decl}
+\proddef{\lit{struct} \nt{struct-name}}
+
+\declprod{struct-def}
+\proddef{\nt{struct-decl} \lit{\{} \maybe{\nt{struct-fields}} \lit{\}}}
+
+\declprod{struct-fields}
+\proddef{\nt{field-decl}}
+\proddef{\nt{struct-fields} \nt{field-decl}}
+
+\declprod{field-decl}
+\proddef{\nt{ty} \nt{field-name} \lit{;}}
+
+\declprod{gdecl}
+\proddef{\nt{struct-decl} \lit{;}}
+\proddef{\nt{struct-def} \lit{;}}
+
+\grammarend
+
+As with functions, \langname{} makes a distinction for types between declaring
+and defining.  A type must be defined in order to use it with a local variable
+declaration or structure field. The primitive intrinsic types \langtext{void},
+\langtext{bool}, \langtext{int}, \langtext{char}, \langtext{string} are always
+defined. Any type that is defined is also considered to be declared. Pointer
+and array types are considered defined if their base type is declared.
+
+A structure may not be defined twice but it may be declared more than once.
+
+A structure definition may reference itself.
+
+A type must be defined before it can be used with the \langtext{alloc} or
+\langtext{alloc\_array} expressions.  In keeping with the limitations of C, its
+definition must be parsed by the time the compiler parses the allocation
+expression.
+
+There are no equality or assignment operators provided for structures. The
+motivation for their omission is to force students to think about how their
+mutable data structures ought to be copied and compared. Due to the lack of
+intrinsic support for these operations, structure types may not be used for
+parameters, or function return types. They are also prohibited from being used
+with local variables due to the lack of an equivalent to C's address-of operator
+coupled with aforementioned restrictions. As such, all structures are allocated
+on the heap and pointers to structure types are how structures are intended to
+be used. Though this is not promoting good practice when writing programs in C,
+we deemed the additional complications from allowing safe access to structures
+on the stack to be unacceptable.
+
+\section{Typedef}
+
+Since the name of a type may not always be the best description of its purpose,
+\langname{} provides the ability to alias types by providing new names.
+
+\grammarbegin
+\declprod{ty}
+\proddef{\nt{type-name}}
+
+\declprod{type-def}
+\proddef{\lit{typedef} \nt{ty} \nt{type-name} \lit{;}}
+
+\declprod{gdecl}
+\proddef{\nt{type-def}}
+\grammarend
+
+The type must be declared before it can be used with the \langtext{typedef}
+construct. Any program text after the \langtext{typedef} may use the alias in
+place of the full type.
+
+\section{Reasoning}
+
+Due to its simplicity and safety properties, \langname{} allows the programmer
+to reason about their programs via annotations. These annotations are not part
+of the core language; they are specified via a special syntax that is embedded
+in the comments of the program much like JML \cite{Leavens-Cheon05}, D
+\cite{DLang} and Eiffel \cite{ecma2006ead}. Annotations allow the programmer to
+declare pre- and post- conditions for functions, loop invariants, and general
+assertions.  Library functions declarations can also be annotated.
+
+These assertions about programs are checked at compile time when possible and
+at runtime when not. If they fail at runtime, an exception is raised and the
+program terminates.
+
+Annotations are designed to encourage students to reason about their code
+however they can only check what the programmer has intended to check and may
+even contain bugs. The following example is an implementation of binary search
+which contains at least one bug that is not caught by the assertions:
+\lstinputlisting[language=C,
+                 morekeywords={bool,string},
+                 firstline=40,
+                 lastline=67,
+                 basicstyle=\small\tt]{binsearch.c0}
+
+\section{Comparison with C}
+
+\langname{} is almost but not quite a subset of C. Though we strived to stay as
+close to C as possible, the array semantics proved impossible to resolve.
+However, it is still quite easy to convert a \langname{} program to C such that
+the meaning of the \langname{} program is one of the possible meanings of its C
+version. The conversion process requires 2 steps:
+
+\begin{enumerate}
+
+\item Convert array declarations by replacing all occurrences of \langtext{[]}
+with \langtext{*}.
+
+\item Insert \langtext{\#include "c0defs.h"} at the top of each
+
+\langname{} file.  \langtext{c0defs.h} defines the macros for the
+\langtext{alloc} and \langtext{alloc\_array} expressions using
+\langtext{calloc} to allocate the memory and \langtext{sizeof} to determine the
+bytes. It would also need to define the \langtext{bool} type as well as
+\langtext{true} and \langtext{false} since those are not defined in C. Any
+library headers used would also need to be converted and included. A sample
+\langtext{c0defs.h} is included in the appendix.
+
+\end{enumerate}
+
+\subsection{Differences}
+
+Differences between \langname{} and C fall into two categories: omissions from
+C and changes from C. There are many examples of the former:
+
+\begin{itemize}
+\item No unions
+\item No casting
+\item No pointer arithmetic
+\item No sizeof operator
+\item No address-of operator (\&)
+\item No storage modifiers (static, volatile, register, extern)
+\item No labels, goto, switch statements or do...while loops
+\item No assignments in expressions
+\item No floating point datatypes or literals
+\item No complex types
+\item No unsigned or other integral types besides int
+\item Structure types may not be declared as local variables or used as return types for functions
+\item No comma separated expressions
+\item No explicit memory deallocation
+\item Allocation is done using types not a size in bytes.
+\item No fixed size arrays
+\item No stack allocated arrays
+\end{itemize}
+
+As previously noted, the array semantics are different in \langname{} than C,
+matching the pointer index semantics instead.
+
+\subsection{Union Support}
+
+It is unfortunate that \langname{} does not contain any good constructs for
+disjoint types. Though C has the \langtext{union} construct which supports them in an
+unsafe way, getting a type-safe version of them while maintaining the design
+goals of the language is rather difficult. The straightforward approach would be
+to layout the union in memory as in C and keep a hidden tag that is updated
+whenever a field in the union is written and checked when read. The major
+drawback to this approach is that there is no way to inspect the tag without
+attempting to read a value. One convention in C is to nest unions in a struct
+and use a separate struct field to indicate the tag. Either this separate field
+must be kept in sync with the hidden tag or else new syntax/semantics must be
+invented to tie the tag field to the union. The former is an undue burden on the
+programmer and the latter would deviate even more from C.
+
+The issue is deeper however. In C and other languages, unions keep the tag and
+data separate which leads to issues such as the classic variant record update
+problem in Pascal, later encountered in Cyclone, another strongly typed
+imperative C-like language, \cite{GrossmanHJM04}. The problem is that if you
+allow aliases to the data stored in a union, you can break type safety because
+users of those aliases won't know to typecheck their writes and reads.  In the
+following example, neither function is obviously incorrect until their
+definitions are used together.
+
+\langsnippet{unionsample.c}
+
+The real fix is to always tie the tag and the data together. In the ML family of
+languages, this is accomplished with constructors which take the appropriately
+typed data and add the right tag. Examining the data stored in a union requires
+a case analysis of the tag which allows access to the data. Even with the
+addition of constructors and case analysis, aliasing is still an issue in C's
+memory model if access to the data is given by reference. Consider the following
+example:
+
+\langsnippet{cctor.c}
+
+A solution here would to copy the value and provide that to the case body
+instead of a reference. Cyclone supports this solution as well as forbidding
+assignment \cite{CycloneUnions}.
+
+\subsection{Lack of \& for local variables} \label{noaddressof}
+
+In C, it is a common idiom to return multiple values from a function by
+requiring the caller pass a pointer to a location where the callee can write
+them. Since the callee typically never stores the pointer anywhere, the caller
+can expect to safely pass the address of a stack variable instead of allocating
+a variable on the heap. For \langname{}, we'd like to permit this in a typesafe
+manner. We could do so by introducing an unescaping pointer type which cannot
+be stored into the heap. Having two types of pointers is rather strange so it
+would be nice to allow regular pointers to be treated as unescaping pointer but
+this necessitates the introduction of subtyping which so far has been avoided.
+It would also entail that most pointers in function declarations would be
+rewritten to use the unescaping pointer type instead of the regular pointer type
+since there is no conversion from a potentially escaping pointer to one that
+does not. This puts more distance between \langname{} and C in a fairly
+intrusive way.
+
+\section{Analysis}
+
+\langname{} strikes a balance between being too limited and too complex. Though
+clearly unsuitable for writing large programs, it provides sufficient syntax and
+semantics for expressing the data structures and algorithms used in the course.
+In comparison to C, it removes a number of dangerous features to gain type
+safety while maintaining the core syntax and semantics of the language. Though
+not a subset, it is close enough so that
+
+\begin{enumerate}
+
+\item A single lecture would be enough to instruct students in proper usage of
+C for writing the equivalent programs.
+
+\item The meaning of a well-formed (terminates without exceptions) \langname{}
+program is one of the possible meanings of its transliterated C version.
+
+\end{enumerate}

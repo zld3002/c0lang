@@ -1,0 +1,7 @@
+int main () {
+  int* p = alloc(int);
+  int** q = alloc(int*);
+  *p = 3;
+  *q = p;
+  return **q;
+}

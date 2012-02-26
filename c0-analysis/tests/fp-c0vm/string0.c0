@@ -1,0 +1,7 @@
+// -lconio -lstring
+int main() {
+  string s1 = "abc";
+  string s2 = "defg";
+  string s3 = "h\ti\nj\\\"";
+  return 0;
+}

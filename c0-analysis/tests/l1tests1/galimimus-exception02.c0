@@ -1,0 +1,6 @@
+//test div-by-zero
+// mod by 0
+int main()
+{
+  return 9 % (0 / 1);
+}
