@@ -27,6 +27,10 @@ Group is
         type/dyn-check.sml
 	type/print-c-compact.sml
 	(* type/print-c.sml *)
+	
+	analysis/analysisast.sml
+	analysis/analysis.sml
+
 
         c0vm/c0vm.sml
         c0vm/c0vm-c0ffi.sml
