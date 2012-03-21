@@ -206,7 +206,7 @@ functor StateFn (structure Data : DATA
 
   (* == GENERIC EQUALITY == *)
 
-  fun value_lt vs = 
+  fun value_lt vs =
     case vs of 
       (Int i1, Int i2) => Data.int_lt (i1, i2)
     | (Char c1, Char c2) => Data.from_bool (ord c1 < ord c2)
@@ -227,9 +227,11 @@ functor StateFn (structure Data : DATA
     | (Pointer (_, l1), Pointer (_, l2)) => Data.from_bool (Heap.eq (l1, l2))
     | (Function (f1, _, _), Function (f2, _, _)) => Data.from_bool (f1 = f2)
     | (Array (_, l1, _), Array (_, l2, _)) => Data.from_bool (Heap.eq (l1, l2))
+    | (Uninitialized, _) => raise Error.Uninitialized
+    | (_,Uninitialized) => raise Error.Uninitialized
     | (v1,v2) => 
       raise Error.Dynamic 
-            ("cannot compare a " ^ value_desc v1 ^ " and a " ^ value_desc v2
+            ("cannot compare a asl;kdjfl;askjdfkl;sj " ^ value_desc v1 ^ " and a " ^ value_desc v2
              ^ " for equality")
 
   fun is_unit Unit = true
@@ -425,7 +427,9 @@ functor StateFn (structure Data : DATA
       end
 
   fun clear_locals (state as S{stack, ...}) = 
-     let val T{fun_name, locals, caller, depth} = !stack
+     let 
+       val T{fun_name, locals, caller, depth} = !stack
+       val _ = TextIO.print "Hello from clear_locals\n"
      in stack := T{fun_name = fun_name,
                    locals = (Symbol.empty, Symbol.empty) :: tl locals,
                    caller = caller,
@@ -493,7 +497,9 @@ functor StateFn (structure Data : DATA
     end 
 
   fun local_tys (state as S{stack, ...}) =
-    let val T{locals, ...} = !stack
+    let 
+      val T{locals, ...} = !stack
+      val _ = TextIO.output(TextIO.stdErr,"Hello from state.local_tys\n")
     in
        case locals of 
           [] => raise Error.Internal ("no local variables to report")
@@ -503,18 +509,16 @@ functor StateFn (structure Data : DATA
   (* Debugging *)
 
   fun print_locals (S{stack = ref (T{locals, ...}), ...}) =
-    raise Domain
-(*
-    let 
-      fun print_scope decls =
-          app (fn (x, (_,v)) => 
-                  print (Symbol.name x ^ " --> " ^ value_string v ^ "\n"))
-              (Symbol.elemsi decls)
-    in 
-      print "----- Stack: -----\n";
-      app (fn decls => (print_scope decls; print "-----------------\n")) locals
-    end
-*)
+	let
+		fun print_locals'(ty_table,v_table) = 
+		let
+			val s_v_list = Symbol.elemsi v_table
+	  in
+			List.app (fn (s,v) => TextIO.print (Symbol.name s ^ ": "^(value_string v)^"\n")) s_v_list	
+   	end
+	in
+		case locals of nil => () | (l::llist) => print_locals' l
+	end
 
 end
 

@@ -3,11 +3,23 @@
 
 structure Exec:>sig
 
+  datatype call_info = Native of ConcreteState.value 
+                    | Interp of CodeTab.fun_ty * C0Internal.program 
+
+  datatype step_info = ReturnNone | ReturnSome of ConcreteState.value | PC of int
+
   (* The particular state that all computation is relative to *)
   val state: (Symbol.symbol * Mark.ext) ConcreteState.state
 
   (* Implements function calls (symbol * value list * Mark.Ext -> value) *)
   val call: Eval.function_impl
+
+  (* Either returns a value if the function call was a native call or returns
+     the code associated with an interpreted call *)
+  val call_step : Symbol.symbol * ConcreteState.value list * Mark.ext ->  call_info
+
+  (* Either returns void, a value, or the program counter for the next instruction *)
+  val step : C0Internal.cmd vector * int vector * int -> step_info
 
   (* Big-step implementaiton of running a command. The return value
    * NONE is associated with the "void" return type of functions. *)
@@ -17,11 +29,20 @@ structure Exec:>sig
    * interrupts) *)
   val reset: unit -> unit
 
+  (* print local variables *)
+  val print_locals : unit -> unit 
+
 end = 
 struct
 
 structure State = ConcreteState
 structure C0 = C0Internal
+
+datatype call_info = Native of State.value 
+                   | Interp of CodeTab.fun_ty * C0Internal.program 
+
+datatype step_info = ReturnNone | ReturnSome of State.value | PC of int
+
 
 val current_pos : Mark.ext option ref = ref NONE
 val current_depth = ref 0
@@ -51,6 +72,8 @@ val state : (Symbol.symbol * Mark.ext) State.state =
     lookup_type = lookup_type,
     initial_function = Symbol.symbol "__init__"}
 
+fun print_locals() = State.print_locals state
+
 fun print_fun n (called_fun_name, (fun_name, pos)) =
     (print ("               " ^ Symbol.name fun_name ^ " from "
             ^ Mark.show pos ^ "\n")
@@ -72,23 +95,18 @@ fun reset () =
    ; current_depth := 0
    ; current_pos := NONE)
 
-fun call (fun_name, actual_args, pos) : State.value = 
-   let 
-      val old_depth = !current_depth 
-      val () = current_depth := 0
-      val f = Symbol.name fun_name
-   in
+fun call_step (fun_name, actual_args, pos) : call_info = 
      (case CodeTab.lookup fun_name of
-         NONE => raise Error.Internal ("Undefined fun " ^ f)
+         NONE => raise Error.Internal ("Undefined fun " ^ Symbol.name fun_name)
        | SOME (CodeTab.AbsentNative (_, lib)) =>
-         raise Error.Dynamic ("Function " ^ f 
+         raise Error.Dynamic ("Function " ^ Symbol.name fun_name 
                               ^ ", defined in library <" ^ lib
                               ^ ">, did not load correctly")
-       | SOME (CodeTab.Native ((return_ty, arg_tys), fptr)) =>
+       | SOME (CodeTab.Native ((return_ty, arg_tys), fptr)) => 
          let 
-            val fnative = Symbol.symbol (f ^ " (native)") 
+            val fnative = Symbol.symbol (Symbol.name fun_name ^ " (native)") 
             val () = Flag.guard Flags.flag_trace
-                        (fn () => print ("Calling native " ^ f ^ "\n")) ()
+                        (fn () => print ("Calling native "^Symbol.name fun_name^ "\n")) ()
             val () = State.push_fun (state, fnative, (fnative, pos))
             val old_pos = !current_pos
             val () = current_pos := SOME ((0,0),(0,0),"< in native code >")
@@ -96,13 +114,23 @@ fun call (fun_name, actual_args, pos) : State.value =
             val res = Calling.call state (fptr, return_ty, args)
         in 
             Flag.guard Flags.flag_trace
-               (fn () => print ("Done with native " ^ f ^ "\n")) ()
+               (fn () => print ("Done with native " ^ Symbol.name fun_name ^ "\n")) ()
             ; ignore (State.pop_fun state)
             ; current_pos := old_pos 
-            ; res 
+            ; Native(res) 
          end
-       | SOME (CodeTab.Interpreted ((_, formal_args), code)) =>
-         (State.push_fun (state, fun_name, (fun_name, pos))
+       | SOME (CodeTab.Interpreted (f_ty, code)) => Interp(f_ty,code))
+
+fun call(fun_name,actual_args,pos) : State.value =
+    let
+      val old_depth = !current_depth
+      val () = current_depth := 0
+      val f = Symbol.name fun_name
+    in
+      (case call_step(fun_name,actual_args,pos) of 
+         Native(res) => res
+       | Interp((_,formal_args),code) =>
+          (State.push_fun (state, fun_name, (fun_name, pos))
           ; current_pos := SOME pos
           ; app (fn ((tp, x), v) => 
                     (State.declare (state, x, tp)
@@ -120,18 +148,10 @@ fun call (fun_name, actual_args, pos) : State.value =
                ; v
             end))
       before current_depth := old_depth
-   end
-
-and exec (cmds, labs) : State.value option = 
-   let
-      fun run pc = 
-        (Flag.guard Flags.flag_trace
-            (fn () => print ("Location " ^ Int.toString pc ^ ", stack depth " 
-                             ^ Int.toString (!current_depth) ^ "\n")) ()
-         ; arun pc)
-      and arun pc = 
-         case Vector.sub (cmds, pc) of 
-            C0.Label _ => run (pc+1)
+    end
+and step (cmds, labs, pc) : step_info = 
+    case Vector.sub (cmds, pc) of 
+            C0.Label _ => PC(pc+1)
           | C0.Exp (e, pos) =>
             let 
                val () = current_pos := SOME pos
@@ -141,12 +161,12 @@ and exec (cmds, labs) : State.value option =
                then if State.is_unit v then ()
                     else print (State.value_string v ^ "\n")
                else ()
-               ; run (pc+1)
+               ; PC(pc+1)
             end
 
           | C0.Declare (tp, x, NONE) => 
             (State.declare (state, x, tp)
-             ; run (pc+1))
+             ; PC(pc+1))
           | C0.Declare (tp, x, SOME (e, pos)) => 
             let
                val () = current_pos := SOME pos
@@ -158,7 +178,7 @@ and exec (cmds, labs) : State.value option =
                  then print (Symbol.name x ^ " is " ^
                              State.value_string v ^ "\n")
                  else ()
-               ; run (pc+1)
+               ; PC(pc+1)
             end 
           | C0.Assign (oper, e1, e2, pos) => 
             let 
@@ -176,31 +196,46 @@ and exec (cmds, labs) : State.value option =
                  then print (C0.expToString false e1 ^ " is " ^
                              State.value_string v' ^ "\n")
                  else ()
-               ; run (pc+1)
+               ; PC(pc+1)
             end
           | C0.Assert (e, msg, pos) => 
             (current_pos := SOME pos
              ; if State.to_bool (Eval.eval_exp (state, call) e) then () 
                else raise Error.AssertionFailed msg
-             ; run (pc+1))
+             ; PC(pc+1))
           | C0.CondJump (e, pos, altlab) =>
             (current_pos := SOME pos
              ; if (State.to_bool (Eval.eval_exp (state, call) e))
-               then run (pc+1)
-               else run (Vector.sub (labs, altlab)+1))
-          | C0.Jump labl => run (Vector.sub (labs, labl))
-          | C0.Return NONE => NONE
+               then PC(pc+1)
+               else PC(Vector.sub (labs, altlab)+1))
+          | C0.Jump labl => PC(Vector.sub (labs, labl))
+          | C0.Return NONE => ReturnNone
           | C0.Return (SOME (e, pos)) =>
             (current_pos := SOME pos
-             ; SOME (Eval.eval_exp (state, call) e))
+             ; ReturnSome(Eval.eval_exp (state, call) e))
           | C0.PushScope => 
             (current_depth := !current_depth + 1
              ; State.push_scope state
-             ; run (pc+1))
+             ; PC(pc+1))
           | C0.PopScope n => 
             (current_depth := !current_depth - n
              ; State.pop_scope (state, n)
-             ; run (pc+1))
+             ; PC(pc+1))
+
+and exec (cmds, labs) : State.value option = 
+   let
+      fun run pc = 
+      let
+        val _ =  Flag.guard Flags.flag_trace
+            (fn () => print ("Location " ^ Int.toString pc ^ ", stack depth " 
+                             ^ Int.toString (!current_depth) ^ "\n")) ()
+         
+      in
+        (case step(cmds,labs,pc) of
+            ReturnNone => NONE
+          | ReturnSome(res) => SOME(res)
+          | PC(i) => run i)
+      end
    in 
       run 0 before current_pos := NONE 
    end
