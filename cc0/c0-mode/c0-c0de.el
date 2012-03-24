@@ -241,7 +241,7 @@ include a breakpoint"
     (c0de-send-string (concat "e " exp "\n"))))
 
 (defun c0de-interrupt ()
-  "Interrup the debugger"
+  "Interrupt the debugger"
   (interactive)
   (interrupt-process "c0de"))
 

@@ -85,6 +85,12 @@ fun cVarDecl (Ast.VarDecl (x, tp, e, pos)) =
        let val pos = valOf pos "No mark"
        in [ Assign (NONE, Var x, cExp (SOME pos) e, pos) ] end)
 
+fun fake_translate (Assign (NONE, Var x, Call (f, args, pos), _)) = 
+       CCall (SOME x, f, args, pos)
+  | fake_translate (Exp (Call (f, args, pos), _)) = 
+       CCall (NONE, f, args, pos)
+  | fake_translate cmd = cmd
+
 fun cStms stms pos =
    let
       val nextlabel = ref 0
@@ -163,6 +169,7 @@ fun cStms stms pos =
         | findLabel (i, _ :: cmds) n = findLabel (i+1, cmds) n
 
       val cmds = List.concat (map (cStm (0, NONE, NONE) (SOME pos)) stms)
+      (* val cmds = map fake_translate cmds *)
       val labs = Vector.tabulate (!nextlabel, findLabel (0, cmds))
    in
       (Vector.fromList cmds, labs)

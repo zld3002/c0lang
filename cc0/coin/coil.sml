@@ -7,7 +7,8 @@ structure C0Internal = struct
 (**********************)
 (*** C0 expressions ***)
 (**********************)
-type id = Symbol.symbol
+datatype idtype = Actual of string | Temporary of string 
+type id = Symbol.symbol (* * idtype *)
 
 datatype const = 
    Bool of bool                             (* true or false               *)
@@ -55,7 +56,7 @@ datatype cmd =
  | Exp of exp * Mark.ext
  | Declare of Ast.tp * id * (exp * Mark.ext) option
  | Assign of binop option * exp * exp * Mark.ext
- (* | Call of id option * exp * exp list * Mark.ext *)
+ | CCall of id option * id * exp list * Mark.ext 
  | Assert of exp * string * Mark.ext
  | CondJump of exp * Mark.ext * label
  | Jump of label
