@@ -6,8 +6,8 @@ struct
   fun to_mangled_function_name s = "__c0ffi_" ^ s ^ "\000"
   fun tocstr s = s ^ "\000"
 
-  val load_ = _import "lib_open" : string -> library;
-  val dlerror = _import "dlerror" : unit -> MLton.Pointer.t;
+  val load_ = _import "lib_open" public: string -> library;
+  val dlerror = _import "dlerror" public: unit -> MLton.Pointer.t;
 
   fun load lib = 
      let val lib_ptr = load_ (tocstr lib)
@@ -33,9 +33,9 @@ struct
         else SOME lib_ptr 
      end
 
-  val close = _import "dlclose" : library -> unit;
+  val close = _import "dlclose" public: library -> unit;
 
-  val get_ = _import "dlsym" : library * string -> MLton.Pointer.t;
+  val get_ = _import "dlsym" public: library * string -> MLton.Pointer.t;
   fun get lib sym = 
      let val fptr = get_ (lib, to_mangled_function_name sym) 
      in if MLton.Pointer.null = fptr then NONE 

@@ -9,22 +9,22 @@ struct
   type function = NativeFn.t
 
   (* Create passes in the size of the returned value *)
-  val create   = _import "args_create":   int -> args;
-  val destroy  = _import "args_destroy":  args -> unit;
+  val create   = _import "args_create" public:   int -> args;
+  val destroy  = _import "args_destroy" public:  args -> unit;
 
   (* Add successive arguments *)
-  val add_bool = _import "args_add_bool": args * bool * int -> unit;
-  val add_int  = _import "args_add_int":  args * Word32.word * int -> unit;
-  val add_char = _import "args_add_char": args * char * int -> unit;
-  val add_ptr  = _import "args_add_ptr":  args * MLton.Pointer.t * int -> unit;
+  val add_bool = _import "args_add_bool" public: args * bool * int -> unit;
+  val add_int  = _import "args_add_int" public:  args * Word32.word * int -> unit;
+  val add_char = _import "args_add_char" public: args * char * int -> unit;
+  val add_ptr  = _import "args_add_ptr" public:  args * MLton.Pointer.t * int -> unit;
 
   (* Call the functon that is represented by a pointer *)
-  val apply   = _import "apply":     MLton.Pointer.t * args -> MLton.Pointer.t;
+  val apply   = _import "apply" public:     MLton.Pointer.t * args -> MLton.Pointer.t;
 
   (* Cast a void* in the intended fashion *)
-  val to_bool = _import "cast_bool": MLton.Pointer.t -> bool;
-  val to_int  = _import "cast_int":  MLton.Pointer.t -> Word32.word;
-  val to_char = _import "cast_char": MLton.Pointer.t -> char;
+  val to_bool = _import "cast_bool" public: MLton.Pointer.t -> bool;
+  val to_int  = _import "cast_int" public:  MLton.Pointer.t -> Word32.word;
+  val to_char = _import "cast_char" public: MLton.Pointer.t -> char;
   val to_ptr  = fn x => x
   val to_void = fn x => ()
 

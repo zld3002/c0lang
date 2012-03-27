@@ -3,7 +3,13 @@ RM      = rm
 COPY    = cp -p
 SML     = sml
 MLTON   = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -output 
-MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -rdynamic" -cc-opt -Iinclude -default-ann "allowFFI true" -output 
+
+ifdef STATIC
+MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -Llib -Lruntime -lfile -lconio -lstring -lparse -lcurses -limg -lbare -lpng -lz /usr/lib/libcurses.a" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output 
+else
+MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -rdynamic" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output 
+endif
+
 CPP     = cpp
 
 
