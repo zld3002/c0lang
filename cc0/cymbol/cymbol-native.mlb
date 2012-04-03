@@ -20,7 +20,7 @@ local
 
    extern-sig.sml
    extern-native.sml
-   extern-lib-native.sml
+   extern-lib-static.sml
    extern-call-native.sml
 in
    structure Error

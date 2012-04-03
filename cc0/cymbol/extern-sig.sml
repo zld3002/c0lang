@@ -23,7 +23,7 @@ sig
   type library 
   type function 
 
-  val load : string -> library option
+  val load : string -> string -> library option
   val close : library -> unit
   val get : library -> string -> function option
 end

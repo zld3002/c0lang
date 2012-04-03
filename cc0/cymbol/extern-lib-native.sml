@@ -9,8 +9,19 @@ struct
   val load_ = _import "lib_open" public: string -> library;
   val dlerror = _import "dlerror" public: unit -> MLton.Pointer.t;
 
-  fun load lib = 
-     let val lib_ptr = load_ (tocstr lib)
+  val lib_ext =
+     case List.find (fn (x, y) => x = "sysname") (Posix.ProcEnv.uname ()) of
+        SOME (_, "Darwin") => ".dylib"
+      | SOME (_, "Linux") => ".so"
+      (* XXX these should be some actual exception *)
+      | SOME (_, sysname) => 
+        raise Error.Internal ("unknown system type, " ^ sysname)
+      | _ => 
+        raise Error.Internal ("Posix.ProcEnv.uname did not return sysname!")
+
+  fun load libdir lib = 
+     let val = lib_file = OS.Path.concat (libdir, "lib" ^ lib ^ lib_ext)
+         val lib_ptr = load_ (tocstr lib_file)
      in 
         if lib_ptr = MLton.Pointer.null 
         then 

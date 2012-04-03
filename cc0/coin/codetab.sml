@@ -99,30 +99,17 @@ fun process_ast pre current_lib =
   | Ast.Pragma (Ast.UseFile (pragma, NONE), pos) =>
     () (* Ignore empty #use "file.c0" pragmas *)
 
-val lib_ext =
-   case List.find (fn (x, y) => x = "sysname") (Posix.ProcEnv.uname ()) of
-      SOME (_, "Darwin") => ".dylib"
-    | SOME (_, "Linux") => ".so"
-    | SOME (_, "CYGWIN_NT-6.1") => ".dll"
-    (* XXX these should be some actual exception *)
-    | SOME (_, sysname) => 
-      raise Error.Internal ("unknown system type, " ^ sysname)
-    | _ => 
-      raise Error.Internal ("Posix.ProcEnv.uname did not return sysname!")
-
 fun load_lib [] lib = print ("WARNING: failed to load library <" ^ lib ^ ">\n")
   | load_lib (libdir :: path) lib =
-    let val lib_file = OS.Path.concat (libdir, "lib" ^ lib ^ lib_ext) in
-       case NativeLibrary.load lib_file of
+       case NativeLibrary.load libdir lib of
           NONE => 
           (Flag.guard Flags.flag_verbose 
-              (fn () => print ("Library " ^ lib_file ^ " did not load\n")) ()
+              (fn () => print ("Library " ^ lib ^ " did not load\n")) ()
            ; load_lib path lib)
         | SOME lib_ptr =>
           (Flag.guard Flags.flag_verbose
-              (fn () => print ("Library " ^ lib_file ^ " loaded\n")) ()
+              (fn () => print ("Library " ^ lib ^ " loaded\n")) ()
            ; LibTab.bind (Symbol.symbol lib, lib_ptr))
-    end
 
 fun reload_libs libs = 
   (app (NativeLibrary.close o valOf o LibTab.lookup) (LibTab.list ())

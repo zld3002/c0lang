@@ -116,14 +116,14 @@ val lib_string = List.foldr Map.insert' Map.empty (mapN (
 ("string_tolower",       _import "__c0ffi_string_tolower" public: fnptr;) ::
 []))
 
-fun load "" = NONE
-  | load "conio" = SOME (lib_conio)
-  | load "curses" = SOME (lib_curses)
-  | load "file" = SOME (lib_file)
-  | load "img" = SOME (lib_img)
-  | load "parse" = SOME (lib_parse)
-  | load "string" = SOME (lib_string)
-  | load _ = NONE
+fun load _ "" = NONE
+  | load _ "conio" = SOME (lib_conio)
+  | load _ "curses" = SOME (lib_curses)
+  | load _ "file" = SOME (lib_file)
+  | load _ "img" = SOME (lib_img)
+  | load _ "parse" = SOME (lib_parse)
+  | load _ "string" = SOME (lib_string)
+  | load _ _ = NONE
 
 fun close _ = ()
 
