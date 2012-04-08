@@ -20,7 +20,7 @@ struct
         raise Error.Internal ("Posix.ProcEnv.uname did not return sysname!")
 
   fun load libdir lib = 
-     let val = lib_file = OS.Path.concat (libdir, "lib" ^ lib ^ lib_ext)
+     let val lib_file = OS.Path.concat (libdir, "lib" ^ lib ^ lib_ext)
          val lib_ptr = load_ (tocstr lib_file)
      in 
         if lib_ptr = MLton.Pointer.null 
