@@ -27,11 +27,7 @@ include config.mk
 
 include util.mk
 
-ifdef LIBSPLUS
-all: cc0 externals libs libsplus
-else
 all: cc0 externals libs
-endif
 
 .PHONY: externals
 externals: $(EXTERNALS)
@@ -181,15 +177,16 @@ endif
 libs: bin/wrappergen
 	$(COPY) libsc0/*.h0 libsc0/*.c0 lib
 	for l in libs/*; do $(MAKE) $$l; done
-
-.PHONY: libsplus
-libsplus: bin/wrappergen
-	for l in libsplus/*; do $(MAKE) $$l; done
+ifdef LIBSPLUS
+	for l in libsplus/*; do $(MAKE) $$l; done  
+endif
 
 .PHONY: libsclean
 libsclean:
 	for l in libs/*; do $(MAKE) -C $$l clean; done
+ifdef LIBSPLUS
 	for l in libsplus/*; do $(MAKE) -C $$l clean; done
+endif
 
 .PHONY: clean
 clean: libsclean
