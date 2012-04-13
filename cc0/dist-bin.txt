@@ -7,6 +7,7 @@ cc0/lib
 cc0/runtime
 cc0/include
 cc0/c0-mode
+cc0/c0.nanorc
 cc0/doc/README.txt
 cc0/doc/reference/c0-reference.pdf
 cc0/doc/reference/c0-libraries.pdf
