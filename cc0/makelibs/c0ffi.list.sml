@@ -206,7 +206,7 @@ fun write_cymbol_extern_lib_static_sml rootdir c0ffi_list =
            ; Set.app 
                 (fn s => 
                   ( output ("(\""^s^"\","^getBuf s^"_import \"__c0ffi_"^s^
-                            "\": fnptr;) ::")))
+                            "\" public: fnptr;) ::")))
                 funcs
            ; output "[]))"))
          c0ffi_list
