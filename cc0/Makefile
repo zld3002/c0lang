@@ -5,7 +5,11 @@ SML     = sml
 MLTON   = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -output 
 
 ifdef STATIC
+ifdef LIBSPLUS
+MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -Llib -Lruntime -lfile -lconio -lstring -lparse -lcurses -limg -lclock -lbare -lpng -lz /usr/lib/libcurses.a" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output 
+else
 MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -Llib -Lruntime -lfile -lconio -lstring -lparse -lcurses -limg -lbare -lpng -lz /usr/lib/libcurses.a" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output 
+endif
 else
 MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -rdynamic" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output 
 endif
@@ -23,7 +27,11 @@ include config.mk
 
 include util.mk
 
+ifdef LIBSPLUS
+all: cc0 externals libs libsplus
+else
 all: cc0 externals libs
+endif
 
 .PHONY: externals
 externals: $(EXTERNALS)
@@ -160,14 +168,28 @@ else
 	$(COPY) $@/$(notdir $@).h0 $@/$(call dllname,$(notdir $@)) lib
 endif
 
+.PHONY: libsplus/*
+libsplus/*: bin/wrappergen
+	$(MAKE) -C $@
+ifdef STATIC
+	$(COPY) $@/$(notdir $@).h0 $@/$(call staticlibname,$(notdir $@)) lib
+else
+	$(COPY) $@/$(notdir $@).h0 $@/$(call dllname,$(notdir $@)) lib
+endif
+
 .PHONY: libs
 libs: bin/wrappergen
 	$(COPY) libsc0/*.h0 libsc0/*.c0 lib
 	for l in libs/*; do $(MAKE) $$l; done
 
+.PHONY: libsplus
+libsplus: bin/wrappergen
+	for l in libsplus/*; do $(MAKE) $$l; done
+
 .PHONY: libsclean
 libsclean:
 	for l in libs/*; do $(MAKE) -C $$l clean; done
+	for l in libsplus/*; do $(MAKE) -C $$l clean; done
 
 .PHONY: clean
 clean: libsclean

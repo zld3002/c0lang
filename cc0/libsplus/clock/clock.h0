@@ -1,0 +1,8 @@
+/* Library clock
+ * Query the system clock (for timing purposes/complexity assessments).
+ */
+
+/* Return CPU time used since process started
+ * (measured in milliseconds)
+ */
+int millisecs();

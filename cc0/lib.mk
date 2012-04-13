@@ -65,7 +65,7 @@ endif
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
-	for l in $(C0LIBS); do $(MAKE) -C $(DEPTH)/libs/$$l; done
+	#for l in $(C0LIBS); do $(MAKE) -C $(DEPTH)/libs/$$l; done
 ifdef STATIC
 	$(AR) rcs $(TARGET) $(OBJECTS)
 else
@@ -73,7 +73,7 @@ else
 endif
 
 $(LIBNAME)_c0ffi.o: $(LIBNAME).h0
-	$(DEPTH)/bin/wrappergen $(LIBNAME)
+	$(DEPTH)/bin/wrappergen $(LIBSBASE) $(LIBNAME)
 	$(CC) $(CFLAGS) -c $(LIBNAME)_c0ffi.c -o $@
 
 %.o: %.c $(DEPTH)/include/c0runtime.h

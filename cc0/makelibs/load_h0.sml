@@ -157,15 +157,16 @@ fun load_and_output lib file =
 (* Main function *)
 fun wrappergen (filename, args) =
    let
-      val lib = 
+      val (basedir, lib) = 
          case args of
-            [ lib ] => lib
+            [ basedir, lib ] => (basedir, lib)
+          | [ lib ] => ("libs", lib)
           | _ => 
-            error ("wrong number of arguments.\nUsage: wrappergen libname\n")
+            error ("wrong number of arguments.\nUsage: wrappergen [basedir] libname\n")
       val { dir = bindir, ...} = OS.Path.splitDirFile filename
       val () = OS.FileSys.chDir bindir
       val { dir = rootdir, ...} = OS.Path.splitDirFile (OS.FileSys.getDir ())
-      val libsdir = OS.Path.joinDirFile {dir = rootdir, file = "libs"}
+      val libsdir = OS.Path.joinDirFile {dir = rootdir, file = basedir}
       val libdir = OS.Path.joinDirFile {dir = libsdir, file = lib}
       val h0_file = 
          OS.Path.joinDirFile
