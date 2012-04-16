@@ -453,13 +453,15 @@ fun finalize {library_headers} =
 	    ^ " -I" ^ path_concat (!Flags.base_dir, "include") 
 	    ^ " -I" ^ path_concat (!Flags.base_dir, "runtime") 
 
+            (* The actual c0 main file *)
+            ^ " " ^ path_concat (out_dir, cname)
+
             (* Finally, use the cc0main.c file *)
             ^ " " ^ path_concat3 (!Flags.base_dir, "lib", cc0_main)
 
             (* Now use the libraries (<source>.h) and code (<source>.c) *)
             ^ " " ^ String.concatWith " " (map (fn p => "-Wl,-rpath " ^ (abspath p)) (!Flags.search_path))
             ^ " " ^ String.concatWith " " (map (abspath o get_library_archive) (!Flags.libraries))
-            ^ " " ^ path_concat (out_dir, cname)
 
             (* Use the runtime and cc0lib *)
             ^ " " ^ path_concat3 (!Flags.base_dir, "lib", cc0_lib ^ ".c")
