@@ -429,7 +429,6 @@ functor StateFn (structure Data : DATA
   fun clear_locals (state as S{stack, ...}) = 
      let 
        val T{fun_name, locals, caller, depth} = !stack
-       val _ = TextIO.print "Hello from clear_locals\n"
      in stack := T{fun_name = fun_name,
                    locals = (Symbol.empty, Symbol.empty) :: tl locals,
                    caller = caller,
@@ -499,7 +498,6 @@ functor StateFn (structure Data : DATA
   fun local_tys (state as S{stack, ...}) =
     let 
       val T{locals, ...} = !stack
-      val _ = TextIO.output(TextIO.stdErr,"Hello from state.local_tys\n")
     in
        case locals of 
           [] => raise Error.Internal ("no local variables to report")
