@@ -2,8 +2,8 @@ Group is
       $/basis.cm
       $/smlnj-lib.cm
       ../compiler/sources3.cm
-      ../cymbol/cymbol-imperative.cm
-
+      ../cymbol/cymbol-native.cm
+      
       coil.sml
       compile.sml
 

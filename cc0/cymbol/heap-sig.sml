@@ -73,5 +73,9 @@ signature HEAP = sig
   val checkpoint : heap -> checkpoint
   val restore : heap * checkpoint -> unit
 
+  (*Calculating offset*)
+  val addr_sub' : addr -> loc
+
+
 end
 

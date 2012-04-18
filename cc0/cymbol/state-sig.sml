@@ -81,7 +81,9 @@ signature STATE = sig
 
   (* Debugging *)
   val value_string   : value -> string
-  val print_locals   : 'a state -> unit  
+  val print_locals   : 'a state -> unit 
+
+  val addr_string    : addr -> string
 (*
 
   (* Heap allocated storage *)

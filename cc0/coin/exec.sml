@@ -11,7 +11,7 @@ structure Exec:>sig
   (* The particular state that all computation is relative to *)
   val state: (Symbol.symbol * Mark.ext) ConcreteState.state
 
-  (* Implements function calls (symbol * value list * Mark.Ext -> value) *)
+  (* Implements function calls (symbol * value list * Mark.Ext -> value)*) 
   val call: Eval.function_impl
 
   (* Either returns a value if the function call was a native call or returns
@@ -30,7 +30,7 @@ structure Exec:>sig
   val reset: unit -> unit
 
   (* print local variables *)
-  val print_locals : unit -> unit 
+  val print_locals : unit -> unit
 
 end = 
 struct
@@ -149,79 +149,104 @@ fun call(fun_name,actual_args,pos) : State.value =
             end))
       before current_depth := old_depth
     end
-and step (cmds, labs, pc) : step_info = 
-    case Vector.sub (cmds, pc) of 
+
+and step (cmds, labs, pc) : step_info =
+    let
+      fun step' cmd = case cmd of
             C0.Label _ => PC(pc+1)
           | C0.Exp (e, pos) =>
             let 
-               val () = current_pos := SOME pos
-               val v = Eval.eval_exp (state, call) e
+                val () = current_pos := SOME pos
+                val v = Eval.eval_exp state e
             in
-               if !current_depth = 0 orelse Flag.isset Flags.flag_trace
-               then if State.is_unit v then ()
+                if !current_depth = 0 orelse Flag.isset Flags.flag_trace
+                then if State.is_unit v then ()
                     else print (State.value_string v ^ "\n")
-               else ()
-               ; PC(pc+1)
+                else ()
+                ; PC(pc+1)
             end
-
+          | C0.CCall(NONE,f,args,pos) =>
+                step' (C0.Exp(C0.Call(f,args,pos),pos))
+          | C0.CCall(SOME(x),f,args,pos) => 
+                step' (C0.Assign(NONE,C0.Var x,C0.Call(f,args,pos),pos))
           | C0.Declare (tp, x, NONE) => 
             (State.declare (state, x, tp)
-             ; PC(pc+1))
+              ; PC(pc+1))
           | C0.Declare (tp, x, SOME (e, pos)) => 
             let
-               val () = current_pos := SOME pos
-               val v = Eval.eval_exp (state, call) e
+                val () = current_pos := SOME pos
+                val v = Eval.eval_exp state e
             in
-               State.declare (state, x, tp)
-               ; State.put_id (state, x, v) 
-               ; if !current_depth = 0 orelse Flag.isset Flags.flag_trace 
-                 then print (Symbol.name x ^ " is " ^
-                             State.value_string v ^ "\n")
-                 else ()
-               ; PC(pc+1)
-            end 
+                State.declare (state, x, tp)
+                ; State.put_id (state, x, v) 
+                ; if !current_depth = 0 orelse Flag.isset Flags.flag_trace 
+                  then print (Symbol.name x ^ " is " ^
+                              State.value_string v ^ "\n")
+                  else ()
+                ; PC(pc+1)
+            end
+          | C0.Assign (SOME(C0.Addr),e1,e2,pos) =>
+            let
+              val () = current_pos := SOME pos
+              val l_loc = Eval.eval_lval state e1
+              (* Evaluate the righthand side of the assignment to a location.
+                 The location should always be a heap address *)
+              val (r_loc as (Eval.HeapLoc(tp,addr))) = Eval.eval_lval state e2
+                handle Bind => raise Error.Internal "Addr of a non-heap location\n"
+
+              val v = State.pointer (tp,addr);
+            in
+                Eval.put (state, l_loc, v)
+                ; if !current_depth = 0 orelse Flag.isset Flags.flag_trace 
+                  then print (C0.expToString false e1 ^ " is " ^
+                              State.value_string v ^ "\n")
+                  else ()
+                ; PC(pc+1)
+            end
           | C0.Assign (oper, e1, e2, pos) => 
             let 
-               val () = current_pos := SOME pos
-               val loc = Eval.eval_lval (state, call) e1
-               val v = Eval.eval_exp (state, call) e2
-               val v' =
+                val () = current_pos := SOME pos
+                val loc = Eval.eval_lval state e1
+                val v = Eval.eval_exp state e2
+                val v' =
                   case oper of
-                     NONE => v
-                   | SOME oper => 
-                     Eval.eval_binop oper (Eval.get (state, loc), v)
+                      NONE => v
+                    | SOME oper => 
+                      Eval.eval_binop oper (Eval.get (state, loc), v)
             in 
-               Eval.put (state, loc, v')
-               ; if !current_depth = 0 orelse Flag.isset Flags.flag_trace 
-                 then print (C0.expToString false e1 ^ " is " ^
-                             State.value_string v' ^ "\n")
-                 else ()
-               ; PC(pc+1)
+                Eval.put (state, loc, v')
+                ; if !current_depth = 0 orelse Flag.isset Flags.flag_trace 
+                  then print (C0.expToString false e1 ^ " is " ^
+                              State.value_string v' ^ "\n")
+                  else ()
+                ; PC(pc+1)
             end
           | C0.Assert (e, msg, pos) => 
             (current_pos := SOME pos
-             ; if State.to_bool (Eval.eval_exp (state, call) e) then () 
-               else raise Error.AssertionFailed msg
-             ; PC(pc+1))
+              ; if State.to_bool (Eval.eval_exp state e) then () 
+                else raise Error.AssertionFailed msg
+              ; PC(pc+1))
           | C0.CondJump (e, pos, altlab) =>
             (current_pos := SOME pos
-             ; if (State.to_bool (Eval.eval_exp (state, call) e))
-               then PC(pc+1)
-               else PC(Vector.sub (labs, altlab)+1))
+              ; if (State.to_bool (Eval.eval_exp state e))
+                then PC(pc+1)
+                else PC(Vector.sub (labs, altlab)+1))
           | C0.Jump labl => PC(Vector.sub (labs, labl))
           | C0.Return NONE => ReturnNone
           | C0.Return (SOME (e, pos)) =>
             (current_pos := SOME pos
-             ; ReturnSome(Eval.eval_exp (state, call) e))
+              ; ReturnSome(Eval.eval_exp state e))
           | C0.PushScope => 
             (current_depth := !current_depth + 1
-             ; State.push_scope state
-             ; PC(pc+1))
+              ; State.push_scope state
+              ; PC(pc+1))
           | C0.PopScope n => 
             (current_depth := !current_depth - n
-             ; State.pop_scope (state, n)
+          ; State.pop_scope (state, n)
              ; PC(pc+1))
-
+   in
+     step' (Vector.sub (cmds,pc))
+   end
 and exec (cmds, labs) : State.value option = 
    let
       fun run pc = 

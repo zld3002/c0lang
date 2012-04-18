@@ -13,5 +13,3 @@ cymbol-tools/cfg/sources.{cm,mlb}
  - Elaboration of C0 into control flow graphs
  - CFG manipulation
  - Concrete operational semantics using these control flow graphs
-
-

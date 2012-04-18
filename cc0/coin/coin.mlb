@@ -1,4 +1,6 @@
 coin-core.mlb
+../compiler/sources.mlb
+
 
 (* Front-end *)
 local

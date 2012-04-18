@@ -26,7 +26,7 @@ datatype binop =
    (* Arith      + * - / %    *) Plus | Times | Minus | Div | Mod
  | (* Bitwise    & | ^        *) BitAnd | BitOr | BitXor
  | (* Shift      << >>        *) ShiftLeft | ShiftRight 
- | (* Comparison < <= == >= > *) Lt | Leq | Eq | Geq | Gt | Neq
+ | (* Comparison < <= == >= > *) Lt | Leq | Eq | Geq | Gt | Neq | Addr
 
 type assignop = binop option (* =, +=, *=, -=, /=, %=, &=, |=, ^=, &&= ... *)
 
@@ -86,7 +86,7 @@ fun binopToString (oper: binop): string =
    case oper of Plus => "+" | Times => "*" | Minus => "-" | Div => "/" 
      | Mod => "%" | BitAnd => "&" | BitOr => "|" | BitXor => "^"
      | ShiftLeft => "<<" | ShiftRight => ">>" | Lt => "<" | Leq => "<=" 
-     | Eq => "==" | Geq => ">=" | Gt => ">" | Neq => "!="
+     | Eq => "==" | Geq => ">=" | Gt => ">" | Neq => "!=" | Addr => "*"
 
 fun monopToString (oper: monop): string = 
    case oper of LogicNot => "!" | ArithNeg => "-" | BitNot => "~"
@@ -144,6 +144,8 @@ fun cmdToString (cmd: cmd): string =
       "Return " ^ expToString false e1
     | PushScope => "{"
     | PopScope n => String.concat (List.tabulate (n, (fn _ => "}")))
+    | CCall(NONE,f,args,pos) => expToString false (Call(f,args,pos))
+    | CCall(SOME(x),f,args,pos) => cmdToString (Assign(NONE,Var x,Call(f,args,pos),pos))
 
 (* cmdPrint prefix prog - the prefix determines the indentation *)
 fun cmdPrint (prefix: string) (prog : program): unit = 

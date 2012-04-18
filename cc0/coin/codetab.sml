@@ -60,7 +60,7 @@ fun process_ast pre current_lib =
        (fn () => print (pre ^ "Processing " ^ Symbol.name x ^ " (interp)\n"))
        ()
      ; let
-          val func = Compile.cStms [ stm, Ast.Return NONE ] pos
+          val func = Compile.cStms args [ stm, Ast.Return NONE ] pos
        in 
           Flag.guards [ Flags.flag_verbose, Flags.flag_print_codes ]
              (fn () => C0Internal.cmdPrint pre func) ()

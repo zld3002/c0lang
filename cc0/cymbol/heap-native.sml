@@ -130,6 +130,7 @@ functor NativeHeapFn (structure Data : CONCRETE_DATA
         print ("after struct offset: " ^ loc_string (SOME ptr'') ^ "\n"); *)
         ptr''
       end
+  val addr_sub' = (SOME o addr_sub)
 
   fun get1 addr = MLton.Pointer.getWord8  (addr_sub addr, 0)
   fun get4 addr = MLton.Pointer.getWord32 (addr_sub addr, 0)

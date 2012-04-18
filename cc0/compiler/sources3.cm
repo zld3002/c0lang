@@ -26,7 +26,7 @@ Group is
 	type/syn.sml
         type/dyn-check.sml
 	type/print-c-compact.sml
-	(* type/print-c.sml *)
+        type/iso.sml
 
         c0vm/c0vm.sml
         c0vm/c0vm-c0ffi.sml

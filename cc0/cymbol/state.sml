@@ -69,6 +69,8 @@ functor StateFn (structure Data : DATA
 
   fun toCString s = String.translate toCChar s
 
+  fun addr_string (loc,_,_) = Heap.loc_string loc
+
   fun value_string v = 
     case v of
       Unit            => ("(void)")
@@ -173,7 +175,8 @@ functor StateFn (structure Data : DATA
   val string = String o Heap.str_to_rep
   val pointer = 
    fn (ty, (loc, NONE, [])) => (novars ty; Pointer (ty, loc))
-    | _ => raise Error.Internal "pointers with offsets (pointer arithmetic)"
+    | (ty, (loc, ind, offs)) => (novars ty; Pointer(ty, Heap.addr_sub' (loc,ind,offs)))
+    (*| _ => raise Error.Internal "pointers with offsets (pointer arithmetic)"*)
   val array = 
    fn (ty, (loc, NONE, []), n) => (novars ty; Array (ty, loc, n))
     | _ => raise Error.Internal "array with offsets (pointer arithmetic)"
@@ -360,7 +363,6 @@ functor StateFn (structure Data : DATA
          | Pointer (_, l)  => Heap.put_loc    (heap, addr) l
          | Array (_, l, _) => Heap.put_loc    (heap, addr) l
          | Uninitialized   => raise Error.Internal "impossible")
-
 
   (* == STACK MANIPULATION == *)
 

@@ -25,12 +25,12 @@ structure Eval:> sig
   val put: 'a ConcreteState.state * loc * ConcreteState.value -> unit
 
   val eval_exp: 
-     'a ConcreteState.state * function_impl
+     'a ConcreteState.state
      -> C0Internal.exp 
      -> ConcreteState.value
 
   val eval_lval:
-     'a ConcreteState.state * function_impl
+     'a ConcreteState.state
      -> C0Internal.exp
      -> loc
 
@@ -65,7 +65,10 @@ struct
 
   fun put (state, NullLoc, v) = raise Error.NullPointer
     | put (state, StackLoc x, v) = S.put_id (state, x, v)
-    | put (state, HeapLoc (ty, addr), v) = S.put_addr (state, (ty, addr), v)
+    | put (state, HeapLoc (ty, addr), v) = 
+        (S.put_addr (state, (ty, addr), v)
+          handle (Error.NullPointer) => 
+            TextIO.output(TextIO.stdErr,"Allocated to a NULL addr\n"))
   
   fun eval_const c = 
     case c of  
@@ -116,10 +119,10 @@ struct
       Ast.StructName st => st
     | ty => raise Error.Dynamic ("expected struct, got " ^ Ast.Print.pp_tp ty)
 
-  fun eval_lval (state, call) exp = 
+  fun eval_lval state exp = 
     let 
-       val ev_exp = eval_exp (state, call) 
-       val ev_lval = eval_lval (state, call)
+       val ev_exp = eval_exp state 
+       val ev_lval = eval_lval state
     in
        case exp of 
          C0.Var x => StackLoc x
@@ -148,13 +151,12 @@ struct
        | _ => raise Error.Dynamic "invalid lvalue"
     end
 
-  and eval_exps (state, call) exps = 
-    map (eval_exp (state, call)) exps
-
-  and eval_exp (state, call) exp = 
+  and eval_exps state exps = 
+    map (eval_exp state) exps
+  and eval_exp state exp = 
     let 
-       val ev_exp = eval_exp (state, call) 
-       val ev_lval = eval_lval (state, call)
+       val ev_exp = eval_exp state 
+       val ev_lval = eval_lval state
     in
        case exp of
        (* Constants and variables *)
@@ -206,12 +208,6 @@ struct
            if i >= 0 andalso i < n 
            then S.get_addr (state, (ty, S.offset_index (state, addr, i)))
            else raise Error.ArrayOutOfBounds (i, n)
-         end
-       | C0.Call (fun_name, exps, pos) =>
-         let
-            val vals = map ev_exp exps
-         in 
-            call (fun_name, vals, pos)
          end
     end
 
