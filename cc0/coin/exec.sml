@@ -95,6 +95,13 @@ fun reset () =
    ; current_depth := 0
    ; current_pos := NONE)
 
+fun init_fun(f,actual_args,formal_args,pos) = 
+      (State.push_fun (state, f, (f, pos));
+      app (fn ((tp, x), v) => 
+        (State.declare (state, x, tp);
+      State.put_id (state, x, v)))
+      (ListPair.zip (formal_args, actual_args)))
+
 fun call_step (fun_name, actual_args, pos) : call_info = 
      (case CodeTab.lookup fun_name of
          NONE => raise Error.Internal ("Undefined fun " ^ Symbol.name fun_name)
@@ -166,9 +173,40 @@ and step (cmds, labs, pc) : step_info =
                 ; PC(pc+1)
             end
           | C0.CCall(NONE,f,args,pos) =>
-                step' (C0.Exp(C0.Call(f,args,pos),pos))
+            let
+              val actual_args = List.map (Eval.eval_exp state) args
+              val calltype = call_step(f,actual_args,pos)
+            in
+              case calltype of Interp((_,formal_args),code) =>
+                                         let
+                                           val _ = init_fun(f,actual_args,formal_args,pos)
+                                           val _ = exec code
+                                           val _ = State.pop_fun state
+                                         in
+                                           PC(pc+1)
+                                         end
+                             | Native(res) => PC(pc+1)
+            end
           | C0.CCall(SOME(x),f,args,pos) => 
-                step' (C0.Assign(NONE,C0.Var x,C0.Call(f,args,pos),pos))
+            let
+              val loc = Eval.eval_lval state (C0.Var x)
+              val actual_args = List.map (Eval.eval_exp state) args
+              
+              val calltype = call_step(f,actual_args,pos)
+            in
+              case calltype of Native(res) => (Eval.put (state,loc,res); PC(pc+1))
+                             | Interp((_,formal_args),code) => 
+                             let
+                               val _ = init_fun(f,actual_args,formal_args,pos)
+                               val ret_val = exec code
+                               val _ = State.pop_fun state
+                               val _ = case ret_val of SOME(v) => 
+                                            Eval.put (state,loc,v)
+                                                     | NONE => ()
+                             in
+                               PC(pc+1)
+                             end
+            end
           | C0.Declare (tp, x, NONE) => 
             (State.declare (state, x, tp)
               ; PC(pc+1))

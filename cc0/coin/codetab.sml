@@ -101,7 +101,7 @@ fun process_ast pre current_lib =
 
 fun load_lib [] lib = print ("WARNING: failed to load library <" ^ lib ^ ">\n")
   | load_lib (libdir :: path) lib =
-       case NativeLibrary.load libdir lib of
+       case NativeLibrary.load (libdir^lib) of
           NONE => 
           (Flag.guard Flags.flag_verbose 
               (fn () => print ("Library " ^ lib ^ " did not load\n")) ()

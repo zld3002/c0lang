@@ -19,49 +19,51 @@ struct
   exception LINK_ERROR
   exception Internal of string
 
-  datatype debug_action = STEP | NEXT | LOCAL_VARS
+  datatype debug_action = STEP | NEXT | LOCAL_VARS | QUIT
 
 (*-------------- Printing ----------------*)
   fun print s = TextIO.print s
   
   fun println s = TextIO.print (s^"\n")
   
-  fun get_comm_string (C0.Exp(e,pos)) = 
-        (true,(C0.expToString false e ^ " : " ^ (Mark.show(pos))))
-    | get_comm_string (cmd as (C0.Assign(binop,e1,e2,pos))) =
-        (true,C0.cmdToString cmd ^ " : " ^ Mark.show(pos))
-    | get_comm_string (cmd as (C0.CCall(target,f,args,pos))) = 
-        (true,C0.cmdToString cmd ^ " : " ^ Mark.show(pos))
-    | get_comm_string (cmd as (C0.Assert(e,s,pos))) = 
-        (true,C0.cmdToString cmd ^ " : " ^ Mark.show(pos))
-    | get_comm_string (cmd as (C0.Return(SOME(e,pos)))) = 
-        (true,C0.cmdToString cmd ^ " : " ^ Mark.show(pos))
-    | get_comm_string (cmd as (C0.Declare(tau,x,SOME(e,pos)))) = 
-        (true,C0.cmdToString cmd ^ " : " ^ Mark.show(pos))
-    | get_comm_string cmd = (false,C0.cmdToString cmd)
+  fun check_pos ((0,0),(0,0),_) = false
+    | check_pos _ = true
 
-  fun io next_cmd = 
+  fun get_comm_string (C0.Exp(e,pos)) = 
+        (check_pos pos,Mark.show(pos))
+    | get_comm_string (cmd as (C0.Assign(binop,e1,e2,pos))) =
+        (check_pos pos,Mark.show(pos))
+    | get_comm_string (cmd as (C0.CCall(target,f,args,pos))) = 
+        (check_pos pos,Mark.show(pos))
+    | get_comm_string (cmd as (C0.Assert(e,s,pos))) = 
+        (check_pos pos,Mark.show(pos))
+    | get_comm_string (cmd as (C0.Return(SOME(e,pos)))) = 
+        (check_pos pos,Mark.show(pos))
+    | get_comm_string (cmd as (C0.Declare(tau,x,SOME(e,pos)))) = 
+        (check_pos pos,Mark.show(pos))
+    | get_comm_string cmd = (false,"")
+
+  fun io next_cmd fname = 
   let
-    val (to_print,next_cmd_s) = get_comm_string next_cmd
+    val (to_print,pos_s) = get_comm_string next_cmd
   in  
     if to_print then
       let
-        val _ = println ("  "^next_cmd_s)
-        val _ = print "$ "
+        val _ = println (pos_s^" in function "^fname)
+        val _ = print "(c0de) "
         val input = valOf (TextIO.inputLine TextIO.stdIn)
         val action = case input of 
-            "vars\n" => LOCAL_VARS
-          | "next\n" => NEXT
+            "v\n" => LOCAL_VARS
+          | "n\n" => NEXT
+          | "q\n" => QUIT
           | _ => STEP
       in 
         action 
       end
     else NEXT
-  end
-         
+  end 
 
 (*------------- Core I/O and evaluation -------------------*)
- 
   
   fun init_fun(f,actual_args,formal_args,pos) = 
         (State.push_fun (Exec.state, f, (f, pos));
@@ -71,12 +73,12 @@ struct
         (ListPair.zip (formal_args, actual_args)))
 
 
-  fun dstep (cmds,labs) = 
+  fun dstep (cmds,labs) fname = 
   let
     fun dstep' pc = 
     let
       val next_cmd = Vector.sub (cmds,pc) 
-      val action = io next_cmd
+      val action = io next_cmd fname
         
       fun eval (cmds,labs,pc) =
         (case Exec.step(cmds,labs,pc) of
@@ -85,16 +87,16 @@ struct
       | Exec.PC(i) => dstep' i)
     in
       case action of LOCAL_VARS => (Exec.print_locals(); dstep' pc)
+        | QUIT => (println "Goodbye!"; NONE)
         | STEP => 
         (case next_cmd of C0.CCall(NONE,f,args,pos) =>
           let
             val actual_args = List.map (Eval.eval_exp Exec.state) args
-            val _ = println ("Entering "^Symbol.name f)
           in
           (case Exec.call_step(f,actual_args,pos) of Exec.Interp((_,formal_args),code) => 
                                                   (init_fun(f,actual_args,formal_args,pos);
                                                    let
-                                                    val _ = dstep(code) in () end;
+                                                    val _ = dstep code (Symbol.name f) in () end;
                                                    let val _ = State.pop_fun (Exec.state) in () end;
                                                    dstep' (pc+1))
                                             | Exec.Native(res) => dstep' (pc+1))
@@ -103,7 +105,6 @@ struct
               let
                 val loc = Eval.eval_lval Exec.state (C0.Var x)
                 val actual_args = List.map (Eval.eval_exp Exec.state) args
-                val _ = println ("Entering "^Symbol.name f)
 
                 fun sim_fun_call (Exec.Native(res)) = 
                     ( Eval.put (Exec.state,loc,res);
@@ -111,7 +112,7 @@ struct
                   | sim_fun_call (Exec.Interp((_,formal_args),code)) = 
                   let
                     val _ = init_fun(f,actual_args,formal_args,pos)
-                    val ret_val = dstep(code)
+                    val ret_val = dstep code (Symbol.name f)
                     val _ = State.pop_fun (Exec.state)
                     val _ = case ret_val of SOME(v) => 
                         Eval.put (Exec.state,loc,v)
@@ -126,11 +127,9 @@ struct
         | NEXT => eval(cmds,labs,pc)
     end
   in
-    (case dstep' 0 of NONE => (println "Result of function call was  void"; NONE)
-                   | SOME(res) => (println ("Result of function call was  "
-                                              ^(ConcreteState.value_string res) );
-                                    SOME(res)))
-    handle Error.Dynamic(s) => (println s; NONE)
+    (case dstep' 0 of NONE =>  NONE
+                   | SOME(res) => SOME(res))
+    handle Error.Dynamic(s) => (println ("Error: "^s); NONE)
   end
 
 (*--------- Load libraries and call main -------------*)
@@ -147,11 +146,10 @@ struct
         ; CodeTab.reload_libs (!Flags.libraries)
         ; CodeTab.reload (library_headers @ program)
         ; app assertLibrariesLoaded (CodeTab.list ()))
-      
-        val _ = println "\nEntering main()"
+   
         val init_call = Exec.call_step (Symbol.symbol "main", [], ((0, 0), (0, 0), "_init_"))
       in
-        case init_call of (Exec.Interp(_,code)) => dstep code 
+        case init_call of (Exec.Interp(_,code)) => dstep code "main" 
                         | _ => raise Internal("Main function was tagged as native\n")
       end
 

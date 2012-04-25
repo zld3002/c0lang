@@ -131,7 +131,10 @@ functor StateFn (structure Data : DATA
       | (Ast.Void, Ast.Void) => true
       | _ => false
 
-  (* We only have to typecheck assignable values! *)
+  (* We only have to typecheck assignable values! 
+
+      igillis 4/22/12: This is no longer true with the new addrof operator
+      added to go along with fp's hoisting mechanism. *)
   fun typecheck (v, ty) = ty_eq ty Ast.Any orelse
     case v of 
       Unit => ty_eq ty Ast.Void
