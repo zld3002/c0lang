@@ -1,0 +1,7 @@
+../coin/coin-core.mlb
+
+local
+  debug.sml
+in
+  structure Debug
+end
