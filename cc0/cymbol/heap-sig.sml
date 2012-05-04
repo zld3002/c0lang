@@ -73,7 +73,8 @@ signature HEAP = sig
   val checkpoint : heap -> checkpoint
   val restore : heap * checkpoint -> unit
 
-  (*Calculating offset*)
+  (* Calculating offset - WILL FAIL HORRIBLY IF THERE ARE MULTIPLE HEAPS *)
+  (* XXX this REALLY needs to be fixed by adding a loc type to state *)
   val addr_sub' : addr -> loc
 
 

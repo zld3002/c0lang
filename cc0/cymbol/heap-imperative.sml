@@ -69,9 +69,20 @@ struct
 
   val default: Word32.word = 0wx0
 
+  local val OH_NO_TERRIBLE_HACK_THIS_SUCKS: heap ref = ref (GrowArray.empty ())
+  in
+
   fun new () =
   let val arr = GrowArray.empty () 
-  in GrowArray.append arr default; arr end
+  in 
+     GrowArray.append arr default; OH_NO_TERRIBLE_HACK_THIS_SUCKS := arr; arr 
+  end
+
+  fun addr_sub' (i, NONE, offs) = i + sum offs
+    | addr_sub' (i, SOME ndx, offs) = 
+      let val arr = !OH_NO_TERRIBLE_HACK_THIS_SUCKS
+      in i + 2 + (Data.to_int (GrowArray.sub arr i) * ndx) + sum offs end
+  end
 
   fun empty_mem (arr, 0) = ()
     | empty_mem (arr, i) = 

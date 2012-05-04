@@ -2,8 +2,9 @@ Group is
       $/basis.cm
       $/smlnj-lib.cm
       ../compiler/sources3.cm
-      ../cymbol/cymbol-native.cm
+      ../cymbol/cymbol-imperative.cm
       
+(*
       coil.sml
       compile.sml
 
@@ -15,3 +16,4 @@ Group is
       version.sml
 
       coin-exec.sml
+*)
