@@ -1,4 +1,4 @@
-;;; c0-c0de.el --- Interaction with 'c0de', the C0 debugger
+;;; c0-code.el --- Interaction with 'code', the C0 debugger
 
 ;; Author:     2010 Jakob Max Uecker
 ;; Maintainer: 
@@ -24,8 +24,8 @@
 
 ;;; Commentary:
 ;;
-;;    This code interacts with the c0de debugger. It expects
-;;    the variable 'c0de-path' to be set to the c0de executable
+;;    This code interacts with the 'code' debugger. It expects
+;;    the variable 'code-path' to be set to the 'code' executable
 
 ;;; Known Bugs:
 ;;    
@@ -36,8 +36,8 @@
 ;;
 ;;    0.1 - Initial release
 
-;; Faces for c0de highlighting
-(defface c0de-normal-face
+;; Faces for highlighting the active portion of code
+(defface code-normal-face
   '((((class color)
       (background dark))
      (:background "Yellow" :bold t :foreground "Black"))
@@ -47,9 +47,9 @@
     (t
      ()))
   "*Face used for the next expression to be evaluated."
-  :group 'c0de)
+  :group 'code)
 
-(defface c0de-error-face
+(defface code-error-face
   '((((class color)
       (background dark))
      (:background "Red" :bold t :foreground "Black"))
@@ -59,11 +59,11 @@
     (t
      ()))
   "*Face used for highlighting erroneous expressions."
-  :group 'c0de)
+  :group 'code)
 
 ;; Column positions given by ml-yacc are one off compared to
 ;; emacs. This should probably be taken care of in parsing though
-(defun c0de-get-pos
+(defun code-get-pos
   (line column)
   "Get buffer position from line:column position"
   (+
@@ -72,11 +72,11 @@
 
 ;;; Functions for highlighting
 
-(defun c0de-highlight
+(defun code-highlight
   (line-begin column-begin line-end column-end)
   "Move highlight overlay to specified region, point to beginning of region"
-  (let ((pos-begin (c0de-get-pos line-begin column-begin))
-	(pos-end (c0de-get-pos line-end column-end))
+  (let ((pos-begin (code-get-pos line-begin column-begin))
+	(pos-end (code-get-pos line-end column-end))
 	)
     (progn
       (if (boundp 'highlight)
@@ -86,21 +86,21 @@
 	  ))
       (goto-char pos-begin))))
 
-(defun c0de-highlight-normal
+(defun code-highlight-normal
   (line-begin column-begin line-end column-end)
   "Set normal highlight"
   (progn
-    (c0de-highlight line-begin column-begin line-end column-end)
-    (overlay-put highlight 'face 'c0de-normal-face)))
+    (code-highlight line-begin column-begin line-end column-end)
+    (overlay-put highlight 'face 'code-normal-face)))
 
-(defun c0de-highlight-error
+(defun code-highlight-error
   (line-begin column-begin line-end column-end)
   "Set highlight to indicate error"
   (progn
-    (c0de-highlight line-begin column-begin line-end column-end)
-    (overlay-put highlight 'face 'c0de-error-face)))
+    (code-highlight line-begin column-begin line-end column-end)
+    (overlay-put highlight 'face 'code-error-face)))
 
-(defun c0de-delete-highlight ()
+(defun code-delete-highlight ()
   "Remove highlight overlay"
   (if (boundp 'highlight)
 	(delete-overlay highlight)))
@@ -112,7 +112,7 @@
 ;;
 ;; The output is parsed one line at a time
 
-(defun c0de-parse-position
+(defun code-parse-position
   (string)
   "Parse 2 integers separated by '.' from STRING"
   (let ((dot-pos (string-match "[.]" string)))
@@ -120,49 +120,49 @@
 	  (string2 (substring string (+ 1 dot-pos))))
       (list (string-to-number string1) (string-to-number string2)))))
 
-(defun c0de-parse-positions
+(defun code-parse-positions
   (string)
   "Parse 4 position integers from STRING"
   (let ((colon-pos (string-match ":" string)))
     (let ((dash-pos (string-match "-" string colon-pos)))
       (let ((string1 (substring string (+ 1 colon-pos) dash-pos))
 	    (string2 (substring string (+ 1 dash-pos))))
-	(append (c0de-parse-position string1)
-		(c0de-parse-position string2))))))
+	(append (code-parse-position string1)
+		(code-parse-position string2))))))
 
 (defun begins-with (string prefix)
   "Returns t if STRING begins with PREFIX. Beware of '.'"
   (eq (string-match prefix string) 0))
 
-(defun c0de-parse (string)
+(defun code-parse (string)
     (if (string-match "\n" string)
       (let ((newline-pos (string-match "\n" string)))
 	(progn
 	  (message (number-to-string newline-pos))
-	  (c0de-parse-line (substring string 0 newline-pos))
-	  (c0de-parse (substring string (+ 1 newline-pos)))))
-      (c0de-parse-line string)))
+	  (code-parse-line (substring string 0 newline-pos))
+	  (code-parse (substring string (+ 1 newline-pos)))))
+      (code-parse-line string)))
 
-(defun c0de-parse-line (string)
-  "Parse one line of output from c0de program"
+(defun code-parse-line (string)
+  "Parse one line of output from code program"
   (cond ((begins-with string "Value") (message string))
-	((begins-with string "(c0de)") ())
-	((begins-with string "Error") (setq c0de-error string))
+	((begins-with string "(code)") ())
+	((begins-with string "Error") (setq code-error string))
 	((begins-with string "Finished")
 	 (progn
-	   (c0de-exit-debug)
+	   (code-exit-debug)
 	   (message string)))
 	((string-match " in function " string)
-	 (if (and (boundp 'c0de-error) c0de-error)
+	 (if (and (boundp 'code-error) code-error)
 	     (progn
 	       (eval-expression
-		(append (list 'c0de-highlight-error) (c0de-parse-positions string)))
-	       (message (concat c0de-error
+		(append (list 'code-highlight-error) (code-parse-positions string)))
+	       (message (concat code-error
 				(substring string (string-match ":" string))))
-	       (setq c0de-error nil))
+	       (setq code-error nil))
 	   (progn
 	     (eval-expression
-	      (append (list 'c0de-highlight-normal) (c0de-parse-positions string)))
+	      (append (list 'code-highlight-normal) (code-parse-positions string)))
 	     (message (substring string
 				 (+ 1 (string-match ":" string)))))))
 	(t (message string))))
@@ -172,8 +172,8 @@
 ;; Receives output from the debugger. Logs all output in
 ;; the debugger's associated buffer before passing it on
 ;; to the parsing function
-(defun c0de-filter (proc string)
-  "Filter function for c0de interaction"
+(defun code-filter (proc string)
+  "Filter function for code interaction"
   (progn
     (with-current-buffer (process-buffer proc)
       (let ((moving (= (point) (process-mark proc))))
@@ -182,82 +182,82 @@
 	  (insert string)
 	  (set-marker (process-mark proc) (point)))
 	(if moving (goto-char (process-mark proc)))))
-    (c0de-parse string)))
+    (code-parse string)))
 	 
 ;; Is called if the debugger process receives a signal
 ;; or exits
-(defun c0de-sentinel (proc string)
-  "Sentinel for c0de process"
+(defun code-sentinel (proc string)
+  "Sentinel for code process"
   (cond
    ((begins-with string "finished") ())
    ((begins-with string "exited abnormally")
     (progn
-      (c0de-exit-debug)
+      (code-exit-debug)
       (message (concat "Debugger crashed, please report to developer.\n"
-		       "Message : Process c0de " string))))))
+		       "Message : Process code " string))))))
 
 ;;; Functions for sending input to the debugger
 
-(defun c0de-send-string (string)
-  "Send STRING to c0de process"
-  (process-send-string c0de-proc string))
+(defun code-send-string (string)
+  "Send STRING to code process"
+  (process-send-string code-proc string))
 
-(defun c0de-step ()
+(defun code-step ()
   "Step to next statement, potentially entering a function"
   (interactive)
-  (c0de-send-string "s\n"))
+  (code-send-string "s\n"))
 
-(defun c0de-next ()
+(defun code-next ()
   "Step to next statement, passing over functions unless they
 include a breakpoint"
   (interactive)
-  (c0de-send-string "n\n"))
+  (code-send-string "n\n"))
 
-(defun c0de-continue ()
+(defun code-continue ()
   "Go to the next breakpoint"
   (interactive)
-  (c0de-send-string "c\n"))
+  (code-send-string "c\n"))
 
-(defun c0de-reverse-step ()
+(defun code-reverse-step ()
   "Step backwards"
   (interactive)
-  (c0de-send-string "rs\n"))
+  (code-send-string "rs\n"))
 
-(defun c0de-reverse-next ()
+(defun code-reverse-next ()
   "Next backwards"
   (interactive)
-  (c0de-send-string "rn\n"))
+  (code-send-string "rn\n"))
 
-(defun c0de-reverse-continue ()
+(defun code-reverse-continue ()
   "Continue backwards"
   (interactive)
-  (c0de-send-string "cn\n"))
+  (code-send-string "cn\n"))
 
-(defun c0de-eval-exp ()
+(defun code-eval-exp ()
   "Evaluate an expression"
   (interactive)
   (progn
     (setq exp (read-string "Evaluate Expression: " exp))
-    (c0de-send-string (concat "e " exp "\n"))))
+    (code-send-string (concat "e " exp "\n"))))
 
-(defun c0de-interrupt ()
+(defun code-interrupt ()
   "Interrupt the debugger"
   (interactive)
-  (interrupt-process "c0de"))
+  (interrupt-process "code"))
 
 ;;; The keymap used for debugging
-(setq c0de-map
+(setq code-map
       (let ((map (make-sparse-keymap)))
-	(define-key map "s" 'c0de-step)
-	(define-key map (kbd "RET") 'c0de-step)
-	(define-key map "n" 'c0de-next)
-	(define-key map "c" 'c0de-continue)
-	(define-key map "rs" 'c0de-reverse-step)
-	(define-key map "rn" 'c0de-reverse-next)
-	(define-key map "rc" 'c0de-reverse-continue)
-	(define-key map "e" 'c0de-eval-exp)
-	(define-key map "q" 'c0de-exit-debug)
-	(define-key map "i" 'c0de-interrupt)
+	(define-key map "s" 'code-step)
+	(define-key map (kbd "RET") 'code-step)
+	(define-key map "n" 'code-next)
+	(define-key map "c" 'code-continue)
+	(define-key map "rs" 'code-reverse-step)
+	(define-key map "rn" 'code-reverse-next)
+	(define-key map "rc" 'code-reverse-continue)
+	(define-key map "e" 'code-eval-exp)
+	(define-key map "q" 'code-exit-debug)
+	(define-key map "i" 'code-interrupt)
 	map))
 
 ;;; Enter and Exit functions
@@ -271,57 +271,57 @@ include a breakpoint"
 ;; -adds a hook that quits the debugger if the buffer is killed
 ;; -runs the debugger
 
-(defun c0de-enter-debug ()
+(defun code-enter-debug ()
   "Enter debugging mode. This saves the buffer."
   (interactive)
-  (if (get-process "c0de")
+  (if (get-process "code")
       (message "Debugger already running.")
-    (if (not (boundp 'c0de-path))
+    (if (not (boundp 'code-path))
 	(message "Debugger path not set.")
       (if (not (buffer-file-name))
 	(message "Please save the buffer to a file before running the debugger")
 	(progn
-          (setq args (read-string "Call debugger with: c0de" 
+          (setq args (read-string "Call debugger with: code" 
                (concat 
                    " " 
                    (file-relative-name (buffer-file-name)))))
 	  (setq buffer-read-only t)
 	  (save-buffer)
 	  (setq old-local-map (current-local-map))
-	  (use-local-map c0de-map)
-	  (setq c0de-proc
+	  (use-local-map code-map)
+	  (setq code-proc
 		(start-process-shell-command
-		 "c0de"
-		 "*c0de*"
-		 c0de-path
+		 "code"
+		 "*code*"
+		 code-path
 		 args))
 	  (setq exp "")
-	  (add-hook 'kill-buffer-hook 'c0de-kill-buffer)
+	  (add-hook 'kill-buffer-hook 'code-kill-buffer)
 	  (setq point-old (point))
-	  (set-process-filter c0de-proc 'c0de-filter)
-	  (set-process-sentinel c0de-proc 'c0de-sentinel))))))
+	  (set-process-filter code-proc 'code-filter)
+	  (set-process-sentinel code-proc 'code-sentinel))))))
 
 ;; Hook to be run if the buffer is killed while debugging
 ;; Kills the debugger
-(defun c0de-kill-buffer ()
+(defun code-kill-buffer ()
   (progn
-    (if (get-process "c0de")
-       (delete-process "c0de"))))
+    (if (get-process "code")
+       (delete-process "code"))))
 
 ;; Quit the debugger. Restores the buffers keymap and point
-(defun c0de-exit-debug ()
+(defun code-exit-debug ()
   "Exit debugging mode"
   (interactive)
   (progn
-    (if (get-process "c0de")
-	(delete-process "c0de"))
-    (kill-buffer "*c0de*")
-    (remove-hook 'kill-buffer-hook 'c0de-kill-buffer)
-    (c0de-delete-highlight)
+    (if (get-process "code")
+	(delete-process "code"))
+    (kill-buffer "*code*")
+    (remove-hook 'kill-buffer-hook 'code-kill-buffer)
+    (code-delete-highlight)
     (use-local-map old-local-map)
     (goto-char point-old)
     (setq buffer-read-only nil)))
 
-(provide 'c0-c0de)
+(provide 'c0-code)
 
-;;; c0-c0de.el ends here
+;;; c0-code.el ends here

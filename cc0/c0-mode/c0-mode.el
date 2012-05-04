@@ -48,7 +48,7 @@
 (require 'cc-mode)
 
 ;; Load code for debugger interaction
-(require 'c0-c0de)
+(require 'c0-code)
 
 ;; These are only required at compile time to get the sources for the
 ;; language constants.  (The cc-fonts require and the font-lock

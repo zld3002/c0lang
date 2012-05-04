@@ -8,5 +8,5 @@ Major mode for editing C0 (pronounced \"see naught\" or \"see not\") code.
 Derived from cc-mode." t)
 
 (add-to-list 'load-path (concat c0-root "c0-mode"))
-(setq c0de-path (concat c0-root "bin/c0de"))
+(setq code-path (concat c0-root "bin/code"))
 
