@@ -120,27 +120,27 @@ fun cmdToString (cmd: cmd): string =
    case cmd of
       Label (l, "") => "Label: L" ^ Int.toString l 
     | Label (l, s) => "Label: L" ^ Int.toString l ^ " // " ^ s
-    | Exp (e1, pos) => (* Mark.show pos ^ "\n" ^ *) 
+    | Exp (e1, pos) => Mark.show pos ^ "\n" ^ 
       expToString false e1
     | Declare (ty, x, NONE) => 
       "New " ^ Ast.Print.pp_tp ty ^ " " ^ Symbol.name x
     | Declare (ty, x, SOME (e, pos)) => 
       "New " ^ Ast.Print.pp_tp ty ^ " " ^ Symbol.name x
       ^ " = " ^ expToString false e
-    | Assign (oper, e1, e2, pos) => (* Mark.show pos ^ "\n" ^ *) 
+    | Assign (oper, e1, e2, pos) => Mark.show pos ^ "\n" ^ 
       expToString false e1 ^ " " 
       ^ (case oper of NONE => "" | SOME oper => binopToString oper) ^ "= "
       ^ expToString false e2
     (* | Call _ => "CALL" *)
-    | Assert (e1, msg, pos) => (* Mark.show pos ^ "\n" ^ *) 
+    | Assert (e1, msg, pos) => Mark.show pos ^ "\n" ^
       "Assert " ^ expToString false e1 ^ " \"" ^ msg ^ "\""
-    | CondJump (e1, pos, l) => (* Mark.show pos ^ "\n" ^ *) 
+    | CondJump (e1, pos, l) =>  Mark.show pos ^ "\n" ^ 
       "Go to L" ^ Int.toString l ^ " if not " ^ expToString false e1
     | Jump l => 
       "Go to L" ^ Int.toString l ^ ""
-    | Return NONE => (* Mark.show pos ^ "\n" ^ *) 
+    | Return NONE =>  (*Mark.show pos ^ "\n" ^ *)
       "Return"
-    | Return (SOME (e1, pos)) => (* Mark.show pos ^ "\n" ^ *) 
+    | Return (SOME (e1, pos)) =>  Mark.show pos ^ "\n" ^  
       "Return " ^ expToString false e1
     | PushScope => "{"
     | PopScope n => String.concat (List.tabulate (n, (fn _ => "}")))

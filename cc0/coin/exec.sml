@@ -174,6 +174,8 @@ and step (cmds, labs, pc) : step_info =
             end
           | C0.CCall(NONE,f,args,pos) =>
             let
+              val old_depth = !current_depth
+              val () = current_depth := 0
               val actual_args = List.map (Eval.eval_exp state) args
               val calltype = call_step(f,actual_args,pos)
             in
@@ -182,6 +184,7 @@ and step (cmds, labs, pc) : step_info =
                                            val _ = init_fun(f,actual_args,formal_args,pos)
                                            val _ = exec code
                                            val _ = State.pop_fun state
+                                           val _ = current_depth := old_depth
                                          in
                                            PC(pc+1)
                                          end
@@ -189,6 +192,8 @@ and step (cmds, labs, pc) : step_info =
             end
           | C0.CCall(SOME(x),f,args,pos) => 
             let
+              val old_depth = !current_depth
+              val () = current_depth := 0
               val loc = Eval.eval_lval state (C0.Var x)
               val actual_args = List.map (Eval.eval_exp state) args
               
@@ -200,12 +205,17 @@ and step (cmds, labs, pc) : step_info =
                                val _ = init_fun(f,actual_args,formal_args,pos)
                                val ret_val = exec code
                                val _ = State.pop_fun state
+                               val _ = current_depth := old_depth
                                val _ = case ret_val of SOME(v) => 
-                                            Eval.put (state,loc,v)
-                                                     | NONE => ()
+                                        (Eval.put (state, loc, v);
+                                          if !current_depth = 0 orelse Flag.isset Flags.flag_trace 
+                                          then (print (C0.expToString false (C0.Var x) ^ " is " ^
+                                                      State.value_string v ^ "\n"))
+                                          else ())
+                                        | NONE => ()
                              in
                                PC(pc+1)
-                             end
+                             end 
             end
           | C0.Declare (tp, x, NONE) => 
             (State.declare (state, x, tp)
@@ -275,7 +285,7 @@ and step (cmds, labs, pc) : step_info =
             (current_pos := SOME pos
               ; ReturnSome(Eval.eval_exp state e))
           | C0.PushScope => 
-            (current_depth := !current_depth + 1
+               (current_depth := !current_depth + 1
               ; State.push_scope state
               ; PC(pc+1))
           | C0.PopScope n => 

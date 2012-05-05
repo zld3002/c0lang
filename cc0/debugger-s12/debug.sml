@@ -29,19 +29,20 @@ struct
   fun check_pos ((0,0),(0,0),_) = false
     | check_pos _ = true
 
-  fun get_comm_string (C0.Exp(e,pos)) = 
-        (check_pos pos,Mark.show(pos))
-    | get_comm_string (cmd as (C0.Assign(binop,e1,e2,pos))) =
-        (check_pos pos,Mark.show(pos))
-    | get_comm_string (cmd as (C0.CCall(target,f,args,pos))) = 
-        (check_pos pos,Mark.show(pos))
-    | get_comm_string (cmd as (C0.Assert(e,s,pos))) = 
-        (check_pos pos,Mark.show(pos))
-    | get_comm_string (cmd as (C0.Return(SOME(e,pos)))) = 
-        (check_pos pos,Mark.show(pos))
-    | get_comm_string (cmd as (C0.Declare(tau,x,SOME(e,pos)))) = 
-        (check_pos pos,Mark.show(pos))
-    | get_comm_string cmd = (false,"")
+  fun get_comm_string c =
+  case c of (C0.Exp(e,pos)) => 
+        (true,C0.cmdToString c)
+    | (cmd as (C0.Assign(binop,e1,e2,pos))) =>
+        (true,C0.cmdToString c)
+    | (cmd as (C0.CCall(target,f,args,pos))) => 
+        (true,C0.cmdToString c)
+    | (cmd as (C0.Assert(e,s,pos))) =>
+        (true,C0.cmdToString c)
+    | (cmd as (C0.Return(SOME(e,pos)))) =>
+        (true,C0.cmdToString c)
+    | (cmd as (C0.Declare(tau,x,SOME(e,pos)))) =>
+        (true,C0.cmdToString c)
+    | cmd => (false,"")
 
   fun io next_cmd fname = 
   let
@@ -66,7 +67,8 @@ struct
 (*------------- Core I/O and evaluation -------------------*)
   
   fun init_fun(f,actual_args,formal_args,pos) = 
-        (State.push_fun (Exec.state, f, (f, pos));
+        (
+        State.push_fun (Exec.state, f, (f, pos));
         app (fn ((tp, x), v) => 
           (State.declare (Exec.state, x, tp);
         State.put_id (Exec.state, x, v)))
@@ -168,7 +170,7 @@ struct
          usageinfo = 
          GetOpt.usageInfo 
            {header = "Usage: " ^ name
-                     ^ " coinexec [OPTIONS_AND_SOURCEFILES...]",
+                     ^ " c0de [OPTIONS_AND_SOURCEFILES...]",
             options = Flags.core_options},
          args = args}
       handle _ => raise COMPILER_ERROR 

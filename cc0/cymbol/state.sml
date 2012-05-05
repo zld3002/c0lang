@@ -131,10 +131,7 @@ functor StateFn (structure Data : DATA
       | (Ast.Void, Ast.Void) => true
       | _ => false
 
-  (* We only have to typecheck assignable values! 
-
-      igillis 4/22/12: This is no longer true with the new addrof operator
-      added to go along with fp's hoisting mechanism. *)
+  (* We only have to typecheck assignable values! *)
   fun typecheck (v, ty) = ty_eq ty Ast.Any orelse
     case v of 
       Unit => ty_eq ty Ast.Void
@@ -513,14 +510,17 @@ functor StateFn (structure Data : DATA
 
   fun print_locals (S{stack = ref (T{locals, ...}), ...}) =
 	let
-		fun print_locals'(ty_table,v_table) = 
+		fun print_locals' ((ty_table,v_table)::llist) = 
 		let
 			val s_v_list = Symbol.elemsi v_table
-	  in
-			List.app (fn (s,v) => TextIO.print (Symbol.name s ^ ": "^(value_string v)^"\n")) s_v_list	
+      val _ = 
+			  List.app (fn (s,v) => TextIO.print (Symbol.name s ^ ": "^(value_string v)^"\n")) s_v_list	
+    in
+      print_locals' llist
    	end
+     | print_locals' nil = ()
 	in
-		case locals of nil => () | (l::llist) => print_locals' l
+		print_locals' locals
 	end
 
 end

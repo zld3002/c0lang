@@ -70,7 +70,7 @@ and cExp (pos : Mark.ext option) exp =
     | Ast.OpExp opexp => cOpExp pos opexp
     | Ast.Select (exp, field) => Field (cExp pos exp, field)
     | Ast.FunCall (f, es) => 
-      Call (f, map (cExp pos) es, valOf pos "No mark for call")
+        Call (f, map (cExp pos) es, valOf pos "No mark for call")
     | Ast.Alloc tp => Alloc tp
     | Ast.AllocArray (tp, exp) => AllocArray (tp, cExp pos exp)
     | Ast.Result => raise Error.Internal "No '\\result' action"
@@ -172,16 +172,15 @@ fun cStms args stms pos =
         | findLabel (i, _ :: cmds) n = findLabel (i+1, cmds) n
 
       val stms_s = List.foldr op^ "" (List.map Ast.Print.pp_stm stms)
-      (*val _ = TextIO.output(TextIO.stdErr,"Before isolation: \n"^stms_s)*)
+      val _ = TextIO.output(TextIO.stdErr,"Before isolation: \n"^stms_s)
 
       val env = Syn.syn_decls Symbol.empty args
       val stms = List.concat (List.map (Isolate.iso_stm env) stms)
 
       val stms_s = List.foldr op^ "" (List.map Ast.Print.pp_stm stms)
-      (*val _ = TextIO.output(TextIO.stdErr,"After isolation: \n"^stms_s)*)
+      val _ = TextIO.output(TextIO.stdErr,"After isolation: \n"^stms_s)
       
       val cmds = List.concat (map (cStm (0, NONE, NONE) (SOME pos)) stms)
-      (*val _ = TextIO.output(TextIO.stdErr,"Successfully compiled\n")*)
       val cmds = List.concat (map fake_translate cmds)
       val labs = Vector.tabulate (!nextlabel, findLabel (0, cmds))
    in
