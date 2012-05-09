@@ -178,7 +178,7 @@ fun cStms args stms pos =
       val stms = List.concat (List.map (Isolate.iso_stm env) stms)
 
       val stms_s = List.foldr op^ "" (List.map Ast.Print.pp_stm stms)
-      val _ = Flag.guard Flags.flag_emacs
+      val _ = Flag.guard Flags.interactive
                 (fn () => TextIO.output(TextIO.stdErr,"\n"^stms_s))
       
       val cmds = List.concat (map (cStm (0, NONE, NONE) (SOME pos)) stms)
