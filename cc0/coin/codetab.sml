@@ -101,8 +101,8 @@ fun process_ast pre current_lib =
 
 fun load_lib [] lib = print ("WARNING: failed to load library <" ^ lib ^ ">\n")
   | load_lib (libdir :: path) lib =
-    let val lib_file = OS.Path.concat(libdir,"lib"^lib^".so") in
-       case NativeLibrary.load lib_file of
+    let val lib_file = OS.Path.concat(libdir,("lib"^lib^".so")) in
+       case NativeLibrary.load libdir lib of
           NONE => 
           (Flag.guard Flags.flag_verbose 
               (fn () => print ("Library " ^ lib_file ^ " did not load\n")) ()

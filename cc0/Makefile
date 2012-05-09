@@ -221,12 +221,12 @@ coin-exec: bin
 	$(MAKE) -C compiler buildid
 	$(MLTON_NATIVE) bin/coin-exec coin/coin-exec.mlb $(NATIVE_COIN)
 
-## c0de - The C0 Debugger
+## code - The C0 Debugger
 
-.PHONY: c0de
-c0de: bin
+.PHONY: code
+code: bin
 	$(MAKE) -C compiler buildid
-	$(MLTON_NATIVE) bin/c0de debugger-s12/debug.mlb $(NATIVE_COIN)
+	$(MLTON_NATIVE) bin/code debugger-s12/debug.mlb $(NATIVE_COIN)
 
 ## Testing harnesses
 

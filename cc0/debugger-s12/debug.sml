@@ -12,6 +12,25 @@ end
 
 structure Debug = 
 struct
+
+  val help_message = 
+  "Code - the C0 debugger.                                            \n\
+  \                                                                   \n\
+  \The code shown is the internal representation of your C0 program.  \n\
+  \The debugger will display the NEXT command to be executed. To      \n\
+  \proceed, hit enter, or any key other than the following special    \n\
+  \inputs listed below. Default behavior is to step into function     \n\
+  \calls.                                                             \n\
+  \                                                                   \n\
+  \The following inputs allow you to control the debugger.            \n\
+  \ v           - Display local variables                             \n\
+  \ h           - Display this help message                           \n\
+  \ n           - Execute command, skipping over function calls       \n\
+  \ q           - Exit the debugger                                   \n\
+  \                                                                   \n"
+
+
+
   structure C0 = C0Internal
   structure State = ConcreteState
 
@@ -19,7 +38,7 @@ struct
   exception LINK_ERROR
   exception Internal of string
 
-  datatype debug_action = STEP | NEXT | LOCAL_VARS | QUIT
+  datatype debug_action = STEP | NEXT | LOCAL_VARS | QUIT | HELP
 
 (*-------------- Printing ----------------*)
   fun print s = TextIO.print s
@@ -27,36 +46,58 @@ struct
   fun println s = TextIO.print (s^"\n")
   
   fun check_pos ((0,0),(0,0),_) = false
-    | check_pos _ = true
+    | check_pos pos = true 
+
+  fun get_pos_string c =
+  case c of (C0.Exp(e,pos)) =>
+    (check_pos pos, Mark.show pos)
+    | (cmd as (C0.Assign(binop,e1,e2,pos))) =>
+        (check_pos pos,Mark.show pos)
+    | (cmd as (C0.CCall(target,f,args,pos))) => 
+        (check_pos pos,Mark.show pos)
+    | (cmd as (C0.Assert(e,s,pos))) =>
+        (check_pos pos,Mark.show pos)
+    | (cmd as (C0.Return(SOME(e,pos)))) =>
+        (check_pos pos,Mark.show pos)
+    | (cmd as (C0.Declare(tau,x,SOME(e,pos)))) =>
+        (check_pos pos,Mark.show pos)
+    | cmd => (false,"")
 
   fun get_comm_string c =
   case c of (C0.Exp(e,pos)) => 
-        (true,C0.cmdToString c)
+        (check_pos pos,C0.cmdToString c)
     | (cmd as (C0.Assign(binop,e1,e2,pos))) =>
-        (true,C0.cmdToString c)
+        (check_pos pos,C0.cmdToString c)
     | (cmd as (C0.CCall(target,f,args,pos))) => 
-        (true,C0.cmdToString c)
+        (check_pos pos,C0.cmdToString c)
     | (cmd as (C0.Assert(e,s,pos))) =>
-        (true,C0.cmdToString c)
+        (check_pos pos,C0.cmdToString c)
     | (cmd as (C0.Return(SOME(e,pos)))) =>
-        (true,C0.cmdToString c)
+        (check_pos pos,C0.cmdToString c)
     | (cmd as (C0.Declare(tau,x,SOME(e,pos)))) =>
-        (true,C0.cmdToString c)
+        (check_pos pos,C0.cmdToString c)
     | cmd => (false,"")
 
   fun io next_cmd fname = 
   let
-    val (to_print,pos_s) = get_comm_string next_cmd
-  in  
+    val (to_print,s) = if Flag.isset Flags.flag_emacs then
+                          get_pos_string next_cmd
+                       else get_comm_string next_cmd
+  in
     if to_print then
       let
-        val _ = println (pos_s^" in function "^fname)
+        val _ = println (s^" in function "^fname)
         val _ = print "(c0de) "
         val input = valOf (TextIO.inputLine TextIO.stdIn)
         val action = case input of 
             "v\n" => LOCAL_VARS
+          | "vars\n" => LOCAL_VARS
           | "n\n" => NEXT
+          | "next\n" => NEXT
           | "q\n" => QUIT
+          | "quit\n" => QUIT
+          | "h\n" => HELP
+          | "help\n" => HELP
           | _ => STEP
       in 
         action 
@@ -89,19 +130,21 @@ struct
       | Exec.PC(i) => dstep' i)
     in
       case action of LOCAL_VARS => (Exec.print_locals(); dstep' pc)
-        | QUIT => (println "Goodbye!"; NONE)
+        | HELP => (println help_message; dstep' pc) 
+        | QUIT => (println "Goodbye!"; OS.Process.exit(OS.Process.success))
         | STEP => 
         (case next_cmd of C0.CCall(NONE,f,args,pos) =>
           let
             val actual_args = List.map (Eval.eval_exp Exec.state) args
           in
-          (case Exec.call_step(f,actual_args,pos) of Exec.Interp((_,formal_args),code) => 
-                                                  (init_fun(f,actual_args,formal_args,pos);
-                                                   let
-                                                    val _ = dstep code (Symbol.name f) in () end;
-                                                   let val _ = State.pop_fun (Exec.state) in () end;
-                                                   dstep' (pc+1))
-                                            | Exec.Native(res) => dstep' (pc+1))
+          (case Exec.call_step(f,actual_args,pos) of 
+            Exec.Interp((_,formal_args),code) => 
+                   (init_fun(f,actual_args,formal_args,pos);
+                    let
+                      val _ = dstep code (Symbol.name f) in () end;
+                    let val _ = State.pop_fun (Exec.state) in () end;
+                    dstep' (pc+1))
+          | Exec.Native(res) => dstep' (pc+1))
           end
             | C0.CCall(SOME(x),f,args,pos) => 
               let
@@ -162,7 +205,7 @@ struct
    val () = Top.reset ()
    val sources = 
       Top.get_sources_set_flags
-        {options = Flags.core_options,
+        {options = Flags.core_options @ Flags.coin_options @ Flags.code_options,
          errfn = fn msg => println msg,
          versioninfo = 
             "CoinExec " ^ Version.version 
@@ -170,8 +213,8 @@ struct
          usageinfo = 
          GetOpt.usageInfo 
            {header = "Usage: " ^ name
-                     ^ " c0de [OPTIONS_AND_SOURCEFILES...]",
-            options = Flags.core_options},
+                     ^ " code [OPTIONS_AND_SOURCEFILES...]",
+            options = Flags.core_options @ Flags.coin_options @ Flags.code_options},
          args = args}
       handle _ => raise COMPILER_ERROR 
   

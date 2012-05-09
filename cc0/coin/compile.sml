@@ -172,13 +172,14 @@ fun cStms args stms pos =
         | findLabel (i, _ :: cmds) n = findLabel (i+1, cmds) n
 
       val stms_s = List.foldr op^ "" (List.map Ast.Print.pp_stm stms)
-      val _ = TextIO.output(TextIO.stdErr,"Before isolation: \n"^stms_s)
+      (*val _ = TextIO.output(TextIO.stdErr,"Before isolation: \n"^stms_s)*)
 
       val env = Syn.syn_decls Symbol.empty args
       val stms = List.concat (List.map (Isolate.iso_stm env) stms)
 
       val stms_s = List.foldr op^ "" (List.map Ast.Print.pp_stm stms)
-      val _ = TextIO.output(TextIO.stdErr,"After isolation: \n"^stms_s)
+      val _ = Flag.guard Flags.flag_emacs
+                (fn () => TextIO.output(TextIO.stdErr,"\n"^stms_s))
       
       val cmds = List.concat (map (cStm (0, NONE, NONE) (SOME pos)) stms)
       val cmds = List.concat (map fake_translate cmds)
