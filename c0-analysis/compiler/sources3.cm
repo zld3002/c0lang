@@ -29,7 +29,11 @@ Group is
 	(* type/print-c.sml *)
 	
 	analysis/analysisast.sml
+	analysis/env.sml
+	analysis/preprocess.sml
 	analysis/analysis.sml
+	analysis/safety.sml
+	analysis/nullity.sml
 
 
         c0vm/c0vm.sml

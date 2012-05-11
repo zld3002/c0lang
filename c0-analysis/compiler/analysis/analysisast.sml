@@ -3,8 +3,30 @@
  * Jason Koenig <jrkoenig@andrew.cmu.edu>
  *)
 
+
+signature VERIFICATIONERROR =
+sig 
+   type error
+   val VerificationError : (Mark.ext option * string) -> error
+   val pp_error : error -> string
+end
+
+structure VError :> VERIFICATIONERROR =
+struct
+   datatype err = VE of Mark.ext option * string
+   type error = err
+   fun VerificationError x = VE x
+   fun pp_error (VE (SOME e, s)) =
+                    "error at " ^ (Mark.show e) ^ ": " ^ s
+     | pp_error (VE (NONE, s)) =
+                    "error: " ^ s
+end
+
 signature AAST = 
 sig
+   
+   exception UnsupportedConstruct of string
+   
    type symbol = Symbol.symbol
    datatype aexpr = 
        Local of Symbol.symbol * int
@@ -12,10 +34,11 @@ sig
      | Call of Symbol.symbol * (aexpr list)
      | IntConst of Word32.word
      | BoolConst of bool
-     | Default
      | Alloc of Ast.tp
      | Null
      | AllocArray of Ast.tp * aexpr
+     | Select of aexpr * symbol
+     | MarkedE of aexpr Mark.marked
    datatype aphi = 
        PhiDef of (Symbol.symbol * int * (int list))
    datatype astmt = 
@@ -31,17 +54,22 @@ sig
      | PhiBlock of (aphi list)
      | Return of aexpr option
      | If of aexpr * astmt * astmt
-     | While of (aphi list) * aexpr * (aexpr list) * astmt  
+     | While of (aphi list) * aexpr * (aexpr list) * astmt
+     | MarkedS of astmt Mark.marked
    structure Print :
 	  sig
 		 val pp_aphi : aphi -> string
 		 val pp_aexpr : aexpr -> string
 		 val pp_astmt : astmt -> string
+		 val commas : string -> string list -> string
 	  end
 end
 
 structure AAst :> AAST = 
 struct
+   
+   exception UnsupportedConstruct of string
+   
    type symbol = Symbol.symbol
    datatype aexpr = 
        Local of Symbol.symbol * int
@@ -49,10 +77,11 @@ struct
      | Call of Symbol.symbol * (aexpr list)
      | IntConst of Word32.word
      | BoolConst of bool
-     | Default
      | Alloc of Ast.tp
      | Null
      | AllocArray of Ast.tp * aexpr
+     | Select of aexpr * symbol
+     | MarkedE of aexpr Mark.marked
    datatype aphi = 
        PhiDef of (Symbol.symbol * int * (int list))
    datatype astmt = 
@@ -68,10 +97,11 @@ struct
      | PhiBlock of (aphi list)
      | Return of aexpr option
      | If of aexpr * astmt * astmt
-     | While of (aphi list) * aexpr * (aexpr list) * astmt  
+     | While of (aphi list) * aexpr * (aexpr list) * astmt
+     | MarkedS of astmt Mark.marked
    structure Print =
    struct
-      (*commas string -> string list -> string
+      (*
         creates a string with c interleaved between elements of sl, in one string*)
 		fun commas c sl = case sl of
 		                     [] => ""
@@ -99,7 +129,6 @@ struct
 		           "(" ^ (commas ", " (map pp_aexpr l)) ^ ")"
 		  | pp_aexpr (IntConst w) = "0x"^(Word32.toString w)
 		  | pp_aexpr (BoolConst b) = if b then "true" else "false"
-		  | pp_aexpr (Default) = "<default>"
 		  | pp_aexpr (Call (sym, l)) =
 		       (Symbol.name sym) ^ "(" ^ (commas ", " (map pp_aexpr l)) ^ ")"
 		  | pp_aexpr (Null) = "NULL"
@@ -107,6 +136,9 @@ struct
 		       "alloc("^(Ast.Print.pp_tp tp)^")"
 		  | pp_aexpr (AllocArray (tp, e)) =
 		       "alloc("^(Ast.Print.pp_tp tp)^","^(pp_aexpr e)^")"
+		  | pp_aexpr (Select (e, f)) =
+		       "(" ^ (pp_aexpr e) ^ ")."^(Symbol.name f)
+		  | pp_aexpr (MarkedE me) = pp_aexpr (Mark.data me)
 
 		fun pp_astmt (Nop) = "(void)"
 		  | pp_astmt (Seq(s, s')) = (pp_astmt s) ^ ";\n" ^ (pp_astmt s')
@@ -131,7 +163,8 @@ struct
 		      (commas ";\n" (map pp_aphi p))
 		      ^"\n" ^(commas ";\n" (map (fn s => "//@loop_invariant" ^ (pp_aexpr s)) specs))
 		      ^"\n(" ^ (pp_aexpr e) ^") {\n"
-		          ^ (pp_astmt stm) ^ "\n}" 
+		          ^ (pp_astmt stm) ^ "\n}"
+		  | pp_astmt (MarkedS ms) = pp_astmt (Mark.data ms)
 		
 		end
 end

@@ -17,8 +17,10 @@ sig
   val compare : symbol * symbol -> order (* compare symbols by their creation time *)
 
   val reset : unit -> unit	(* resets the hash table in which the symbols are stored *)
-  val symbol : string -> symbol (* generates a new symbol with given name *)
+  val symbol : string -> symbol (* returns the symbol with given name (creating if necessary) *)
+  val new : string -> symbol (* generates a new symbol with given name *)
   val name : symbol -> string	(* returns a name associated with symbol *)
+  val nameFull : symbol -> string	(* returns the full internal name of a symbol *)
 
   (* symbol tables -- allows association of any type with each symbol *)
   type 'a table
@@ -75,10 +77,13 @@ struct
 		 HashTable.insert (!ht) (name, i);
 		 (name, i)
 	     end)
-
+    fun new name = 
+       let val i = !nexts before nexts := !nexts + 1
+       in (name, i) end
   end
 
   fun name (n, i) = n
+  fun nameFull (n, i) = n ^ "$" ^ (Int.toString i)
 
   structure Map = BinaryMapFn (struct
 				 type ord_key = symbol
