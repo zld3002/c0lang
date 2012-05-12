@@ -112,6 +112,7 @@ sig
   structure Print :
   sig
     val pp_tp : tp -> string
+    val pp_oper : oper -> string
     val pp_exp : exp -> string
     val pp_stm : stm -> string
     val pp_program : program -> string

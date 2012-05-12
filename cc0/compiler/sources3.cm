@@ -27,6 +27,14 @@ Group is
         type/dyn-check.sml
 	type/print-c-compact.sml
         type/iso.sml
+	
+	analysis/analysisast.sml
+	analysis/env.sml
+	analysis/preprocess.sml
+	analysis/analysis.sml
+	analysis/safety.sml
+	analysis/nullity.sml
+
 
         c0vm/c0vm.sml
         c0vm/c0vm-c0ffi.sml

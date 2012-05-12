@@ -220,7 +220,8 @@ struct
 			val () = Flag.guard Flags.flag_verbose
 				 (fn () => say ("Checking file " ^ source_c0 ^ " ...")) ()
                         (* false : is not library *)
-			val ast' = TypeChecker.typecheck(ast, false) 
+			val ast' = TypeChecker.typecheck(ast, false)
+			(*val () = say (Analysis.analyze ast')*)
 			val () = Flag.guards [Flags.flag_verbose, Flags.flag_dyn_check]
 				 (fn () => say ("Transforming contracts on file " ^ source_c0 ^ " ...")) ()
 			val ast'' = if Flag.isset Flags.flag_dyn_check
