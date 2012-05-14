@@ -106,6 +106,7 @@ struct
       (fn (x, y) => S.bool (D.bool_or (S.value_eq (x, y), S.value_lt (x, y))))
     | C0.Geq => 
       (fn (x, y) => S.bool (D.bool_or (S.value_eq (y, x), S.value_lt (y, x))))
+    | C0.Addr => raise Error.Internal ("Unexpected binary operator: address of") 
 
   fun to_heap loc = 
     case loc of
@@ -209,6 +210,8 @@ struct
            then S.get_addr (state, (ty, S.offset_index (state, addr, i)))
            else raise Error.ArrayOutOfBounds (i, n)
          end
+       | C0.Call _ => 
+          raise Error.Internal "Unexpected call expression; should be CCall stm after hoisting"
     end
 
 end

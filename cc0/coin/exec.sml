@@ -239,8 +239,9 @@ and step (cmds, labs, pc) : step_info =
               val l_loc = Eval.eval_lval state e1
               (* Evaluate the righthand side of the assignment to a location.
                  The location should always be a heap address *)
-              val (r_loc as (Eval.HeapLoc(tp,addr))) = Eval.eval_lval state e2
-                handle Bind => raise Error.Internal "Addr of a non-heap location\n"
+              val r_loc as (tp,addr) = case Eval.eval_lval state e2 of
+                                                  Eval.HeapLoc(tp,addr) => (tp,addr)
+                                                | _ => raise Error.Internal "Addr of operation on a non-heap location\n"
 
               val v = State.pointer (tp,addr);
             in
