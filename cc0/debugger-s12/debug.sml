@@ -87,7 +87,7 @@ struct
     if to_print then
       let
         val _ = println (s^" in function "^fname)
-        val _ = print "(c0de) "
+        val _ = print "(code) "
         val input = valOf (TextIO.inputLine TextIO.stdIn)
         val action = case input of 
             "v\n" => LOCAL_VARS
