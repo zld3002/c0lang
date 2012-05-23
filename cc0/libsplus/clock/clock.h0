@@ -6,3 +6,8 @@
  * (measured in milliseconds)
  */
 int millisecs();
+
+/* Return time elapsed since midight, Jan 1, 1970 (UTC)
+ * (measured in seconds)
+ */
+int now();

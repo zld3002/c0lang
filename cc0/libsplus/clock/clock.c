@@ -8,3 +8,8 @@ int millisecs()
 	/* CLOCK_PER_SEC = 10^6 per UNIX Spec (see clock(3)) */
 	return (int)(t / (CLOCKS_PER_SEC / 1000)); 
 }
+
+int now()
+{
+    return (int)time(NULL);
+}
