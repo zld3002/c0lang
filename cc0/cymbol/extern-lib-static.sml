@@ -13,20 +13,6 @@ type library = function Map.map
 
 val mapN = List.map (fn (x, y) => (x, NativeFn.Native y))
 
-(* Library args *)
-val lib_args = List.foldr Map.insert' Map.empty (mapN (
-("args_flag",            _import "__c0ffi_args_flag" public: fnptr;) ::
-("args_int",             _import "__c0ffi_args_int" public: fnptr;) ::
-("args_parse",           _import "__c0ffi_args_parse" public: fnptr;) ::
-("args_string",          _import "__c0ffi_args_string" public: fnptr;) ::
-[]))
-
-(* Library clock *)
-val lib_clock = List.foldr Map.insert' Map.empty (mapN (
-("millisecs",            _import "__c0ffi_millisecs" public: fnptr;) ::
-("now",                  _import "__c0ffi_now" public: fnptr;) ::
-[]))
-
 (* Library conio *)
 val lib_conio = List.foldr Map.insert' Map.empty (mapN (
 ("error",                _import "__c0ffi_error" public: fnptr;) ::
@@ -131,8 +117,6 @@ val lib_string = List.foldr Map.insert' Map.empty (mapN (
 []))
 
 fun load _ "" = NONE
-  | load _ "args" = SOME (lib_args)
-  | load _ "clock" = SOME (lib_clock)
   | load _ "conio" = SOME (lib_conio)
   | load _ "curses" = SOME (lib_curses)
   | load _ "file" = SOME (lib_file)
