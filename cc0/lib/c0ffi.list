@@ -7,6 +7,10 @@ args_int
 args_parse
 args_string
 
+lib clock
+millisecs
+now
+
 lib conio
 error
 print

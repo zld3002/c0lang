@@ -11,4 +11,5 @@ cc0/c0.nanorc
 cc0/doc/README.txt
 cc0/doc/reference/c0-reference.pdf
 cc0/doc/reference/c0-libraries.pdf
+cc0/doc/reference/c0-libraries-plus.pdf
 cc0/doc/src
