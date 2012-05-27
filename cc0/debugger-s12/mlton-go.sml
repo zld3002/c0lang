@@ -1,5 +1,5 @@
 structure Go = 
 struct
-  val _ = debug(CommandLine.name(),CommandLine.arguments());
+  val _ = Debug.debug(CommandLine.name(),CommandLine.arguments());
 end
 
