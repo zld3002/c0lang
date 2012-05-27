@@ -2,6 +2,8 @@
 
 local
   debug.sml
+  mlton-go.sml
 in
   structure Debug
+  structure Go
 end

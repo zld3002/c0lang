@@ -238,7 +238,4 @@ struct
     call_main(library_headers,program)
   end
 
-  val _ = debug(CommandLine.name(),CommandLine.arguments());
-
-
 end
