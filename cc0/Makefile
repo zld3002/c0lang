@@ -115,6 +115,8 @@ cc0 parse3: bin bare
 	$(COPY) compiler/bin/cpfiles bin
 	chmod +x bin/cc0 bin/cpfiles
 
+
+
 parse2: bin bare
 	$(MAKE) -C compiler clean
 	$(MAKE) -C compiler buildid
@@ -227,6 +229,12 @@ coin-exec: bin
 code: bin
 	$(MAKE) -C compiler buildid
 	$(MLTON_NATIVE) bin/code debugger-s12/debug.mlb $(NATIVE_COIN)
+
+code-smlnj: bin
+	$(MAKE) -C debugger-s12 code
+	$(COPY) debugger-s12/code.heap.* bin
+	$(COPY) debugger-s12/code-smlnj bin/code
+	chmod +x bin/code
 
 ## Testing harnesses
 
