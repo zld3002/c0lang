@@ -112,23 +112,27 @@
 ;;
 ;; The output is parsed one line at a time
 
-(defun code-parse-position
-  (string)
+(defun code-parse-position (string)
   "Parse 2 integers separated by '.' from STRING"
   (let ((dot-pos (string-match "[.]" string)))
-    (let ((string1 (substring string 0 dot-pos))
-	  (string2 (substring string (+ 1 dot-pos))))
-      (list (string-to-number string1) (string-to-number string2)))))
+    (if (not dot-pos)
+	(list (string-to-number string) 0)
+      (let ((string1 (substring string 0 dot-pos))
+	    (string2 (substring string (+ 1 dot-pos))))
+	(list (string-to-number string1) (string-to-number string2))))))
 
-(defun code-parse-positions
-  (string)
+(defun code-parse-positions (string)
   "Parse 4 position integers from STRING"
   (let ((colon-pos (string-match ":" string)))
-    (let ((dash-pos (string-match "-" string colon-pos)))
-      (let ((string1 (substring string (+ 1 colon-pos) dash-pos))
-	    (string2 (substring string (+ 1 dash-pos))))
-	(append (code-parse-position string1)
-		(code-parse-position string2))))))
+    (if (not colon-pos)
+	'(0 0 0 0)
+      (let ((dash-pos (string-match "-" string colon-pos)))
+	(if (not dash-pos)
+	    '(0 0 0 0)
+	  (let ((string1 (substring string (+ 1 colon-pos) dash-pos))
+		(string2 (substring string (+ 1 dash-pos))))
+	    (append (code-parse-position string1)
+		    (code-parse-position string2))))))))
 
 (defun begins-with (string prefix)
   "Returns t if STRING begins with PREFIX. Beware of '.'"
@@ -283,7 +287,7 @@ include a breakpoint"
 	(progn
           (setq args (read-string "Call debugger with: code" 
                (concat 
-                   " " 
+                   " -e " 
                    (file-relative-name (buffer-file-name)))))
 	  (setq buffer-read-only t)
 	  (save-buffer)
