@@ -1,8 +1,9 @@
 signature COMPILE = sig
    
-val cStm : Ast.stm -> Mark.ext -> C0Internal.program
+val cStm : Ast.stm -> Mark.ext -> C0Internal.program (* do not isolate effects *)
 val cStms : Ast.vardecl list -> Ast.stm list -> Mark.ext -> C0Internal.program
- 
+             (* isolates effects *)
+
 end
 
 structure Compile:> COMPILE = 
@@ -93,7 +94,7 @@ fun fake_translate (Assign (NONE, Var x, Call (f, args, pos), _)) =
        [Declare(tp,x,NONE),CCall(SOME x,f,args,pos)]
   | fake_translate cmd = [cmd]
 
-fun cStms args stms pos =
+fun cStms iso_flag args stms pos =
    let
       val nextlabel = ref 0
       val next = fn () => !nextlabel before nextlabel := 1 + !nextlabel
@@ -171,13 +172,18 @@ fun cStms args stms pos =
           if x = n then i else findLabel (i+1, cmds) n
         | findLabel (i, _ :: cmds) n = findLabel (i+1, cmds) n
 
+      (*
       val stms_s = List.foldr op^ "" (List.map Ast.Print.pp_stm stms)
-      (*val _ = TextIO.output(TextIO.stdErr,"Before isolation: \n"^stms_s)*)
+      val _ = TextIO.output(TextIO.stdErr,"Before isolation: \n"^stms_s)
+      *)
 
-      val env = Syn.syn_decls Symbol.empty args
-      val stms = List.concat (List.map (Isolate.iso_stm env) stms)
+      (* isolate at the top level: preserve open scope *)
+      (* -fp May 27, 2012 *)
+      val stms = if iso_flag
+		 then Isolate.iso_top (Syn.syn_decls Symbol.empty args) stms
+		 else stms
 
-      val stms_s = List.foldr op^ "" (List.map Ast.Print.pp_stm stms)
+      (*val stms_s = List.foldr op^ "" (List.map Ast.Print.pp_stm stms) *)
       (*val _ = Flag.guard Flags.interactive
                 (fn () => TextIO.output(TextIO.stdErr,"\n"^stms_s))*)
       
@@ -188,7 +194,9 @@ fun cStms args stms pos =
       (Vector.fromList cmds, labs)
    end
 
-fun cStm x = cStms nil [ x ] 
+fun cStm x = cStms false nil [ x ]  (* false = don't isolate effects *)
+
+val cStms = cStms true (* true = isolate effects *)
 
 end
 

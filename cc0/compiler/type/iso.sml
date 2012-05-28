@@ -2,6 +2,7 @@ signature ISOLATE =
 sig
  val iso_exp : Ast.tp Symbol.table -> Ast.exp -> (Ast.stm list * Ast.exp)
  val iso_stm : Ast.tp Symbol.table -> Ast.stm -> Ast.stm list
+ val iso_top : Ast.tp Symbol.table -> Ast.stm list -> Ast.stm list (* for coin, preserve open scope *)
 end
 
 structure Isolate :> ISOLATE = 
@@ -13,8 +14,6 @@ struct
        let val (d, t) = Syn.new_tmp_init (tp, e)
        in (A.StmDecl(d), t) end
 
-   val MINUSONE = Word32.fromInt(~1);
-   val THIRTYTWO = Word32.fromInt(32);
    val MINUSONE = Word32.fromInt(~1);
    val THIRTYTWO = Word32.fromInt(32);
 
@@ -326,4 +325,17 @@ struct
 	     @ [A.Assign(SOME(A.DEREF), t, lv1)] (* t <*>= lv1; meaning t = &lv1; *)
 	     @ ss2 @ [A.Assign(NONE, A.OpExp(A.DEREF, [t]), p2)]) (* ss2 ; *t = p2; *)
 	end
+
+    fun iso_top env (A.StmDecl(d)::ss) =
+	let val (ss1, env') = iso_decls env [d]
+	    val ss2 = iso_top env' ss
+	in ss1 @ ss2 end
+      | iso_top env (A.Markeds(marked_stm)::ss) =
+	  iso_top env ((Mark.data marked_stm)::ss)
+      | iso_top env (s::ss) =
+	let val ss1 = iso_stm env s
+	    val ss2 = iso_top env ss
+	in ss1 @ ss2 end
+      | iso_top env nil = nil
+
 end
