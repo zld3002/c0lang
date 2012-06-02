@@ -12,8 +12,8 @@ sig
     val expand_all : Ast.tp -> Ast.tp
 
     (* creating new temporary variable declarations, unitialized or initialized *)
-    val new_tmp : Ast.tp -> Ast.vardecl * Ast.exp
-    val new_tmp_init : Ast.tp * Ast.exp -> Ast.vardecl * Ast.exp
+    val new_tmp : Ast.tp -> Mark.ext option -> Ast.vardecl * Ast.exp
+    val new_tmp_init : Ast.tp * Ast.exp -> Mark.ext option -> Ast.vardecl * Ast.exp
 end
 
 structure Syn :> SYN =
@@ -125,13 +125,13 @@ struct
 	  let val _ = next := !next+1
 	  in Symbol.symbol ("_tmp_" ^ Int.toString (!next)) end
   in
-    fun new_tmp (tp) =
+    fun new_tmp (tp) ext =
 	let val t = next_t ()
-	in (A.VarDecl(t, tp, NONE, NONE), A.Var(t)) end
+	in (A.VarDecl(t, tp, NONE, ext), A.Var(t)) end
 
-    fun new_tmp_init (tp, e) =
+    fun new_tmp_init (tp, e) ext =
 	let val t = next_t ()
-	in (A.VarDecl(t, tp, SOME(e), NONE), A.Var(t)) end
+	in (A.VarDecl(t, tp, SOME(e), ext), A.Var(t)) end
   end
 
 end

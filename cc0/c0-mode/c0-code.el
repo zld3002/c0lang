@@ -61,6 +61,12 @@
   "*Face used for highlighting erroneous expressions."
   :group 'code)
 
+(defvar code-locals-buffer nil
+  "Buffer which will display values of local variables")
+
+(defvar code-locals-accum nil
+  "Accumulator for local variable values for 'v' command")
+
 ;; Column positions given by ml-yacc are one off compared to
 ;; emacs. This should probably be taken care of in parsing though
 (defun code-get-pos
@@ -142,34 +148,49 @@
     (if (string-match "\n" string)
       (let ((newline-pos (string-match "\n" string)))
 	(progn
-	  (message (number-to-string newline-pos))
+	  ;; (message (number-to-string newline-pos))
 	  (code-parse-line (substring string 0 newline-pos))
 	  (code-parse (substring string (+ 1 newline-pos)))))
       (code-parse-line string)))
 
 (defun code-parse-line (string)
   "Parse one line of output from code program"
-  (cond ((begins-with string "Value") (message string))
-	((begins-with string "(code)") ())
-	((begins-with string "Error") (setq code-error string))
-	((begins-with string "Finished")
-	 (progn
-	   (code-exit-debug)
-	   (message string)))
+  (cond ;; ((begins-with string "Value") (message "%s" string))
+	((begins-with string "(code)")
+	 (if (not (null code-locals-accum))
+	     (progn
+	       ;; (message "%d" (length code-locals-accum))
+	       (with-current-buffer code-locals-buffer
+		 (delete-region (point-min) (point-max))
+		 (insert code-locals-accum)
+		 (goto-char (point-max)))
+	       (setq code-locals-accum nil))))
+	;; ((begins-with string "Error") (setq code-error string))
+	((begins-with string "main function")
+	 (code-exit-debug)
+	 (message "%s" string))
 	((string-match " in function " string)
 	 (if (and (boundp 'code-error) code-error)
 	     (progn
 	       (eval-expression
 		(append (list 'code-highlight-error) (code-parse-positions string)))
-	       (message (concat code-error
+	       (message "%s" (concat code-error
 				(substring string (string-match ":" string))))
 	       (setq code-error nil))
 	   (progn
 	     (eval-expression
 	      (append (list 'code-highlight-normal) (code-parse-positions string)))
-	     (message (substring string
-				 (+ 1 (string-match ":" string)))))))
-	(t (message string))))
+	     (message "%s" (substring string
+				      (+ 1 (string-match ":" string))))
+	     )))
+	((string-match "^\\w*: " string)
+	 ;; (message "--- %s" string)
+	 (setq code-locals-accum (concat code-locals-accum string "\n"))
+	 ())
+	;; suppress empty output at end
+	((string-equal "\n" string) ())
+	((string-equal "" string) ())
+	(t (message "%s" string))))
 
 ;;; Filter and Sentinel functions
 
@@ -178,27 +199,28 @@
 ;; to the parsing function
 (defun code-filter (proc string)
   "Filter function for code interaction"
-  (progn
-    (with-current-buffer (process-buffer proc)
-      (let ((moving (= (point) (process-mark proc))))
-	(save-excursion
-	  (goto-char (process-mark proc))
-	  (insert string)
-	  (set-marker (process-mark proc) (point)))
-	(if moving (goto-char (process-mark proc)))))
-    (code-parse string)))
+  (with-current-buffer (process-buffer proc)
+    (let ((moving (= (point) (process-mark proc))))
+      (save-excursion
+	(goto-char (process-mark proc))
+	(insert string)
+	(set-marker (process-mark proc) (point)))
+      (if moving (goto-char (process-mark proc)))))
+  (code-parse string))
 	 
 ;; Is called if the debugger process receives a signal
 ;; or exits
 (defun code-sentinel (proc string)
   "Sentinel for code process"
   (cond
-   ((begins-with string "finished") ())
+   ;; ((begins-with string "Goodbye")
+   ;; (message "%s" "quit code"))
    ((begins-with string "exited abnormally")
-    (progn
-      (code-exit-debug)
-      (message (concat "Debugger crashed, please report to developer.\n"
-		       "Message : Process code " string))))))
+    (code-exit-debug)
+    (message "%s" "program aborted")
+    ;; (message "%s" (concat "Debugger crashed, please report to developer.\n"
+    ;;           "Message : Process code " string))))))
+    )))
 
 ;;; Functions for sending input to the debugger
 
@@ -209,40 +231,47 @@
 (defun code-step ()
   "Step to next statement, potentially entering a function"
   (interactive)
-  (code-send-string "s\n"))
+  (code-send-string "s\n")
+  (code-send-string "v\n"))
 
 (defun code-next ()
   "Step to next statement, passing over functions unless they
 include a breakpoint"
   (interactive)
-  (code-send-string "n\n"))
+  (code-send-string "n\n")
+  (code-send-string "v\n"))
 
-(defun code-continue ()
-  "Go to the next breakpoint"
-  (interactive)
-  (code-send-string "c\n"))
+;; (defun code-continue ()
+;;   "Go to the next breakpoint"
+;;   (interactive)
+;;   (code-send-string "c\n"))
 
-(defun code-reverse-step ()
-  "Step backwards"
-  (interactive)
-  (code-send-string "rs\n"))
+;; (defun code-reverse-step ()
+;;   "Step backwards"
+;;   (interactive)
+;;   (code-send-string "rs\n"))
 
-(defun code-reverse-next ()
-  "Next backwards"
-  (interactive)
-  (code-send-string "rn\n"))
+;; (defun code-reverse-next ()
+;;   "Next backwards"
+;;   (interactive)
+;;   (code-send-string "rn\n"))
 
-(defun code-reverse-continue ()
-  "Continue backwards"
-  (interactive)
-  (code-send-string "cn\n"))
+;; (defun code-reverse-continue ()
+;;   "Continue backwards"
+;;   (interactive)
+;;   (code-send-string "cn\n"))
 
-(defun code-eval-exp ()
-  "Evaluate an expression"
+;; (defun code-eval-exp ()
+;;   "Evaluate an expression"
+;;   (interactive)
+;;   (progn
+;;     (setq exp (read-string "Evaluate Expression: " exp))
+;;     (code-send-string (concat "e " exp "\n"))))
+
+(defun code-locals ()
+  "Show the value of local variables"
   (interactive)
-  (progn
-    (setq exp (read-string "Evaluate Expression: " exp))
-    (code-send-string (concat "e " exp "\n"))))
+  (code-send-string "v\n"))
 
 (defun code-interrupt ()
   "Interrupt the debugger"
@@ -255,11 +284,12 @@ include a breakpoint"
 	(define-key map "s" 'code-step)
 	(define-key map (kbd "RET") 'code-step)
 	(define-key map "n" 'code-next)
-	(define-key map "c" 'code-continue)
-	(define-key map "rs" 'code-reverse-step)
-	(define-key map "rn" 'code-reverse-next)
-	(define-key map "rc" 'code-reverse-continue)
-	(define-key map "e" 'code-eval-exp)
+	;; (define-key map "c" 'code-continue)
+	;; (define-key map "rs" 'code-reverse-step)
+	;; (define-key map "rn" 'code-reverse-next)
+	;; (define-key map "rc" 'code-reverse-continue)
+	;; (define-key map "e" 'code-eval-exp)
+	(define-key map "v" 'code-locals)
 	(define-key map "q" 'code-exit-debug)
 	(define-key map "i" 'code-interrupt)
 	map))
@@ -279,52 +309,54 @@ include a breakpoint"
   "Enter debugging mode. This saves the buffer."
   (interactive)
   (if (get-process "code")
-      (message "Debugger already running.")
+      (message "%s" "debugger already running")
     (if (not (boundp 'code-path))
-	(message "Debugger path not set.")
-      (if (not (buffer-file-name))
-	(message "Please save the buffer to a file before running the debugger")
-	(progn
-          (setq args (read-string "Call debugger with: code" 
-               (concat 
-                   " -e " 
-                   (file-relative-name (buffer-file-name)))))
-	  (setq buffer-read-only t)
-	  (save-buffer)
-	  (setq old-local-map (current-local-map))
-	  (use-local-map code-map)
-	  (setq code-proc
-		(start-process-shell-command
-		 "code"
-		 "*code*"
-		 code-path
-		 args))
-	  (setq exp "")
-	  (add-hook 'kill-buffer-hook 'code-kill-buffer)
-	  (setq point-old (point))
-	  (set-process-filter code-proc 'code-filter)
-	  (set-process-sentinel code-proc 'code-sentinel))))))
+	(message "%s" "debugger path not set")
+      (if (and (buffer-modified-p) (yes-or-no-p "save buffer? "))
+	  (save-buffer))
+      (setq args (read-string "Call debugger with: code" 
+			      (concat " -e " (file-relative-name (buffer-file-name)))))
+      (setq buffer-read-only t)
+      ;; (save-buffer) ; see above
+      (setq old-local-map (current-local-map))
+      (use-local-map code-map)
+      (setq code-proc
+	    (start-process-shell-command
+	     "code"
+	     "*code*"
+	     code-path
+	     args))
+      (setq exp "")
+      (add-hook 'kill-buffer-hook 'code-kill-buffer)
+      (setq point-old (point))
+      (set-process-filter code-proc 'code-filter)
+      (set-process-sentinel code-proc 'code-sentinel)
+      (setq code-locals-buffer (get-buffer-create "*code-locals*"))
+      (display-buffer code-locals-buffer)
+      (save-window-excursion
+	(switch-to-buffer-other-window code-locals-buffer)
+	(delete-region (point-min) (point-max)))
+      )))
 
 ;; Hook to be run if the buffer is killed while debugging
 ;; Kills the debugger
 (defun code-kill-buffer ()
-  (progn
-    (if (get-process "code")
-       (delete-process "code"))))
+  (if (get-process "code")
+      (delete-process "code")))
 
 ;; Quit the debugger. Restores the buffers keymap and point
 (defun code-exit-debug ()
   "Exit debugging mode"
   (interactive)
-  (progn
-    (if (get-process "code")
-	(delete-process "code"))
-    (kill-buffer "*code*")
-    (remove-hook 'kill-buffer-hook 'code-kill-buffer)
-    (code-delete-highlight)
-    (use-local-map old-local-map)
-    (goto-char point-old)
-    (setq buffer-read-only nil)))
+  (if (get-process "code")
+      (delete-process "code"))
+  (kill-buffer "*code*")
+  (remove-hook 'kill-buffer-hook 'code-kill-buffer)
+  (code-delete-highlight)
+  (use-local-map old-local-map)
+  (goto-char point-old)
+  (setq buffer-read-only nil)
+  (message "%s" "code exited"))
 
 (provide 'c0-code)
 

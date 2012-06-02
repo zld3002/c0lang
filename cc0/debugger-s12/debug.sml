@@ -26,6 +26,8 @@ struct
   \ v           - Display local variables                             \n\
   \ h           - Display this help message                           \n\
   \ n           - Execute command, skipping over function calls       \n\
+  \ s           - Step, entering into function calls                  \n\
+  \ <return>    - Same as s (step)                                    \n\
   \ q           - Exit the debugger                                   \n\
   \                                                                   \n"
 
@@ -87,7 +89,9 @@ struct
     if to_print then
       let
         val _ = println (s^" in function "^fname)
-        val _ = print "(code) "
+        val _ = if Flag.isset Flags.flag_emacs
+		then print "(code)\n"
+		else print "(code) "
         val input = valOf (TextIO.inputLine TextIO.stdIn)
         val action = case input of 
             "v\n" => LOCAL_VARS
@@ -98,6 +102,8 @@ struct
           | "quit\n" => QUIT
           | "h\n" => HELP
           | "help\n" => HELP
+          | "s\n" => STEP
+	  | "step\n" => STEP
           | _ => STEP
       in 
         action 
@@ -129,7 +135,8 @@ struct
       | Exec.ReturnSome(res) => SOME(res)
       | Exec.PC(i) => dstep' i)
     in
-      case action of LOCAL_VARS => (Exec.print_locals(); dstep' pc)
+      case action
+       of LOCAL_VARS => (Exec.print_locals(); dstep' pc)
         | HELP => (println help_message; dstep' pc) 
         | QUIT => (println "Goodbye!"; OS.Process.exit(OS.Process.success))
         | STEP => 
@@ -172,8 +179,7 @@ struct
         | NEXT => eval(cmds,labs,pc)
     end
   in
-    (case dstep' 0 of NONE =>  NONE
-                   | SOME(res) => SOME(res))
+    (dstep' 0)
     handle Error.Dynamic(s) => (println ("Error: "^s); NONE)
   end
 
@@ -185,7 +191,7 @@ struct
        | SOME (CodeTab.AbsentNative _) => raise LINK_ERROR
        | SOME (CodeTab.Interpreted _) => ()
 
-  fun call_main(library_headers,program) =
+  fun call_main (library_headers, program) =
       let
         val _ = (ConcreteState.clear_locals Exec.state
         ; CodeTab.reload_libs (!Flags.libraries)
@@ -208,7 +214,7 @@ struct
         {options = Flags.core_options @ Flags.coin_options @ Flags.code_options,
          errfn = fn msg => println msg,
          versioninfo = 
-            "CoinExec " ^ Version.version 
+            "code " ^ Version.version 
             ^ " (r" ^ BuildId.revision ^ ", " ^ BuildId.date ^ ")",
          usageinfo = 
          GetOpt.usageInfo 
@@ -234,8 +240,11 @@ struct
       Top.finalize {library_headers = library_headers}
        handle _ => raise COMPILER_ERROR
     
+   val SOME(retval) = call_main (library_headers, program)
+   val _ = println ("main function returned "
+		    ^ ConcreteState.value_string retval)
   in
-    call_main(library_headers,program)
+      SOME(retval)
   end
 
 end

@@ -60,7 +60,7 @@ struct
 	let val (ds, ss, e') = tfm_test env e
 	in (ds, ss, A.Length(e')) end
       | tfm_test env (A.Old(e)) =
-	let val (d,t) = Syn.new_tmp (Syn.syn_exp env e)
+	let val (d,t) = Syn.new_tmp (Syn.syn_exp env e) NONE (* fix NONE? -fp *)
 	    val (ds, ss, e') = tfm_test env e
 	(* \old cannot be nested; transform anyway for \result *)
 	in (ds @ [d], ss @ [A.Assign(NONE, t, e')], t) end
