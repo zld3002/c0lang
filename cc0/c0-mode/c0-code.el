@@ -67,6 +67,9 @@
 (defvar code-locals-accum nil
   "Accumulator for local variable values for 'v' command")
 
+(defvar code-highlight-overlay nil
+  "Overlay to highlight currently evaluated region")
+
 ;; Column positions given by ml-yacc are one off compared to
 ;; emacs. This should probably be taken care of in parsing though
 (defun code-get-pos
@@ -85,31 +88,31 @@
 	(pos-end (code-get-pos line-end column-end))
 	)
     (progn
-      (if (boundp 'highlight)
-	  (move-overlay highlight pos-begin pos-end)
+      (if (not (null code-highlight-overlay))
+	  (move-overlay code-highlight-overlay pos-begin pos-end)
 	(progn
-	  (setq highlight (make-overlay pos-begin pos-end))
+	  (setq code-highlight-overlay (make-overlay pos-begin pos-end))
 	  ))
       (goto-char pos-begin))))
 
 (defun code-highlight-normal
   (line-begin column-begin line-end column-end)
   "Set normal highlight"
-  (progn
-    (code-highlight line-begin column-begin line-end column-end)
-    (overlay-put highlight 'face 'code-normal-face)))
+  (code-highlight line-begin column-begin line-end column-end)
+  (overlay-put code-highlight-overlay 'face 'code-normal-face))
 
 (defun code-highlight-error
   (line-begin column-begin line-end column-end)
   "Set highlight to indicate error"
-  (progn
-    (code-highlight line-begin column-begin line-end column-end)
-    (overlay-put highlight 'face 'code-error-face)))
+  (code-highlight line-begin column-begin line-end column-end)
+  (overlay-put code-highlight-overlay 'face 'code-error-face))
 
 (defun code-delete-highlight ()
   "Remove highlight overlay"
-  (if (boundp 'highlight)
-	(delete-overlay highlight)))
+  (if (not (null code-highlight-overlay))
+      (progn
+	(delete-overlay code-highlight-overlay)
+	(setq code-highlight-overlay nil))))
 
 ;;; Functions for parsing of debugger output
 ;;
@@ -170,27 +173,29 @@
 	 (code-exit-debug)
 	 (message "%s" string))
 	((string-match " in function " string)
-	 (if (and (boundp 'code-error) code-error)
+	 (if (and (boundp 'code-error) code-error) ; currently not used
 	     (progn
-	       (eval-expression
-		(append (list 'code-highlight-error) (code-parse-positions string)))
-	       (message "%s" (concat code-error
-				(substring string (string-match ":" string))))
+	       (apply 'code-highlight-error (code-parse-positions string))
+	       ;; (message "%s" (concat code-error (substring string (string-match ":" string))))
 	       (setq code-error nil))
 	   (progn
-	     (eval-expression
-	      (append (list 'code-highlight-normal) (code-parse-positions string)))
-	     (message "%s" (substring string
-				      (+ 1 (string-match ":" string))))
+	     (apply 'code-highlight-normal (code-parse-positions string))
+	     ;; (message "%s" (substring string (+ 1 (string-match ":" string))))
 	     )))
 	((string-match "^\\w*: " string)
-	 ;; (message "--- %s" string)
+	 ;; \\w* matches variable names, but not those starting
+	 ;; with '_' (underscore)
+	 (setq code-locals-accum (concat code-locals-accum string "\n"))
+	 ())
+	((string-match "^_result: " string)
+	 ;; display _result temporary variable since it carries useful info
 	 (setq code-locals-accum (concat code-locals-accum string "\n"))
 	 ())
 	;; suppress empty output at end
 	((string-equal "\n" string) ())
 	((string-equal "" string) ())
-	(t (message "%s" string))))
+	(t ;; (message "%s" string)
+	 )))
 
 ;;; Filter and Sentinel functions
 
@@ -278,6 +283,16 @@ include a breakpoint"
   (interactive)
   (interrupt-process "code"))
 
+(defun code-help ()
+  "Show the Emacs help for code"
+  (interactive)
+  (message "%s\n%s\n%s\n%s\n%s"
+	   "return or s - step"
+	   "n - next (skip function calls)"
+	   "q - quit"
+	   "i - interrupt code"
+	   "? or h - this help"))
+
 ;;; The keymap used for debugging
 (setq code-map
       (let ((map (make-sparse-keymap)))
@@ -292,6 +307,8 @@ include a breakpoint"
 	(define-key map "v" 'code-locals)
 	(define-key map "q" 'code-exit-debug)
 	(define-key map "i" 'code-interrupt)
+	(define-key map "?" 'code-help)
+	(define-key map "h" 'code-help)
 	map))
 
 ;;; Enter and Exit functions
@@ -300,7 +317,6 @@ include a breakpoint"
 ;; be associated with ('visiting') a file.
 ;; After initial checks, the function
 ;; -makes the buffer read only
-;; -saves the buffer
 ;; -saves the current keymap and point
 ;; -adds a hook that quits the debugger if the buffer is killed
 ;; -runs the debugger
@@ -327,7 +343,7 @@ include a breakpoint"
 	     code-path
 	     args))
       (setq exp "")
-      (add-hook 'kill-buffer-hook 'code-kill-buffer)
+      (add-hook 'kill-buffer-hook 'code-kill-process)
       (setq point-old (point))
       (set-process-filter code-proc 'code-filter)
       (set-process-sentinel code-proc 'code-sentinel)
@@ -336,11 +352,12 @@ include a breakpoint"
       (save-window-excursion
 	(switch-to-buffer-other-window code-locals-buffer)
 	(delete-region (point-min) (point-max)))
+      (message "Type '?' for help")
       )))
 
 ;; Hook to be run if the buffer is killed while debugging
 ;; Kills the debugger
-(defun code-kill-buffer ()
+(defun code-kill-process ()
   (if (get-process "code")
       (delete-process "code")))
 
@@ -348,10 +365,11 @@ include a breakpoint"
 (defun code-exit-debug ()
   "Exit debugging mode"
   (interactive)
-  (if (get-process "code")
-      (delete-process "code"))
-  (kill-buffer "*code*")
-  (remove-hook 'kill-buffer-hook 'code-kill-buffer)
+  (code-kill-process)
+  ;; for now, keep buffers
+  ;; (kill-buffer "*code*")
+  ;; (kill-buffer code-locals-buffer)
+  (remove-hook 'kill-buffer-hook 'code-kill-process)
   (code-delete-highlight)
   (use-local-map old-local-map)
   (goto-char point-old)

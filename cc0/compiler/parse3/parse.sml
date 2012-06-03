@@ -558,6 +558,7 @@ and p_stmt_return ST = case first ST of
 and p_loopbody ST = ST |> push (Annos []) >> p_annos >> p_stmt
 
 and m_stm(s,r) = Stm(mark_stm(s,r), r)
+and m_simple(s,r) = Simple(mark_stm(s,r), r)
 
 and r_stmt (S $ Tok(T.IF,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_) $ Stm(s1,_)
 	      $ Tok(T.ELSE,_) $ Stm(s2,r2)) =
@@ -591,11 +592,11 @@ and r_decl_or_assign (S $ Tp(tp,r1) $ Ident(vid,r2)) =
       S $ Simple(A.StmDecl(A.VarDecl(vid, tp, SOME(e), PS.ext(join r1 r2))), join r1 r2)
   | r_decl_or_assign (S $ Exp(e1,r1) $ Tok(t,_) $ Exp(e2,r2)) =
       (* t must be assignment operator *)
-      S $ Simple(A.Assign(assign_op t, e1, e2), join r1 r2)
+      S $ m_simple(A.Assign(assign_op t, e1, e2), join r1 r2)
   | r_decl_or_assign (S $ Exp(e,r1) $ Tok(T.PLUSPLUS,r2)) =
-      S $ Simple(A.Assign(SOME(A.PLUS), e, A.IntConst(One)), join r1 r2)
+      S $ m_simple(A.Assign(SOME(A.PLUS), e, A.IntConst(One)), join r1 r2)
   | r_decl_or_assign (S $ Exp(e,r1) $ Tok(T.MINUSMINUS,r2)) =
-      S $ Simple(A.Assign(SOME(A.MINUS), e, A.IntConst(One)), join r1 r2)
+      S $ m_simple(A.Assign(SOME(A.MINUS), e, A.IntConst(One)), join r1 r2)
   (* the above should be exhaustive *)
   (* | r_decl_or_assign S = ( println (stackToString S) ; raise Domain ) *)
 
