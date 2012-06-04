@@ -184,6 +184,10 @@ struct
   end
 
 (*--------- Load libraries and call main -------------*)
+   fun raiseSignal sgn = 
+    ( Posix.Process.kill (Posix.Process.K_PROC (Posix.ProcEnv.getpid ()), sgn)
+    ; raise Fail "Well, this is ironic (unreachable exception).")
+
   fun assertLibrariesLoaded lib = 
       case CodeTab.lookup lib of 
          NONE => raise LINK_ERROR
@@ -199,9 +203,29 @@ struct
         ; app assertLibrariesLoaded (CodeTab.list ()))
    
         val init_call = Exec.call_step (Symbol.symbol "main", [], ((0, 0), (0, 0), "_init_"))
+	val code = case init_call
+		    of Exec.Interp(_,code) => code
+		     | _ => raise Internal("Main function was tagged as native\n")
       in
-        case init_call of (Exec.Interp(_,code)) => dstep code "main" 
-                        | _ => raise Internal("Main function was tagged as native\n")
+	  (dstep code "main")
+	  handle Error.NullPointer => 
+		 ( print "Exception: attempt to dereference null pointer\n"
+		 ; NONE ) (* raiseSignal Posix.Signal.segv *)
+               | Error.ArrayOutOfBounds _ => 
+		 ( print "Exception: Out of bounds array access\n"
+		 ; NONE ) (* raiseSignal Posix.Signal.segv *)
+               | Div => 
+		 ( print "Exception: Division by zero\n"
+		 ; NONE ) (* raiseSignal Posix.Signal.fpe *)
+               | Error.ArraySizeNegative _ => 
+		 ( print "Exception: Negative array size requested in allocation\n"
+		 ; NONE ) (* raiseSignal Posix.Signal.segv *)
+               | Error.AssertionFailed s => 
+		 ( print (s ^ "\n")
+		 ; NONE ) (* raiseSignal Posix.Signal.abrt *)
+               | e =>
+		 ( print "Exception: Unexpected exception"
+		 ; NONE ) (* raise e *)
       end
 
 (* ----------- Top level function ------------*)
@@ -239,12 +263,14 @@ struct
    val {library_wrappers} = 
       Top.finalize {library_headers = library_headers}
        handle _ => raise COMPILER_ERROR
-    
-   val SOME(retval) = call_main (library_headers, program)
-   val _ = println ("main function returned "
-		    ^ ConcreteState.value_string retval)
+ 
   in
-      SOME(retval)
+      case call_main (library_headers, program)
+       of SOME(retval) =>
+	  ( println ("main function returned "
+		     ^ ConcreteState.value_string retval) ;
+	    SOME(retval))
+	| NONE => NONE (* error: message already printed *)
   end
 
 end

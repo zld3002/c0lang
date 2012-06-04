@@ -75,7 +75,7 @@
     (define-key map "q" 'code-exit-debug)
     (define-key map "i" 'code-interrupt)
     (define-key map "?" 'code-help)
-    (define-key map "h" 'code-help)
+    (define-key map "h" 'code-help-long)
     map))
 
 ;;; Local variables follows
@@ -124,20 +124,18 @@
       (setq code-highlight-overlay (make-overlay pos-begin pos-end)))
     (goto-char pos-begin)))
 
-(defun code-highlight-normal
-  (line-begin column-begin line-end column-end)
+(defun code-highlight-normal (line-begin column-begin line-end column-end)
   "Set normal highlight"
   (code-highlight line-begin column-begin line-end column-end)
   (overlay-put code-highlight-overlay 'face 'code-normal-face))
 
-(defun code-highlight-error
-  (line-begin column-begin line-end column-end)
+(defun code-highlight-error (line-begin column-begin line-end column-end)
   "Set highlight to indicate error"
   (code-highlight line-begin column-begin line-end column-end)
   (overlay-put code-highlight-overlay 'face 'code-error-face))
 
 (defun code-delete-highlight ()
-  "Remove highlight overlay"
+  "*Remove highlight overlay"
   (if (not (null code-highlight-overlay))
       (progn
 	(delete-overlay code-highlight-overlay)
@@ -185,6 +183,10 @@
   "^\\([^:]*\\):\\([0-9]*\\)[.]\\([0-9]*\\)-\\([0-9]*\\)[.]\\([0-9]*\\)"
   "Regular expression matched against debugger output")
 
+(defconst error-msg-regexp
+  "\\(:error:.*\\|: @.*\\|: assert failed\\)"
+  "Regular expression matched against error output")
+
 (defun code-parse-line (string whole-string)
   "Parse one line of output from code program, returns non-NIL to abort rest"
   (cond ((string-match "^(code)" string)
@@ -208,7 +210,7 @@
 	 (code-exit-debug)
 	 (message "%s" string)
 	 ())
-	((string-match (concat code-location-regexp "\\(:error:.*\\)") string)
+	((string-match (concat code-location-regexp error-msg-regexp) string)
 	 ;; error message during parsing or type-checking
 	 ;; must come before the next clause
 	 (let* ((canon-filename (code-canon-filename (match-string 1 string)))
@@ -238,6 +240,14 @@
 	       (code-switch-to-file canon-filename))
 	   (code-highlight-normal line0 col0 line1 col1)
 	   ()))
+	((string-match "^Exception: \\(.*\\)" string)
+	 (code-exit-debug)
+	 (with-current-buffer code-locals-buffer
+	   (delete-region (point-min) (point-max))
+	   (insert whole-string))
+	 (message "%s" whole-string)
+	 ;; abort more parsing (return t)
+	 t)
 	((string-match "^\\(_tmp_[0-9]*\\|_caller\\): " string)
 	 ;; _tmp_n: value or _caller: value
 	 ;; do not display values of temporary variables
@@ -316,13 +326,18 @@ include a breakpoint"
 (defun code-help ()
   "Show the Emacs help for code"
   (interactive)
-  (message "%s\n%s\n%s\n%s\n%s"
+  (message "%s\n%s\n%s\n%s\n%s\n%s"
 	   "return or s - step"
 	   "n - next (skip function calls)"
 	   "q - quit"
 	   "i - interrupt code"
-	   "? or h - this help"))
+	   "? - this short help"
+	   "h - detailed help"))
 
+(defun code-help-long ()
+  "Show the longish help for code"
+  (interactive)
+  (find-file-other-frame (concat c0-root "c0-mode/README")))
 
 ;;; Enter and Exit functions
 

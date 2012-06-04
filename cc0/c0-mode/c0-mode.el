@@ -212,6 +212,7 @@
   (let ((map (c-make-inherited-keymap)))
     ;; Add bindings which are only useful for C0
     (define-key map "\C-c\C-d" 'code)
+    (define-key map "\C-c\C-g" 'code-delete-highlight)
     map)
   "Keymap used in C0 mode buffers.  \C-c\C-d starts debugger (code).")
 
