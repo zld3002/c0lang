@@ -36,6 +36,10 @@
 ;;
 ;;    0.1 - Initial release
 
+;; User options
+(defvar code-path nil
+  "*Path pointing to the code executable")
+
 ;; Faces for highlighting the active portion of code
 (defface code-normal-face
   '((((class color)
@@ -49,17 +53,17 @@
   "*Face used for the next expression to be evaluated."
   :group 'code)
 
-;; (defface code-error-face
-;;   '((((class color)
-;;       (background dark))
-;;      (:background "Red" :bold t :foreground "Black"))
-;;     (((class color)
-;;       (background light))
-;;      (:background "Red" :bold t))
-;;     (t
-;;      ()))
-;;   "*Face used for highlighting erroneous expressions."
-;;   :group 'code)
+(defface code-error-face
+  '((((class color)
+      (background dark))
+     (:background "Pink" :bold t :foreground "Black"))
+    (((class color)
+      (background light))
+     (:background "Pink" :bold t))
+    (t
+     ()))
+  "*Face used for highlighting erroneous expressions."
+  :group 'code)
 
 ;; The keymap used for debugging
 (defvar code-map
@@ -67,11 +71,6 @@
     (define-key map "s" 'code-step)
     (define-key map (kbd "RET") 'code-step)
     (define-key map "n" 'code-next)
-    ;; (define-key map "c" 'code-continue)
-    ;; (define-key map "rs" 'code-reverse-step)
-    ;; (define-key map "rn" 'code-reverse-next)
-    ;; (define-key map "rc" 'code-reverse-continue)
-    ;; (define-key map "e" 'code-eval-exp)
     (define-key map "v" 'code-locals)
     (define-key map "q" 'code-exit-debug)
     (define-key map "i" 'code-interrupt)
@@ -107,8 +106,7 @@
   "Directory of the C0 file with main function")
 
 ;; Column positions between cc0 and emacs are off by 1
-(defun code-get-pos
-  (line column)
+(defun code-get-pos (line column)
   "Get buffer position from line.column position"
   (+
    (line-beginning-position (- (+ line 1) (line-number-at-pos)))
@@ -132,11 +130,11 @@
   (code-highlight line-begin column-begin line-end column-end)
   (overlay-put code-highlight-overlay 'face 'code-normal-face))
 
-;; (defun code-highlight-error
-;;   (line-begin column-begin line-end column-end)
-;;   "Set highlight to indicate error"
-;;   (code-highlight line-begin column-begin line-end column-end)
-;;   (overlay-put code-highlight-overlay 'face 'code-error-face))
+(defun code-highlight-error
+  (line-begin column-begin line-end column-end)
+  "Set highlight to indicate error"
+  (code-highlight line-begin column-begin line-end column-end)
+  (overlay-put code-highlight-overlay 'face 'code-error-face))
 
 (defun code-delete-highlight ()
   "Remove highlight overlay"
@@ -162,7 +160,7 @@
 (defun code-switch-to-file (filename)
   "Switch to stepping in filename"
   (code-leave-buffer)			; leave current buffer
-  (find-file-existing filename)		; visit new file
+  (find-file-existing filename)		; visit other file
   (code-enter-buffer)			; enter into debug mode
   )
 
@@ -175,16 +173,20 @@
     (expand-file-name (concat code-main-directory filename))))
 
 (defun code-parse (string)
-    (if (string-match "\n" string)
-      (let ((newline-pos (string-match "\n" string)))
-	(progn
-	  ;; (message (number-to-string newline-pos))
-	  (code-parse-line (substring string 0 newline-pos))
-	  (code-parse (substring string (+ 1 newline-pos)))))
-      (code-parse-line string)))
+  (let ((newline-pos (string-match "\n" string)))
+    (if (null newline-pos)
+	;; no trailing newline
+	(code-parse-line string string)
+      ;; trailing newline
+      (if (not (code-parse-line (substring string 0 newline-pos) string))
+	  (code-parse (substring string (+ 1 newline-pos)))))))
 
-(defun code-parse-line (string)
-  "Parse one line of output from code program"
+(defconst code-location-regexp
+  "^\\([^:]*\\):\\([0-9]*\\)[.]\\([0-9]*\\)-\\([0-9]*\\)[.]\\([0-9]*\\)"
+  "Regular expression matched against debugger output")
+
+(defun code-parse-line (string whole-string)
+  "Parse one line of output from code program, returns non-NIL to abort rest"
   (cond ((string-match "^(code)" string)
 	 ;; prompt - display values of local variables
          ;; and accumulated output since last prompt
@@ -199,11 +201,34 @@
 	 (if (not (null code-output-accum))
 	     (progn
 	       (message "%s" code-output-accum)
-	       (setq code-output-accum nil))))
+	       (setq code-output-accum nil)))
+	 ())
 	((string-match "^main function" string)
+	 ;; main function returned
 	 (code-exit-debug)
-	 (message "%s" string))
-	((string-match "^\\([^:]*\\):\\([0-9]*\\)[.]\\([0-9]*\\)-\\([0-9]*\\)[.]\\([0-9]*\\)" string)
+	 (message "%s" string)
+	 ())
+	((string-match (concat code-location-regexp "\\(:error:.*\\)") string)
+	 ;; error message during parsing or type-checking
+	 ;; must come before the next clause
+	 (let* ((canon-filename (code-canon-filename (match-string 1 string)))
+		(line0 (string-to-number (match-string 2 string)))
+		(col0 (string-to-number (match-string 3 string)))
+		(line1 (string-to-number (match-string 4 string)))
+		(col1 (string-to-number (match-string 5 string)))
+		(errormsg (match-string 6 string)))
+	   (if (not (string-equal canon-filename (buffer-file-name)))
+	       (code-switch-to-file canon-filename))
+	   (code-exit-debug)
+	   (code-highlight-error line0 col0 line1 col1)
+	   (with-current-buffer code-locals-buffer
+	     (delete-region (point-min) (point-max))
+	     (insert whole-string))
+	   (message "%s" errormsg)
+	   ;; abort more parsing (return t)
+	   t))
+	((string-match code-location-regexp string)
+	 ;; location of code currently executed
 	 (let* ((canon-filename (code-canon-filename (match-string 1 string)))
 		(line0 (string-to-number (match-string 2 string)))
 		(col0 (string-to-number (match-string 3 string)))
@@ -211,23 +236,26 @@
 		(col1 (string-to-number (match-string 5 string))))
 	   (if (not (string-equal canon-filename (buffer-file-name)))
 	       (code-switch-to-file canon-filename))
-	   (code-highlight-normal line0 col0 line1 col1)))
+	   (code-highlight-normal line0 col0 line1 col1)
+	   ()))
 	((string-match "^\\(_tmp_[0-9]*\\|_caller\\): " string)
 	 ;; _tmp_n: value or _caller: value
 	 ;; do not display values of temporary variables
 	 ())
 	((string-match "^[a-zA-Z0-9_]*: " string)
-	 ;; varname: value
+	 ;; varname: value, accumulate to be shown upon next prompt
 	 ;; might be better solved with \\w*, but above is more specific
 	 (setq code-locals-accum (concat code-locals-accum string "\n"))
 	 ())
-	;; suppress empty output at end
+	;; suppress blank lines
 	((string-equal "\n" string) ())
 	((string-equal "" string) ())
 	(t
-	 ;; collect other output
+	 ;; collect other output, usuall from print statements
+	 ;; in program being executed
 	 (setq code-output-accum (concat code-output-accum string "\n"))
-	 )))
+	 ())
+	))
 
 ;;; Filter and Sentinel functions
 
@@ -250,14 +278,11 @@
 (defun code-sentinel (proc string)
   "Sentinel for code process"
   (cond
-   ;; ((begins-with string "Goodbye")
-   ;; (message "%s" "quit code"))
-   ((begins-with string "exited abnormally")
+   ((string-match "^exited abnormally" string)
     (code-exit-debug)
-    (message "%s" "program aborted")
-    ;; (message "%s" (concat "Debugger crashed, please report to developer.\n"
-    ;;           "Message : Process code " string))))))
-    )))
+    (message "%s" "program aborted"))
+   (t (code-exit-debug)
+      (message "%s" "unexpected termination of code"))))
 
 ;;; Functions for sending input to the debugger
 
@@ -319,7 +344,7 @@ include a breakpoint"
   (interactive)
   (if (get-process "code")
       (message "%s" "debugger already running")
-    (if (not (boundp 'code-path))
+    (if (null code-path)
 	(message "%s" "debugger path not set")
       (if (and (buffer-modified-p) (yes-or-no-p "save buffer? "))
 	  (save-buffer))
@@ -332,7 +357,9 @@ include a breakpoint"
 	     "*code*"
 	     code-path
 	     args))
-      (add-hook 'kill-buffer-hook 'code-kill-process)
+      ;; kill-buffer-hook activated when switching to another file
+      ;; the first time; disabled
+      ;; (add-hook 'kill-buffer-hook 'code-kill-process)
       (set-process-filter code-proc 'code-filter)
       (set-process-sentinel code-proc 'code-sentinel)
       ;; switch current buffer to debugging mode
@@ -361,7 +388,7 @@ include a breakpoint"
   ;; for now, keep buffers
   ;; (kill-buffer "*code*")
   ;; (kill-buffer code-locals-buffer)
-  (remove-hook 'kill-buffer-hook 'code-kill-process)
+  ;; (remove-hook 'kill-buffer-hook 'code-kill-process)
   (code-leave-buffer)
   (message "%s" "code exited"))
 

@@ -246,7 +246,9 @@ struct
 	in
 	    (ss @ [marks (A.Return(SOME(p))) ext])
 	end
-      | iso_stm env (A.Return(NONE)) ext = [A.Return(NONE)]
+      | iso_stm env (A.Return(NONE)) ext =
+	  (* mark, so that code debugger does not skip it *)
+	  [marks (A.Return(NONE)) ext]
       | iso_stm env (A.Assert(e1, e2s)) ext =
 	let val (ss1, p1) = iso_exp env e1 ext
 	    val (ss2, p2s) = iso_exps env e2s ext

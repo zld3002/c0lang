@@ -90,8 +90,8 @@ fun fake_translate (Assign (NONE, Var x, Call (f, args, pos), _)) =
        [CCall (SOME x, f, args, pos)]
   | fake_translate (Exp (Call (f, args, pos), _)) = 
        [CCall (NONE, f, args, pos)]
-  | fake_translate (Declare(tp,x,SOME(Call(f,args,pos),_))) = 
-       [Declare(tp,x,NONE),CCall(SOME x,f,args,pos)]
+  | fake_translate (Declare(tp, x, SOME(Call(f, args, pos), _))) = 
+       [Declare(tp, x, NONE), CCall(SOME x, f, args, pos)]
   | fake_translate cmd = [cmd]
 
 fun cStms iso_flag args stms pos =
