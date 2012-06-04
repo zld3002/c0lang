@@ -49,17 +49,38 @@
   "*Face used for the next expression to be evaluated."
   :group 'code)
 
-(defface code-error-face
-  '((((class color)
-      (background dark))
-     (:background "Red" :bold t :foreground "Black"))
-    (((class color)
-      (background light))
-     (:background "Red" :bold t))
-    (t
-     ()))
-  "*Face used for highlighting erroneous expressions."
-  :group 'code)
+;; (defface code-error-face
+;;   '((((class color)
+;;       (background dark))
+;;      (:background "Red" :bold t :foreground "Black"))
+;;     (((class color)
+;;       (background light))
+;;      (:background "Red" :bold t))
+;;     (t
+;;      ()))
+;;   "*Face used for highlighting erroneous expressions."
+;;   :group 'code)
+
+;; The keymap used for debugging
+(defvar code-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map "s" 'code-step)
+    (define-key map (kbd "RET") 'code-step)
+    (define-key map "n" 'code-next)
+    ;; (define-key map "c" 'code-continue)
+    ;; (define-key map "rs" 'code-reverse-step)
+    ;; (define-key map "rn" 'code-reverse-next)
+    ;; (define-key map "rc" 'code-reverse-continue)
+    ;; (define-key map "e" 'code-eval-exp)
+    (define-key map "v" 'code-locals)
+    (define-key map "q" 'code-exit-debug)
+    (define-key map "i" 'code-interrupt)
+    (define-key map "?" 'code-help)
+    (define-key map "h" 'code-help)
+    map))
+
+;;; Local variables follows
+;;; These should not be set by the user
 
 (defvar code-locals-buffer nil
   "Buffer which will display values of local variables")
@@ -67,14 +88,28 @@
 (defvar code-locals-accum nil
   "Accumulator for local variable values for 'v' command")
 
+(defvar code-output-accum nil
+  "Accumulator for output, shown when prompt is encountered")
+
 (defvar code-highlight-overlay nil
   "Overlay to highlight currently evaluated region")
 
-;; Column positions given by ml-yacc are one off compared to
-;; emacs. This should probably be taken care of in parsing though
+(defvar code-point-old nil
+  "Old point in current code buffer")
+
+(defvar code-local-map-old nil
+  "Old local keymap in current code buffer")
+
+(defvar code-proc nil
+  "Process running code")
+
+(defvar code-main-directory nil
+  "Directory of the C0 file with main function")
+
+;; Column positions between cc0 and emacs are off by 1
 (defun code-get-pos
   (line column)
-  "Get buffer position from line:column position"
+  "Get buffer position from line.column position"
   (+
    (line-beginning-position (- (+ line 1) (line-number-at-pos)))
    (- column 1)))
@@ -85,15 +120,11 @@
   (line-begin column-begin line-end column-end)
   "Move highlight overlay to specified region, point to beginning of region"
   (let ((pos-begin (code-get-pos line-begin column-begin))
-	(pos-end (code-get-pos line-end column-end))
-	)
-    (progn
-      (if (not (null code-highlight-overlay))
-	  (move-overlay code-highlight-overlay pos-begin pos-end)
-	(progn
-	  (setq code-highlight-overlay (make-overlay pos-begin pos-end))
-	  ))
-      (goto-char pos-begin))))
+	(pos-end (code-get-pos line-end column-end)))
+    (if (not (null code-highlight-overlay))
+	(move-overlay code-highlight-overlay pos-begin pos-end)
+      (setq code-highlight-overlay (make-overlay pos-begin pos-end)))
+    (goto-char pos-begin)))
 
 (defun code-highlight-normal
   (line-begin column-begin line-end column-end)
@@ -101,11 +132,11 @@
   (code-highlight line-begin column-begin line-end column-end)
   (overlay-put code-highlight-overlay 'face 'code-normal-face))
 
-(defun code-highlight-error
-  (line-begin column-begin line-end column-end)
-  "Set highlight to indicate error"
-  (code-highlight line-begin column-begin line-end column-end)
-  (overlay-put code-highlight-overlay 'face 'code-error-face))
+;; (defun code-highlight-error
+;;   (line-begin column-begin line-end column-end)
+;;   "Set highlight to indicate error"
+;;   (code-highlight line-begin column-begin line-end column-end)
+;;   (overlay-put code-highlight-overlay 'face 'code-error-face))
 
 (defun code-delete-highlight ()
   "Remove highlight overlay"
@@ -114,38 +145,34 @@
 	(delete-overlay code-highlight-overlay)
 	(setq code-highlight-overlay nil))))
 
+(defun code-enter-buffer ()
+  "Set current buffer to code mode"
+  (setq buffer-read-only t)
+  (setq code-local-map-old (current-local-map))
+  (use-local-map code-map)
+  (setq code-point-old (point)))
+
+(defun code-leave-buffer ()
+  "Restore current buffer to normal mode"
+  (code-delete-highlight)
+  (use-local-map code-local-map-old)
+  (goto-char code-point-old)
+  (setq buffer-read-only nil))
+
+(defun code-switch-to-file (filename)
+  "Switch to stepping in filename"
+  (code-leave-buffer)			; leave current buffer
+  (find-file-existing filename)		; visit new file
+  (code-enter-buffer)			; enter into debug mode
+  )
+
 ;;; Functions for parsing of debugger output
-;;
-;; Positional informations is assumed to have format
-;; filename:line1.column1-line2.column2
-;;
-;; The output is parsed one line at a time
 
-(defun code-parse-position (string)
-  "Parse 2 integers separated by '.' from STRING"
-  (let ((dot-pos (string-match "[.]" string)))
-    (if (not dot-pos)
-	(list (string-to-number string) 0)
-      (let ((string1 (substring string 0 dot-pos))
-	    (string2 (substring string (+ 1 dot-pos))))
-	(list (string-to-number string1) (string-to-number string2))))))
-
-(defun code-parse-positions (string)
-  "Parse 4 position integers from STRING"
-  (let ((colon-pos (string-match ":" string)))
-    (if (not colon-pos)
-	'(0 0 0 0)
-      (let ((dash-pos (string-match "-" string colon-pos)))
-	(if (not dash-pos)
-	    '(0 0 0 0)
-	  (let ((string1 (substring string (+ 1 colon-pos) dash-pos))
-		(string2 (substring string (+ 1 dash-pos))))
-	    (append (code-parse-position string1)
-		    (code-parse-position string2))))))))
-
-(defun begins-with (string prefix)
-  "Returns t if STRING begins with PREFIX. Beware of '.'"
-  (eq (string-match prefix string) 0))
+(defun code-canon-filename (filename)
+  "Canonicalize the given filename, relative to code main directory"
+  (if (file-name-absolute-p filename)
+      filename
+    (expand-file-name (concat code-main-directory filename))))
 
 (defun code-parse (string)
     (if (string-match "\n" string)
@@ -158,8 +185,9 @@
 
 (defun code-parse-line (string)
   "Parse one line of output from code program"
-  (cond ;; ((begins-with string "Value") (message "%s" string))
-	((begins-with string "(code)")
+  (cond ((string-match "^(code)" string)
+	 ;; prompt - display values of local variables
+         ;; and accumulated output since last prompt
 	 (if (not (null code-locals-accum))
 	     (progn
 	       ;; (message "%d" (length code-locals-accum))
@@ -167,34 +195,38 @@
 		 (delete-region (point-min) (point-max))
 		 (insert code-locals-accum)
 		 (goto-char (point-max)))
-	       (setq code-locals-accum nil))))
-	;; ((begins-with string "Error") (setq code-error string))
-	((begins-with string "main function")
+	       (setq code-locals-accum nil)))
+	 (if (not (null code-output-accum))
+	     (progn
+	       (message "%s" code-output-accum)
+	       (setq code-output-accum nil))))
+	((string-match "^main function" string)
 	 (code-exit-debug)
 	 (message "%s" string))
-	((string-match " in function " string)
-	 (if (and (boundp 'code-error) code-error) ; currently not used
-	     (progn
-	       (apply 'code-highlight-error (code-parse-positions string))
-	       ;; (message "%s" (concat code-error (substring string (string-match ":" string))))
-	       (setq code-error nil))
-	   (progn
-	     (apply 'code-highlight-normal (code-parse-positions string))
-	     ;; (message "%s" (substring string (+ 1 (string-match ":" string))))
-	     )))
-	((string-match "^\\w*: " string)
-	 ;; \\w* matches variable names, but not those starting
-	 ;; with '_' (underscore)
-	 (setq code-locals-accum (concat code-locals-accum string "\n"))
+	((string-match "^\\([^:]*\\):\\([0-9]*\\)[.]\\([0-9]*\\)-\\([0-9]*\\)[.]\\([0-9]*\\)" string)
+	 (let* ((canon-filename (code-canon-filename (match-string 1 string)))
+		(line0 (string-to-number (match-string 2 string)))
+		(col0 (string-to-number (match-string 3 string)))
+		(line1 (string-to-number (match-string 4 string)))
+		(col1 (string-to-number (match-string 5 string))))
+	   (if (not (string-equal canon-filename (buffer-file-name)))
+	       (code-switch-to-file canon-filename))
+	   (code-highlight-normal line0 col0 line1 col1)))
+	((string-match "^\\(_tmp_[0-9]*\\|_caller\\): " string)
+	 ;; _tmp_n: value or _caller: value
+	 ;; do not display values of temporary variables
 	 ())
-	((string-match "^_result: " string)
-	 ;; display _result temporary variable since it carries useful info
+	((string-match "^[a-zA-Z0-9_]*: " string)
+	 ;; varname: value
+	 ;; might be better solved with \\w*, but above is more specific
 	 (setq code-locals-accum (concat code-locals-accum string "\n"))
 	 ())
 	;; suppress empty output at end
 	((string-equal "\n" string) ())
 	((string-equal "" string) ())
-	(t ;; (message "%s" string)
+	(t
+	 ;; collect other output
+	 (setq code-output-accum (concat code-output-accum string "\n"))
 	 )))
 
 ;;; Filter and Sentinel functions
@@ -246,33 +278,6 @@ include a breakpoint"
   (code-send-string "n\n")
   (code-send-string "v\n"))
 
-;; (defun code-continue ()
-;;   "Go to the next breakpoint"
-;;   (interactive)
-;;   (code-send-string "c\n"))
-
-;; (defun code-reverse-step ()
-;;   "Step backwards"
-;;   (interactive)
-;;   (code-send-string "rs\n"))
-
-;; (defun code-reverse-next ()
-;;   "Next backwards"
-;;   (interactive)
-;;   (code-send-string "rn\n"))
-
-;; (defun code-reverse-continue ()
-;;   "Continue backwards"
-;;   (interactive)
-;;   (code-send-string "cn\n"))
-
-;; (defun code-eval-exp ()
-;;   "Evaluate an expression"
-;;   (interactive)
-;;   (progn
-;;     (setq exp (read-string "Evaluate Expression: " exp))
-;;     (code-send-string (concat "e " exp "\n"))))
-
 (defun code-locals ()
   "Show the value of local variables"
   (interactive)
@@ -293,23 +298,6 @@ include a breakpoint"
 	   "i - interrupt code"
 	   "? or h - this help"))
 
-;;; The keymap used for debugging
-(setq code-map
-      (let ((map (make-sparse-keymap)))
-	(define-key map "s" 'code-step)
-	(define-key map (kbd "RET") 'code-step)
-	(define-key map "n" 'code-next)
-	;; (define-key map "c" 'code-continue)
-	;; (define-key map "rs" 'code-reverse-step)
-	;; (define-key map "rn" 'code-reverse-next)
-	;; (define-key map "rc" 'code-reverse-continue)
-	;; (define-key map "e" 'code-eval-exp)
-	(define-key map "v" 'code-locals)
-	(define-key map "q" 'code-exit-debug)
-	(define-key map "i" 'code-interrupt)
-	(define-key map "?" 'code-help)
-	(define-key map "h" 'code-help)
-	map))
 
 ;;; Enter and Exit functions
 
@@ -321,8 +309,13 @@ include a breakpoint"
 ;; -adds a hook that quits the debugger if the buffer is killed
 ;; -runs the debugger
 
+(defun code ()
+  "Enter debugging mode in current buffer."
+  (interactive)
+  (code-enter-debug))
+
 (defun code-enter-debug ()
-  "Enter debugging mode. This saves the buffer."
+  "Enter debugging mode."
   (interactive)
   (if (get-process "code")
       (message "%s" "debugger already running")
@@ -332,23 +325,22 @@ include a breakpoint"
 	  (save-buffer))
       (setq args (read-string "Call debugger with: code" 
 			      (concat " -e " (file-relative-name (buffer-file-name)))))
-      (setq buffer-read-only t)
-      ;; (save-buffer) ; see above
-      (setq old-local-map (current-local-map))
-      (use-local-map code-map)
+      ;; start code process
       (setq code-proc
 	    (start-process-shell-command
 	     "code"
 	     "*code*"
 	     code-path
 	     args))
-      (setq exp "")
       (add-hook 'kill-buffer-hook 'code-kill-process)
-      (setq point-old (point))
       (set-process-filter code-proc 'code-filter)
       (set-process-sentinel code-proc 'code-sentinel)
+      ;; switch current buffer to debugging mode
+      (code-enter-buffer)
+      (setq code-main-directory (file-name-directory (buffer-file-name)))
+      ;; create and display buffer for local variables
       (setq code-locals-buffer (get-buffer-create "*code-locals*"))
-      (display-buffer code-locals-buffer)
+      (display-buffer code-locals-buffer) ; do not switch
       (save-window-excursion
 	(switch-to-buffer-other-window code-locals-buffer)
 	(delete-region (point-min) (point-max)))
@@ -370,10 +362,7 @@ include a breakpoint"
   ;; (kill-buffer "*code*")
   ;; (kill-buffer code-locals-buffer)
   (remove-hook 'kill-buffer-hook 'code-kill-process)
-  (code-delete-highlight)
-  (use-local-map old-local-map)
-  (goto-char point-old)
-  (setq buffer-read-only nil)
+  (code-leave-buffer)
   (message "%s" "code exited"))
 
 (provide 'c0-code)
