@@ -107,15 +107,17 @@ struct
 	   val (d, t) = Syn.new_tmp (Syn.syn_exp env e) ext
            (* if e = (e1 ? NULL : NULL) then t has type void*
             * this is okay, because C will coerce to any type tp*,
-            * an dereferencing at type void* is disallowed in C0 *)
+            * and dereferencing at type void* is disallowed in C0 *)
         in
 	   case (ss2, ss3, p2, p3)
 	    of ([], [], _, A.False) => (ss1, A.OpExp(A.LOGAND, [p1, p2]))
 	     | ([], [], A.True, _) => (ss1, A.OpExp(A.LOGOR, [p1, p3]))
 	     | ([], [], _, _) => (ss1, A.OpExp(A.COND, [p1, p2, p3]))
 	     | _ => ([A.StmDecl(d)] @ ss1
-		     @ [A.If(p1, A.Seq(nil, ss2 @ [A.Assign(NONE, t, p2)]),
-			         A.Seq(nil, ss3 @ [A.Assign(NONE, t, p3)]))],
+		     @ [marks
+			(A.If(p1, A.Seq(nil, ss2 @ [A.Assign(NONE, t, p2)]),
+			         A.Seq(nil, ss3 @ [A.Assign(NONE, t, p3)])))
+		       ext],
 		     t)
        end
      | iso_exp env (A.OpExp(oper, [e1])) ext =

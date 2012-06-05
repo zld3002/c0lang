@@ -162,6 +162,15 @@
   (code-enter-buffer)			; enter into debug mode
   )
 
+(defun code-display-output-accum ()
+  "Display accumulated output, if not empty"
+  (if (not (null code-output-accum))
+      (progn
+	(with-current-buffer code-locals-buffer
+	  (goto-char (point-max))
+	  (insert code-output-accum))
+	(setq code-output-accum nil))))
+
 ;;; Functions for parsing of debugger output
 
 (defun code-canon-filename (filename)
@@ -210,6 +219,16 @@
 	 (code-exit-debug)
 	 (message "%s" string)
 	 ())
+	((string-match (concat "^" error-msg-regexp) string)
+	 ;; :error:<errormsg>
+	 (let ((errormsg (match-string 1 string)))
+	   (code-exit-debug)
+	   (with-current-buffer code-locals-buffer
+	     (delete-region (point-min) (point-max))
+	     (insert whole-string))
+	   (message "%s" errormsg)
+	   ;; abort more parsing (return t)
+	   t))
 	((string-match (concat code-location-regexp error-msg-regexp) string)
 	 ;; error message during parsing or type-checking
 	 ;; must come before the next clause
@@ -290,8 +309,10 @@
   (cond
    ((string-match "^exited abnormally" string)
     (code-exit-debug)
+    (code-display-output-accum)
     (message "%s" "program aborted"))
    (t (code-exit-debug)
+      (code-display-output-accum)
       (message "%s" "unexpected termination of code"))))
 
 ;;; Functions for sending input to the debugger
@@ -375,6 +396,8 @@ include a breakpoint"
       ;; kill-buffer-hook activated when switching to another file
       ;; the first time; disabled
       ;; (add-hook 'kill-buffer-hook 'code-kill-process)
+      (setq code-output-accum nil)	; in case we are in a strange state
+      (setq code-locals-accum nil)	; in case we are in a strange state
       (set-process-filter code-proc 'code-filter)
       (set-process-sentinel code-proc 'code-sentinel)
       ;; switch current buffer to debugging mode

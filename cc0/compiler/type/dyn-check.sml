@@ -65,7 +65,12 @@ struct
 	(* \old cannot be nested; transform anyway for \result *)
 	in (ds @ [d], ss @ [A.Assign(NONE, t, e')], t) end
       | tfm_test env (A.Marked(marked_exp)) =
-	  tfm_test env (Mark.data marked_exp)
+	(* simple heuristic for preserving location info *)
+	let 
+	    val (ds, ss, e') = tfm_test env (Mark.data marked_exp)
+	in
+	    (ds, ss, A.Marked(Mark.mark'(e', Mark.ext marked_exp)))
+	end
 
     (* tfm_tests env es = (ds, ss, es'), as in tfm_test *)
     and tfm_tests env (e::es) =

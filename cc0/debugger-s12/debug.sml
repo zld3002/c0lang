@@ -180,7 +180,7 @@ struct
     end
   in
     (dstep' 0)
-    handle Error.Dynamic(s) => (println ("Error: "^s); NONE)
+    handle Error.Dynamic(s) => (println (":error: "^s); NONE)
   end
 
 (*--------- Load libraries and call main -------------*)
@@ -265,12 +265,18 @@ struct
        handle _ => raise COMPILER_ERROR
  
   in
-      case call_main (library_headers, program)
-       of SOME(retval) =>
-	  ( println ("main function returned "
-		     ^ ConcreteState.value_string retval) ;
-	    SOME(retval))
-	| NONE => NONE (* error: message already printed *)
+      (case call_main (library_headers, program)
+	of SOME(retval) =>
+	   ( println ("main function returned "
+		      ^ ConcreteState.value_string retval) ;
+	     SOME(retval))
+	 | NONE => NONE) (* error: message already printed *)
   end
+  handle COMPILER_ERROR => NONE (* message already printed *)
+       | LINK_ERROR => (* some message printed, but not in error format *)
+	 ( println (":error:could not link library")
+	 ; NONE )
+       | _ => ( println (":error:unexpected exception")
+	      ; NONE )
 
 end
