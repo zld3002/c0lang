@@ -11,6 +11,7 @@ Group is
       calling.sml
       eval.sml
       codetab.sml
+      exec-sig.sml
       exec.sml
 
       version.sml

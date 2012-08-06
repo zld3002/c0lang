@@ -241,6 +241,3 @@ handle Top.EXIT =>
 end
 end
 
-structure Server = 
-   Server (structure Runline = Coin
-           structure SigINT = SigINT) 

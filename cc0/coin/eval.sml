@@ -18,9 +18,6 @@ structure Eval:> sig
    | StackLoc of Symbol.symbol
    | HeapLoc of Ast.tp * ConcreteState.addr
 
-  type function_impl = 
-     Symbol.symbol * ConcreteState.value list * Mark.ext -> ConcreteState.value
-
   val get: 'a ConcreteState.state * loc -> ConcreteState.value
   val put: 'a ConcreteState.state * loc * ConcreteState.value -> unit
 
@@ -54,8 +51,6 @@ struct
   type 'a state = 'a S.state
   type addr = S.addr
   type value = S.value 
-
-  type function_impl = Symbol.symbol * value list * Mark.ext -> value
 
   datatype loc = NullLoc | StackLoc of Symbol.symbol | HeapLoc of Ast.tp * addr
 

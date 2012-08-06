@@ -130,7 +130,7 @@ struct
       val action = io next_cmd fname
         
       fun eval (cmds,labs,pc) =
-        (case Exec.step(cmds,labs,pc) of
+        (case Exec.step ((cmds,labs),pc) of
         Exec.ReturnNone => NONE
       | Exec.ReturnSome(res) => SOME(res)
       | Exec.PC(i) => dstep' i)
