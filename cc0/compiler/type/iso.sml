@@ -2,8 +2,6 @@ signature ISOLATE =
 sig
   val iso_exp : Ast.tp Symbol.table -> Ast.exp -> (Ast.stm list * Ast.exp)
   val iso_stm : Ast.tp Symbol.table -> Ast.stm -> Ast.stm list
-  (* for coin, preserve open scope; currently unused *)
-  val iso_top : Ast.tp Symbol.table -> Ast.stm list -> Ast.stm list
 end
 
 structure Isolate :> ISOLATE = 
@@ -218,6 +216,9 @@ struct
 	end
       | iso_stm env (A.StmDecl(d)) ext =
 	  (* StmDecl in source has empty scope at this point *)
+          (* Does this case actually arise? Handling it this way
+           * necessitates special-case treatment in Coin, where top-
+           * level StmDecls behave differently. -rjs 8/20/2012 *)
           iso_stm env (A.Seq([d], [])) ext
       | iso_stm env (A.If(e, s1, s2)) ext =
 	let val (ss, p) = iso_exp env e ext
@@ -344,11 +345,7 @@ struct
 	     @ ss2 @ [marks (A.Assign(NONE, A.OpExp(A.DEREF, [t]), p2)) ext]) (* ss2 ; *t = p2; *)
 	end
 
-    (* Below is currently unused.  If used, source
-     * extent ext should be added and maintained
-     * -fp, May 30, 2012
-     *)
-    fun iso_top env (A.StmDecl(d)::ss) =
+(*  fun iso_top env (A.StmDecl(d)::ss) =
 	let val (ss1, env') = iso_decls env [d]
 	    val ss2 = iso_top env' ss
 	in ss1 @ ss2 end
@@ -358,7 +355,7 @@ struct
 	let val ss1 = iso_stm env s NONE (* currently, no ext available *)
 	    val ss2 = iso_top env ss
 	in ss1 @ ss2 end
-      | iso_top env nil = nil
+      | iso_top env nil = nil *)
 
     val iso_exp = fn env => fn e => iso_exp env e NONE (* no ext available *)
     val iso_stm = fn env => fn s => iso_stm env s NONE (* no ext available *)

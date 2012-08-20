@@ -351,13 +351,12 @@ struct
 	  ^ pp_tp result ^ " " ^ pp_fun g ^ "(" ^ pp_params params ^ ");\n"
       | pp_gdecl (A.Function(g, rtp, params, SOME(s), _, _, ext)) =
 	let
-	    val env0 = Syn.syn_decls Symbol.empty params
-	    val env1 = Symbol.bind env0 (Symbol.symbol "\\result", rtp)
-	    val ss = Isolate.iso_stm env1 s
+	    val env = Syn.syn_decls Symbol.empty params
+	    val ss = Isolate.iso_stm env s
 	in (* newline before function definitions *)
 	    "\n" ^ pp_tp rtp ^ " " ^ pp_fun g ^ "("
 	    ^ pp_params params ^ ") {\n"
-	    ^ pp_stms 2 env1 ss
+	    ^ pp_stms 2 env ss
 	    ^ "}\n"
 	end
       | pp_gdecl (A.TypeDef(aid, tp, ext)) =
