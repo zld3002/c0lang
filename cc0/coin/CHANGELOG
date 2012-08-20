@@ -95,3 +95,6 @@ Jan 13, 2011: Fix bug where the second argument to alloc_array was evaluated
 
 0.2.10 --> 0.3.0
 Feb 6, 2011:  Modify implementation to support different foreign functions.
+Mar 3, 2011:  Experimental Cygwin compatibility
+May 5, 2012:  Hack to allow pointer offsets in isolated code (cymbol)
+Aug 20, 2012: Finish getting code isolation to work at the top-level

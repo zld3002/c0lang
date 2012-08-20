@@ -98,7 +98,7 @@ functor Server
          NONE => 
          (SigINT.interruptLoop (fn () => (Runline.restart(); serveTop ()));
           OS.Process.failure (* Should never be reached... *))
-       | SOME status => status)
+       | SOME status => status) 
        handle (Error.Uninitialized) => hstr ("Error: uninitialized value used")
            | (Overflow) => hstr("Error: integer overflow.")
            | (Div) => hstr("Error: division by zero.")

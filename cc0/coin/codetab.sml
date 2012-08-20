@@ -56,11 +56,12 @@ fun process_ast pre current_lib =
 
   | Ast.Function (x, tp, args, SOME stm, spec, false, SOME pos) => 
     (* This is a defined function; compile it. *)
-    (Flag.guard Flags.flag_verbose
-       (fn () => print (pre ^ "Processing " ^ Symbol.name x ^ " (interp)\n"))
-       ()
+     ( Flag.guard Flags.flag_verbose
+        (fn () => print (pre ^ "Processing " ^ Symbol.name x ^ " (interp)\n"))
+        ()
      ; let
-          val func = Compile.cStms args [ stm, Ast.Return NONE ] pos
+          val stms = Isolate.iso_stm (Syn.syn_decls Symbol.empty args) stm
+          val func = Compile.cStms (stms @ [Ast.Return NONE]) pos
        in 
           Flag.guards [ Flags.flag_verbose, Flags.flag_print_codes ]
              (fn () => C0Internal.cmdPrint pre func) ()

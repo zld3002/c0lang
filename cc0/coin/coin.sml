@@ -70,23 +70,47 @@ in
  ; CodeTab.reload (library_headers @ program))
 end
 
+(* Isolate a top-level statement that has been type-checked and annotated *) 
+datatype aftereffect = Nothing | ReportValue | ReportAssignment of string
 
 (* Do typechecking, transformation, and execution of a read-in satement *)
 fun run stm = 
 let 
    val env = State.local_tys Exec.state
+
+   (* Typecheck and transform *)
    val processed_stm = TypeChecker.typecheck_interpreter env stm
    val annoed_stm = 
       if Flag.isset Flags.flag_dyn_check 
       then DynCheck.contracts_interpreter env processed_stm
       else processed_stm
 
+   (* Isolate *)
+   fun isolate stm = 
+      case stm of 
+         Ast.Markeds marked_ast => isolate (Mark.data marked_ast)
+
+       | Ast.Assign (_, e1, _) => 
+            (Isolate.iso_stm env stm, 
+             ReportAssignment (Ast.Print.pp_exp e1))
+
+       | Ast.StmDecl (Ast.VarDecl (x, tp, SOME e, ext)) =>
+            (Ast.StmDecl (Ast.VarDecl (x, tp, NONE, ext)) 
+             :: Isolate.iso_stm (Symbol.bind env (x, tp))
+                   (Ast.Assign (NONE, Ast.Var x, e)),
+             ReportAssignment (Symbol.name x))
+
+       | Ast.Exp _ => (Isolate.iso_stm env stm, ReportValue)
+
+       | _ => (Isolate.iso_stm env stm, Nothing)
+
+   val (isolated_stms, aftereffect) = isolate stm
+
    (* The modified compiler doesn't give me a real position to put here *)
-   val (cmds, labs) = Compile.cStm annoed_stm ((~1,~1),(~1,~1),"<BUG>") 
+   val (cmds, labs) = Compile.cStms isolated_stms ((~1,~1),(~1,~1),"<BUG>") 
 
    (* Make sure that the program doesn't run off the end of the vector *)
-   val NOOP = Vector.fromList [ C0.Return NONE ]
-   val cmds = Vector.concat [ cmds, NOOP ]
+   val cmds = Vector.concat [ cmds, Vector.fromList [ C0.Return NONE ] ]
 
    fun print_codes () = 
    let
@@ -105,7 +129,12 @@ let
    end
 in 
  ( Flag.guard Flags.flag_print_codes print_codes ()
- ; ignore (Exec.exec (cmds, labs)))
+ ; ignore (Exec.exec (cmds, labs))
+ ; case aftereffect of
+      Nothing => ()
+    | ReportValue => print (State.value_string (Exec.last ())^"\n")
+    | ReportAssignment x => 
+         print (x^" is "^State.value_string (Exec.last ())^"\n"))
 end
 
 (* Storing the lex state *)

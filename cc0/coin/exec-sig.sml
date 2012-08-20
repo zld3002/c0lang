@@ -18,6 +18,9 @@ val reset: unit -> unit
 (* print local variables *)
 val print_locals : unit -> unit
 
+(* Analgous to "it" in SMLNJ's toplevel - the last evaluated expression *)
+val last: unit -> ConcreteState.value
+
 
 
 (* STEP TO NEXT COMMAND
@@ -49,8 +52,6 @@ datatype call_info =
 
 val call_step: 
    Symbol.symbol * ConcreteState.value list * Mark.ext -> call_info
-
-
 
 (* BIG-STEP EVALUATION *)
 

@@ -1,8 +1,7 @@
 signature COMPILE = sig
    
-val cStm : Ast.stm -> Mark.ext -> C0Internal.program (* do not isolate effects *)
-val cStms : Ast.vardecl list -> Ast.stm list -> Mark.ext -> C0Internal.program
-             (* isolates effects *)
+val cStm : Ast.stm -> Mark.ext -> C0Internal.program
+val cStms : Ast.stm list -> Mark.ext -> C0Internal.program
 
 end
 
@@ -94,7 +93,8 @@ fun fake_translate (Assign (NONE, Var x, Call (f, args, pos), _)) =
        [Declare(tp, x, NONE), CCall(SOME x, f, args, pos)]
   | fake_translate cmd = [cmd]
 
-fun cStms iso_flag args stms pos =
+(* Requires that code already be isolated!!! *)
+fun cStms stms pos =
    let
       val nextlabel = ref 0
       val next = fn () => !nextlabel before nextlabel := 1 + !nextlabel
@@ -177,12 +177,6 @@ fun cStms iso_flag args stms pos =
       val _ = TextIO.output(TextIO.stdErr,"Before isolation: \n"^stms_s)
       *)
 
-      (* isolate at the top level: preserve open scope *)
-      (* -fp May 27, 2012 *)
-      val stms = if iso_flag
-		 then Isolate.iso_top (Syn.syn_decls Symbol.empty args) stms
-		 else stms
-
       (*val stms_s = List.foldr op^ "" (List.map Ast.Print.pp_stm stms) *)
       (*val _ = Flag.guard Flags.interactive
                 (fn () => TextIO.output(TextIO.stdErr,"\n"^stms_s))*)
@@ -194,9 +188,7 @@ fun cStms iso_flag args stms pos =
       (Vector.fromList cmds, labs)
    end
 
-fun cStm x = cStms false nil [ x ]  (* false = don't isolate effects *)
-
-val cStms = cStms true (* true = isolate effects *)
+fun cStm x = cStms [ x ]
 
 end
 

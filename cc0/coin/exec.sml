@@ -45,6 +45,10 @@ val state : (Symbol.symbol * Mark.ext) State.state =
        lookup_type = lookup_type,
        initial_function = Symbol.symbol "__init__"}
 
+val lastval : State.value ref = ref State.unit
+
+fun last () = !lastval
+
 fun print_locals () = State.print_locals state
 
 fun print_fun n (called_fun_name, (fun_name, pos)) =
@@ -66,16 +70,14 @@ fun print_trace ps =
     | SOME pos => print ("Last position: "^Mark.show pos^"\n")
  ; print_ps (0, rev ps))
 
-fun print_result (ident, v) =
+fun print_result (exp, v) =
 let 
    fun identifier () = 
-      case ident of 
+      case exp of 
          NONE => ""
-       | SOME x => C0.expToString false (C0.Var x)^" is " 
+       | SOME x => C0.expToString false x^" is " 
 in
-   if State.is_unit v 
-      then ()
-   else if !current_depth = 0 orelse Flag.isset Flags.flag_trace
+   if Flag.isset Flags.flag_trace andalso (not (State.is_unit v))
       then print (identifier ()^State.value_string v^"\n")
    else ()
 end
@@ -151,9 +153,8 @@ in
     | Interp ((_, formal_args), code) => 
        ( State.push_fun (state, fun_name, (fun_name, pos))
        ; app (fn ((tp, x), v) => 
-               ( State.declare (state, x, tp); print "Whoo\n"
-               ; print ("====\n"^State.value_string v^"\n====\n")
-               ; State.put_id (state, x, v); print "Whee\n"))
+               ( State.declare (state, x, tp)
+               ; State.put_id (state, x, v)))
             (ListPair.zip (formal_args, actual_args))
        ; Flag.guard Flags.flag_trace
             (fn () => print ("Starting execution of "^f^"\n")) 
@@ -181,16 +182,17 @@ in
          val v = Eval.eval_exp state e
       in
        ( print_result (NONE, v)
+       ; lastval := v
        ; PC (pc+1))
       end
 
     | C0.CCall (x, f, args, pos) =>
       let
-         val () = print_locals ()
          val actual_args = List.map (Eval.eval_exp state) args
          val v = call (f, actual_args, pos)
       in 
-       ( print_result (x, v)
+       ( print_result (Option.map C0.Var x, v)
+       ; lastval := v
        ; case x of 
             NONE => ()
           | SOME x => State.put_id (state, x, v)
@@ -208,7 +210,8 @@ in
       in
        ( State.declare (state, x, tp)
        ; State.put_id (state, x, v) 
-       ; print_result (SOME x, v) 
+       ; print_result (SOME (C0.Var x), v) 
+       ; lastval := v
        ; PC (pc+1))
       end
 
@@ -230,10 +233,8 @@ in
          val v = State.pointer (tp,addr)
       in
        ( Eval.put (state, l_loc, v)
-       ; if !current_depth = 0 orelse Flag.isset Flags.flag_trace 
-            then print (C0.expToString false e1^" is! "^
-                        State.value_string v^"\n")
-         else ()
+       ; print_result (SOME e1, v)
+       ; lastval := v
        ; PC (pc+1))
       end
 
@@ -249,10 +250,8 @@ in
                       Eval.eval_binop oper (Eval.get (state, loc), v)
       in 
        ( Eval.put (state, loc, v')
-       ; if !current_depth = 0 orelse Flag.isset Flags.flag_trace 
-            then print (C0.expToString false e1^" is "^
-                              State.value_string v'^"\n")
-         else ()
+       ; print_result (NONE, v)
+       ; lastval := v'
        ; PC (pc+1))
       end
 
