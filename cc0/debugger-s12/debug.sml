@@ -151,7 +151,7 @@ struct
         | HELP => (println help_message; dstep' pc) 
         | QUIT => (println "Goodbye!"; OS.Process.exit(OS.Process.success))
         | IGNORE s => (println ("Ignored command "^s); dstep' pc)
-        | EVAL e => (println ("Unimplemented: eval "^e^"\n"); dstep' pc)
+        | EVAL e => (println ("Haven't implemented eval "^e^"\n"); dstep' pc)
         | STEP => 
         (case next_cmd of C0.CCall(NONE,f,args,pos) =>
           let
