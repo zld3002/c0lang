@@ -208,7 +208,14 @@
 		 (delete-region (point-min) (point-max))
 		 (insert code-locals-accum)
 		 (goto-char (point-max)))
-	       (setq code-locals-accum nil)))
+	       (setq code-locals-accum nil))
+             ;; Bugfix - entering a new function doesn't clear locals
+             ;; - rjs 8/24/2012
+             (progn
+	       (with-current-buffer code-locals-buffer
+		 (delete-region (point-min) (point-max))
+		 (insert "(no local variables)")
+		 (goto-char (point-max)))))
 	 (if (not (null code-output-accum))
 	     (progn
 	       (message "%s" code-output-accum)

@@ -509,19 +509,15 @@ functor StateFn (structure Data : DATA
   (* Debugging *)
 
   fun print_locals (S{stack = ref (T{locals, ...}), ...}) =
-	let
-		fun print_locals' ((ty_table,v_table)::llist) = 
-		let
-			val s_v_list = Symbol.elemsi v_table
-      val _ = 
-			  List.app (fn (s,v) => TextIO.print (Symbol.name s ^ ": "^(value_string v)^"\n")) s_v_list	
-    in
-      print_locals' llist
-   	end
-     | print_locals' nil = ()
-	in
-		print_locals' locals
-	end
+  let
+     fun get_elems (_, v_table) = 
+        Symbol.elemsi v_table
+  in
+     List.app 
+        (fn (s,v) =>
+            TextIO.print (Symbol.name s^": "^(value_string v)^"\n")) 
+        (List.concat (map get_elems locals))
+  end
 
 end
 

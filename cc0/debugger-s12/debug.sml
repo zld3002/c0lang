@@ -40,7 +40,14 @@ struct
   exception LINK_ERROR
   exception Internal of string
 
-  datatype debug_action = STEP | NEXT | LOCAL_VARS | QUIT | HELP
+  datatype debug_action = 
+     STEP 
+   | NEXT 
+   | LOCAL_VARS 
+   | QUIT 
+   | HELP
+   | EVAL of string
+   | IGNORE of string
 
 (*-------------- Printing ----------------*)
   fun print s = TextIO.print s
@@ -93,18 +100,21 @@ struct
 		then print "(code)\n"
 		else print "(code) "
         val input = valOf (TextIO.inputLine TextIO.stdIn)
-        val action = case input of 
-            "v\n" => LOCAL_VARS
-          | "vars\n" => LOCAL_VARS
-          | "n\n" => NEXT
-          | "next\n" => NEXT
-          | "q\n" => QUIT
-          | "quit\n" => QUIT
-          | "h\n" => HELP
-          | "help\n" => HELP
-          | "s\n" => STEP
-	  | "step\n" => STEP
-          | _ => STEP
+        val inputs = String.tokens Char.isSpace input
+        val action = case inputs of 
+            ["v"] => LOCAL_VARS
+          | ["vars"] => LOCAL_VARS
+          | ["n"] => NEXT
+          | ["next"] => NEXT
+          | ["q"] => QUIT
+          | ["quit"] => QUIT
+          | ["h"] => HELP
+          | ["help"] => HELP
+          | [] => STEP
+          | ["s"] => STEP
+	  | ["step"] => STEP
+          | "e" :: toks => EVAL (String.concatWith " " toks)
+          | _ => IGNORE input
       in 
         action 
       end
@@ -139,6 +149,8 @@ struct
        of LOCAL_VARS => (Exec.print_locals(); dstep' pc)
         | HELP => (println help_message; dstep' pc) 
         | QUIT => (println "Goodbye!"; OS.Process.exit(OS.Process.success))
+        | IGNORE s => (println ("Ignored command "^s); dstep' pc)
+        | EVAL e => (println ("Not yet able to eval\n"); dstep' pc)
         | STEP => 
         (case next_cmd of C0.CCall(NONE,f,args,pos) =>
           let
