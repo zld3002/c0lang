@@ -152,11 +152,10 @@ struct
       val () = ParseState.pushfile "<debugger>"
       val () = ErrorMsg.reset ()
 
-     (* Lex the string, append a semicolon so we can parse as a statement.
-      *
-      * Why is the second argument, lexpos, 2? I'm cribbing off of 
-      * what coin does here, nothing more. - rjs 8/24/2012 *)
+      (* Lex the string, append a semicolon so we can parse as a statement. *)
       exception Lexer
+      (* Why is the second argument, lexpos, 2? I'm cribbing off of 
+       * what coin does here, nothing more. - rjs 8/24/2012 *)
       val (tokstream, _, lex_state) =
          C0Lex.lineLexer
             (Stream.fromList (explode string @ [#";"]), 2, C0Lex.normal)
@@ -166,29 +165,62 @@ struct
                else (print "Error: incomplete syntax\n"; raise Lexer) 
 
       (* Parse the tokens, enforce that we only accept expressions *)
-      (* It would be easy to handle assignments or loops! We're actually
-       * artifically stopping this from happening. Declarations, however,
+      exception Parser
+
+      (* It could be easy to handle other statements! We're actually
+       * artifically stopping this from happening with this function, which 
+       * errors upon encountering anything that's not a list. Declarations
        * would need to be noticed and avoided, I think. 
        * - rjs 8/24/2012 *)
-      exception Parser
+      fun assert_exp stm = 
+      let fun not_expected s =
+           ( print ("Error: expected an expression, got "^s^"\n")
+           ; raise Parser)
+      in
+         case stm of 
+            Ast.Markeds stm => assert_exp (Mark.data stm)
+          | Ast.Assign _ => not_expected "an assignment"
+          | Ast.Exp exp => ()
+          | Ast.Seq _ => not_expected "a block statement"
+          | Ast.StmDecl _ => not_expected "a variable declaration"
+          | Ast.If _ => not_expected "a if statement"
+          | Ast.While _ => not_expected "a while loop"
+          | Ast.For _ => not_expected "a for loop"
+          | Ast.Continue => not_expected "a continue"
+          | Ast.Break => not_expected "a break"
+          | Ast.Return _ => not_expected "a return"
+          | Ast.Assert _ => not_expected "an assertion"
+          | Ast.Anno _ => not_expected "an annotation"
+      end
+
       val stm = 
          case Parse.parse_stm (Stream.force tokstream) of
+            (* I think this can't happen... the parser fails earlier. *)
             NONE => (print "Error: incomplete syntax\n"; raise Parser) 
-          | SOME (stm, Stream.Cons ((Terminal.EOL, _), _)) => stm
-          | SOME (_, Stream.Cons ((tok, _), _)) =>
-             ( print ("Error: syntax followed by "
-                      ^Terminal.toString  tok^"\n")
+  
+            (* Handles 'e 12' 'e 14 + 14' 'e return' 'e x = 12' *)
+          | SOME (stm, Stream.Cons ((Terminal.EOL, _), _)) => 
+             ( assert_exp stm
+             ; stm)
+
+            (* Handles 'e 12;' 'e x = 12;' *)
+          | SOME (stm, Stream.Cons ((Terminal.SEMI, _), _)) =>
+             ( assert_exp stm (* Prioritize this error message *)
+             ; print ("Error: expression should not be followed by semicolon\n")
              ; raise Parser)
+
+            (* Handles 'e {}' 'e 16; {}' 'e 12; 12; 12' *)
+          | SOME (stm, Stream.Cons ((_, _), _)) =>
+             ( assert_exp stm (* Prioritize this error message *)
+             ; print ("Error: expected an expression, \
+                      \got multiple statements\n")
+             ; raise Parser)
+
           | SOME (_, Stream.Nil) => 
              ( print ("Invariant failed! Missing semicolon. (BUG!)\n")
              ; raise Parser)
+
       val () = if !ErrorMsg.anyErrors then raise Parser else ()
-      fun getexp stm = 
-         case stm of 
-            Ast.Markeds stm => getexp (Mark.data stm)
-          | Ast.Exp exp => ()
-          | _ => (print "Error: not an expression\n"; raise Parser)
-      val () = getexp stm
 
       (* Typecheck, isolate, compile *)
       val env = State.local_tys Exec.state
