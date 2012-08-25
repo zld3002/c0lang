@@ -68,8 +68,9 @@ struct
 
   (* Allocation in the memory model *)
   type loc = int
-  fun loc_string l = 
-     "0x"^(Word32.toString(0wxFF4FFFA0 - Word32.fromInt l * 0wx10))
+  fun loc_string 0 = "NULL" 
+    | loc_string l = 
+         "0x"^(Word32.toString(0wxFF4FFFA0 - Word32.fromInt l * 0wx10))
 
   val new = fn () => ()
 
