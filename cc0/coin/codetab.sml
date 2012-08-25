@@ -126,11 +126,19 @@ fun reload_libs libs =
 fun reload prog = (CT.reset (); app (process_ast "" NONE) prog)
 
 fun print_one (x, (tp, args)) = 
-   let fun str_args (tp, x) = Ast.Print.pp_tp tp ^ " " ^ Symbol.name x in
-      print (Ast.Print.pp_tp tp)
-      ; print " "
-      ; print (Symbol.name x)
-      ; print ("(" ^ String.concatWith ", " (map str_args args) ^ ");")
+   let 
+      fun str_args [] = []
+        | str_args [(tp, x)] =
+             if Flag.isset Flags.flag_dyn_check
+                then []
+             else [Ast.Print.pp_tp tp^" "^Symbol.name x]
+        | str_args ((tp, x) :: args) = 
+             (Ast.Print.pp_tp tp^" "^Symbol.name x) :: str_args args
+   in
+    ( print (Ast.Print.pp_tp tp)
+    ; print " "
+    ; print (Symbol.name x)
+    ; print ("("^String.concatWith ", " (str_args args)^");"))
    end
 
 val print = 

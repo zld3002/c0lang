@@ -94,6 +94,10 @@ let
             (Isolate.iso_stm env stm, 
              ReportAssignment (Ast.Print.pp_exp e1))
 
+       | Ast.StmDecl (Ast.VarDecl (x, tp, NONE, ext)) =>
+            ([Ast.StmDecl (Ast.VarDecl (x, tp, NONE, ext))], 
+             Nothing)
+
        | Ast.StmDecl (Ast.VarDecl (x, tp, SOME e, ext)) =>
             (Ast.StmDecl (Ast.VarDecl (x, tp, NONE, ext)) 
              :: Isolate.iso_stm (Symbol.bind env (x, tp))

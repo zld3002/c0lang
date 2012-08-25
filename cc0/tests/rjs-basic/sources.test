@@ -10,6 +10,12 @@ return 4             ~ array.c0
 return 30            ~ demo.c0
 div-by-zero          ~ divzero.c0
 typecheck, !cymbol => error ~ dynamic.c0
+return 1             ~ evil-name1.c0
+return 1             ~ evil-name2.c0
+return 2             ~ evil-name3.c0 -d
+abort                ~ evil-name4.c0 -d
+abort                ~ evil-name5.c0 -d
+return 2             ~ evil-name6.c0 -d
 return 90            ~ for.c0
 error                ~ for-bad.c0
 return 2             ~ fun.c0

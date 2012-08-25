@@ -192,10 +192,13 @@ in
          val v = call (f, actual_args, pos)
       in 
        ( print_result (Option.map C0.Var x, v)
-       ; lastval := v
        ; case x of 
-            NONE => ()
-          | SOME x => State.put_id (state, x, v)
+            NONE => (lastval := v)
+          | SOME x => 
+             ( State.put_id (state, x, v)
+             ; lastval := State.get_id (state, x))
+                  (* Put followed by get (as opposed to lastval := v)  
+                   * associates NULL values with their type *)
        ; PC (pc+1))
       end
 
@@ -211,7 +214,7 @@ in
        ( State.declare (state, x, tp)
        ; State.put_id (state, x, v) 
        ; print_result (SOME (C0.Var x), v) 
-       ; lastval := v
+       ; lastval := State.tag (state, tp, v)
        ; PC (pc+1))
       end
 
@@ -234,7 +237,10 @@ in
       in
        ( Eval.put (state, l_loc, v)
        ; print_result (SOME e1, v)
-       ; lastval := v
+       ; lastval := Eval.get (state, l_loc) 
+            (* Put followed by get (as opposed to lastval := v) associates 
+             * NULL values with their type *)
+
        ; PC (pc+1))
       end
 
@@ -251,7 +257,10 @@ in
       in 
        ( Eval.put (state, loc, v')
        ; print_result (NONE, v)
-       ; lastval := v'
+       ; lastval := Eval.get (state, loc)
+            (* Put followed by get (as opposed to lastval := v) associates 
+             * NULL values with their type *)
+
        ; PC (pc+1))
       end
 

@@ -94,7 +94,16 @@ Jan 13, 2011: Fix bug where the second argument to alloc_array was evaluated
               two times.
 
 0.2.10 --> 0.3.0
-Feb 6, 2011:  Modify implementation to support different foreign functions.
+Feb 6, 2011:  Modify implementation to support different foreign
+              functions.
 Mar 3, 2011:  Experimental Cygwin compatibility
 May 5, 2012:  Hack to allow pointer offsets in isolated code (cymbol)
 Aug 20, 2012: Finish getting code isolation to work at the top-level
+Aug 25, 2012: Modify state's typechecking so that NULLs can be given
+              their true type when reported on the top-level. Corner
+              case: a NULL returned from a function doesn't currently
+              know its type; this can be corrected by having Coin's
+              bytecode compilation aware of the return types of
+              functions.
+Aug 25, 2012: Fix #functons printing bug associated with the -d option
+              
