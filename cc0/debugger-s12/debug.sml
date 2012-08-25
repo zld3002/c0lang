@@ -56,17 +56,27 @@ struct
   
   fun print_exception exn = 
      case exn of 
-        Error.NullPointer => 
+        Error.Uninitialized => 
+           print "Error: uninitialized value used\n"
+      | Error.NullPointer => 
            print "Exception: attempt to dereference null pointer\n"
       | Error.ArrayOutOfBounds _ => 
            print "Exception: Out of bounds array access\n"
+      | Overflow => 
+           print "Exception: Integer overflow\n"
       | Div => 
            print "Exception: Division by zero\n"
       | Error.ArraySizeNegative _ => 
            print "Exception: Negative array size requested in allocation\n"
       | Error.AssertionFailed s => 
-           print (s ^ "\n")
-      | e => print "Exception: Unexpected exception"
+           print (s^"\n")
+      | Error.Dynamic s => 
+           print ("Error (DYNAMIC SEMANTICS, PLEASE REPORT): "^s)
+      | Error.Internal s => 
+           print ("Error (INTERNAL, PLEASE REPORT): "^s)
+      | Option => 
+           print ("\nGoodbye!\n") (* Always correct? - rjs 8/25/2012 *)
+      | e => print "Exception: Unexpected exception\n"
 
   fun check_pos ((0,0),(0,0),_) = false
     | check_pos pos = true 
@@ -136,15 +146,7 @@ struct
     else NEXT
   end 
 
-(*------------- Core I/O and evaluation -------------------*)
-  
-  fun init_fun(f,actual_args,formal_args,pos) = 
-        (
-        State.push_fun (Exec.state, f, (f, pos));
-        app (fn ((tp, x), v) => 
-          (State.declare (Exec.state, x, tp);
-        State.put_id (Exec.state, x, v)))
-        (ListPair.zip (formal_args, actual_args)))
+(*------------- Expression evaluation -------------------*)
 
   fun eval_exp string = 
    let 
@@ -238,6 +240,16 @@ struct
     ; ParseState.reset ()
     ; ErrorMsg.reset ())
    end handle _ => (ParseState.reset (); ErrorMsg.reset ())
+
+(*------------- Core I/O and evaluation -------------------*)
+  
+  fun init_fun(f,actual_args,formal_args,pos) = 
+        (
+        State.push_fun (Exec.state, f, (f, pos));
+        app (fn ((tp, x), v) => 
+          (State.declare (Exec.state, x, tp);
+        State.put_id (Exec.state, x, v)))
+        (ListPair.zip (formal_args, actual_args)))
 
   fun dstep (cmds,labs) fname = 
   let
