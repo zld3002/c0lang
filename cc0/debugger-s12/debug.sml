@@ -46,7 +46,7 @@ struct
    | LOCAL_VARS 
    | QUIT 
    | HELP
-   | EVAL of string
+   | EVAL_EXP of string
    | IGNORE of string
 
 (*-------------- Printing ----------------*)
@@ -54,6 +54,20 @@ struct
   
   fun println s = TextIO.print (s^"\n")
   
+  fun print_exception exn = 
+     case exn of 
+        Error.NullPointer => 
+           print "Exception: attempt to dereference null pointer\n"
+      | Error.ArrayOutOfBounds _ => 
+           print "Exception: Out of bounds array access\n"
+      | Div => 
+           print "Exception: Division by zero\n"
+      | Error.ArraySizeNegative _ => 
+           print "Exception: Negative array size requested in allocation\n"
+      | Error.AssertionFailed s => 
+           print (s ^ "\n")
+      | e => print "Exception: Unexpected exception"
+
   fun check_pos ((0,0),(0,0),_) = false
     | check_pos pos = true 
 
@@ -113,8 +127,8 @@ struct
           | [] => STEP
           | ["s"] => STEP
 	  | ["step"] => STEP
-          | "e" :: toks => EVAL (String.concatWith " " toks)
-          | "eval" :: toks => EVAL (String.concatWith " " toks)
+          | "e" :: toks => EVAL_EXP (String.concatWith " " toks)
+          | "eval" :: toks => EVAL_EXP (String.concatWith " " toks)
           | _ => IGNORE input
       in 
         action 
@@ -132,6 +146,66 @@ struct
         State.put_id (Exec.state, x, v)))
         (ListPair.zip (formal_args, actual_args)))
 
+  fun eval_exp string = 
+   let 
+      val () = ParseState.reset ()
+      val () = ParseState.pushfile "<debugger>"
+      val () = ErrorMsg.reset ()
+
+     (* Lex the string, append a semicolon so we can parse as a statement.
+      *
+      * Why is the second argument, lexpos, 2? I'm cribbing off of 
+      * what coin does here, nothing more. - rjs 8/24/2012 *)
+      exception Lexer
+      val (tokstream, _, lex_state) =
+         C0Lex.lineLexer
+            (Stream.fromList (explode string @ [#";"]), 2, C0Lex.normal)
+      val () = if !ErrorMsg.anyErrors then raise Lexer else ()
+      val () = if lex_state = C0Lex.normal 
+                  then ()
+               else (print "Error: incomplete syntax\n"; raise Lexer) 
+
+      (* Parse the tokens, enforce that we only accept expressions *)
+      (* It would be easy to handle assignments or loops! We're actually
+       * artifically stopping this from happening. Declarations, however,
+       * would need to be noticed and avoided, I think. 
+       * - rjs 8/24/2012 *)
+      exception Parser
+      val stm = 
+         case Parse.parse_stm (Stream.force tokstream) of
+            NONE => (print "Error: incomplete syntax\n"; raise Parser) 
+          | SOME (stm, Stream.Cons ((Terminal.EOL, _), _)) => stm
+          | SOME (_, Stream.Cons ((tok, _), _)) =>
+             ( print ("Error: syntax followed by "
+                      ^Terminal.toString  tok^"\n")
+             ; raise Parser)
+          | SOME (_, Stream.Nil) => 
+             ( print ("Invariant failed! Missing semicolon. (BUG!)\n")
+             ; raise Parser)
+      val () = if !ErrorMsg.anyErrors then raise Parser else ()
+      fun getexp stm = 
+         case stm of 
+            Ast.Markeds stm => getexp (Mark.data stm)
+          | Ast.Exp exp => ()
+          | _ => (print "Error: not an expression\n"; raise Parser)
+      val () = getexp stm
+
+      (* Typecheck, isolate, compile *)
+      val env = State.local_tys Exec.state
+      val processed_stm = TypeChecker.typecheck_interpreter env stm
+      val isolated_stms = Isolate.iso_stm env stm
+      val (cmds, labs) = Compile.cStms isolated_stms ((~1,~1),(~1,~1),"<BUG>") 
+      val cmds = Vector.concat [ cmds, Vector.fromList [ C0.Return NONE ] ]
+     
+      (* Run *)
+      exception Run
+      val _ = Exec.exec (cmds, labs)
+               handle exn => (print_exception exn; raise Run) 
+   in
+    ( print (State.value_string (Exec.last ())^"\n")
+    ; ParseState.reset ()
+    ; ErrorMsg.reset ())
+   end handle _ => (ParseState.reset (); ErrorMsg.reset ())
 
   fun dstep (cmds,labs) fname = 
   let
@@ -140,7 +214,7 @@ struct
       val next_cmd = Vector.sub (cmds,pc) 
       val action = io next_cmd fname
         
-      fun eval (cmds,labs,pc) =
+      fun next (cmds,labs,pc) =
         (case Exec.step ((cmds,labs),pc) of
         Exec.ReturnNone => NONE
       | Exec.ReturnSome(res) => SOME(res)
@@ -151,7 +225,9 @@ struct
         | HELP => (println help_message; dstep' pc) 
         | QUIT => (println "Goodbye!"; OS.Process.exit(OS.Process.success))
         | IGNORE s => (println ("Ignored command "^s); dstep' pc)
-        | EVAL e => (println ("Haven't implemented eval "^e^"\n"); dstep' pc)
+        | EVAL_EXP "" => (println "Need an argument (try 'eval 4')"; dstep' pc)
+        | EVAL_EXP e => (eval_exp e; dstep' pc) 
+        | NEXT => next(cmds,labs,pc)
         | STEP => 
         (case next_cmd of C0.CCall(NONE,f,args,pos) =>
           let
@@ -188,8 +264,7 @@ struct
               in
                 sim_fun_call (Exec.call_step(f,actual_args,pos))
               end
-            | _ => eval(cmds,labs,pc))
-        | NEXT => eval(cmds,labs,pc)
+            | _ => next(cmds,labs,pc))
     end
   in
     (dstep' 0)
@@ -208,6 +283,7 @@ struct
        | SOME (CodeTab.AbsentNative _) => raise LINK_ERROR
        | SOME (CodeTab.Interpreted _) => ()
 
+
   fun call_main (library_headers, program) =
       let
         val _ = (ConcreteState.clear_locals Exec.state
@@ -221,24 +297,7 @@ struct
 		     | _ => raise Internal("Main function was tagged as native\n")
       in
 	  (dstep code "main")
-	  handle Error.NullPointer => 
-		 ( print "Exception: attempt to dereference null pointer\n"
-		 ; NONE ) (* raiseSignal Posix.Signal.segv *)
-               | Error.ArrayOutOfBounds _ => 
-		 ( print "Exception: Out of bounds array access\n"
-		 ; NONE ) (* raiseSignal Posix.Signal.segv *)
-               | Div => 
-		 ( print "Exception: Division by zero\n"
-		 ; NONE ) (* raiseSignal Posix.Signal.fpe *)
-               | Error.ArraySizeNegative _ => 
-		 ( print "Exception: Negative array size requested in allocation\n"
-		 ; NONE ) (* raiseSignal Posix.Signal.segv *)
-               | Error.AssertionFailed s => 
-		 ( print (s ^ "\n")
-		 ; NONE ) (* raiseSignal Posix.Signal.abrt *)
-               | e =>
-		 ( print "Exception: Unexpected exception"
-		 ; NONE ) (* raise e *)
+	  handle exn => (print_exception exn; NONE)
       end
 
 (* ----------- Top level function ------------*)
