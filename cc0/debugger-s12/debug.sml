@@ -49,8 +49,8 @@ struct
    | EVAL_EXP of string
    | IGNORE of string
 
-  fun loop f 0 = ()
-    | loop f n = (f(); loop f (n-1))
+  fun loop (f: unit -> unit) n =
+     if n <= 0 then () else (f(); loop f (n-1))
 
 (*-------------- Printing ----------------*)
   fun print s = TextIO.print s
