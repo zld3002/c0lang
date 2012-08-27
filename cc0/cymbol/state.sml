@@ -520,7 +520,13 @@ functor StateFn (structure Data : DATA
     in
        case locals of 
           [] => raise Error.Internal ("no local variables to report")
-        | (lclT, _) :: _ => lclT
+        | _ => foldl (fn ((lclT, _), accum) => 
+                        foldl (fn (binding, accum) =>
+                                  Symbol.bind accum binding) 
+                           accum 
+                           (Symbol.elemsi lclT))
+                  Symbol.empty
+                  locals
     end
 
   (* Debugging *)
