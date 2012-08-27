@@ -41,13 +41,16 @@ struct
   exception Internal of string
 
   datatype debug_action = 
-     STEP 
-   | NEXT 
+     STEP of int
+   | NEXT of int
    | LOCAL_VARS 
    | QUIT 
    | HELP
    | EVAL_EXP of string
    | IGNORE of string
+
+  fun loop f 0 = ()
+    | loop f n = (f(); loop f (n-1))
 
 (*-------------- Printing ----------------*)
   fun print s = TextIO.print s
@@ -57,25 +60,21 @@ struct
   fun print_exception exn = 
      case exn of 
         Error.Uninitialized => 
-           print "Error: uninitialized value used\n"
+           print "uninitialized value used\n"
       | Error.NullPointer => 
-           print "Exception: attempt to dereference null pointer\n"
+           print "attempt to dereference null pointer\n"
       | Error.ArrayOutOfBounds _ => 
-           print "Exception: Out of bounds array access\n"
+           print "Out of bounds array access\n"
       | Overflow => 
-           print "Exception: Integer overflow\n"
+           print "Integer overflow\n"
       | Div => 
-           print "Exception: Division by zero\n"
+           print "Division by zero\n"
       | Error.ArraySizeNegative _ => 
-           print "Exception: Negative array size requested in allocation\n"
-      | Error.AssertionFailed s => 
-           print (s^"\n")
+           print "Negative array size requested in allocation\n"
       | Error.Dynamic s => 
-           print ("Error (DYNAMIC SEMANTICS, PLEASE REPORT): "^s)
+           print ("(ERROR IN DYNAMIC SEMANTICS, PLEASE REPORT): "^s)
       | Error.Internal s => 
-           print ("Error (INTERNAL, PLEASE REPORT): "^s)
-      | Option => 
-           print ("\nGoodbye!\n") (* Always correct? - rjs 8/25/2012 *)
+           print ("(INTERNAL ERROR, PLEASE REPORT): "^s)
       | e => print "Exception: Unexpected exception\n"
 
   fun check_pos ((0,0),(0,0),_) = false
@@ -128,22 +127,30 @@ struct
         val action = case inputs of 
             ["v"] => LOCAL_VARS
           | ["vars"] => LOCAL_VARS
-          | ["n"] => NEXT
-          | ["next"] => NEXT
+          | ["n"] => NEXT 1
+          | ["next"] => NEXT 1
+          | ["next", tok] => 
+              (case Int.fromString tok of 
+                  NONE => IGNORE input
+                | SOME i => (if i > 0 then NEXT i else IGNORE input))
           | ["q"] => QUIT
           | ["quit"] => QUIT
           | ["h"] => HELP
           | ["help"] => HELP
-          | [] => STEP
-          | ["s"] => STEP
-	  | ["step"] => STEP
+          | [] => STEP 1
+          | ["s"] => STEP 1
+	  | ["step"] => STEP 1
+          | ["step", tok] =>
+              (case Int.fromString tok of 
+                  NONE => IGNORE input
+                | SOME i => (if i > 0 then STEP i else IGNORE input))
           | "e" :: toks => EVAL_EXP (String.concatWith " " toks)
           | "eval" :: toks => EVAL_EXP (String.concatWith " " toks)
           | _ => IGNORE input
       in 
         action 
       end
-    else NEXT
+    else NEXT 1
   end 
 
 (*------------- Expression evaluation -------------------*)
@@ -234,7 +241,13 @@ struct
       (* Run *)
       exception Run
       val _ = Exec.exec (cmds, labs)
-               handle exn => (print_exception exn; raise Run) 
+               handle Error.AssertionFailed s => 
+                       ( print ("<debugger>:"^s^"\n")
+                       ; raise Run)
+                    | exn => 
+                       ( print "<debugger>:"
+                       ; print_exception exn
+                       ; raise Run) 
    in
     ( print (State.value_string (Exec.last ())^"\n")
     ; ParseState.reset ()
@@ -271,8 +284,8 @@ struct
         | IGNORE s => (println ("Ignored command "^s); dstep' pc)
         | EVAL_EXP "" => (println "Need an argument (try 'eval 4')"; dstep' pc)
         | EVAL_EXP e => (eval_exp e; dstep' pc) 
-        | NEXT => next(cmds,labs,pc)
-        | STEP => 
+        | NEXT i => next(cmds,labs,pc)
+        | STEP i => 
         (case next_cmd of C0.CCall(NONE,f,args,pos) =>
           let
             val actual_args = List.map (Eval.eval_exp Exec.state) args
@@ -341,7 +354,12 @@ struct
 		     | _ => raise Internal("Main function was tagged as native\n")
       in
 	  (dstep code "main")
-	  handle exn => (print_exception exn; NONE)
+	  handle Error.AssertionFailed s => (print (s^"\n"); NONE)
+               | Option => (print "Goodbye\n"; NONE)
+               | exn => 
+                  ( print "Exception: "
+                  ; print_exception exn
+                  ; NONE)
       end
 
 (* ----------- Top level function ------------*)
