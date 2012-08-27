@@ -183,7 +183,7 @@ struct
        * - rjs 8/24/2012 *)
       fun assert_exp stm = 
       let fun not_expected s =
-           ( print ("Error: expected an expression, got "^s^"\n")
+           ( print ("<debugger>:expected an expression, got "^s^"\n")
            ; raise Parser)
       in
          case stm of 
@@ -192,7 +192,7 @@ struct
           | Ast.Exp exp => ()
           | Ast.Seq _ => not_expected "a block statement"
           | Ast.StmDecl _ => not_expected "a variable declaration"
-          | Ast.If _ => not_expected "a if statement"
+          | Ast.If _ => not_expected "an if statement"
           | Ast.While _ => not_expected "a while loop"
           | Ast.For _ => not_expected "a for loop"
           | Ast.Continue => not_expected "a continue"
@@ -205,7 +205,9 @@ struct
       val stm = 
          case Parse.parse_stm (Stream.force tokstream) of
             (* I think this can't happen... the parser fails earlier. *)
-            NONE => (print "Error: incomplete syntax\n"; raise Parser) 
+            NONE => 
+             ( print "<debugger>:incomplete syntax\n"
+             ; raise Parser) 
   
             (* Handles 'e 12' 'e 14 + 14' 'e return' 'e x = 12' *)
           | SOME (stm, Stream.Cons ((Terminal.EOL, _), _)) => 
@@ -215,18 +217,19 @@ struct
             (* Handles 'e 12;' 'e x = 12;' *)
           | SOME (stm, Stream.Cons ((Terminal.SEMI, _), _)) =>
              ( assert_exp stm (* Prioritize this error message *)
-             ; print ("Error: expression should not be followed by semicolon\n")
+             ; print ("<debugger>:expression should not be followed by \
+                      \semicolon\n")
              ; raise Parser)
 
             (* Handles 'e {}' 'e 16; {}' 'e 12; 12; 12' *)
           | SOME (stm, Stream.Cons ((_, _), _)) =>
              ( assert_exp stm (* Prioritize this error message *)
-             ; print ("Error: expected an expression, \
+             ; print ("<debugger>:expected an expression, \
                       \got multiple statements\n")
              ; raise Parser)
 
           | SOME (_, Stream.Nil) => 
-             ( print ("Invariant failed! Missing semicolon. (BUG!)\n")
+             ( print ("<debugger>:Invariant failed! No semicolon. (BUG!)\n")
              ; raise Parser)
 
       val () = if !ErrorMsg.anyErrors then raise Parser else ()
