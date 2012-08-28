@@ -72,6 +72,7 @@
     (define-key map (kbd "RET") 'code-step)
     (define-key map "n" 'code-next)
     (define-key map "v" 'code-locals)
+    (define-key map "e" 'code-eval-exp)
     (define-key map "q" 'code-exit-debug)
     (define-key map "i" 'code-interrupt)
     (define-key map "?" 'code-help)
@@ -188,9 +189,17 @@
       (if (not (code-parse-line (substring string 0 newline-pos) string))
 	  (code-parse (substring string (+ 1 newline-pos)))))))
 
+(defconst code-position-regexp
+  "\\([0-9]*\\)[.]\\([0-9]*\\)-\\([0-9]*\\)[.]\\([0-9]*\\)"
+  "Regular expression matched against code position.  Must define 4 numbers.")
+
 (defconst code-location-regexp
-  "^\\([^:]*\\):\\([0-9]*\\)[.]\\([0-9]*\\)-\\([0-9]*\\)[.]\\([0-9]*\\)"
+  (concat "^\\([^:]*\\):" code-position-regexp)
   "Regular expression matched against debugger output")
+
+(defconst code-interactive-regexp
+  (concat "^\\(<debugger>\\):" code-position-regexp)
+  "Regular expression matched against error in interactive parsing")
 
 (defconst error-msg-regexp
   "\\(:error:.*\\|: @.*\\|: assert failed\\)"
@@ -236,6 +245,22 @@
 	   (message "%s" errormsg)
 	   ;; abort more parsing (return t)
 	   t))
+	((string-match (concat code-interactive-regexp error-msg-regexp) string)
+	 ;; error message during interactive parsing or type-checking
+	 ;; applies during "e <exp>" evaluation
+	 ;; ignore error location, just show error mess
+	 (let* ((errormsg (match-string 6 string)))
+	   (message "%s" errormsg)
+	   ;; continue parsing
+	   ()))
+	((string-match "^<debugger>:\\(.*\\)" string)
+	 ;; remaining runtime messages from debugger during "e <exp" evaluation
+	 ;; must come after the located error message above and before
+	 ;; the general runtime error below
+	 (let* ((errormsg (match-string 1 string)))
+	   (message "%s" errormsg)
+	   ;; continue parsing
+	   ()))
 	((string-match (concat code-location-regexp error-msg-regexp) string)
 	 ;; error message during parsing or type-checking
 	 ;; must come before the next clause
@@ -287,8 +312,8 @@
 	((string-equal "\n" string) ())
 	((string-equal "" string) ())
 	(t
-	 ;; collect other output, usuall from print statements
-	 ;; in program being executed
+	 ;; collect other output, usually from print statements
+	 ;; in program being executed, or from "e <exp>" commands
 	 (setq code-output-accum (concat code-output-accum string "\n"))
 	 ())
 	))
@@ -341,6 +366,12 @@ include a breakpoint"
   (code-send-string "n\n")
   (code-send-string "v\n"))
 
+(defun code-eval-exp (exp)
+  "Evaluate an expression in the current state"
+  (interactive "sEvaluate expression: ")
+  (code-send-string (concat "e " exp "\n"))
+  (code-send-string "v\n"))
+
 (defun code-locals ()
   "Show the value of local variables"
   (interactive)
@@ -354,9 +385,10 @@ include a breakpoint"
 (defun code-help ()
   "Show the Emacs help for code"
   (interactive)
-  (message "%s\n%s\n%s\n%s\n%s\n%s"
+  (message "%s\n%s\n%s\n%s\n%s\n%s\n%s"
 	   "return or s - step"
 	   "n - next (skip function calls)"
+	   "e <exp> - evaluate <exp>"
 	   "q - quit"
 	   "i - interrupt code"
 	   "? - this short help"

@@ -46,6 +46,7 @@ through it with simple keystrokes.  They are:
 
   n             - next command, skipping over function calls
   <return> or s - step to the next command or into function call
+  e <exp>       - evaluate expression <exp> in the current local environment
   q             - quit the execution
   ? or h        - display a short help message
 
