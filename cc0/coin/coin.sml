@@ -108,7 +108,7 @@ let
 
        | _ => (Isolate.iso_stm env stm, Nothing)
 
-   val (isolated_stms, aftereffect) = isolate stm
+   val (isolated_stms, aftereffect) = isolate annoed_stm
 
    (* The modified compiler doesn't give me a real position to put here *)
    val (cmds, labs) = Compile.cStms isolated_stms ((~1,~1),(~1,~1),"<BUG>") 
