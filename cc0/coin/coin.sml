@@ -31,8 +31,7 @@ val name = ref "coin"
 val args = ref [ "--verbose" ]
 val options = Flags.core_options @ Flags.coin_options
 val versioninfo = 
- ( "Coin " ^ Version.version
- ^ "(r" ^ BuildId.revision ^ ", " ^ BuildId.date ^ ")")
+   ("Coin "^Version.version^" (r"^BuildId.revision^", "^BuildId.date^")")
 val errfn = fn msg => (print (msg ^ "\n"); ignore (raise Top.EXIT))
 
 (* Completely resets the interpreter's state; goes so far as to reload files. *)

@@ -107,3 +107,7 @@ Aug 25, 2012: Modify state's typechecking so that NULLs can be given
               functions.
 Aug 25, 2012: Fix #functons printing bug associated with the -d option
               
+0.3.0 --> 0.3.1
+Aug 29, 2012: Fix bug - isolation at coin's toplevel did not use
+              annotations and did not eliminate for-loops, which
+              caused isolation to raise Match.

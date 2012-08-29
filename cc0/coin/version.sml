@@ -1,5 +1,5 @@
 structure Version = struct
 
-val version = "0.3.0 'Nickel'"
+val version = "0.3.1 'Nickel'"
 
 end
