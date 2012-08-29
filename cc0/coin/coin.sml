@@ -110,7 +110,8 @@ let
    val (isolated_stms, aftereffect) = isolate annoed_stm
 
    (* The modified compiler doesn't give me a real position to put here *)
-   val (cmds, labs) = Compile.cStms isolated_stms ((~1,~1),(~1,~1),"<BUG>") 
+   val (cmds, labs) = 
+      Compile.cStms isolated_stms ((0,0),(0,0),"<coin toplevel>") 
 
    (* Make sure that the program doesn't run off the end of the vector *)
    val cmds = Vector.concat [ cmds, Vector.fromList [ C0.Return NONE ] ]

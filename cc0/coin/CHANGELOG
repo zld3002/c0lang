@@ -111,3 +111,6 @@ Aug 25, 2012: Fix #functons printing bug associated with the -d option
 Aug 29, 2012: Fix bug - isolation at coin's toplevel did not use
               annotations and did not eliminate for-loops, which
               caused isolation to raise Match.
+Aug 29, 2012: Isolation means the default location actually shows up
+              sometimes; make this less hideous and
+              bug-report-inducing.
