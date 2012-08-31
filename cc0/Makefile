@@ -221,7 +221,9 @@ coin: bin
 .PHONY: coin-exec
 coin-exec: bin
 	$(MAKE) -C compiler buildid
-	$(MLTON_NATIVE) bin/coin-exec coin/coin-exec.mlb $(NATIVE_COIN)
+	$(MLTON_NATIVE) bin/coin-exec.exe coin/coin-exec.mlb $(NATIVE_COIN)
+	$(COPY) coin/coin-mlton.sh bin/coin-exec
+	chmod +x bin/coin-exec
 
 ## code - The C0 Debugger
 
