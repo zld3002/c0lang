@@ -2,7 +2,8 @@ SHELL   = /bin/sh
 RM      = rm
 COPY    = cp -p
 SML     = sml
-MLTON   = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -output 
+MLTON_VERB = 0
+MLTON   = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -verbose $(MLTON_VERB) -output
 
 ifdef STATIC
 ifdef LIBSPLUS

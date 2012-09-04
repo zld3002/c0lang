@@ -3,6 +3,10 @@ cc0/bin/cc0
 cc0/bin/cc0.exe
 cc0/bin/coin
 cc0/bin/coin.exe
+cc0/bin/coin-exec
+cc0/bin/coin-exec.exe
+cc0/bin/code
+cc0/bin/code.exe
 cc0/lib
 cc0/runtime
 cc0/include
