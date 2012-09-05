@@ -5,7 +5,7 @@ int POW(int b, int e)
 {
   if (e == 0) {
     return 1;
-  } else {
+  } else { 
     return b * POW(b,e-1);
   }
 }
