@@ -3,7 +3,7 @@ bool isPrime(int n)
   if (n < 2) return false;
   if (n == 2) return true;
   if (n % 2 == 0) return false;
-  for (int factor = 3; factor * factor <= n; factor += 2) {
+  for (int factor = 3; factor <= n/factor; factor += 2) {
     if (n % factor == 0)
       return false;
   }
@@ -21,8 +21,10 @@ bool allPrimes (bool[] isPrimeArray, int n)
   return true;
 }
 
+int int_max() { return 2147483647; } /* 32 bit two's complement */
+
 bool[] sieve(int n)
-//@requires n >= 0;
+//@requires 2 <= n && n < int_max()/2;
 //@ensures \length(\result) == n+1;
 //@ensures allPrimes(\result, n);
 {
@@ -47,7 +49,7 @@ bool[] sieve(int n)
 }
 
 int piUsingSieve(int n)
-//@requires n >= 0;
+//@requires 2 <= n && n < int_max()/2;
 {
   bool[] isPrime = sieve(n);
 
@@ -57,4 +59,3 @@ int piUsingSieve(int n)
     if (isPrime[i] == true) count++;
   return count;
 }
-
