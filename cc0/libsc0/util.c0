@@ -32,7 +32,7 @@ char hexdig2char(int d)
 }
 
 /* Converting an integers to a string of hex digits */
-string int2hex (int x)
+string int2hex(int x)
 //@ensures string_length(\result) == 2*int_size();
 {
   int digits = 2*int_size();
