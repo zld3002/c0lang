@@ -16,7 +16,7 @@ int int_min()
 
 int abs(int x)
 //@requires x > int_min();
-//@ensures \result > 0;
+//@ensures \result >= 0;
 //@ensures \result == (x < 0 ? -x : x);
   ;
 

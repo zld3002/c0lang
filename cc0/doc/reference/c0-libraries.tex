@@ -87,8 +87,10 @@ void printint(int i);      /* print i to standard output */
 void printbool(bool b);    /* print b to standard output */
 void printchar(char c);    /* print c to standard output */
 
-string readline();         /* read a line from standard input */
-                           /* do not include the trailing newline */
+bool eof();		   /* test end-of-file on standard input  */
+string readline()          /* read a line from standard input */
+//@requires !eof();        /* do not include the trailing newline */
+  ;
 
 void error(string s);      /* print s to standard error and abort */
 \end{verbatim}
@@ -396,6 +398,11 @@ int[] image_data(image_t image)
   garbage collected.  Contracts on image functions have been sharpened
   to require strictly positive height and width.  \verb'image_load'
   returns \verb'NULL' if the file does not exist or is not readable.
+\item[Rev. C0.0113, Sep 27, 2012.]  Conio Library.
+  Function \verb'eof' has been added to test end-of-file along
+  standard input.  This fixes a problem with \verb'^D' during
+  \verb'readline' and end of stream for shell redirect to stdin.
+  \verb'readline' now requires \verb'!eof()'.
 \end{description}
 
 \end{document}

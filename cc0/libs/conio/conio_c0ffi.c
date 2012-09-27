@@ -16,6 +16,7 @@ void println(c0_string s);
 void printint(int i);
 void printbool(bool b);
 void printchar(c0_char c);
+bool eof();
 c0_string readline();
 void error(c0_string s);
 
@@ -44,6 +45,11 @@ void *__c0ffi_printbool(void **args) {
 void *__c0ffi_printchar(void **args) {
   printchar((c0_char) (intptr_t) args[0]);
   return NULL;
+}
+
+void *__c0ffi_eof(void **args) {
+  (void) args; /* suppress error */
+  return (void *) (intptr_t) eof();
 }
 
 void *__c0ffi_readline(void **args) {

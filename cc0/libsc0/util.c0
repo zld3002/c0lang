@@ -14,7 +14,7 @@ int int_min() { return 0x80000000; } /* minimal integer */
 /* Absolute value */
 int abs(int x)
 //@requires x > int_min();
-//@ensures \result > 0;
+//@ensures \result >= 0;
 {
   return x < 0 ? -x : x;
 }

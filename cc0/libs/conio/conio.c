@@ -30,6 +30,11 @@ c0_string readline() {
   return freadline(stdin);
 }
 
+/* Added Sep 27, 2012 -fp */
+bool eof() {
+  return (bool)(feof(stdin) ? 1 : 0);
+}
+
 void error(c0_string s) {
   const char *cstr = c0_string_tocstr(s);
   c0_abort(cstr);
