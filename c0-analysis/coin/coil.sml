@@ -7,7 +7,8 @@ structure C0Internal = struct
 (**********************)
 (*** C0 expressions ***)
 (**********************)
-type id = Symbol.symbol
+datatype idtype = Actual of string | Temporary of string 
+type id = Symbol.symbol (* * idtype *)
 
 datatype const = 
    Bool of bool                             (* true or false               *)
@@ -25,7 +26,7 @@ datatype binop =
    (* Arith      + * - / %    *) Plus | Times | Minus | Div | Mod
  | (* Bitwise    & | ^        *) BitAnd | BitOr | BitXor
  | (* Shift      << >>        *) ShiftLeft | ShiftRight 
- | (* Comparison < <= == >= > *) Lt | Leq | Eq | Geq | Gt | Neq
+ | (* Comparison < <= == >= > *) Lt | Leq | Eq | Geq | Gt | Neq | Addr
 
 type assignop = binop option (* =, +=, *=, -=, /=, %=, &=, |=, ^=, &&= ... *)
 
@@ -55,7 +56,7 @@ datatype cmd =
  | Exp of exp * Mark.ext
  | Declare of Ast.tp * id * (exp * Mark.ext) option
  | Assign of binop option * exp * exp * Mark.ext
- (* | Call of id option * exp * exp list * Mark.ext *)
+ | CCall of id option * id * exp list * Mark.ext 
  | Assert of exp * string * Mark.ext
  | CondJump of exp * Mark.ext * label
  | Jump of label
@@ -85,7 +86,7 @@ fun binopToString (oper: binop): string =
    case oper of Plus => "+" | Times => "*" | Minus => "-" | Div => "/" 
      | Mod => "%" | BitAnd => "&" | BitOr => "|" | BitXor => "^"
      | ShiftLeft => "<<" | ShiftRight => ">>" | Lt => "<" | Leq => "<=" 
-     | Eq => "==" | Geq => ">=" | Gt => ">" | Neq => "!="
+     | Eq => "==" | Geq => ">=" | Gt => ">" | Neq => "!=" | Addr => "*"
 
 fun monopToString (oper: monop): string = 
    case oper of LogicNot => "!" | ArithNeg => "-" | BitNot => "~"
@@ -119,30 +120,32 @@ fun cmdToString (cmd: cmd): string =
    case cmd of
       Label (l, "") => "Label: L" ^ Int.toString l 
     | Label (l, s) => "Label: L" ^ Int.toString l ^ " // " ^ s
-    | Exp (e1, pos) => (* Mark.show pos ^ "\n" ^ *) 
+    | Exp (e1, pos) => (*Mark.show pos ^ "\n" ^ *)
       expToString false e1
     | Declare (ty, x, NONE) => 
       "New " ^ Ast.Print.pp_tp ty ^ " " ^ Symbol.name x
     | Declare (ty, x, SOME (e, pos)) => 
       "New " ^ Ast.Print.pp_tp ty ^ " " ^ Symbol.name x
       ^ " = " ^ expToString false e
-    | Assign (oper, e1, e2, pos) => (* Mark.show pos ^ "\n" ^ *) 
+    | Assign (oper, e1, e2, pos) => (*Mark.show pos ^ "\n" ^ *)
       expToString false e1 ^ " " 
       ^ (case oper of NONE => "" | SOME oper => binopToString oper) ^ "= "
       ^ expToString false e2
     (* | Call _ => "CALL" *)
-    | Assert (e1, msg, pos) => (* Mark.show pos ^ "\n" ^ *) 
+    | Assert (e1, msg, pos) => (*Mark.show pos ^ "\n" ^*)
       "Assert " ^ expToString false e1 ^ " \"" ^ msg ^ "\""
-    | CondJump (e1, pos, l) => (* Mark.show pos ^ "\n" ^ *) 
+    | CondJump (e1, pos, l) =>  (*Mark.show pos ^ "\n" ^ *)
       "Go to L" ^ Int.toString l ^ " if not " ^ expToString false e1
     | Jump l => 
       "Go to L" ^ Int.toString l ^ ""
-    | Return NONE => (* Mark.show pos ^ "\n" ^ *) 
+    | Return NONE =>  (*Mark.show pos ^ "\n" ^ *)
       "Return"
-    | Return (SOME (e1, pos)) => (* Mark.show pos ^ "\n" ^ *) 
+    | Return (SOME (e1, pos)) =>  (*Mark.show pos ^ "\n" ^  *)
       "Return " ^ expToString false e1
     | PushScope => "{"
     | PopScope n => String.concat (List.tabulate (n, (fn _ => "}")))
+    | CCall(NONE,f,args,pos) => expToString false (Call(f,args,pos))
+    | CCall(SOME(x),f,args,pos) => cmdToString (Assign(NONE,Var x,Call(f,args,pos),pos))
 
 (* cmdPrint prefix prog - the prefix determines the indentation *)
 fun cmdPrint (prefix: string) (prog : program): unit = 

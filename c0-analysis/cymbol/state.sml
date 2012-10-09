@@ -25,7 +25,7 @@ functor StateFn (structure Data : DATA
     | Bool of bool_rep
     | Char of char
     | String of string_rep
-    | NullPointer
+    | NullPointer of Ast.tp option
     | PseudoStruct of Symbol.symbol * string
     | Array of Ast.tp * Heap.loc * int
     | Function of string * Ast.tp * Ast.tp list 
@@ -69,6 +69,8 @@ functor StateFn (structure Data : DATA
 
   fun toCString s = String.translate toCChar s
 
+  fun addr_string (loc,_,_) = Heap.loc_string loc
+
   fun value_string v = 
     case v of
       Unit            => ("(void)")
@@ -90,7 +92,8 @@ functor StateFn (structure Data : DATA
                           ^ Ast.Print.pp_tp t ^ " " ^ f ^ "(" ^
                           String.concatWith "," (map Ast.Print.pp_tp a) ^  "))")
     | PseudoStruct (s, addr)  => (addr ^ " (struct " ^ Symbol.name s ^ ")")
-    | NullPointer     => ("NULL (pointer of unknown type)")
+    | NullPointer NONE => ("NULL")
+    | NullPointer (SOME ty) => ("NULL (" ^ Ast.Print.pp_tp ty ^ "*)")
     | Pointer(ty,loc) => (Heap.loc_string loc ^
                           " (" ^ Ast.Print.pp_tp ty ^ "*)")
     | Array(ty,loc,n) => (Heap.loc_string loc ^
@@ -106,7 +109,7 @@ functor StateFn (structure Data : DATA
     | Bool _ => "bool"
     | Char _ => "char"
     | String _ => "string"
-    | NullPointer => "null pointer"
+    | NullPointer _ => "null pointer"
     | Pointer (ty, _) => Ast.Print.pp_tp ty ^ "*"
     | PseudoStruct (s, _) => "struct " ^ Symbol.name s
     | Array (ty, _, _) => Ast.Print.pp_tp ty ^ "[]"
@@ -117,40 +120,54 @@ functor StateFn (structure Data : DATA
 
   (* == VALUE TYPE == *)
  
-  fun ty_eq t1 t2 =
+  fun ty_eq t1 t2 v =
      case (t1, t2) of  
-        (Ast.Int, Ast.Int) => true
-      | (Ast.Bool, Ast.Bool) => true
-      | (Ast.String, Ast.String) => true
-      | (Ast.Char, Ast.Char) => true
-      | (Ast.Pointer t1, Ast.Pointer t2) => ty_eq t1 t2
-      | (Ast.Array t1, Ast.Array t2) => ty_eq t1 t2
-      | (Ast.StructName x, Ast.StructName y) => EQUAL = Symbol.compare (x, y)
-      | (Ast.Void, Ast.Void) => true
-      | _ => false
+        (Ast.Int, Ast.Int) => SOME v
+      | (Ast.Bool, Ast.Bool) => SOME v
+      | (Ast.String, Ast.String) => SOME v
+      | (Ast.Char, Ast.Char) => SOME v
+      | (Ast.Pointer t1, Ast.Pointer t2) => ty_eq t1 t2 v
+      | (Ast.Array t1, Ast.Array t2) => ty_eq t1 t2 v
+      | (Ast.StructName x, Ast.StructName y) => 
+          (case Symbol.compare (x, y) of EQUAL => SOME v | _ => NONE)
+      | (Ast.Void, Ast.Void) => SOME v
+      | _ => NONE
 
   (* We only have to typecheck assignable values! *)
-  fun typecheck (v, ty) = ty_eq ty Ast.Any orelse
+  fun typecheck (v, ty) = (* removed old check against Ast.Any? *)
     case v of 
-      Unit => ty_eq ty Ast.Void
-    | Int _ => ty_eq ty Ast.Int
-    | Bool _ => ty_eq ty Ast.Bool
-    | Char _ => ty_eq ty Ast.Char
-    | String _ => ty_eq ty Ast.String
-    | NullPointer => (case ty of Ast.Pointer _ => true | _ => false)
+      Unit => ty_eq ty Ast.Void v
+    | Int _ => ty_eq ty Ast.Int v
+    | Bool _ => ty_eq ty Ast.Bool v
+    | Char _ => ty_eq ty Ast.Char v
+    | String _ => ty_eq ty Ast.String v
+    | NullPointer _ => 
+      (* Effectively allows type of a NULL to vary *)
+      (* This *should* only happen in a refinement direction. A null pointer 
+       * is effectively a void*, and in tests/fp-basic/condnull2.c0, isolation
+       * actually requires that we allocate a value of type void*. *)
+        (case ty of 
+            Ast.Pointer ty' => SOME (NullPointer (SOME ty'))
+          | _ => NONE)
     | Pointer (ty', _) => 
-      (case ty of Ast.Pointer ty => ty_eq ty ty' | _ => false)
+        (case ty of Ast.Pointer ty => ty_eq ty ty' v | _ => NONE)
     | Array (ty', _, _) => 
-      (case ty of Ast.Array ty => ty_eq ty ty' | _ => false)
-    | Function _ => false
-    | Uninitialized => false
-    | PseudoStruct _ => false
+        (case ty of Ast.Array ty => ty_eq ty ty' v | _ => NONE)
+    | Function _ => NONE
+    | Uninitialized => NONE
+    | PseudoStruct _ => NONE
 
   fun assert (v, ty) = 
-      if typecheck (v, ty) then ()
-      else raise Error.Dynamic ("assigning " ^ value_desc v ^
-                                " where a value of type " ^ Ast.Print.pp_tp ty
-                                ^ " is expected")
+     case typecheck (v, ty) of
+        SOME v' => v'
+      | NONE => raise Error.Dynamic ("assigning "^value_desc v
+                                     ^" where a value of type " 
+                                     ^Ast.Print.pp_tp ty^" is expected")
+
+  fun tag (S{typedefs, ...}, ty, v) = 
+     case typecheck (v, typedefs ty) of
+        NONE => raise Error.Internal "Tagging value with an incompatible type"
+      | SOME v' => v'
 
   fun novars ty = 
      case ty of
@@ -159,6 +176,8 @@ functor StateFn (structure Data : DATA
       | Ast.TypeName name => 
         raise Error.Internal ("Type name " ^ Symbol.name name ^ " included")
       | _ => ()
+
+
 
         
 
@@ -173,12 +192,13 @@ functor StateFn (structure Data : DATA
   val string = String o Heap.str_to_rep
   val pointer = 
    fn (ty, (loc, NONE, [])) => (novars ty; Pointer (ty, loc))
-    | _ => raise Error.Internal "pointers with offsets (pointer arithmetic)"
+    | (ty, (loc, ind, offs)) => (novars ty; Pointer(ty, Heap.addr_sub' (loc,ind,offs)))
+    (*| _ => raise Error.Internal "pointers with offsets (pointer arithmetic)"*)
   val array = 
    fn (ty, (loc, NONE, []), n) => (novars ty; Array (ty, loc, n))
     | _ => raise Error.Internal "array with offsets (pointer arithmetic)"
   val unit = Unit
-  val null = NullPointer
+  val null = NullPointer NONE
   val to_int = fn Int i => i 
     | Uninitialized => raise Error.Uninitialized
     | v => raise Error.Dynamic ("cannot cast " ^ value_desc v ^ " to int")
@@ -197,7 +217,7 @@ functor StateFn (structure Data : DATA
   val to_pointer = 
    fn Pointer (ty, loc) => 
       if Heap.null loc then NONE else SOME (ty, (loc, NONE, []))
-    | NullPointer => NONE
+    | NullPointer _ => NONE
     | Uninitialized => raise Error.Uninitialized
     | v => raise Error.Dynamic ("cannot cast " ^ value_desc v ^ " to pointer")
   val to_array = fn Array (ty, loc, i) => (ty, (loc, NONE, []), i)
@@ -206,7 +226,7 @@ functor StateFn (structure Data : DATA
 
   (* == GENERIC EQUALITY == *)
 
-  fun value_lt vs = 
+  fun value_lt vs =
     case vs of 
       (Int i1, Int i2) => Data.int_lt (i1, i2)
     | (Char c1, Char c2) => Data.from_bool (ord c1 < ord c2)
@@ -221,15 +241,17 @@ functor StateFn (structure Data : DATA
     | (Int i1, Int i2) => Data.int_eq (i1, i2)
     | (Bool b1, Bool b2) => Data.bool_eq (b1, b2)
     | (Char c1, Char c2) => Data.from_bool (c1 = c2)
-    | (NullPointer, NullPointer) => Data.from_bool true
-    | (NullPointer, Pointer (_, loc)) => Data.from_bool (Heap.null loc)
-    | (Pointer (_, loc), NullPointer) => Data.from_bool (Heap.null loc)
+    | (NullPointer _, NullPointer _) => Data.from_bool true
+    | (NullPointer _, Pointer (_, loc)) => Data.from_bool (Heap.null loc)
+    | (Pointer (_, loc), NullPointer _) => Data.from_bool (Heap.null loc)
     | (Pointer (_, l1), Pointer (_, l2)) => Data.from_bool (Heap.eq (l1, l2))
     | (Function (f1, _, _), Function (f2, _, _)) => Data.from_bool (f1 = f2)
     | (Array (_, l1, _), Array (_, l2, _)) => Data.from_bool (Heap.eq (l1, l2))
+    | (Uninitialized, _) => raise Error.Uninitialized
+    | (_,Uninitialized) => raise Error.Uninitialized
     | (v1,v2) => 
       raise Error.Dynamic 
-            ("cannot compare a " ^ value_desc v1 ^ " and a " ^ value_desc v2
+            ("cannot compare a asl;kdjfl;askjdfkl;sj " ^ value_desc v1 ^ " and a " ^ value_desc v2
              ^ " for equality")
 
   fun is_unit Unit = true
@@ -345,8 +367,7 @@ functor StateFn (structure Data : DATA
     | Ast.Any       => raise Error.Dynamic "dyn types cannot live on heap"
 
   fun put_addr (S{heap, typedefs, ...}, (ty, addr), v) =
-     (assert (v, typedefs ty)
-      ; case v of 
+     case assert (v, typedefs ty) of 
            Unit            => ()
          | Int i           => Heap.put_int    (heap, addr) i
          | Bool b          => Heap.put_bool   (heap, addr) b
@@ -354,11 +375,10 @@ functor StateFn (structure Data : DATA
          | String s        => Heap.put_string (heap, addr) s
          | Function f      => raise Error.Internal "impossible"
          | PseudoStruct _  => raise Error.Internal "impossible"
-         | NullPointer     => Heap.put_null   (heap, addr)
+         | NullPointer _   => Heap.put_null   (heap, addr)
          | Pointer (_, l)  => Heap.put_loc    (heap, addr) l
          | Array (_, l, _) => Heap.put_loc    (heap, addr) l
-         | Uninitialized   => raise Error.Internal "impossible")
-
+         | Uninitialized   => raise Error.Internal "impossible"
 
   (* == STACK MANIPULATION == *)
 
@@ -425,7 +445,8 @@ functor StateFn (structure Data : DATA
       end
 
   fun clear_locals (state as S{stack, ...}) = 
-     let val T{fun_name, locals, caller, depth} = !stack
+     let 
+       val T{fun_name, locals, caller, depth} = !stack
      in stack := T{fun_name = fun_name,
                    locals = (Symbol.empty, Symbol.empty) :: tl locals,
                    caller = caller,
@@ -472,14 +493,15 @@ functor StateFn (structure Data : DATA
 
   fun put_stack ([], x, v) = raise Undeclared
     | put_stack ((lclT, lclV) :: locals, x, v) = 
-      case Symbol.look lclT x of 
-        NONE => (lclT, lclV) :: put_stack (locals, x, v)
-      | SOME ty => 
-        if typecheck (v, ty) 
-        then (lclT, Symbol.bind lclV (x, v)) :: locals
-        else raise Error.Dynamic ("assigning " ^ value_desc v ^
-                                  " where a value of type " ^ Ast.Print.pp_tp ty
-                                  ^ " is expected")
+        (case Symbol.look lclT x of 
+            NONE => (lclT, lclV) :: put_stack (locals, x, v)
+          | SOME ty => 
+              (case typecheck (v, ty) of 
+                  SOME v' => (lclT, Symbol.bind lclV (x, v')) :: locals
+                | NONE => 
+                     raise Error.Dynamic ("assigning "^value_desc v
+                                          ^" where a value of type " 
+                                          ^Ast.Print.pp_tp ty^" is expected")))
 
   fun put_id (state as S{stack, ...}, x, v) = 
     let val T{fun_name, locals, caller, depth} = !stack
@@ -493,28 +515,32 @@ functor StateFn (structure Data : DATA
     end 
 
   fun local_tys (state as S{stack, ...}) =
-    let val T{locals, ...} = !stack
+    let 
+      val T{locals, ...} = !stack
     in
        case locals of 
           [] => raise Error.Internal ("no local variables to report")
-        | (lclT, _) :: _ => lclT
+        | _ => foldl (fn ((lclT, _), accum) => 
+                        foldl (fn (binding, accum) =>
+                                  Symbol.bind accum binding) 
+                           accum 
+                           (Symbol.elemsi lclT))
+                  Symbol.empty
+                  locals
     end
 
   (* Debugging *)
 
   fun print_locals (S{stack = ref (T{locals, ...}), ...}) =
-    raise Domain
-(*
-    let 
-      fun print_scope decls =
-          app (fn (x, (_,v)) => 
-                  print (Symbol.name x ^ " --> " ^ value_string v ^ "\n"))
-              (Symbol.elemsi decls)
-    in 
-      print "----- Stack: -----\n";
-      app (fn decls => (print_scope decls; print "-----------------\n")) locals
-    end
-*)
+  let
+     fun get_elems (_, v_table) = 
+        Symbol.elemsi v_table
+  in
+     List.app 
+        (fn (s,v) =>
+            TextIO.print (Symbol.name s^": "^(value_string v)^"\n")) 
+        (List.concat (map get_elems locals))
+  end
 
 end
 

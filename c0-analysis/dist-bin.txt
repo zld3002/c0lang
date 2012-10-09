@@ -3,10 +3,15 @@ cc0/bin/cc0
 cc0/bin/cc0.exe
 cc0/bin/coin
 cc0/bin/coin.exe
+cc0/bin/coin-exec
+cc0/bin/coin-exec.exe
+cc0/bin/code
+cc0/bin/code.exe
 cc0/lib
 cc0/runtime
 cc0/include
 cc0/c0-mode
+cc0/c0.nanorc
 cc0/doc/README.txt
 cc0/doc/reference/c0-reference.pdf
 cc0/doc/reference/c0-libraries.pdf

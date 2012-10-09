@@ -31,7 +31,7 @@ bool depth_bounded(ufs eqs, int i)
 
 
 bool valid_ufs (ufs eqs)
-//@requires 0 <= eqs->size && eqs->size < \length(eqs->A);
+//@requires 0 <= eqs->size && eqs->size <= \length(eqs->A);
 {
   int size = eqs->size;
   int[] A = eqs->A;

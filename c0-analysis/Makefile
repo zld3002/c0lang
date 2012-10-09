@@ -2,8 +2,19 @@ SHELL   = /bin/sh
 RM      = rm
 COPY    = cp -p
 SML     = sml
-MLTON   = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -output 
-MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -rdynamic" -cc-opt -Iinclude -default-ann "allowFFI true" -output 
+MLTON_VERB = 0
+MLTON   = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -verbose $(MLTON_VERB) -output
+
+ifdef STATIC
+ifdef LIBSPLUS
+MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -Llib -Lruntime -lfile -lconio -lstring -lparse -lcurses -limg -lclock -lbare -lpng -lz /usr/lib/libcurses.a" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output 
+else
+MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -Llib -Lruntime -lfile -lconio -lstring -lparse -lcurses -limg -lbare -lpng -lz /usr/lib/libcurses.a" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output 
+endif
+else
+MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -rdynamic" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output 
+endif
+
 CPP     = cpp
 
 
@@ -105,6 +116,8 @@ cc0 parse3: bin bare
 	$(COPY) compiler/bin/cpfiles bin
 	chmod +x bin/cc0 bin/cpfiles
 
+
+
 parse2: bin bare
 	$(MAKE) -C compiler clean
 	$(MAKE) -C compiler buildid
@@ -154,14 +167,29 @@ else
 	$(COPY) $@/$(notdir $@).h0 $@/$(call dllname,$(notdir $@)) lib
 endif
 
+.PHONY: libsplus/*
+libsplus/*: bin/wrappergen
+	$(MAKE) -C $@
+ifdef STATIC
+	$(COPY) $@/$(notdir $@).h0 $@/$(call staticlibname,$(notdir $@)) lib
+else
+	$(COPY) $@/$(notdir $@).h0 $@/$(call dllname,$(notdir $@)) lib
+endif
+
 .PHONY: libs
 libs: bin/wrappergen
 	$(COPY) libsc0/*.h0 libsc0/*.c0 lib
 	for l in libs/*; do $(MAKE) $$l; done
+ifdef LIBSPLUS
+	for l in libsplus/*; do $(MAKE) $$l; done  
+endif
 
 .PHONY: libsclean
 libsclean:
 	for l in libs/*; do $(MAKE) -C $$l clean; done
+ifdef LIBSPLUS
+	for l in libsplus/*; do $(MAKE) -C $$l clean; done
+endif
 
 .PHONY: clean
 clean: libsclean
@@ -194,7 +222,22 @@ coin: bin
 .PHONY: coin-exec
 coin-exec: bin
 	$(MAKE) -C compiler buildid
-	$(MLTON_NATIVE) bin/coin-exec coin/coin-exec.mlb $(NATIVE_COIN)
+	$(MLTON_NATIVE) bin/coin-exec.exe coin/coin-exec.mlb $(NATIVE_COIN)
+	$(COPY) coin/coin-mlton.sh bin/coin-exec
+	chmod +x bin/coin-exec
+
+## code - The C0 Debugger
+
+.PHONY: code
+code: bin
+	$(MAKE) -C compiler buildid
+	$(MLTON_NATIVE) bin/code debugger-s12/debug.mlb $(NATIVE_COIN)
+
+code-smlnj: bin
+	$(MAKE) -C debugger-s12 code
+	$(COPY) debugger-s12/code.heap.* bin
+	$(COPY) debugger-s12/code-smlnj bin/code
+	chmod +x bin/code
 
 ## Testing harnesses
 

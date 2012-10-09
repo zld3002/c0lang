@@ -18,19 +18,16 @@ structure Eval:> sig
    | StackLoc of Symbol.symbol
    | HeapLoc of Ast.tp * ConcreteState.addr
 
-  type function_impl = 
-     Symbol.symbol * ConcreteState.value list * Mark.ext -> ConcreteState.value
-
   val get: 'a ConcreteState.state * loc -> ConcreteState.value
   val put: 'a ConcreteState.state * loc * ConcreteState.value -> unit
 
   val eval_exp: 
-     'a ConcreteState.state * function_impl
+     'a ConcreteState.state
      -> C0Internal.exp 
      -> ConcreteState.value
 
   val eval_lval:
-     'a ConcreteState.state * function_impl
+     'a ConcreteState.state
      -> C0Internal.exp
      -> loc
 
@@ -55,8 +52,6 @@ struct
   type addr = S.addr
   type value = S.value 
 
-  type function_impl = Symbol.symbol * value list * Mark.ext -> value
-
   datatype loc = NullLoc | StackLoc of Symbol.symbol | HeapLoc of Ast.tp * addr
 
   fun get (state, NullLoc) = raise Error.NullPointer
@@ -65,7 +60,10 @@ struct
 
   fun put (state, NullLoc, v) = raise Error.NullPointer
     | put (state, StackLoc x, v) = S.put_id (state, x, v)
-    | put (state, HeapLoc (ty, addr), v) = S.put_addr (state, (ty, addr), v)
+    | put (state, HeapLoc (ty, addr), v) = 
+        (S.put_addr (state, (ty, addr), v)
+          handle (Error.NullPointer) => 
+            TextIO.output(TextIO.stdErr,"Allocated to a NULL addr\n"))
   
   fun eval_const c = 
     case c of  
@@ -103,6 +101,7 @@ struct
       (fn (x, y) => S.bool (D.bool_or (S.value_eq (x, y), S.value_lt (x, y))))
     | C0.Geq => 
       (fn (x, y) => S.bool (D.bool_or (S.value_eq (y, x), S.value_lt (y, x))))
+    | C0.Addr => raise Error.Internal ("Unexpected binary operator: address of") 
 
   fun to_heap loc = 
     case loc of
@@ -116,10 +115,10 @@ struct
       Ast.StructName st => st
     | ty => raise Error.Dynamic ("expected struct, got " ^ Ast.Print.pp_tp ty)
 
-  fun eval_lval (state, call) exp = 
+  fun eval_lval state exp = 
     let 
-       val ev_exp = eval_exp (state, call) 
-       val ev_lval = eval_lval (state, call)
+       val ev_exp = eval_exp state 
+       val ev_lval = eval_lval state
     in
        case exp of 
          C0.Var x => StackLoc x
@@ -148,13 +147,12 @@ struct
        | _ => raise Error.Dynamic "invalid lvalue"
     end
 
-  and eval_exps (state, call) exps = 
-    map (eval_exp (state, call)) exps
-
-  and eval_exp (state, call) exp = 
+  and eval_exps state exps = 
+    map (eval_exp state) exps
+  and eval_exp state exp = 
     let 
-       val ev_exp = eval_exp (state, call) 
-       val ev_lval = eval_lval (state, call)
+       val ev_exp = eval_exp state 
+       val ev_lval = eval_lval state
     in
        case exp of
        (* Constants and variables *)
@@ -207,12 +205,8 @@ struct
            then S.get_addr (state, (ty, S.offset_index (state, addr, i)))
            else raise Error.ArrayOutOfBounds (i, n)
          end
-       | C0.Call (fun_name, exps, pos) =>
-         let
-            val vals = map ev_exp exps
-         in 
-            call (fun_name, vals, pos)
-         end
+       | C0.Call _ => 
+          raise Error.Internal "Unexpected call expression; should be CCall stm after hoisting"
     end
 
 end

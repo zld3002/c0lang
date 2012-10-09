@@ -48,17 +48,21 @@ structure Test = Testing (struct
   fun did_infloop r = r = SIGALRM
   fun did_error r = r = CompileError
 
-  (* XXX: assume we're run from the c0 directory *)
+  (* XXX BAD: assume we're run from the c0 directory 
+   * 
+   * We should just force cc0 and cc0-test to be in the same
+   * directory; we shouldn't specify the c0 directory for running
+   * this.  - Rjs 08-12-2010
+   *
+   * Yes, but how to make sure cc0-test.cm continues to work?  -wjl
+   * 08-20-2010 *)
   val coin_exec =
-    let val curdir = OS.FileSys.getDir ()
+    let 
+       val curdir = OS.FileSys.getDir ()
+       val coin_exec_exe = OS.Path.concat (curdir, "bin/coin-exec.exe")
     in
-      (* XXX BAD - WE SHOULD JUST FORCE cc0 AND cc0-test TO BE IN 
-       * THE SAME DIRECTORY, WE SHOULDN'T SPECIFY THE c0 DIRECTORY
-       * FOR RUNNING THIS - Rjs August 12 *)
-      (* Yes, but how to make sure cc0-test.cm continues to work?
-         -wjl 08-20-2010 *)
-      print ("The time is now " ^ OS.Path.concat (curdir, "bin/coin-exec") ^ "\n");
-      OS.Path.concat (curdir, "bin/coin-exec")
+      print ("Invoking " ^ coin_exec_exe ^ "\n");
+      coin_exec_exe
     end
 
   val runtime = ref "bare"

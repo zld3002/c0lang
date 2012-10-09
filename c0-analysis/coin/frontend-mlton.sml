@@ -1,11 +1,9 @@
 structure SigINT :> SIGINT =
 struct
-
   val message = "\nKeyboardInterrupt\n"
 
   fun interruptLoop (loop:unit -> unit) =
      let
-	(* open MLton *)
 	val _ =
 	   MLton.Cont.callcc
 	   (fn k =>
@@ -23,5 +21,8 @@ struct
      in
 	loop ()
      end
+end
 
-end;
+structure Server = 
+   Server (structure Runline = Coin
+           structure SigINT = SigINT) 

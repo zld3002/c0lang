@@ -26,6 +26,11 @@ formalization/ - formalization of a slight variant of C0
   (also contains library documentation: make libdoc.pdf)
   libdoc.pdf is now obsolete - see reference/c0-libraries.*
 
+To update on c0.typesafety.net after making changes
+to the tutorial:
+
+% ssh typesafety.net './update_wiki'
+
 notes [obsolete]:
 % svn propset svn:externals "C0-Tutorial.wiki https://svn.github.com/frankpfenning/C0-Tutorial.wiki\
 C0-Tutorial https://svn.github.com/frankpfenning/C0-Tutorial" .

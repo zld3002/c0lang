@@ -855,7 +855,10 @@ struct
       end
     | chk_stm env (A.Return(SOME(e))) rtp loop ext =
       let val tp = syn_exp env e ext
-      in if tp_conv tp rtp then ()
+      in if tp_conv A.Void rtp
+	 then ( ErrorMsg.error ext ("function returning void must invoke 'return', not 'return e'")
+	      ; raise ErrorMsg.Error )
+	 else if tp_conv tp rtp then ()
 	 else ( ErrorMsg.error ext ("type mismatch\n"
 				    ^ "expected return type: " ^ P.pp_tp rtp ^ "\n"
 				    ^ "   found return type: " ^ P.pp_tp tp)

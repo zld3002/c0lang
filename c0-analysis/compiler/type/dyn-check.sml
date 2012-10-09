@@ -5,7 +5,7 @@
 
 signature DYN_CHECK =
 sig
-    (* Turn contracts into dynamic checks with A.assert(...) *)
+    (* Turn contracts into dynamic checks with A.Assert(...) *)
     val contracts : Ast.program -> Ast.program
     val contracts_interpreter : Ast.tp Symbol.table -> Ast.stm -> Ast.stm
 end
@@ -60,12 +60,17 @@ struct
 	let val (ds, ss, e') = tfm_test env e
 	in (ds, ss, A.Length(e')) end
       | tfm_test env (A.Old(e)) =
-	let val (d,t) = Syn.new_tmp (Syn.syn_exp env e)
+	let val (d,t) = Syn.new_tmp (Syn.syn_exp env e) NONE (* fix NONE? -fp *)
 	    val (ds, ss, e') = tfm_test env e
 	(* \old cannot be nested; transform anyway for \result *)
 	in (ds @ [d], ss @ [A.Assign(NONE, t, e')], t) end
       | tfm_test env (A.Marked(marked_exp)) =
-	  tfm_test env (Mark.data marked_exp)
+	(* simple heuristic for preserving location info *)
+	let 
+	    val (ds, ss, e') = tfm_test env (Mark.data marked_exp)
+	in
+	    (ds, ss, A.Marked(Mark.mark'(e', Mark.ext marked_exp)))
+	end
 
     (* tfm_tests env es = (ds, ss, es'), as in tfm_test *)
     and tfm_tests env (e::es) =
@@ -74,22 +79,26 @@ struct
 	in (ds1 @ ds2, ss1 @ ss2, e'::es') end
       | tfm_tests env nil = ([], [], nil)
 
-    (* spec_to_assert env spec = A.Assert(e, msgs)
+    fun m_assert(e, msg, ext) =
+	A.Markeds(Mark.mark'(A.Assert(e, msg), ext))
+
+    (* spec_to_assert env spec = A.Assert(e, msgs), marked with a region,
      * where msgs is a list of exps that constitute the error message *)
     fun spec_to_assert env (A.Requires(e,ext)) =
 	let val (ds, ss, e') = tfm_test env e
-	in (ds, ss, A.Assert(e', [A.StringConst(location ext ^ ": @requires annotation failed\n"),
-				  caller_var, A.StringConst(": caller location")]))
+	in (ds, ss, m_assert(e', [A.StringConst(location ext ^ ": @requires annotation failed\n"),
+				  caller_var, A.StringConst(": caller location")],
+			     ext))
 	end
       | spec_to_assert env (A.Ensures(e,ext)) =
 	let val (ds, ss, e') = tfm_test env e
-	in (ds, ss, A.Assert(e', [A.StringConst(location ext ^ ": @ensures annotation failed")])) end
+	in (ds, ss, m_assert(e', [A.StringConst(location ext ^ ": @ensures annotation failed")], ext)) end
       | spec_to_assert env (A.LoopInvariant(e,ext)) =
 	let val (ds, ss, e') = tfm_test env e
-	in (ds, ss, A.Assert(e', [A.StringConst(location ext ^ ": @loop_invariant annotation failed")])) end
+	in (ds, ss, m_assert(e', [A.StringConst(location ext ^ ": @loop_invariant annotation failed")], ext)) end
       | spec_to_assert env (A.Assertion(e,ext)) =
 	let val (ds, ss, e') = tfm_test env e
-	in (ds, ss, A.Assert(e', [A.StringConst(location ext ^ ": @assert annotation failed")])) end
+	in (ds, ss, m_assert(e', [A.StringConst(location ext ^ ": @assert annotation failed")], ext)) end
 
     (* specs_to_assert env specs, see spec_to_assert *)
     fun specs_to_assert env (spec::specs) =
@@ -106,7 +115,7 @@ struct
 	in ass1 end
 
     (* dc_stm env s post = s'
-     * Assumes env |- s stmt, env0, _result : rtp |- post stmt
+     * Assumes env |- s stmt and env0, _result : rtp |- post stmt
      * post is function postcondition, formulated as asserts
      *)
     fun dc_stm env (s as A.Assign _) post = s

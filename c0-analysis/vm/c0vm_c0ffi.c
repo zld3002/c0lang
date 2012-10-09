@@ -11,6 +11,7 @@ native_fn native_function_table[NATIVE_FUNCTION_COUNT] =
       __c0ffi_args_parse,
       __c0ffi_args_string,
       /* conio */
+      __c0ffi_eof,
       __c0ffi_error,
       __c0ffi_print,
       __c0ffi_printbool,

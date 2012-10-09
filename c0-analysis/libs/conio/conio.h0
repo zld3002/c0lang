@@ -8,7 +8,9 @@ void printint(int i);      /* print i to standard output */
 void printbool(bool b);    /* print b to standard output */
 void printchar(char c);    /* print c to standard output */
 
-string readline();         /* read a line from standard input */
-                           /* do not include the trailing newline */
+bool eof();		   /* test end-of-file on standard input  */
+string readline()          /* read a line from standard input */
+//@requires !eof();        /* do not include the trailing newline */
+  ;
 
 void error(string s);      /* print s to standard error and abort */

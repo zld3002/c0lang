@@ -16,7 +16,7 @@ functor NativeHeapFn (structure Data : CONCRETE_DATA
 
   (* Internalization of strings *)
   val prim_make_c0_string =
-     _import "c0_string_fromcstr" : string -> MLton.Pointer.t;
+     _import "c0_string_fromcstr" public: string -> MLton.Pointer.t;
   fun make_c0_string s = prim_make_c0_string (s ^ "\000")
   
   structure StringTab = Symtab (type entrytp = MLton.Pointer.t)
@@ -51,10 +51,10 @@ functor NativeHeapFn (structure Data : CONCRETE_DATA
   (* Internal representation of sizes and locations *)
   datatype ty = Bool | Int | Char | String | Loc | Struct of ty list
 
-  val sizeof_bool = (_import "sizeof_bool"    : unit -> int;) ()
-  val sizeof_int  = (_import "sizeof_int"     : unit -> int;) ()
-  val sizeof_char = (_import "sizeof_char"    : unit -> int;) ()
-  val sizeof_ptr  = (_import "sizeof_ptr"     : unit -> int;) ()
+  val sizeof_bool = (_import "sizeof_bool"    public: unit -> int;) ()
+  val sizeof_int  = (_import "sizeof_int"     public: unit -> int;) ()
+  val sizeof_char = (_import "sizeof_char"    public: unit -> int;) ()
+  val sizeof_ptr  = (_import "sizeof_ptr"     public: unit -> int;) ()
   
   type size_t = int
   fun sizeof ty = 
@@ -76,7 +76,7 @@ functor NativeHeapFn (structure Data : CONCRETE_DATA
 
   val new = fn () => ()
 
-  val alloc_ = _import "c0_alloc" : int -> ptr;
+  val alloc_ = _import "c0_alloc" public: int -> ptr;
   fun alloc ((), size) = 
     let val ptr = alloc_ size 
     in 
@@ -84,7 +84,7 @@ functor NativeHeapFn (structure Data : CONCRETE_DATA
       if null_ptr ptr then raise Error.Allocation else SOME ptr 
     end 
 
-  val array_alloc_ = _import "c0_array_alloc" : int * int -> ptr;
+  val array_alloc_ = _import "c0_array_alloc" public: int * int -> ptr;
   fun alloc_array ((), size, n) =
     let val ptr = array_alloc_ (size, n) 
     in
@@ -94,7 +94,7 @@ functor NativeHeapFn (structure Data : CONCRETE_DATA
     end
   
   (* Pointers and stuff *)
-  val size_ = _import "c0_array_length" : ptr -> int;
+  val size_ = _import "c0_array_length" public: ptr -> int;
   fun size ((), NONE) = 0
     | size ((), SOME ptr) = size_ ptr
 
@@ -109,7 +109,7 @@ functor NativeHeapFn (structure Data : CONCRETE_DATA
   fun offset (tys : ty list) : Word32.word = 
     foldr (fn (x, y) => x + y) 0wx0 (map (Word32.fromInt o sizeof) tys)
 
-  val array_sub = _import "c0_array_sub" : ptr * int * int -> ptr;  
+  val array_sub = _import "c0_array_sub" public: ptr * int * int -> ptr;  
   fun addr_sub (NONE, _, off) = raise Error.Internal "offset of null pointer"
     | addr_sub (SOME ptr, NONE, offs) =
       let
@@ -130,6 +130,7 @@ functor NativeHeapFn (structure Data : CONCRETE_DATA
         print ("after struct offset: " ^ loc_string (SOME ptr'') ^ "\n"); *)
         ptr''
       end
+  val addr_sub' = (SOME o addr_sub)
 
   fun get1 addr = MLton.Pointer.getWord8  (addr_sub addr, 0)
   fun get4 addr = MLton.Pointer.getWord32 (addr_sub addr, 0)

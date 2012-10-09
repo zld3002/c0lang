@@ -29,7 +29,6 @@ signature DEBUGGER = sig
   val int : value -> int
   val bool : value -> bool
   val string : value -> string
-
 end
 
 structure Debugger :> DEBUGGER = struct

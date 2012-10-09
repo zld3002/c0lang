@@ -206,17 +206,17 @@ fun write_cymbol_extern_lib_static_sml rootdir c0ffi_list =
            ; Set.app 
                 (fn s => 
                   ( output ("(\""^s^"\","^getBuf s^"_import \"__c0ffi_"^s^
-                            "\": fnptr;) ::")))
+                            "\" public: fnptr;) ::")))
                 funcs
            ; output "[]))"))
          c0ffi_list
     ; output ""
-    ; output "fun load \"\" = NONE"
+    ; output "fun load _ \"\" = NONE"
     ; Map.appi
          (fn (lib, _) => 
-             output ("  | load \""^lib^"\" = SOME (lib_"^lib^")"))
+             output ("  | load _ \""^lib^"\" = SOME (lib_"^lib^")"))
          c0ffi_list
-    ; output "  | load _ = NONE"
+    ; output "  | load _ _ = NONE"
     ; output ""
     ; output "fun close _ = ()"
     ; output ""

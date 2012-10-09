@@ -36,6 +36,9 @@ signature STATE = sig
   val char           : char          -> value
   val string         : string        -> value
 
+  (* Lets NULLs know their type *)
+  val tag            : 'a state * Ast.tp * value -> value 
+
   (* NOTE: the types passed to pointer and array must be free of type names *)
   val pointer        : Ast.tp * addr  -> value
   val array          : Ast.tp * addr * int -> value
@@ -81,7 +84,9 @@ signature STATE = sig
 
   (* Debugging *)
   val value_string   : value -> string
-  val print_locals   : 'a state -> unit  
+  val print_locals   : 'a state -> unit 
+
+  val addr_string    : addr -> string
 (*
 
   (* Heap allocated storage *)

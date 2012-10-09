@@ -45,6 +45,7 @@ Building from source
     $ make check      # run the regression suite
 
     $ make coin       # build the interactive toplevel
+    $ make code       # build the debugger
   [ $ make coin-exec  # build the interpreter ]
   [ $ make checkcoin  # run the regression suite on the interpreter ]
 
@@ -106,16 +107,26 @@ revision 4 with
   [rm -f *.aux *.log *.out]
   cd ../../..
 
+  ** If distributing a source distribution for compilation, at this
+  ** point the file compiler/bin/buildid can be edited to hard-code
+  ** the subversion version number, and the distribution can be packed
+  ** up.
+  ** 
+  ** Find version ???? with
+  ** svn info https://svn.concert.cs.cmu.edu/c0
+
   ./configure
   make
   make cc0-mlton
+  [ make check ]
   make coin
+  make code
+  make coin-exec
+  [ make checkcoin ] 
   cd ..
   tar --exclude .svn -p -T cc0/dist-bin.txt -cvzf cc0-v????-osx10.6.8-bin.tgz
   scp cc0-v????-osx10.6.8-bin.tgz c0.typesafety.net:/home/www/c0/dist/
 
-Find version ???? with
-svn info https://svn.concert.cs.cmu.edu/c0
 
 Older versions:
 

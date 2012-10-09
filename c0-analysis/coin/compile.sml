@@ -2,7 +2,7 @@ signature COMPILE = sig
    
 val cStm : Ast.stm -> Mark.ext -> C0Internal.program
 val cStms : Ast.stm list -> Mark.ext -> C0Internal.program
- 
+
 end
 
 structure Compile:> COMPILE = 
@@ -19,12 +19,12 @@ fun cAOp NONE = NONE
      | Ast.PLUS => Plus | Ast.MINUS => Minus | Ast.SHIFTLEFT => ShiftLeft
      | Ast.SHIFTRIGHT => ShiftRight | Ast.LESS => Lt | Ast.LEQ => Leq
      | Ast.GREATER => Gt | Ast.GEQ => Geq | Ast.EQ => Eq | Ast.NOTEQ => Neq 
-     | Ast.AND => BitAnd | Ast.XOR => BitXor | Ast.OR => BitOr 
+     | Ast.AND => BitAnd | Ast.XOR => BitXor | Ast.OR => BitOr | Ast.DEREF => Addr
      | _ => raise Error.Internal "Bad assign operation")
 
 fun mExp pos exp = 
    case exp of
-      Ast.Marked mrk => valOf (Mark.ext mrk) "No mark"
+      Ast.Marked mrk => valOf (Mark.ext mrk) "No mark for mExp"
     | _ => valOf pos "No position information available"
 
 fun cOpExp (pos : Mark.ext option) opexp = 
@@ -70,7 +70,7 @@ and cExp (pos : Mark.ext option) exp =
     | Ast.OpExp opexp => cOpExp pos opexp
     | Ast.Select (exp, field) => Field (cExp pos exp, field)
     | Ast.FunCall (f, es) => 
-      Call (f, map (cExp pos) es, valOf pos "No mark for call")
+        Call (f, map (cExp pos) es, valOf pos "No mark for call")
     | Ast.Alloc tp => Alloc tp
     | Ast.AllocArray (tp, exp) => AllocArray (tp, cExp pos exp)
     | Ast.Result => raise Error.Internal "No '\\result' action"
@@ -82,9 +82,18 @@ fun cVarDecl (Ast.VarDecl (x, tp, e, pos)) =
    Declare (tp, x, NONE) ::
    (case e of NONE => [] 
      | SOME e => 
-       let val pos = valOf pos "No mark"
+       let val pos = valOf pos "No mark for VarDecl"
        in [ Assign (NONE, Var x, cExp (SOME pos) e, pos) ] end)
 
+fun fake_translate (Assign (NONE, Var x, Call (f, args, pos), _)) = 
+       [CCall (SOME x, f, args, pos)]
+  | fake_translate (Exp (Call (f, args, pos), _)) = 
+       [CCall (NONE, f, args, pos)]
+  | fake_translate (Declare(tp, x, SOME(Call(f, args, pos), _))) = 
+       [Declare(tp, x, NONE), CCall(SOME x, f, args, pos)]
+  | fake_translate cmd = [cmd]
+
+(* Requires that code already be isolated!!! *)
 fun cStms stms pos =
    let
       val nextlabel = ref 0
@@ -99,7 +108,8 @@ fun cStms stms pos =
           | Ast.StmDecl (Ast.VarDecl (x, tp, NONE, pos)) => 
             [ Declare (tp, x, NONE) ]
           | Ast.StmDecl (Ast.VarDecl (x, tp, SOME e, pos)) =>
-            let val pos = valOf pos "No mark" 
+            let val pos = Option.valOf pos
+              handle _ => ((0,0),(0,0),"")
             in [ Declare (tp, x, SOME (cExp (SOME pos) e, pos)) ] end
           | Ast.Seq ([], []) => []
           | Ast.Seq (vs, ss) => [ PushScope ] 
@@ -162,13 +172,23 @@ fun cStms stms pos =
           if x = n then i else findLabel (i+1, cmds) n
         | findLabel (i, _ :: cmds) n = findLabel (i+1, cmds) n
 
+      (*
+      val stms_s = List.foldr op^ "" (List.map Ast.Print.pp_stm stms)
+      val _ = TextIO.output(TextIO.stdErr,"Before isolation: \n"^stms_s)
+      *)
+
+      (*val stms_s = List.foldr op^ "" (List.map Ast.Print.pp_stm stms) *)
+      (*val _ = Flag.guard Flags.interactive
+                (fn () => TextIO.output(TextIO.stdErr,"\n"^stms_s))*)
+      
       val cmds = List.concat (map (cStm (0, NONE, NONE) (SOME pos)) stms)
+      val cmds = List.concat (map fake_translate cmds)
       val labs = Vector.tabulate (!nextlabel, findLabel (0, cmds))
    in
       (Vector.fromList cmds, labs)
    end
 
-fun cStm x = cStms [ x ] 
+fun cStm x = cStms [ x ]
 
 end
 

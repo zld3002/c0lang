@@ -17,6 +17,7 @@ local
    calling.sml
    eval.sml
    codetab.sml
+   exec-sig.sml
    exec.sml
 in
    structure Eval

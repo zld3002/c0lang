@@ -56,11 +56,12 @@ fun process_ast pre current_lib =
 
   | Ast.Function (x, tp, args, SOME stm, spec, false, SOME pos) => 
     (* This is a defined function; compile it. *)
-    (Flag.guard Flags.flag_verbose
-       (fn () => print (pre ^ "Processing " ^ Symbol.name x ^ " (interp)\n"))
-       ()
+     ( Flag.guard Flags.flag_verbose
+        (fn () => print (pre ^ "Processing " ^ Symbol.name x ^ " (interp)\n"))
+        ()
      ; let
-          val func = Compile.cStms [ stm, Ast.Return NONE ] pos
+          val stms = Isolate.iso_stm (Syn.syn_decls Symbol.empty args) stm
+          val func = Compile.cStms (stms @ [Ast.Return NONE]) pos
        in 
           Flag.guards [ Flags.flag_verbose, Flags.flag_print_codes ]
              (fn () => C0Internal.cmdPrint pre func) ()
@@ -99,21 +100,10 @@ fun process_ast pre current_lib =
   | Ast.Pragma (Ast.UseFile (pragma, NONE), pos) =>
     () (* Ignore empty #use "file.c0" pragmas *)
 
-val lib_ext =
-   case List.find (fn (x, y) => x = "sysname") (Posix.ProcEnv.uname ()) of
-      SOME (_, "Darwin") => ".dylib"
-    | SOME (_, "Linux") => ".so"
-    | SOME (_, "CYGWIN_NT-6.1") => ".dll"
-    (* XXX these should be some actual exception *)
-    | SOME (_, sysname) => 
-      raise Error.Internal ("unknown system type, " ^ sysname)
-    | _ => 
-      raise Error.Internal ("Posix.ProcEnv.uname did not return sysname!")
-
 fun load_lib [] lib = print ("WARNING: failed to load library <" ^ lib ^ ">\n")
   | load_lib (libdir :: path) lib =
-    let val lib_file = OS.Path.concat (libdir, "lib" ^ lib ^ lib_ext) in
-       case NativeLibrary.load lib_file of
+    let val lib_file = OS.Path.concat(libdir,("lib"^lib^".so")) in
+       case NativeLibrary.load libdir lib of
           NONE => 
           (Flag.guard Flags.flag_verbose 
               (fn () => print ("Library " ^ lib_file ^ " did not load\n")) ()
@@ -136,12 +126,21 @@ fun reload_libs libs =
 fun reload prog = (CT.reset (); app (process_ast "" NONE) prog)
 
 fun print_one (x, (tp, args)) = 
-   let fun str_args (tp, x) = Ast.Print.pp_tp tp ^ " " ^ Symbol.name x in
-      print (Ast.Print.pp_tp tp)
-      ; print " "
-      ; print (Symbol.name x)
-      ; print ("(" ^ String.concatWith ", " (map str_args args) ^ ");")
+   let 
+      fun str_args [] = []
+        | str_args [(tp, x)] =
+             if Flag.isset Flags.flag_dyn_check
+                then []
+             else [Ast.Print.pp_tp tp^" "^Symbol.name x]
+        | str_args ((tp, x) :: args) = 
+             (Ast.Print.pp_tp tp^" "^Symbol.name x) :: str_args args
+   in
+    ( print (Ast.Print.pp_tp tp)
+    ; print " "
+    ; print (Symbol.name x)
+    ; print ("("^String.concatWith ", " (str_args args)^");"))
    end
+
 val print = 
  fn () => app (fn (x, Native (ty, _)) => 
                   (print_one (x, ty); print " // Library function\n")

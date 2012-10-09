@@ -171,6 +171,17 @@ struct
 					 (fn () => say ("Checking library " ^ library_h0 ^ " ...")) ()
 				(* true : is library *)
 				val ast' = TypeChecker.typecheck(ast, true) 
+		                val _ = Flag.guard Flags.flag_static_check 
+			           (fn () => 
+			             let val afuncs = Analysis.analyze ast'
+			                 val _ =  Flag.guard Flags.flag_ast
+                                                    (fn () => (map (say o AAst.Print.pp_afunc) afuncs;())) ()
+			                 val verrors = Analysis.check afuncs
+			                 val _ = say "Static errors:"
+			                 val _ = map (say o VError.pp_error) verrors
+			             in 
+			                 raise FINISHED
+			             end) ()
 				val () = Flag.guards [Flags.flag_verbose, Flags.flag_dyn_check]
 					 (fn () => say ("Transforming contracts on library " ^ library_h0  ^ " ...")) ()
 				val ast'' = if Flag.isset Flags.flag_dyn_check
@@ -221,17 +232,7 @@ struct
 				 (fn () => say ("Checking file " ^ source_c0 ^ " ...")) ()
                         (* false : is not library *)
 			val ast' = TypeChecker.typecheck(ast, false)
-			val _ = Flag.guard Flags.flag_static_check 
-			           (fn () => 
-			             let val afuncs = Analysis.analyze ast'
-			                 val _ =  Flag.guard Flags.flag_ast
-                          (fn () => (map (say o AAst.Print.pp_afunc) afuncs;())) ()
-			                 val verrors = Analysis.check afuncs
-			                 val _ = say "Static errors:"
-			                 val _ = map (say o VError.pp_error) verrors
-			             in 
-			                 raise FINISHED
-			             end) ()
+			(*val () = say (Analysis.analyze ast')*)
 			val () = Flag.guards [Flags.flag_verbose, Flags.flag_dyn_check]
 				 (fn () => say ("Transforming contracts on file " ^ source_c0 ^ " ...")) ()
 			val ast'' = if Flag.isset Flags.flag_dyn_check
@@ -310,7 +311,7 @@ fun finalize {library_headers} =
         val versioninfo = "C0 reference compiler (cc0) revision "
                         ^ BuildId.revision ^ " (built " ^ BuildId.date ^ ")"
 	val usageinfo = G.usageInfo {header = header, options = options}
-	val c0vm_version = 1
+	val c0vm_version = 2
 	fun errfn msg : unit = (say (msg ^ "\n" ^ usageinfo) ; raise EXIT)
 
         (* Reset state by reading argments; possibly display usage & exit. *) 
@@ -464,13 +465,15 @@ fun finalize {library_headers} =
 	    ^ " -I" ^ path_concat (!Flags.base_dir, "include") 
 	    ^ " -I" ^ path_concat (!Flags.base_dir, "runtime") 
 
+            (* The actual c0 main file *)
+            ^ " " ^ path_concat (out_dir, cname)
+
             (* Finally, use the cc0main.c file *)
             ^ " " ^ path_concat3 (!Flags.base_dir, "lib", cc0_main)
 
             (* Now use the libraries (<source>.h) and code (<source>.c) *)
             ^ " " ^ String.concatWith " " (map (fn p => "-Wl,-rpath " ^ (abspath p)) (!Flags.search_path))
             ^ " " ^ String.concatWith " " (map (abspath o get_library_archive) (!Flags.libraries))
-            ^ " " ^ path_concat (out_dir, cname)
 
             (* Use the runtime and cc0lib *)
             ^ " " ^ path_concat3 (!Flags.base_dir, "lib", cc0_lib ^ ".c")

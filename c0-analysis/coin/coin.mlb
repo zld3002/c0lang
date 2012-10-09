@@ -1,11 +1,14 @@
 coin-core.mlb
+../compiler/sources.mlb
+
 
 (* Front-end *)
 local
    $(SML_LIB)/basis/mlton.mlb
    server.sml
-   sigint-mlton.sml
    coin.sml
+
+   frontend-mlton.sml
    mlton-go.sml
 in
    functor Server

@@ -1,0 +1,98 @@
+\documentclass[11pt]{article}
+
+% begin palatino.sty
+% copied from palatino.sty, except left ttdefault as CMTT
+\renewcommand{\rmdefault}{ppl}
+\renewcommand{\sfdefault}{phv}
+% \renewcommand{\ttdefault}{pcr}
+% end palatino.sty
+
+\usepackage[breaklinks=true,
+  colorlinks=true,
+  citecolor=blue,
+  linkcolor=blue,
+  urlcolor=blue]{hyperref}
+
+% \usepackage{code}
+% \newcommand{\blankline}{\mbox{}} % for \begin{code}...\end{code}
+% \renewcommand{\_}{\char`\_}
+% \renewcommand{\{}{\char`\{}
+% \renewcommand{\}}{\char`\}}
+
+\title{Additional C0 Libraries}
+\author{Informatik 2 \\ Torsten Grust}
+% \date{May 2012\\Compiler revision 71 (Wed May 23 2012
+%   \hyperlink{sec:updates}{updates})}
+\date{May 2012\\Compiler revision 71 (Wed May 23 2012)}
+
+\usepackage{fancyhdr}
+\pagestyle{fancyplain}
+\setlength{\headheight}{14pt}
+\addtolength{\oddsidemargin}{30pt}
+\addtolength{\evensidemargin}{-22pt}
+
+\lhead[\fancyplain{}{\bfseries C0.\thepage}]%
+      {\fancyplain{}{\bfseries Libraries}}
+\chead[]{}
+\rhead[\fancyplain{}{\bfseries Library}]%
+      {\fancyplain{}{\bfseries C0.\thepage}}
+\lfoot[{\small\scshape Informatik 2 (Sommersemester 2012)}]{{\small\scshape Informatik 2 (Sommersemester 2012)}}
+\cfoot[]{}
+\rfoot[{\small\scshape\today}]{{\small\scshape\today}}
+
+\newcommand{\tint}{\texttt{int}}
+\newcommand{\tbool}{\texttt{bool}}
+\newcommand{\vtrue}{\texttt{true}}
+\newcommand{\vfalse}{\texttt{false}}
+\newcommand{\tstring}{\texttt{string}}
+\newcommand{\tchar}{\texttt{char}}
+\newcommand{\tarray}{\texttt{[\,]}}
+\newcommand{\tstar}{\texttt{*}}
+\newcommand{\vnull}{\texttt{NULL}}
+\newcommand{\tstruct}{\texttt{struct}}
+\newcommand{\tvoid}{\texttt{void}}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+This document describes additional libraries available for use in the
+C0 language implementation. The additional libraries complement the
+standard libraries shipped with the C0 implementation. All libraries
+can be used with the \verb'cc0' compiler and \verb'coin'.  Please
+consult the \href{http://c0.typesafety.net/tutorial}{C0 Tutorial} and
+\href{http://c0.typesafety.net/doc/c0-reference.pdf}{C0 Language
+  Reference} for more information on C0. The standard libraries are
+described in the \href{http://c0.typesafety.net/tutorial}{C0 Library
+  Reference}.
+
+Libraries can be included on the command line using \verb'-l lib' or in
+files with \verb'#use <lib>'.  The latter is recommended to make
+source files less dependent on context.  The implementation ensures
+that each library will be loaded at most once.
+
+\section{\tt clock}
+\label{sec:tt-clock}
+
+
+The \verb'clock' library contains functions for timing programs and
+provides access to the system time.
+
+\begin{small}
+\begin{verbatim}
+/* Return CPU time used since process started
+ * (measured in milliseconds)
+ */
+int millisecs();
+
+/* Return time elapsed since midight, Jan 1, 1970 (UTC)
+ * (measured in seconds)
+ */
+int now();
+\end{verbatim}
+\end{small}
+
+
+\end{document}

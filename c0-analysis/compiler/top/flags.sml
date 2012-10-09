@@ -27,10 +27,14 @@ signature FLAGS = sig
   val flag_trace : Flag.flag 
   val flag_print_codes : Flag.flag
 
+  (* Only for the code debugger *)
+  val flag_interactive : Flag.flag
+  val flag_emacs: Flag.flag
 
   val core_options : unit GetOpt.opt_descr list
   val coin_options : unit GetOpt.opt_descr list
   val compiler_options : unit GetOpt.opt_descr list
+  val code_options : unit GetOpt.opt_descr list
 
   val reset_flags : unit GetOpt.opt_descr list (* Options *)
                     -> (string -> unit)        (* Error function *)
@@ -63,6 +67,9 @@ structure Flags :> FLAGS = struct
 
   val flag_trace = Flag.flag "trace"
   val flag_print_codes = Flag.flag "print_codes"
+
+  val flag_interactive = Flag.flag "interactive"
+  val flag_emacs = Flag.flag "emacs"
 
   local
     fun parse_opt_level (s) =
@@ -147,6 +154,14 @@ structure Flags :> FLAGS = struct
      {short = "", long=["print-codes"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_print_codes),
       help="Print out the internal language's representation"}]
+
+  val code_options : unit GetOpt.opt_descr list = 
+    [{short = "i",long=["interactive"],
+      desc=GetOpt.NoArg (fn () => Flag.set flag_interactive),
+      help="Run code in interactive mode for command line use"},
+     {short = "e",long=["emacs_mode"],
+      desc=GetOpt.NoArg (fn () => Flag.set flag_emacs),
+      help="Run in mode compatible with emacs plugin"}]
     
   val compiler_options : unit GetOpt.opt_descr list = 
     [{short = "", long=["dump-ast"],

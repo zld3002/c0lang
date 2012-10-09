@@ -48,7 +48,7 @@
 (require 'cc-mode)
 
 ;; Load code for debugger interaction
-(require 'c0-c0de)
+(require 'c0-code)
 
 ;; These are only required at compile time to get the sources for the
 ;; language constants.  (The cc-fonts require and the font-lock
@@ -208,10 +208,19 @@
   ;; when they are completed.
   '(("else" "else" c-electric-continued-statement 0)))
 
-(defvar c0-mode-map (let ((map (c-make-inherited-keymap)))
-		      ;; Add bindings which are only useful for C0
-		      map)
-  "Keymap used in C0 mode buffers.")
+(defvar c0-mode-map
+  (let ((map (c-make-inherited-keymap)))
+    ;; Add bindings which are only useful for C0
+    (define-key map "\C-c\C-d" 'code)
+    (define-key map "\C-c\C-g" 'code-delete-highlight)
+    map)
+  "Keymap used in C0 mode buffers.  \C-c\C-d starts debugger (code).")
+
+(defvar cc0-path (concat c0-root "bin/cc0")
+  "*Path to cc0 executable")
+
+(defvar code-path (concat c0-root "bin/code")
+  "*Path to the debugger (code) executable")
 
 ;; Custom variables
 (defcustom c0-mode-hook nil
@@ -219,14 +228,12 @@
   :type 'hook
   :group 'c)
 
-(defvar c0-mode-map ()
-   "Keymap used in c0-mode buffers.") 
-(if awk-mode-map
-    nil
-  (setq awk-mode-map (c-make-inherited-keymap))
-  (define-key awk-mode-map "\C-c\C-n" 'undefined) ; #if doesn't exist in awk.
-  (define-key awk-mode-map "\C-c\C-p" 'undefined)
-  (define-key awk-mode-map "\C-c\C-u" 'undefined))
+;; (if awk-mode-map
+;;     nil
+;;   (setq awk-mode-map (c-make-inherited-keymap))
+;;   (define-key awk-mode-map "\C-c\C-n" 'undefined) ; #if doesn't exist in awk.
+;;   (define-key awk-mode-map "\C-c\C-p" 'undefined)
+;;   (define-key awk-mode-map "\C-c\C-u" 'undefined))
 
 (easy-menu-define c-c0-menu c0-mode-map "C0 Mode Commands"
 		  (cons "C0" (c-lang-const c-mode-menu c0)))
@@ -261,9 +268,9 @@ Key bindings:
   ;; There's also a lower level routine `c-basic-common-init' that
   ;; only makes the necessary initialization to get the syntactic
   ;; analysis and similar things working.
-  (set 'compile-command (concat "cc0 " (file-relative-name buffer-file-name)))
+  (set 'compile-command (concat cc0-path " " (file-relative-name buffer-file-name)))
   (c-common-init 'c0-mode)
-  (c-run-mode-hooks 'c-mode-common-hook 'awk-mode-hook)
+  (c-run-mode-hooks 'c-mode-common-hook) ; 'awk-mode-hook 
   (c-update-modeline))
 
 (provide 'c0-mode)

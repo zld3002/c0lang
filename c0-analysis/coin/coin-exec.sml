@@ -1,7 +1,7 @@
 structure CoinExec:>sig
 
-   (* Type is a bit misleading: the function actually never returns *)
-   val go: string * string list -> unit
+   (* The "go" function never returns *)
+   val go: string * string list -> 'a
   
 end = 
 struct
@@ -16,22 +16,10 @@ val COMPILER_ERROR: status   = (0wx2, "Did not compile\n")
 val LINK_ERROR: status       = (0wx3, "Some libraries did not link\n")
 fun RUNTIME_ERROR s: status  = (0wx4, "Internal bug in coin: " ^ s ^ "\n")
 
-(* 
-fun SIG_NULL_POINTER () = 
-   (print "attempt to dereference null pointer\n"
-      ; Posix.Process.kill (me, Posix.Process.)
-
-: status = (0wxF0, "attempt to dereference null pointer\n")
-val SIG_ARRAY_BOUNDS: status = (0wxF1, "Out of bounds array access\n")
-val SIG_OVERFLOW: status     = (0wxF2, "\n")
-val SIG_DIV_ZERO: status     = (0wxF3, "\n")
-val SIG_OUTTA_MEMORY: status = (0wxF4, "Unable to allocate memory!\n")
-fun SIG_ASSERTION s: status  = (0wxF5, s ^ "\n")
-*)
-
 structure FS = Posix.FileSys
 
-fun go (name, args): unit = 
+(* Handle command line name and arguments *)
+fun go (name, args) = 
 let
 
    (* Get the sources files from the compiler *)
@@ -50,8 +38,6 @@ let
             options = Flags.core_options},
          args = args}
       handle _ => die COMPILER_ERROR
-
-
 
    (* Typecheck, enforcing the presence of a correctly-defined main function *)
 
@@ -98,18 +84,18 @@ let
 
    fun raiseSignal sgn = 
     ( Posix.Process.kill (Posix.Process.K_PROC (Posix.ProcEnv.getpid ()), sgn)
-    ; raise Fail "Well, this is ironic (unreachable exception).")
+    ; raise Fail "Well, this is unexpected (unreachable exception).")
 
    (* write initial 0x0 byte *)
    val () = writeArr (Word8Array.fromList [ 0wx0 ])
 
    val result =
    let in
-      ConcreteState.clear_locals Exec.state
-      ; CodeTab.reload_libs (!Flags.libraries)
-      ; CodeTab.reload (library_headers @ program)
-      ; app assertLibrariesLoaded (CodeTab.list ())
-      ; Exec.call (Symbol.symbol "main", [], ((0, 0), (0, 0), "_init_"))
+    ( ConcreteState.clear_locals Exec.state
+    ; CodeTab.reload_libs (!Flags.libraries)
+    ; CodeTab.reload (library_headers @ program)
+    ; app assertLibrariesLoaded (CodeTab.list ())
+    ; Exec.call (Symbol.symbol "main", [], ((0, 0), (0, 0), "_init_")))
    end handle Error.NullPointer => 
               (print "attempt to dereference null pointer\n"
                ; raiseSignal Posix.Signal.segv)

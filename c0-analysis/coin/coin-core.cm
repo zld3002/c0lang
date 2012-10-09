@@ -3,6 +3,7 @@ Group is
       $/smlnj-lib.cm
       ../compiler/sources3.cm
       ../cymbol/cymbol-imperative.cm
+      
 
       coil.sml
       compile.sml
@@ -10,6 +11,7 @@ Group is
       calling.sml
       eval.sml
       codetab.sml
+      exec-sig.sml
       exec.sml
 
       version.sml
