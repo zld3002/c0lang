@@ -8,7 +8,8 @@
 
 signature ANALYSIS = 
 sig
-   val analyze: Ast.program -> string
+   val analyze: Ast.program -> AAst.afunc list
+   val check: AAst.afunc list -> VError.error list
 end
 
 structure Analysis :> ANALYSIS =
@@ -22,7 +23,7 @@ struct
    fun label env exp = 
       case exp of
             Ast.Var v => (case Env.lookup env v of
-                             NONE => raise Fail "unknown variable, internal bug"
+                             NONE => raise Fail ("unknown variable, internal bug: " ^ Symbol.name v)
                            | SOME i => Local (v,i))
           | Ast.OpExp(oper, el) => Op(oper, map (label env) el)
           | Ast.FunCall(f, el) => Call(f, map (label env) el)
@@ -30,11 +31,16 @@ struct
           | Ast.IntConst n => IntConst n
           | Ast.True => BoolConst true
           | Ast.False => BoolConst false
+          | Ast.StringConst s => StringConst s
+          | Ast.CharConst c => CharConst c
+          | Ast.Old e => Old(label env e)
+          | Ast.Length e => Length(label env e)
+          | Ast.Result => Result
           | Ast.Null => Null
           | Ast.Alloc(tp) => Alloc(tp)
           | Ast.Select(e, f) => Select(label env e, f)
           | Ast.AllocArray(tp, e) => AllocArray(tp, label env e)
-          | _ => raise UnsupportedConstruct ("label: " ^ (Ast.Print.pp_exp exp))
+          (*| _ => raise UnsupportedConstruct ("label: " ^ (Ast.Print.pp_exp exp))*)
    (* the same as the above, except will strip the annotation category (requires,
       ensures, etc.) off, then label. *)
    fun labelSpec env spec =
@@ -54,8 +60,13 @@ struct
        | Call (f, l) => Call(f, map (relabel rl) l)
        | IntConst _ => exp
        | BoolConst _ => exp
+       | StringConst _ => exp
+       | CharConst _ => exp
        | Alloc _ => exp
        | Null => exp
+       | Result => exp
+       | Length (e) => Length (relabel rl e)
+       | Old (e) => Old (relabel rl e)
        | AllocArray (tp, e) => AllocArray(tp, relabel rl e)
        | Select(e, f) => Select (relabel rl e, f)
        | MarkedE e => MarkedE (Mark.map (relabel rl) e)
@@ -120,16 +131,17 @@ struct
      | ssa (Ast.Markeds m, env) = 
          let val (stmt, env', r, b, c) = ssa (Mark.data m, env)
          in (MarkedS (Mark.mark' (stmt, Mark.ext m)), env', r, b, c) end
-     | ssa (Ast.Seq (decls, sl), env) = 
+     | ssa (Ast.Seq ([], sl), env) = 
          let fun ssa' (stm, (s, e, r, b, c)) = 
              let val (s', e', r', b', c') = ssa (stm, e) in (Seq(s,s'), e', r@r', b@b', c@c') end
-         in foldl ssa' (ssaVarDecl (decls, env, [], [], [])) sl end
+         in foldl ssa' ((Nop, env, [], [], [])) sl end
+     | ssa (Ast.Seq _, env) = raise Fail "preprocessor error"
      | ssa (Ast.StmDecl decl, env) = (ssaVarDecl ([decl], env, [], [], []))
      | ssa (Ast.Return NONE, env) = (Return NONE, Env.empty, [env], [], [])
      | ssa (Ast.Return (SOME e), env) =
-                        (Return (SOME (label env e)), Env.empty, [env], [], [])
-     | ssa (Ast.Break, env) = (Break, Env.empty, [], [env], [])
-     | ssa (Ast.Continue, env) = (Continue, Env.empty, [], [], [env])
+                        (Return (SOME (label env e)), env, [env], [], [])
+     | ssa (Ast.Break, env) = (Break, env, [], [env], [])
+     | ssa (Ast.Continue, env) = (Continue, env, [], [], [env])
      | ssa (Ast.If(e, strue, sfalse), env) =
          let val (st, et, trets, tbrks, tconts) = ssa (strue, env)
              val (sf, ef, frets, fbrks, fconts) = ssa (sfalse, env)
@@ -179,17 +191,21 @@ struct
        | Continue => stm
        | Break => stm
        | MarkedS s => MarkedS (Mark.map simplifySeq s)
-       
-   (* DEBUG ONLY: Runs SSA, then print out any errors*)	  
+   
+   fun analyzeArgs ctx args = 
+      let fun aarg (Ast.VarDecl (id, tp, init, ext)) = 
+         (id, tp, (id, valOf(Env.lookup ctx id)))
+         (* all arguments should be assigned locals, valOf safe. *)
+      in map aarg args end
    fun analyzeFunc (Ast.Function(name, rtp, args, SOME stmt, specs, false, ext)) = 
-          (let
+          let
              val () = Env.reset()
              val (stmt',types) = Preprocess.preprocess
                  (Ast.Function(name, rtp, args,
                                SOME (Ast.Markeds (Mark.mark' (stmt, ext))),
                                specs, false, ext))
              val (_, initialEnv, _, _, _) = ssaVarDecl (args, Env.empty, [], [], [])
-             
+             val args = analyzeArgs initialEnv args
              val reqs = List.filter (fn Ast.Requires _ => true | _ => false) specs
              val ens = List.filter (fn Ast.Ensures _ => true | _ => false) specs
              
@@ -197,19 +213,23 @@ struct
              val ens' = map (labelSpec initialEnv) ens
              val (s, env, rets, _, _) = ssa (stmt', initialEnv)
              val s' = simplifySeq s
-             val (errs) = NullityAnalysis.checkFunc types reqs' s' ens'
+             val (errs) = NullityAnalysis.checkFunc rtp types reqs' s' ens'
             
-          in ["requires:"]@(map AAst.Print.pp_aexpr reqs')@
+          in
+             [Function(rtp, types, args, reqs', s', ens')]
+          (*["requires:"]@(map AAst.Print.pp_aexpr reqs')@
              ["ensures:"]@(map AAst.Print.pp_aexpr ens')@
              [(Ast.Print.pp_tp rtp) ^ " " ^ (Symbol.name name)
                   ^ "(args)\n{\n" ^ (AAst.Print.pp_astmt s') ^"\n}"]@
              (map (VError.pp_error) (errs))
+          *)
           end 
-        handle UnsupportedConstruct s => ["Unsupported: " ^ s])
      | analyzeFunc _ = []
+   fun checkFunc (Function(rtp, types, formals, reqs, s, ens)) =
+      NullityAnalysis.checkFunc rtp types reqs s ens
    
-   (* DEBUG ONLY: Runs SSA and safety analysis on each function in a program. *)
-   fun analyze prog = AAst.Print.commas "\n" (List.concat (map analyzeFunc prog))
+   fun analyze prog = List.concat (map analyzeFunc prog)
+   fun check funcs = List.concat (map checkFunc funcs)
 end
 
 

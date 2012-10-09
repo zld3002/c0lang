@@ -56,7 +56,8 @@ struct
       "{" ^ (AAst.Print.commas "; " 
                (map (fn (l, tp) => (AAst.Print.pp_aexpr (AAst.Local l)) ^ " => " ^ (NL.pp_lat tp))
                     (LocalMap.listItemsi gamma))) ^ "}"
-               
+    
+   val result = (Symbol.new "\\result", 0)
    fun getLat gamma l =
       case LocalMap.find (gamma, l) of                            
          NONE => NL.Top
@@ -80,6 +81,7 @@ struct
        | AAst.AllocArray _ => NL.NotNull                     
        | AAst.Local l => getLat gamma l
        | AAst.Null => NL.Null
+       | AAst.Result => getLat gamma result
        | AAst.MarkedE m => exp_lat gamma (Mark.data m)
        | _ => NL.Top
        
@@ -141,9 +143,14 @@ struct
          AAst.Local _ => ([],gamma)
        | AAst.IntConst _ => ([],gamma)
        | AAst.BoolConst _ => ([],gamma)
+       | AAst.StringConst _ => ([],gamma)
+       | AAst.CharConst _ => ([],gamma)
        | AAst.Alloc _ => ([],gamma)
        | AAst.AllocArray (tp, e) => analyzeExpr types gamma (ext, e)
        | AAst.Null => ([],gamma)
+       | AAst.Result => ([],gamma)
+       | AAst.Length(e) => analyzeExpr types gamma (ext, e)
+       | AAst.Old(e) => analyzeExpr types gamma (ext, e)
        | AAst.Select(e, f) => analyzeExpr types gamma (ext, e)
        | AAst.Call (f, args) => 
            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) args
@@ -207,7 +214,20 @@ struct
        | AAst.Op(Ast.DEREF, [a]) =>
            let val (e, gamma') = analyzeExpr types gamma (ext, a)
            in (e, gamma', gamma') end
+       | AAst.Op(Ast.SUB, [a,b]) =>
+           let val (e, gamma') = analyzeExpr types gamma (ext, a)
+               val (e, gamma'') = analyzeExpr types gamma' (ext, b)
+           in (e, gamma'', gamma'') end
+       | AAst.Select(e, f) => 
+           let val (err, gamma') = analyzeExpr types gamma (ext, e)
+           in (err, gamma', gamma') end
+       | AAst.Op(Ast.COND, [c, a, b]) =>
+           let val (e, ct, cf) = analyzeBoolExpr types gamma (ext, c)
+               val (e', at, af) = analyzeBoolExpr types ct (ext, a)
+               val (e', bt, bf) = analyzeBoolExpr types cf (ext, b)
+            in (e @ e', lub(at, bt), lub (af, bf)) end
        | AAst.MarkedE me => analyzeBoolExpr types gamma (Mark.ext me, Mark.data me)
+       | AAst.Result => ([], gamma, gamma)
        | _ => raise Fail ("domain is bool-typed expressions only. bad: " ^ (AAst.Print.pp_aexpr exp))
 
    fun proveBoolExpr types gamma (ext, exp) tf = 
@@ -273,12 +293,11 @@ struct
        | _ => raise Fail ("domain is bool-typed expressions only. bad: " ^ (AAst.Print.pp_aexpr exp))
     
    fun analyzePhi types g (AAst.PhiDef(v,i,l)) =
-               lub (g, (singleContext (v,i)
-                            (foldr (fn (a,b) => NL.lub a b) NL.Bot
-                                   (map (fn i' => getLat g (v,i')) l))))
+         glb (g, (singleContext (v,i)
+                      (foldr (fn (a,b) => NL.lub a b) NL.Bot
+                             (map (fn i' => getLat g (v,i')) l))))
    fun analyzePhi' types g (AAst.PhiDef(v,i,l)) j =
-               glb (g, (singleContext (v,i)
-                            (getLat g (v, List.nth (l,j)))))
+         LocalMap.insert(g, (v,i), getLat g (v, List.nth (l, j)))
    fun havocPhi types g (AAst.PhiDef(v,i,l)) =
                lub (g, (singleContext (v,i) NL.Top))
    fun isPointerLocal types (sym, i) =
@@ -292,6 +311,14 @@ struct
          then (err, glb (gamma', (singleContext l (exp_lat gamma e))))
          else (err, gamma') end
      | analyzeDef _ _ _ = raise AAst.UnsupportedConstruct "analyzeDef must take a local"
+   
+   fun analyzeReturn rtp types gamma (ext, e) =  
+      let val (err, gamma') = analyzeExpr types gamma (ext, e)
+      in
+      case rtp of
+         Ast.Pointer _ => (err, glb (gamma', (singleContext result (exp_lat gamma e))))
+       | _ => (err, gamma')
+      end
 end
 
 

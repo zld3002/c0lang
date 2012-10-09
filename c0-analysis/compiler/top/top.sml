@@ -221,7 +221,17 @@ struct
 				 (fn () => say ("Checking file " ^ source_c0 ^ " ...")) ()
                         (* false : is not library *)
 			val ast' = TypeChecker.typecheck(ast, false)
-			val () = say (Analysis.analyze ast')
+			val _ = Flag.guard Flags.flag_static_check 
+			           (fn () => 
+			             let val afuncs = Analysis.analyze ast'
+			                 val _ =  Flag.guard Flags.flag_ast
+                          (fn () => (map (say o AAst.Print.pp_afunc) afuncs;())) ()
+			                 val verrors = Analysis.check afuncs
+			                 val _ = say "Static errors:"
+			                 val _ = map (say o VError.pp_error) verrors
+			             in 
+			                 raise FINISHED
+			             end) ()
 			val () = Flag.guards [Flags.flag_verbose, Flags.flag_dyn_check]
 				 (fn () => say ("Transforming contracts on file " ^ source_c0 ^ " ...")) ()
 			val ast'' = if Flag.isset Flags.flag_dyn_check

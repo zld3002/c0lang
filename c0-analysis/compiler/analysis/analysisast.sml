@@ -2,12 +2,25 @@
  * Analysis Abstract Syntax Tree
  * Jason Koenig <jrkoenig@andrew.cmu.edu>
  *)
+signature LOCAL_MAP = ORD_MAP where type Key.ord_key = Symbol.symbol * int
+signature SYM_MAP = ORD_MAP where type Key.ord_key = Symbol.symbol
+
+structure LocalMap :> LOCAL_MAP = RedBlackMapFn (
+      struct type ord_key = Symbol.symbol * int
+             val compare = (fn ((v,i), (v',i')) => 
+                                case Symbol.compare (v,v') of
+                                   EQUAL => Int.compare(i,i')
+                                 | r => r)
+      end)
+structure SymMap :> SYM_MAP = RedBlackMapFn (
+      struct type ord_key = Symbol.symbol val compare = Symbol.compare end)
 
 
 signature VERIFICATIONERROR =
 sig 
    type error
    val VerificationError : (Mark.ext option * string) -> error
+   val Wrap: string * error list -> error list
    val pp_error : error -> string
 end
 
@@ -16,6 +29,8 @@ struct
    datatype err = VE of Mark.ext option * string
    type error = err
    fun VerificationError x = VE x
+   fun Wrap (s, l) =
+     map (fn VE(e, s') => VE(e,s ^ s')) l
    fun pp_error (VE (SOME e, s)) =
                     "error at " ^ (Mark.show e) ^ ": " ^ s
      | pp_error (VE (NONE, s)) =
@@ -27,16 +42,23 @@ sig
    
    exception UnsupportedConstruct of string
    
+   type tp = Ast.tp
    type symbol = Symbol.symbol
+   type loc = Symbol.symbol * int
    datatype aexpr = 
-       Local of Symbol.symbol * int
+       Local of loc
      | Op of Ast.oper * (aexpr list)
      | Call of Symbol.symbol * (aexpr list)
      | IntConst of Word32.word
      | BoolConst of bool
-     | Alloc of Ast.tp
+     | StringConst of string
+     | CharConst of char
+     | Alloc of tp
      | Null
-     | AllocArray of Ast.tp * aexpr
+     | Result
+     | Length of aexpr
+     | Old of aexpr
+     | AllocArray of tp * aexpr
      | Select of aexpr * symbol
      | MarkedE of aexpr Mark.marked
    datatype aphi = 
@@ -56,11 +78,15 @@ sig
      | If of aexpr * astmt * astmt
      | While of (aphi list) * aexpr * (aexpr list) * astmt
      | MarkedS of astmt Mark.marked
+   datatype afunc =
+       Function of tp * (tp SymMap.map) * ((Ast.ident * tp * loc) list) * (aexpr list) * astmt * (aexpr list)
+       (*return type, type map, formals, requires, body, ensures *)
    structure Print :
 	  sig
 		 val pp_aphi : aphi -> string
 		 val pp_aexpr : aexpr -> string
 		 val pp_astmt : astmt -> string
+		 val pp_afunc : afunc -> string
 		 val commas : string -> string list -> string
 	  end
 end
@@ -71,14 +97,21 @@ struct
    exception UnsupportedConstruct of string
    
    type symbol = Symbol.symbol
+   type tp = Ast.tp
+   type loc = Symbol.symbol * int
    datatype aexpr = 
-       Local of Symbol.symbol * int
+       Local of loc
      | Op of Ast.oper * (aexpr list)
      | Call of Symbol.symbol * (aexpr list)
      | IntConst of Word32.word
      | BoolConst of bool
+     | StringConst of string
+     | CharConst of char
      | Alloc of Ast.tp
      | Null
+     | Result
+     | Length of aexpr
+     | Old of aexpr
      | AllocArray of Ast.tp * aexpr
      | Select of aexpr * symbol
      | MarkedE of aexpr Mark.marked
@@ -99,6 +132,9 @@ struct
      | If of aexpr * astmt * astmt
      | While of (aphi list) * aexpr * (aexpr list) * astmt
      | MarkedS of astmt Mark.marked
+   datatype afunc =
+       Function of tp * (tp SymMap.map) * ((Ast.ident * tp * loc) list) * (aexpr list) * astmt * (aexpr list)
+       (*return type, formals, requires, body, ensures *)
    structure Print =
    struct
       (*
@@ -129,9 +165,14 @@ struct
 		           "(" ^ (commas ", " (map pp_aexpr l)) ^ ")"
 		  | pp_aexpr (IntConst w) = "0x"^(Word32.toString w)
 		  | pp_aexpr (BoolConst b) = if b then "true" else "false"
+		  | pp_aexpr (StringConst s) = "\"" ^ s ^ "\"" (* TODO: escape properly *)
+		  | pp_aexpr (CharConst c) = "'" ^ Char.toString c ^ "'" (* TODO: escape properly *)
 		  | pp_aexpr (Call (sym, l)) =
 		       (Symbol.name sym) ^ "(" ^ (commas ", " (map pp_aexpr l)) ^ ")"
 		  | pp_aexpr (Null) = "NULL"
+      | pp_aexpr (Result) = "\\result"
+      | pp_aexpr (Length(e)) = "\\length(" ^ pp_aexpr(e) ^ ")"
+      | pp_aexpr (Old(e)) = "\\old(" ^ pp_aexpr(e) ^ ")"
 		  | pp_aexpr (Alloc (tp)) =
 		       "alloc("^(Ast.Print.pp_tp tp)^")"
 		  | pp_aexpr (AllocArray (tp, e)) =
@@ -166,5 +207,7 @@ struct
 		          ^ (pp_astmt stm) ^ "\n}"
 		  | pp_astmt (MarkedS ms) = pp_astmt (Mark.data ms)
 		
+		fun pp_afunc (Function (rtp, map, formals, requires, body, ensures))=
+		  pp_astmt body
 		end
 end

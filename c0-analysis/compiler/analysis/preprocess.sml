@@ -97,13 +97,14 @@ struct
            in (Markeds (Mark.mark' (s', Mark.ext m)), mapping', types) end
        | For _ => raise UnsupportedConstruct "Bad construct"
        
-   fun preprocess stmt =
-     case stmt of
+   fun preprocess f =
+     case f of
         Function(name, rtp, args, SOME stmt, specs, false, ext) =>
           let val (remap, types) = preprocessArgs args
               val (stmt', types', remap') = preprocess' (stmt, remap)
           in (stmt',
-             SymMap.unionWith (fn (a,b) => a) (types, types'))
+              SymMap.map Syn.expand_all 
+              (SymMap.unionWith (fn (a,b) => a) (types, types')))
           end
       | _ => raise UnsupportedConstruct "Bad construct"
 end
