@@ -22,6 +22,7 @@ return 2             ~ fun.c0
 return 1             ~ fun2.c0
 return 1             ~ fun3.c0
 typecheck => error   ~ fun3err.c0
+return 16            ~ goofy-typedef2.c0
 lib => return 400    ~ image.c0 -limg
 infloop              ~ infloop.c0 
 return 8             ~ mixed.c0

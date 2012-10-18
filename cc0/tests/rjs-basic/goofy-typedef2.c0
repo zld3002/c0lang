@@ -1,0 +1,3 @@
+typedef int elem;
+#use "goofy-typedef1.c0"
+int main() { return f(16); }
