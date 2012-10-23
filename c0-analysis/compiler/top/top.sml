@@ -171,17 +171,6 @@ struct
 					 (fn () => say ("Checking library " ^ library_h0 ^ " ...")) ()
 				(* true : is library *)
 				val ast' = TypeChecker.typecheck(ast, true) 
-		                val _ = Flag.guard Flags.flag_static_check 
-			           (fn () => 
-			             let val afuncs = Analysis.analyze ast'
-			                 val _ =  Flag.guard Flags.flag_ast
-                                                    (fn () => (map (say o AAst.Print.pp_afunc) afuncs;())) ()
-			                 val verrors = Analysis.check afuncs
-			                 val _ = say "Static errors:"
-			                 val _ = map (say o VError.pp_error) verrors
-			             in 
-			                 raise FINISHED
-			             end) ()
 				val () = Flag.guards [Flags.flag_verbose, Flags.flag_dyn_check]
 					 (fn () => say ("Transforming contracts on library " ^ library_h0  ^ " ...")) ()
 				val ast'' = if Flag.isset Flags.flag_dyn_check
@@ -232,7 +221,17 @@ struct
 				 (fn () => say ("Checking file " ^ source_c0 ^ " ...")) ()
                         (* false : is not library *)
 			val ast' = TypeChecker.typecheck(ast, false)
-			(*val () = say (Analysis.analyze ast')*)
+	                val _ = Flag.guard Flags.flag_static_check 
+		           (fn () => 
+		             let val afuncs = Analysis.analyze ast
+		                 val _ =  Flag.guard Flags.flag_ast
+                                            (fn () => (map (say o AAst.Print.pp_afunc) afuncs;())) ()
+		                 val verrors = Analysis.check afuncs
+		                 val _ = say "Static errors:"
+		                 val _ = map (say o VError.pp_error) verrors
+		             in 
+		                 raise FINISHED
+		             end) ()
 			val () = Flag.guards [Flags.flag_verbose, Flags.flag_dyn_check]
 				 (fn () => say ("Transforming contracts on file " ^ source_c0 ^ " ...")) ()
 			val ast'' = if Flag.isset Flags.flag_dyn_check
@@ -515,7 +514,7 @@ fun finalize {library_headers} =
       handle ErrorMsg.Error => ( say "Compilation failed" ; OS.Process.failure )
 	   | EXIT => OS.Process.failure
 	   | FINISHED => OS.Process.success
-           | e => ( say ("Unexpected exception in cc0:\n" ^ (exnMessage e)) ;
+           | e => ( say ("Unexpected exception in cc0:\n" ^ (exnMessage e) ^"\n" ^(foldr (fn (a,b) => a^"\n"^b) "" (SMLofNJ.exnHistory e))) ;
                     OS.Process.failure )
 
   fun test s = main ("", String.tokens Char.isSpace s)

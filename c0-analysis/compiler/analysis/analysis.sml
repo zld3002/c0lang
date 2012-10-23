@@ -18,13 +18,15 @@ struct
    structure Env = SSAEnvironment
    open AAst
    
+   fun labelVar env v =
+     case Env.lookup env v of
+        NONE => raise Fail ("unknown variable, internal bug: " ^ Symbol.name v)
+      | SOME i => (v,i)
    (* Label takes an environment and an expression, and produces an aexpr which
       annotates all local variables with their definitions in the environment.*)
    fun label env exp = 
       case exp of
-            Ast.Var v => (case Env.lookup env v of
-                             NONE => raise Fail ("unknown variable, internal bug: " ^ Symbol.name v)
-                           | SOME i => Local (v,i))
+            Ast.Var v => Local(labelVar env v)
           | Ast.OpExp(oper, el) => Op(oper, map (label env) el)
           | Ast.FunCall(f, el) => Call(f, map (label env) el)
           | Ast.Marked m => MarkedE (Mark.mark' (label env (Mark.data m), Mark.ext m))
@@ -77,17 +79,19 @@ struct
        | Seq (a,b) => Seq(relabelStmt rl a, relabelStmt rl b)
        | Assert e => Assert(relabel rl e)
        | Annotation e => Annotation(relabel rl e)
-       | Def (l, e) => Def(relabel rl l, relabel rl e)
+       | Def ((v,i), e) => Def(
+                       (case LocalMap.find (rl, (v,i)) of 
+                           SOME j => (v,j)
+                         | NONE => (v,i)), relabel rl e)
        | Assign (lv, oper, rv) => Assign(relabel rl lv, oper, relabel rl rv)
        | Expr e => Expr(relabel rl e)
        | Break => stmt
        | Continue => stmt
-       | PhiBlock _ => stmt
        | Return e => Return(case e of NONE => NONE
                                     | SOME e' => SOME (relabel rl e'))
-       | If (e, s1, s2) => If(relabel rl e, relabelStmt rl s1, relabelStmt rl s2)
-       | While (phis, guard, specs, s) =>
-            While(phis, relabel rl guard, map (relabel rl) specs, relabelStmt rl s)
+       | If (e, s1, s2, phis) => If(relabel rl e, relabelStmt rl s1, relabelStmt rl s2, phis)
+       | While (phis, guard, specs, s, endphis) =>
+            While(phis, relabel rl guard, map (relabel rl) specs, relabelStmt rl s, endphis)
        | MarkedS s => MarkedS (Mark.map (relabelStmt rl) s)
        
    (* If the expression is just a local variable, retrieve it ignoring marking
@@ -126,7 +130,7 @@ struct
                               SOME oper' => Ast.OpExp(oper', [Ast.Var v, e])
                             | NONE => e
                in
-                  (Def (label env' (Ast.Var v), label env e'), env', [], [], [])
+                  (Def (labelVar env' v, label env e'), env', [], [], [])
                end)
      | ssa (Ast.Markeds m, env) = 
          let val (stmt, env', r, b, c) = ssa (Mark.data m, env)
@@ -147,7 +151,7 @@ struct
              val (sf, ef, frets, fbrks, fconts) = ssa (sfalse, env)
              val (env', phis) = Env.mergeEnvs [et,ef]
          in
-            (Seq(If ((label env e), st, sf), PhiBlock(phis)),
+            (If ((label env e), st, sf, phis),
                  env', trets @ frets, tbrks @ fbrks, tconts @ fconts)
          end
      | ssa (Ast.While(e, specs, stm), env) =
@@ -158,9 +162,8 @@ struct
              val (envOverallExit, endPhis) = Env.mergeEnvs ([envExit] @ brks)
          in
             (relabelStmt relabeling
-            (Seq(While(loopPhis, (label envdef e),
-                       map (labelSpec envdef) specs, stm'),
-                 PhiBlock endPhis)),
+            (While(loopPhis, (label envdef e),
+                       map (labelSpec envdef) specs, stm',endPhis)),
              envOverallExit, rets, [], [])
          end
      | ssa ((Ast.Exp e), env) = (Expr (label env e), env, [], [], [])
@@ -170,23 +173,21 @@ struct
      | ssa (stm,e) = raise UnsupportedConstruct ("ssa: "^(Ast.Print.pp_stm stm))
    
    (* SSA is messy, so this function cleans up afterwards. In particular, it
-      removes empty PhiBlocks and redundant Seq/Nops. *)
+      removes redundant Seq/Nops. *)
    fun simplifySeq(stm: astmt): astmt = 
       case stm of
         Seq(a, b) =>(case (simplifySeq a, simplifySeq b) of
                         (Nop, b) => b
                       | (a, Nop) => a
                       | (a, b) => Seq(a,b))
-       | If(e, a, b) => If(e, simplifySeq a, simplifySeq b)
-       | While(ph, e, specs, a) => While(ph, e, specs, simplifySeq a)
+       | If(e, a, b, p) => If(e, simplifySeq a, simplifySeq b, p)
+       | While(p, e, specs, a, p') => While(p, e, specs, simplifySeq a, p')
        | Nop => Nop
        | Assert _ => stm
        | Annotation _ => stm
        | Def _ => stm
        | Assign _ => stm
        | Expr _ => stm
-       | PhiBlock [] => Nop
-       | PhiBlock _ => stm
        | Return _ => stm
        | Continue => stm
        | Break => stm

@@ -101,10 +101,13 @@ struct
      case f of
         Function(name, rtp, args, SOME stmt, specs, false, ext) =>
           let val (remap, types) = preprocessArgs args
-              val (stmt', types', remap') = preprocess' (stmt, remap)
+              val stmts = 
+                 Isolate.iso_stm (Symbol.digest (SymMap.listItemsi types))
+                                 stmt
+              val (stmt', types', remap') = preprocess' (Seq([],stmts), remap)
           in (stmt',
               SymMap.map Syn.expand_all 
-              (SymMap.unionWith (fn (a,b) => a) (types, types')))
+              (SymMap.unionWith (#1) (types, types')))
           end
       | _ => raise UnsupportedConstruct "Bad construct"
 end

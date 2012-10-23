@@ -8,11 +8,13 @@ signature SYM_MAP = ORD_MAP where type Key.ord_key = Symbol.symbol
 structure LocalMap :> LOCAL_MAP = RedBlackMapFn (
       struct type ord_key = Symbol.symbol * int
              val compare = (fn ((v,i), (v',i')) => 
-                                case Symbol.compare (v,v') of
-                                   EQUAL => Int.compare(i,i')
+                                case Int.compare(i,i') of
+                                   EQUAL => Symbol.compare (v,v')
                                  | r => r)
       end)
 structure SymMap :> SYM_MAP = RedBlackMapFn (
+      struct type ord_key = Symbol.symbol val compare = Symbol.compare end)
+structure SymSet = RedBlackSetFn (
       struct type ord_key = Symbol.symbol val compare = Symbol.compare end)
 
 
@@ -68,15 +70,14 @@ sig
      | Seq of astmt * astmt
      | Assert of aexpr (* assert(e); *)
      | Annotation of aexpr (* //@assert e; *)
-     | Def of aexpr * aexpr (* Local (v,i) = e *)
+     | Def of loc * aexpr (* Local (v,i) = e *)
      | Assign of aexpr * (Ast.oper option) * aexpr
      | Expr of aexpr
      | Break
      | Continue
-     | PhiBlock of (aphi list)
      | Return of aexpr option
-     | If of aexpr * astmt * astmt
-     | While of (aphi list) * aexpr * (aexpr list) * astmt
+     | If of aexpr * astmt * astmt * (aphi list)
+     | While of (aphi list) * aexpr * (aexpr list) * astmt * (aphi list)
      | MarkedS of astmt Mark.marked
    datatype afunc =
        Function of tp * (tp SymMap.map) * ((Ast.ident * tp * loc) list) * (aexpr list) * astmt * (aexpr list)
@@ -122,15 +123,14 @@ struct
      | Seq of astmt * astmt
      | Assert of aexpr (* assert(e); *)
      | Annotation of aexpr (* //@assert e; *)
-     | Def of aexpr * aexpr (* Local (v,i) = e *)
+     | Def of loc * aexpr (* Local (v,i) = e *)
      | Assign of aexpr * (Ast.oper option) * aexpr
      | Expr of aexpr
      | Break
      | Continue
-     | PhiBlock of (aphi list)
      | Return of aexpr option
-     | If of aexpr * astmt * astmt
-     | While of (aphi list) * aexpr * (aexpr list) * astmt
+     | If of aexpr * astmt * astmt * (aphi list)
+     | While of (aphi list) * aexpr * (aexpr list) * astmt * (aphi list)
      | MarkedS of astmt Mark.marked
    datatype afunc =
        Function of tp * (tp SymMap.map) * ((Ast.ident * tp * loc) list) * (aexpr list) * astmt * (aexpr list)
@@ -185,21 +185,20 @@ struct
 		  | pp_astmt (Seq(s, s')) = (pp_astmt s) ^ ";\n" ^ (pp_astmt s')
 		  | pp_astmt (Assert(e)) = "assert(" ^ (pp_aexpr e) ^ ")"
 		  | pp_astmt (Annotation(e)) = "/*@assert(" ^ (pp_aexpr e) ^ ")*/"
-		  | pp_astmt (Def(lv, e)) = (pp_aexpr lv) ^ " := " ^ (pp_aexpr e)
+		  | pp_astmt (Def((sym,i), e)) = (Symbol.name sym) ^ "`" ^ (Int.toString i) ^ " := " ^ (pp_aexpr e)
 		  | pp_astmt (Assign(lv, oper, e)) = 
 		        (pp_aexpr lv) ^ " "^
 		          (case oper of NONE => "" | SOME oper' => Ast.Print.pp_oper oper')
 		         ^"= " ^ (pp_aexpr e)
 		  | pp_astmt (Expr(e)) = (pp_aexpr e)
-		  | pp_astmt (PhiBlock(p)) = commas ";\n" (map pp_aphi p)
 		  | pp_astmt (Break) = "break"
 		  | pp_astmt (Continue) = "continue"
 		  | pp_astmt (Return (NONE)) = "return"
 		  | pp_astmt (Return (SOME e)) = "return " ^(pp_aexpr e)
-		  | pp_astmt (If (e, s1, s2)) = "if (" ^(pp_aexpr e) ^ ") {\n"
+		  | pp_astmt (If (e, s1, s2, phis)) = "if (" ^(pp_aexpr e) ^ ") {\n"
 		                                   ^(pp_astmt s1) ^ "\n} else {\n"
 		                                   ^ (pp_astmt s2) ^ "\n}" 
-		  | pp_astmt (While (p, e, specs, stm)) = 
+		  | pp_astmt (While (p, e, specs, stm, p2)) = 
 		     "while\n"^
 		      (commas ";\n" (map pp_aphi p))
 		      ^"\n" ^(commas ";\n" (map (fn s => "//@loop_invariant" ^ (pp_aexpr s)) specs))

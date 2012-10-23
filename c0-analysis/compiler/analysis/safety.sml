@@ -15,7 +15,7 @@ sig
    
    (* given a local SSA definition, infer facts while checking safety. *)
    val analyzeDef : (Ast.tp SymMap.map) -> context -> 
-         (Mark.ext option * AAst.aexpr * AAst.aexpr) -> (VError.error list * context)
+         (Mark.ext option * AAst.loc * AAst.aexpr) -> (VError.error list * context)
    (* given a phi definition, learn about the new definition. *)
    val analyzePhi : (Ast.tp SymMap.map) -> context -> AAst.aphi -> context
    (* given a phi definition, learn about the new definition assuming that the
@@ -63,7 +63,7 @@ struct
      
    (* the code to check a while statement is long and complicated, so it is split
       into a helper function. It takes roughly the same arguments as checkStmt. *)
-   fun checkWhile rtp types gamma ext (phis, guard, invs, body) =
+   fun checkWhile rtp types gamma ext (phis, guard, invs, body, endphis) =
      let (* analyze the phi definitions, assuming the incoming control path is
             index j. *)
          fun analyzePhis g j = 
@@ -115,11 +115,13 @@ struct
                                   (checkConts (i+1) cs')
          val errConts = checkConts 2 conts
          val errConts = Wrap ("loop inv may not hold on continue: ", errConts)
+         val ctxend = Ctx.lub (fg, foldl Ctx.lub Ctx.bot brks)
+         val ctxend' = foldl (fn (phi, g) => Ctx.analyzePhi types g phi) ctxend phis
          
      in (* now collect all the errors, and or together all the break statements,
            along with the negation of the loop guard. *)
         (errFirst @ einvs @ eguard @ errBody @ errSec @ errConts,
-         Ctx.lub (fg, foldl Ctx.lub Ctx.bot brks), rets, [], []) end
+         ctxend', rets, [], []) end
    
    (* (errs, gamma', rets, brks, conts) = checkStmt types gamma (ext, s) *)
    and checkStmt rtp types gamma (ext, s) = 
@@ -151,14 +153,11 @@ struct
            in (errs, gamma', [], [], []) end
        | AAst.Break => ([], Ctx.bot, [], [gamma], [])
        | AAst.Continue => ([], Ctx.bot, [], [], [gamma])
-       | AAst.PhiBlock phis =>
-           ([], foldl (fn (phi, g) => Ctx.analyzePhi types g phi) gamma phis,
-            [], [], [])
        | AAst.Return (SOME e) =>
            let val (errs, gamma') = Ctx.analyzeReturn rtp types gamma (ext, e)
            in (errs, gamma', [], [], []) end
        | AAst.Return (NONE) => ([], Ctx.bot, [gamma], [], [])
-       | AAst.If (cond, t, f) => 
+       | AAst.If (cond, t, f,phis) => 
            let val (err, ct, cf) = Ctx.analyzeBoolExpr types gamma (ext, cond)
                val err' = (if Ctx.isBot ct then
                            [VerificationError (ext, "then branch never taken")]
@@ -168,10 +167,10 @@ struct
                            else [])
                val (errt, gt, r1, b1, c1) = (checkStmt rtp types ct (ext, t))
                val (errf, gf, r2, b2, c2) = (checkStmt rtp types cf (ext, f))
-           in (err @ err' @ errt @ errf, Ctx.glb (gt, gf),
+           in (err @ err' @ errt @ errf, foldl (fn (phi, g) => Ctx.analyzePhi types g phi) (Ctx.glb (gt, gf)) phis,
                r1@r2, b1@b2, c1@c2) end
-       | AAst.While (phis, guard, invs, body) => 
-           checkWhile rtp types gamma ext (phis, guard, invs, body)
+       | AAst.While (phis, guard, invs, body,endphis) => 
+           checkWhile rtp types gamma ext (phis, guard, invs, body, endphis)
        | AAst.MarkedS ms => checkStmt rtp types gamma (Mark.ext ms, Mark.data ms)
        (*| _ => raise AAst.UnsupportedConstruct ("checkStmt: " ^ (AAst.Print.pp_astmt s))*)
        

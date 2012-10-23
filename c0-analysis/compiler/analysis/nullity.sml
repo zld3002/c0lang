@@ -305,12 +305,11 @@ struct
          NONE => raise Fail "local not in type map?"
        | SOME tp => (case tp of Ast.Pointer _ => true | _ => false)
    
-   fun analyzeDef types gamma (ext, AAst.Local l, e) =  
+   fun analyzeDef types gamma (ext, l, e) =  
       let val (err, gamma') = analyzeExpr types gamma (ext, e)
       in if isPointerLocal types l
          then (err, glb (gamma', (singleContext l (exp_lat gamma e))))
          else (err, gamma') end
-     | analyzeDef _ _ _ = raise AAst.UnsupportedConstruct "analyzeDef must take a local"
    
    fun analyzeReturn rtp types gamma (ext, e) =  
       let val (err, gamma') = analyzeExpr types gamma (ext, e)
