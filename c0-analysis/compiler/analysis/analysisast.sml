@@ -2,42 +2,6 @@
  * Analysis Abstract Syntax Tree
  * Jason Koenig <jrkoenig@andrew.cmu.edu>
  *)
-signature LOCAL_MAP = ORD_MAP where type Key.ord_key = Symbol.symbol * int
-signature SYM_MAP = ORD_MAP where type Key.ord_key = Symbol.symbol
-
-structure LocalMap :> LOCAL_MAP = RedBlackMapFn (
-      struct type ord_key = Symbol.symbol * int
-             val compare = (fn ((v,i), (v',i')) => 
-                                case Int.compare(i,i') of
-                                   EQUAL => Symbol.compare (v,v')
-                                 | r => r)
-      end)
-structure SymMap :> SYM_MAP = RedBlackMapFn (
-      struct type ord_key = Symbol.symbol val compare = Symbol.compare end)
-structure SymSet = RedBlackSetFn (
-      struct type ord_key = Symbol.symbol val compare = Symbol.compare end)
-
-
-signature VERIFICATIONERROR =
-sig 
-   type error
-   val VerificationError : (Mark.ext option * string) -> error
-   val Wrap: string * error list -> error list
-   val pp_error : error -> string
-end
-
-structure VError :> VERIFICATIONERROR =
-struct
-   datatype err = VE of Mark.ext option * string
-   type error = err
-   fun VerificationError x = VE x
-   fun Wrap (s, l) =
-     map (fn VE(e, s') => VE(e,s ^ s')) l
-   fun pp_error (VE (SOME e, s)) =
-                    "error at " ^ (Mark.show e) ^ ": " ^ s
-     | pp_error (VE (NONE, s)) =
-                    "error: " ^ s
-end
 
 signature AAST = 
 sig
@@ -80,10 +44,11 @@ sig
      | While of (aphi list) * aexpr * (aexpr list) * astmt * (aphi list)
      | MarkedS of astmt Mark.marked
    datatype afunc =
-       Function of tp * (tp SymMap.map) * ((Ast.ident * tp * loc) list) * (aexpr list) * astmt * (aexpr list)
-       (*return type, type map, formals, requires, body, ensures *)
+       Function of tp * symbol * (tp SymMap.map) * ((Ast.ident * tp * loc) list) * (aexpr list) * astmt * (aexpr list)
+       (*return type, name, type map, formals, requires, body, ensures *)
    structure Print :
 	  sig
+	   val pp_loc : loc -> string
 		 val pp_aphi : aphi -> string
 		 val pp_aexpr : aexpr -> string
 		 val pp_astmt : astmt -> string
@@ -133,7 +98,7 @@ struct
      | While of (aphi list) * aexpr * (aexpr list) * astmt * (aphi list)
      | MarkedS of astmt Mark.marked
    datatype afunc =
-       Function of tp * (tp SymMap.map) * ((Ast.ident * tp * loc) list) * (aexpr list) * astmt * (aexpr list)
+       Function of tp * symbol * (tp SymMap.map) * ((Ast.ident * tp * loc) list) * (aexpr list) * astmt * (aexpr list)
        (*return type, formals, requires, body, ensures *)
    structure Print =
    struct
@@ -149,9 +114,9 @@ struct
 		       ":=phi("^(commas ", " 
 		                 (map (fn j => (Symbol.name sym)^"`"^(Int.toString j)) l))
 		                 ^")"
-		       
-		fun pp_aexpr (Local (sym, i)) =
+		fun pp_loc (sym, i) = 
 		      (Symbol.name sym) ^ "`" ^ (Int.toString i)
+		fun pp_aexpr (Local l) = pp_loc l
 		  | pp_aexpr (Op(Ast.SUB, [e1,e2])) =
 			   pp_aexpr e1 ^ "[" ^ pp_aexpr e2 ^ "]"
 		  | pp_aexpr (Op(Ast.COND, [e1,e2,e3])) =
@@ -206,7 +171,7 @@ struct
 		          ^ (pp_astmt stm) ^ "\n}"
 		  | pp_astmt (MarkedS ms) = pp_astmt (Mark.data ms)
 		
-		fun pp_afunc (Function (rtp, map, formals, requires, body, ensures))=
+		fun pp_afunc (Function (rtp, name, map, formals, requires, body, ensures))=
 		  pp_astmt body
 		end
 end

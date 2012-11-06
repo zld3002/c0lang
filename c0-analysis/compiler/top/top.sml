@@ -28,7 +28,7 @@ sig
        args: string list}
       -> string list
   val typecheck_and_load : 
-      string list -> {library_headers : Ast.program, program : Ast.program}
+      string list -> {library_headers : Ast.program, program : Ast.program, oprogram : Ast.program}
   val finalize : 
       {library_headers : Ast.program} -> {library_wrappers: Ast.program}
 end
@@ -221,31 +221,20 @@ struct
 				 (fn () => say ("Checking file " ^ source_c0 ^ " ...")) ()
                         (* false : is not library *)
 			val ast' = TypeChecker.typecheck(ast, false)
-	                val _ = Flag.guard Flags.flag_static_check 
-		           (fn () => 
-		             let val afuncs = Analysis.analyze ast
-		                 val _ =  Flag.guard Flags.flag_ast
-                                            (fn () => (map (say o AAst.Print.pp_afunc) afuncs;())) ()
-		                 val verrors = Analysis.check afuncs
-		                 val _ = say "Static errors:"
-		                 val _ = map (say o VError.pp_error) verrors
-		             in 
-		                 raise FINISHED
-		             end) ()
 			val () = Flag.guards [Flags.flag_verbose, Flags.flag_dyn_check]
 				 (fn () => say ("Transforming contracts on file " ^ source_c0 ^ " ...")) ()
 			val ast'' = if Flag.isset Flags.flag_dyn_check
 				    then DynCheck.contracts ast'
 				    else ast'
 		    in
-			SOME ast''
+			SOME (ast'', ast')
 		    end
 	    end
 
         and process_program source_c0 = 
             case process_program' source_c0 of
-               NONE => []
-             | SOME prog => prog
+               NONE => ([],[])
+             | SOME (prog, prog') => (prog, prog')
 
         and process_library_header source_c0 = 
             case process_library_header' source_c0 of
@@ -257,7 +246,7 @@ struct
 		val {dir = src_dir, file = _} = OS.Path.splitDirFile source_c0
 		val use_source = OS.Path.concat (src_dir, use_file)
 	    in
-		process_program use_source
+		#1 (process_program use_source)
 	    end
 
         fun pragmaify_library library = 
@@ -270,9 +259,12 @@ struct
 	 * are in the global symbol table, marked as extern *)
 
         (* process multiple programs in sequence, left-to-right *)
-        val program = List.concat (map process_program sources)
+        val programs = (map process_program sources)
+        (* extrac the contract-transformed programs and the original programs *)
+        val tprogram = List.concat (map #1 programs)
+        val oprogram = List.concat (map #2 programs)
    in
-      {library_headers = library_headers, program = program}
+      {library_headers = library_headers, program = tprogram, oprogram = oprogram}
    end
 
 fun finalize {library_headers} = 
@@ -355,9 +347,32 @@ fun finalize {library_headers} =
 	val () = Symset.add main; (* main is implicitly used *)
 
         (* Load the program into memory *)
-        val {library_headers, program} = typecheck_and_load sources
+        val {library_headers, program, oprogram} = typecheck_and_load sources
         val {library_wrappers} = finalize {library_headers = library_headers}
 
+        (* Run purity check *)
+        val _ = Flag.guard Flags.flag_purity_check 
+	           (fn () => 
+	             let val verrors = AnalysisTop.purityCheck oprogram
+	                 val _ = map (say o VError.pp_error) verrors
+	             in 
+	                 case verrors of
+	                    [] => ()
+	                  | _ => raise EXIT (* die on error. *)
+	             end) ()
+        (* Run static checking *)
+        val _ = Flag.guard Flags.flag_static_check 
+	           (fn () => 
+	             let val verrors = AnalysisTop.staticCheck oprogram
+	                 val _ = map (say o VError.pp_error) verrors
+	                 val _ = case verrors of
+	                            [] => say "No static errors."
+	                          | _ => ()
+	             in 
+                         (* Static check does not compile the program. *)
+	                 raise FINISHED
+	             end) ()
+	             
         (* Determine output files Based on the initial files *)
         (* use last input file as name for intermediate .c and .h files *)
 	val last_source = List.last sources

@@ -8,8 +8,7 @@
 
 signature ANALYSIS = 
 sig
-   val analyze: Ast.program -> AAst.afunc list
-   val check: AAst.afunc list -> VError.error list
+   val analyze: bool -> Ast.program -> AAst.afunc list
 end
 
 structure Analysis :> ANALYSIS =
@@ -198,10 +197,10 @@ struct
          (id, tp, (id, valOf(Env.lookup ctx id)))
          (* all arguments should be assigned locals, valOf safe. *)
       in map aarg args end
-   fun analyzeFunc (Ast.Function(name, rtp, args, SOME stmt, specs, false, ext)) = 
+   fun analyzeFunc iso (Ast.Function(name, rtp, args, SOME stmt, specs, false, ext)) = 
           let
              val () = Env.reset()
-             val (stmt',types) = Preprocess.preprocess
+             val (stmt',types) = Preprocess.preprocess iso
                  (Ast.Function(name, rtp, args,
                                SOME (Ast.Markeds (Mark.mark' (stmt, ext))),
                                specs, false, ext))
@@ -214,10 +213,8 @@ struct
              val ens' = map (labelSpec initialEnv) ens
              val (s, env, rets, _, _) = ssa (stmt', initialEnv)
              val s' = simplifySeq s
-             val (errs) = NullityAnalysis.checkFunc rtp types reqs' s' ens'
-            
           in
-             [Function(rtp, types, args, reqs', s', ens')]
+             [Function(rtp, name, types, args, reqs', s', ens')]
           (*["requires:"]@(map AAst.Print.pp_aexpr reqs')@
              ["ensures:"]@(map AAst.Print.pp_aexpr ens')@
              [(Ast.Print.pp_tp rtp) ^ " " ^ (Symbol.name name)
@@ -225,12 +222,9 @@ struct
              (map (VError.pp_error) (errs))
           *)
           end 
-     | analyzeFunc _ = []
-   fun checkFunc (Function(rtp, types, formals, reqs, s, ens)) =
-      NullityAnalysis.checkFunc rtp types reqs s ens
+     | analyzeFunc iso _ = []
    
-   fun analyze prog = List.concat (map analyzeFunc prog)
-   fun check funcs = List.concat (map checkFunc funcs)
+   fun analyze iso prog = List.concat (map (analyzeFunc iso) prog)
 end
 
 

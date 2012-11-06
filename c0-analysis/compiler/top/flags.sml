@@ -11,6 +11,7 @@ signature FLAGS = sig
   val flag_ast : Flag.flag
   val flag_dyn_check : Flag.flag
   val flag_static_check : Flag.flag
+  val flag_purity_check : Flag.flag
   val flag_save_files : Flag.flag
   val flag_exec : Flag.flag
   val flag_bytecode : Flag.flag 
@@ -52,6 +53,7 @@ structure Flags :> FLAGS = struct
   val flag_ast = Flag.flag "ast"
   val flag_dyn_check = Flag.flag "dyn-check"
   val flag_static_check = Flag.flag "static-check"
+  val flag_purity_check = Flag.flag "purity-check"
   val flag_save_files = Flag.flag "save-files"
   val flag_exec = Flag.flag "exec"
   val flag_bytecode = Flag.flag "bytecode"
@@ -107,8 +109,10 @@ structure Flags :> FLAGS = struct
           (* Unset all flags *)
           List.app Flag.unset [flag_verbose, flag_help,
                                flag_version, flag_no_log,
-			       flag_ast, flag_exec, flag_bytecode, flag_static_check,
+                               flag_ast, flag_exec, flag_bytecode, flag_static_check,
                                flag_save_files, flag_trace, flag_print_codes];
+          (* Set default flags *)
+          List.app Flag.set [flag_purity_check];
 
           (* Set other defaults *)
           opt_level := 0; libraries := []; runtime := "c0rt"; a_out := "a.out";
@@ -136,6 +140,9 @@ structure Flags :> FLAGS = struct
      {short = "S", long=["static-check"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_static_check),
       help="Check contracts and safety statically"},
+     {short = "", long=["no-purity-check"],
+      desc=GetOpt.NoArg (fn () => Flag.unset flag_purity_check),
+      help="Disable checking contract functions for purity"},
      {short = "l", long=["library"],
       desc=GetOpt.ReqArg ((fn (s) => (libraries := s :: !libraries)), "<lib>"),
       help="Include the library <lib>"},
