@@ -8,7 +8,7 @@
 
 signature ANALYSIS = 
 sig
-   val analyze: Ast.program -> string
+   val analyze: bool -> Ast.program -> AAst.afunc list
 end
 
 structure Analysis :> ANALYSIS =
@@ -17,24 +17,31 @@ struct
    structure Env = SSAEnvironment
    open AAst
    
+   fun labelVar env v =
+     case Env.lookup env v of
+        NONE => raise Fail ("unknown variable, internal bug: " ^ Symbol.name v)
+      | SOME i => (v,i)
    (* Label takes an environment and an expression, and produces an aexpr which
       annotates all local variables with their definitions in the environment.*)
    fun label env exp = 
       case exp of
-            Ast.Var v => (case Env.lookup env v of
-                             NONE => raise Fail "unknown variable, internal bug"
-                           | SOME i => Local (v,i))
+            Ast.Var v => Local(labelVar env v)
           | Ast.OpExp(oper, el) => Op(oper, map (label env) el)
           | Ast.FunCall(f, el) => Call(f, map (label env) el)
           | Ast.Marked m => MarkedE (Mark.mark' (label env (Mark.data m), Mark.ext m))
           | Ast.IntConst n => IntConst n
           | Ast.True => BoolConst true
           | Ast.False => BoolConst false
+          | Ast.StringConst s => StringConst s
+          | Ast.CharConst c => CharConst c
+          | Ast.Old e => Old(label env e)
+          | Ast.Length e => Length(label env e)
+          | Ast.Result => Result
           | Ast.Null => Null
           | Ast.Alloc(tp) => Alloc(tp)
           | Ast.Select(e, f) => Select(label env e, f)
           | Ast.AllocArray(tp, e) => AllocArray(tp, label env e)
-          | _ => raise UnsupportedConstruct ("label: " ^ (Ast.Print.pp_exp exp))
+          (*| _ => raise UnsupportedConstruct ("label: " ^ (Ast.Print.pp_exp exp))*)
    (* the same as the above, except will strip the annotation category (requires,
       ensures, etc.) off, then label. *)
    fun labelSpec env spec =
@@ -54,8 +61,13 @@ struct
        | Call (f, l) => Call(f, map (relabel rl) l)
        | IntConst _ => exp
        | BoolConst _ => exp
+       | StringConst _ => exp
+       | CharConst _ => exp
        | Alloc _ => exp
        | Null => exp
+       | Result => exp
+       | Length (e) => Length (relabel rl e)
+       | Old (e) => Old (relabel rl e)
        | AllocArray (tp, e) => AllocArray(tp, relabel rl e)
        | Select(e, f) => Select (relabel rl e, f)
        | MarkedE e => MarkedE (Mark.map (relabel rl) e)
@@ -66,17 +78,19 @@ struct
        | Seq (a,b) => Seq(relabelStmt rl a, relabelStmt rl b)
        | Assert e => Assert(relabel rl e)
        | Annotation e => Annotation(relabel rl e)
-       | Def (l, e) => Def(relabel rl l, relabel rl e)
+       | Def ((v,i), e) => Def(
+                       (case LocalMap.find (rl, (v,i)) of 
+                           SOME j => (v,j)
+                         | NONE => (v,i)), relabel rl e)
        | Assign (lv, oper, rv) => Assign(relabel rl lv, oper, relabel rl rv)
        | Expr e => Expr(relabel rl e)
        | Break => stmt
        | Continue => stmt
-       | PhiBlock _ => stmt
        | Return e => Return(case e of NONE => NONE
                                     | SOME e' => SOME (relabel rl e'))
-       | If (e, s1, s2) => If(relabel rl e, relabelStmt rl s1, relabelStmt rl s2)
-       | While (phis, guard, specs, s) =>
-            While(phis, relabel rl guard, map (relabel rl) specs, relabelStmt rl s)
+       | If (e, s1, s2, phis) => If(relabel rl e, relabelStmt rl s1, relabelStmt rl s2, phis)
+       | While (phis, guard, specs, s, endphis) =>
+            While(phis, relabel rl guard, map (relabel rl) specs, relabelStmt rl s, endphis)
        | MarkedS s => MarkedS (Mark.map (relabelStmt rl) s)
        
    (* If the expression is just a local variable, retrieve it ignoring marking
@@ -115,27 +129,28 @@ struct
                               SOME oper' => Ast.OpExp(oper', [Ast.Var v, e])
                             | NONE => e
                in
-                  (Def (label env' (Ast.Var v), label env e'), env', [], [], [])
+                  (Def (labelVar env' v, label env e'), env', [], [], [])
                end)
      | ssa (Ast.Markeds m, env) = 
          let val (stmt, env', r, b, c) = ssa (Mark.data m, env)
          in (MarkedS (Mark.mark' (stmt, Mark.ext m)), env', r, b, c) end
-     | ssa (Ast.Seq (decls, sl), env) = 
+     | ssa (Ast.Seq ([], sl), env) = 
          let fun ssa' (stm, (s, e, r, b, c)) = 
              let val (s', e', r', b', c') = ssa (stm, e) in (Seq(s,s'), e', r@r', b@b', c@c') end
-         in foldl ssa' (ssaVarDecl (decls, env, [], [], [])) sl end
+         in foldl ssa' ((Nop, env, [], [], [])) sl end
+     | ssa (Ast.Seq _, env) = raise Fail "preprocessor error"
      | ssa (Ast.StmDecl decl, env) = (ssaVarDecl ([decl], env, [], [], []))
      | ssa (Ast.Return NONE, env) = (Return NONE, Env.empty, [env], [], [])
      | ssa (Ast.Return (SOME e), env) =
-                        (Return (SOME (label env e)), Env.empty, [env], [], [])
-     | ssa (Ast.Break, env) = (Break, Env.empty, [], [env], [])
-     | ssa (Ast.Continue, env) = (Continue, Env.empty, [], [], [env])
+                        (Return (SOME (label env e)), env, [env], [], [])
+     | ssa (Ast.Break, env) = (Break, env, [], [env], [])
+     | ssa (Ast.Continue, env) = (Continue, env, [], [], [env])
      | ssa (Ast.If(e, strue, sfalse), env) =
          let val (st, et, trets, tbrks, tconts) = ssa (strue, env)
              val (sf, ef, frets, fbrks, fconts) = ssa (sfalse, env)
              val (env', phis) = Env.mergeEnvs [et,ef]
          in
-            (Seq(If ((label env e), st, sf), PhiBlock(phis)),
+            (If ((label env e), st, sf, phis),
                  env', trets @ frets, tbrks @ fbrks, tconts @ fconts)
          end
      | ssa (Ast.While(e, specs, stm), env) =
@@ -146,9 +161,8 @@ struct
              val (envOverallExit, endPhis) = Env.mergeEnvs ([envExit] @ brks)
          in
             (relabelStmt relabeling
-            (Seq(While(loopPhis, (label envdef e),
-                       map (labelSpec envdef) specs, stm'),
-                 PhiBlock endPhis)),
+            (While(loopPhis, (label envdef e),
+                       map (labelSpec envdef) specs, stm',endPhis)),
              envOverallExit, rets, [], [])
          end
      | ssa ((Ast.Exp e), env) = (Expr (label env e), env, [], [], [])
@@ -158,38 +172,125 @@ struct
      | ssa (stm,e) = raise UnsupportedConstruct ("ssa: "^(Ast.Print.pp_stm stm))
    
    (* SSA is messy, so this function cleans up afterwards. In particular, it
-      removes empty PhiBlocks and redundant Seq/Nops. *)
+      removes redundant Seq/Nops. *)
    fun simplifySeq(stm: astmt): astmt = 
       case stm of
         Seq(a, b) =>(case (simplifySeq a, simplifySeq b) of
                         (Nop, b) => b
                       | (a, Nop) => a
                       | (a, b) => Seq(a,b))
-       | If(e, a, b) => If(e, simplifySeq a, simplifySeq b)
-       | While(ph, e, specs, a) => While(ph, e, specs, simplifySeq a)
+       | If(e, a, b, p) => If(e, simplifySeq a, simplifySeq b, p)
+       | While(p, e, specs, a, p') => While(p, e, specs, simplifySeq a, p')
        | Nop => Nop
        | Assert _ => stm
        | Annotation _ => stm
        | Def _ => stm
        | Assign _ => stm
        | Expr _ => stm
-       | PhiBlock [] => Nop
-       | PhiBlock _ => stm
        | Return _ => stm
        | Continue => stm
        | Break => stm
        | MarkedS s => MarkedS (Mark.map simplifySeq s)
-       
-   (* DEBUG ONLY: Runs SSA, then print out any errors*)	  
-   fun analyzeFunc (Ast.Function(name, rtp, args, SOME stmt, specs, false, ext)) = 
-          (let
+   
+   local 
+     structure S = LocalSet
+   in
+     fun usedE e =
+        case e of
+           Local l => S.singleton l
+         | Op (oper, args) => foldl S.union S.empty (map usedE args)
+         | Call(f, args) => foldl S.union S.empty (map usedE args)
+         | IntConst _ => S.empty
+         | BoolConst _ => S.empty
+         | StringConst _ => S.empty
+         | CharConst _ => S.empty
+         | Alloc _ => S.empty
+         | Null => S.empty
+         | Result => S.empty
+         | Length (e) => usedE e
+         | Old (e) => usedE e
+         | AllocArray (tp, e) => usedE e
+         | Select (e, f) => usedE e
+         | MarkedE m => usedE (Mark.data m)
+     fun usedP' (PhiDef(s,i,l)) =
+        S.addList (S.empty, map (fn j => (s,j)) l)
+     fun usedP l = foldl S.union S.empty (map usedP' l)
+     fun usedS s =
+        case s of 
+           Nop => S.empty
+         | Seq (a,b) => S.union(usedS a, usedS b)
+         | Assert e => usedE e
+         | Annotation e => usedE e
+         | Def (l, e) => usedE e
+         | Assign (lv, oper, e) => S.union(usedE lv, usedE e)
+         | Expr e => usedE e
+         | Break => S.empty
+         | Continue => S.empty
+         | Return (NONE) => S.empty
+         | Return (SOME e) => usedE e
+         | If (e,a,b,p) =>
+             S.union(usedE e, S.union(usedS a, S.union(usedS b, usedP p)))
+         | While (p, e, invs, b, p') =>
+             let val i = foldl S.union S.empty (map usedE invs)
+             in S.union(usedE e, S.union(i, S.union(usedS b, usedP (p@p'))))
+             end
+         | MarkedS m => usedS (Mark.data m)
+         
+         
+     fun simplifyPhiP ctx phis =
+       let fun used (PhiDef(s,i,_)) = S.member(ctx, (s,i))
+       in (List.filter used phis, not(List.all (used) phis)) end
+     fun simplifyPhiS' ctx stm = 
+        case stm of 
+           Seq(a, b) => 
+             let val (a', ca) = simplifyPhiS' ctx a
+                 val (b', cb) = simplifyPhiS' ctx b
+             in (Seq(a', b'), ca orelse cb) end
+         | If(e, a, b, p) =>
+             let val (a', ca) = simplifyPhiS' ctx a
+                 val (b', cb) = simplifyPhiS' ctx b
+                 val (p', cp) = simplifyPhiP ctx p
+             in (If(e, a', b', p'), ca orelse cb orelse cp) end
+         | While(pb, e, invs, b, pe) =>
+             let val (pb', cpb) = simplifyPhiP ctx pb
+                 val (pe', cpe) = simplifyPhiP ctx pe
+                 val (b', cb) = simplifyPhiS' ctx b
+             in (While(pb', e, invs, b', pe'), cpb orelse cpe orelse cb) end
+         | Nop => (stm, false)
+         | Assert _ => (stm, false)
+         | Annotation _ => (stm, false)
+         | Def _ => (stm, false)
+         | Assign _ => (stm, false)
+         | Expr _ => (stm, false)
+         | Return _ => (stm, false)
+         | Continue => (stm, false)
+         | Break => (stm, false)
+         | MarkedS m =>
+             let val (stm', c) = simplifyPhiS' ctx (Mark.data m)
+             in (MarkedS (Mark.mark'(stm',Mark.ext m)),c) end
+     fun simplifyPhiS stm =
+       let val ctx = usedS stm
+           val (stm', changed) = simplifyPhiS' ctx stm
+       in
+         case changed of
+            true => simplifyPhiS stm'
+          | false => stm'
+       end
+   end
+   fun analyzeArgs ctx args = 
+      let fun aarg (Ast.VarDecl (id, tp, init, ext)) = 
+         (id, tp, (id, valOf(Env.lookup ctx id)))
+         (* all arguments should be assigned locals, valOf safe. *)
+      in map aarg args end
+   fun analyzeFunc iso (Ast.Function(name, rtp, args, SOME stmt, specs, false, ext)) = 
+          let
              val () = Env.reset()
-             val (stmt',types) = Preprocess.preprocess
+             val (stmt',types) = Preprocess.preprocess iso
                  (Ast.Function(name, rtp, args,
                                SOME (Ast.Markeds (Mark.mark' (stmt, ext))),
                                specs, false, ext))
              val (_, initialEnv, _, _, _) = ssaVarDecl (args, Env.empty, [], [], [])
-             
+             val args = analyzeArgs initialEnv args
              val reqs = List.filter (fn Ast.Requires _ => true | _ => false) specs
              val ens = List.filter (fn Ast.Ensures _ => true | _ => false) specs
              
@@ -197,19 +298,13 @@ struct
              val ens' = map (labelSpec initialEnv) ens
              val (s, env, rets, _, _) = ssa (stmt', initialEnv)
              val s' = simplifySeq s
-             val (errs) = NullityAnalysis.checkFunc types reqs' s' ens'
-            
-          in ["requires:"]@(map AAst.Print.pp_aexpr reqs')@
-             ["ensures:"]@(map AAst.Print.pp_aexpr ens')@
-             [(Ast.Print.pp_tp rtp) ^ " " ^ (Symbol.name name)
-                  ^ "(args)\n{\n" ^ (AAst.Print.pp_astmt s') ^"\n}"]@
-             (map (VError.pp_error) (errs))
+             val s'' = simplifyPhiS s'
+          in
+             [Function(rtp, name, types, args, reqs', s'', ens')]
           end 
-        handle UnsupportedConstruct s => ["Unsupported: " ^ s])
-     | analyzeFunc _ = []
+     | analyzeFunc iso _ = []
    
-   (* DEBUG ONLY: Runs SSA and safety analysis on each function in a program. *)
-   fun analyze prog = AAst.Print.commas "\n" (List.concat (map analyzeFunc prog))
+   fun analyze iso prog = List.concat (map (analyzeFunc iso) prog)
 end
 
 

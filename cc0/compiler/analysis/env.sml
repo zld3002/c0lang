@@ -1,15 +1,3 @@
-signature LOCAL_MAP = ORD_MAP where type Key.ord_key = Symbol.symbol * int
-signature SYM_MAP = ORD_MAP where type Key.ord_key = Symbol.symbol
-
-structure LocalMap :> LOCAL_MAP = RedBlackMapFn (
-      struct type ord_key = Symbol.symbol * int
-             val compare = (fn ((v,i), (v',i')) => 
-                                case Symbol.compare (v,v') of
-                                   EQUAL => Int.compare(i,i')
-                                 | r => r)
-      end)
-structure SymMap :> SYM_MAP = RedBlackMapFn (
-      struct type ord_key = Symbol.symbol val compare = Symbol.compare end)
    
 signature SSAENVIRONMENT =
 sig
@@ -41,12 +29,13 @@ sig
       one other definition. The relabeling will map the new, redundant definition
       to the one in the input list. *)
    val mergeEnvsLoop: env -> env list -> env * (AAst.aphi list) * relabeling
+   val toString: env -> string
 end
 
 structure SSAEnvironment :> SSAENVIRONMENT =
 struct
    structure T = SymMap
-	structure SInt = RedBlackSetFn (
+   structure SInt = RedBlackSetFn (
 	   struct type ord_key = int val compare = Int.compare end)
 	
    type relabeling = int LocalMap.map
@@ -120,4 +109,6 @@ struct
                                           | NONE => i) defenv
     in (defenv', T.listItems phidefs, relabelings)
     end
+  fun toString env =
+     foldl (fn (a, b) => a ^ ", " ^ b) "" (map (fn (l, i) => Symbol.nameFull l ^ " -> "^ Int.toString i) (T.listItemsi env))
 end

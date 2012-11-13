@@ -1,5 +1,3 @@
-//test error
-
 typedef struct ufs* ufs;
 struct ufs {
   int size;

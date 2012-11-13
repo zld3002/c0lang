@@ -4,8 +4,8 @@ sig
    exception UnsupportedConstruct of string
    (* defined only for functions. Removes parallel declarations, generates
       variable type table. Also, Seq is always Seq([], l), i.e. all vardecls
-      are StmDecls. *)
-   val preprocess : Ast.gdecl -> Ast.stm * (Ast.tp SymMap.map)
+      are StmDecls. Also runs isolation if the first parameter is true. *)
+   val preprocess : bool -> Ast.gdecl -> Ast.stm * (Ast.tp SymMap.map)
 end
 
 structure Preprocess :> PREPROCESS = 
@@ -97,13 +97,21 @@ struct
            in (Markeds (Mark.mark' (s', Mark.ext m)), mapping', types) end
        | For _ => raise UnsupportedConstruct "Bad construct"
        
-   fun preprocess stmt =
-     case stmt of
+   fun preprocess iso f =
+     case f of
         Function(name, rtp, args, SOME stmt, specs, false, ext) =>
           let val (remap, types) = preprocessArgs args
-              val (stmt', types', remap') = preprocess' (stmt, remap)
+              val stmts = 
+                 case iso of
+                    true => Isolate.iso_stm (Symbol.digest 
+                                                 (SymMap.listItemsi types))
+                                            stmt 
+                  | false => [stmt]
+                 
+              val (stmt', types', remap') = preprocess' (Seq([],stmts), remap)
           in (stmt',
-             SymMap.unionWith (fn (a,b) => a) (types, types'))
+              SymMap.map Syn.expand_all 
+              (SymMap.unionWith (#1) (types, types')))
           end
       | _ => raise UnsupportedConstruct "Bad construct"
 end

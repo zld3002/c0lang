@@ -6,8 +6,9 @@ safe => return 9    ~ mergesort.c0 -d
 safe => abort       ~ mergesort-fail.c0 -d
 safe => return 1    ~ queue.c0 -d
 return 2            ~ stack.c0 -d
-safe => return 1    ~ unionfind.c0 -d
-safe => abort       ~ unionfind-fail.c0 -d
+safe => return 1    ~ unionfind.c0 -d --no-purity-check
+safe => abort       ~ unionfind-fail.c0 -d --no-purity-check
+return 1            ~ unionfind-unpure.c0 -d --no-purity-check
 lib => return 0     ~ libsym0.c0 -d -lstring
 lib => error        ~ libsym1.c0 -d -lstring
 lib => return 0     ~ hex.c0 -d -lstring -lconio
@@ -20,8 +21,8 @@ lib => error        ~ libshadow1.c0 -lstring -lfile
 lib => error        ~ libshadow2.c0 -lstring -lfile
 lib => error        ~ libshadow3.c0 -lstring -lfile
 lib => return 0     ~ libshadow4.c0 -lstring
-return 0            ~ multianno1.c0
-return 123789       ~ multianno1.c0 -d
+return 0            ~ multianno1.c0 --no-purity-check
+return 123789       ~ multianno1.c0 -d --no-purity-check
 return 91           ~ multianno2.c0
 abort               ~ multianno2.c0 -d
 return 91           ~ multianno3.c0

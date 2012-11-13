@@ -71,7 +71,12 @@ bool is_dfa(dfa D)
     /* require each transition to be to a valid state */
     for (s = 1; s <= D->numstates; s++)
         for (c = 'a'; c <= 'z'; c = next_char(c))
-            if (!is_state(D, transition(D, s, c))) return false;
+            if (!is_state(D, transition(D, s, c)))
+            {
+               /* HACK: this marks the transition() function as pure*/
+               //@assert !is_state(D, transition(D, s, c));
+               return false;
+            }
     /* after passing this battery of inspections, it must be a dfa! */
     return true;
 }
