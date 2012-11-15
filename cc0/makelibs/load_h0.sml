@@ -195,8 +195,8 @@ fun wrappergen (filename, args) =
         else ( print "\n\
                      \***********************************************\n\
                      \* WARNING: THE LIBRARY INTERFACE HAS CHANGED! *\n\
-                     \* Do you need to bump the c0vm version number *\n\
-                     \* in c0/compiler/c0vm/c0vm-print.sml?         *\n\
+                     \* Do you need to bump the c0vm_version number *\n\
+                     \* in c0/compiler/top/top.sml?                 *\n\
                      \***********************************************\n\
                      \\n"
              ; C0ffiList.write rootdir 

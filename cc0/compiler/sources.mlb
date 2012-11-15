@@ -25,8 +25,18 @@ local
       type/iso.sml
       type/print-c-compact.sml
 
+      analysis/error.sml
+      analysis/analysisast.sml
+      analysis/env.sml
+      analysis/preprocess.sml
+      analysis/analysis.sml
+      analysis/safety.sml
+      analysis/nullity.sml
+      analysis/purity.sml
+      analysis/top.sml
+
       c0vm/c0vm.sml 
-      c0vm/c0vm-native.sml
+      c0vm/c0vm-c0ffi.sml
       c0vm/c0vm-trans.sml
       c0vm/c0vm-print.sml
    end
