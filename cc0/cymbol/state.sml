@@ -96,10 +96,14 @@ functor StateFn (structure Data : DATA
     | NullPointer (SOME ty) => ("NULL (" ^ Ast.Print.pp_tp ty ^ "*)")
     | Pointer(ty,loc) => (Heap.loc_string loc ^
                           " (" ^ Ast.Print.pp_tp ty ^ "*)")
-    | Array(ty,loc,n) => (Heap.loc_string loc ^
-                          " (" ^ Ast.Print.pp_tp (Ast.Array ty) ^ 
-                          " with " ^ Int.toString n ^ 
-                          (if n = 1 then " element)" else " elements)"))
+    | Array(ty,loc,n) => 
+         if Heap.null(loc) 
+         then ("(default empty " ^ Ast.Print.pp_tp (Ast.Array ty) ^ 
+               " with 0 elements)")
+         else (Heap.loc_string loc ^
+               " (" ^ Ast.Print.pp_tp (Ast.Array ty) ^ 
+               " with " ^ Int.toString n ^ 
+               (if n = 1 then " element)" else " elements)"))
     | Uninitialized   => ("(uninitialized value)")
  
   fun value_desc v = 

@@ -74,21 +74,23 @@ functor Server
       handle (Error.Uninitialized) => hstr ("Error: uninitialized value used")
            | (Error.NullPointer) => hstr ("Error: null pointer was accessed")
            | (Error.ArrayOutOfBounds (i,j)) => 
-             hstr("Error: accessing element " ^ Int.toString i ^
-                    " in " ^ Int.toString j ^ "-element array")
+                if i < 0
+                then hstr ("Error: accessing negative element in "
+                           ^Int.toString j^"-element array")
+                else hstr ("Error: accessing element "^Int.toString i
+                           ^" in "^Int.toString j^"-element array")
            | (Overflow) => hstr("Error: integer overflow.")
            | (Error.ArraySizeNegative i) => 
-             hstr("Error: invalid array size " ^ Int.toString i ^ " .")
+                hstr("Error: cannot allocate a negative-sized array.")
            | (Div) => hstr("Error: division by zero.")
            | (Error.Allocation) => hstr("Error: allocation failed!")
            | (Error.Compilation) => hstr("Error: could not compile.")
-           | (Error.AssertionFailed s) =>  
-             hstr s
+           | (Error.AssertionFailed s) => hstr s
            | (Done status) => raise Done(status)
            | (Error.Dynamic str) => 
-             hstr ("Error (DYNAMIC SEMANTICS, PLEASE REPORT): " ^ str)
+                hstr ("Error (DYNAMIC SEMANTICS, PLEASE REPORT): " ^ str)
            | (Error.Internal str) => 
-             hstr("Error (INTERNAL, PLEASE REPORT): " ^ str)
+                hstr("Error (INTERNAL, PLEASE REPORT): " ^ str)
            | exn => hstr("Uncaught exception: " ^ exnMessage exn ^ "\n")
  
   fun hstr s = (print (s ^ "\n"); OS.Process.failure)
