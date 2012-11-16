@@ -28,6 +28,7 @@ Group is
 	type/print-c-compact.sml
         type/iso.sml
 	
+	analysis/error.sml
 	analysis/analysisast.sml
 	analysis/env.sml
 	analysis/preprocess.sml
@@ -35,7 +36,6 @@ Group is
 	analysis/safety.sml
 	analysis/nullity.sml
 	analysis/purity.sml
-	analysis/error.sml
 	analysis/top.sml
 
         c0vm/c0vm.sml
