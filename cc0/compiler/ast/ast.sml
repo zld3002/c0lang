@@ -277,7 +277,12 @@ struct
 	  pp_oper oper ^ "(" ^ pp_exp e ^ ")"
       | pp_exp (OpExp(oper, [e1,e2])) =
 	  "(" ^ pp_exp e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp e2 ^ ")"
-      | pp_exp (Select(e,id)) = (* special-case ( *e).f = e->f ? *)
+      | pp_exp (Select(OpExp(DEREF, [e]),id)) = 
+          (* ( *e).f ===> e->f *)
+          (* Should always be safe, as -> is the lowest-precedence operator...
+           * -rjs nov 16 2012 *)
+	  pp_exp e ^ "->" ^ pp_ident id
+      | pp_exp (Select(e,id)) = 
 	  "(" ^ pp_exp e ^ ")" ^ "." ^ pp_ident id
       | pp_exp (FunCall(id, es)) =
 	  pp_ident id ^ "(" ^ pp_exps es ^ ")"
