@@ -388,12 +388,11 @@ fun finalize {library_headers} =
 		   | _ => ()
         val cname = OS.Path.joinBaseExt {base = out_base, ext = SOME "c0.c"}
         val hname = OS.Path.joinBaseExt {base = out_base, ext = SOME "c0.h"}
-	val bname = if !Flags.a_out = "a.out" (* if no output specified with -o *)
-		    then OS.Path.joinBaseExt {base = out_base, ext = SOME "bc0"}
+	val bcfile = if !Flags.a_out = "a.out" (* if no output specified with -o *)
+		    then path_concat (out_dir, OS.Path.joinBaseExt {base = out_base, ext = SOME "bc0"})
 		    else !Flags.a_out (* if specified with -o *)
         val () = if Flag.isset Flags.flag_bytecode
-		then let val bcfile = path_concat (out_dir, bname)
-			 val () = Flag.guard Flags.flag_verbose
+		then let val () = Flag.guard Flags.flag_verbose
 				  (fn () => say ("Writing bytecode file to " ^ bcfile ^ " ...")) ()
 			 val all_program = library_wrappers @ program
 			 val bytecode = C0VMTrans.trans (!Flags.bytecode_arch) all_program
