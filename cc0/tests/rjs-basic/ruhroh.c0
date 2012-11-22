@@ -1,0 +1,5 @@
+int main() 
+//@requires false;
+{
+  return 0;
+}

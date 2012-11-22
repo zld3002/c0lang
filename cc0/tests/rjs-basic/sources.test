@@ -42,6 +42,7 @@ typecheck, !cymbol => error; cymbol => return 16 ~ refine2.c0
 typecheck => error   ~ refine3.c0
 return 0             ~ refine4.c0
 typecheck, !cymbol => error; cymbol => return 0 ~ return.c0
+abort                ~ ruhroh.c0 -d
 return 1             ~ solo.c0
 lib => return 12     ~ strlib.c0 -lstring
 return 0             ~ string.c0
