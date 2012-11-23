@@ -81,7 +81,8 @@ struct
     case Structtab.lookup s of
        SOME (Ast.Struct(_, SOME fields,_,_)) =>
           map (fn (Field (i, t, _)) => (i,t)) fields
-  
+     | SOME (Ast.Struct(_, NONE, _,_)) => []
+     | _ => []
   fun tp_extend f tp =
      case tp of
         Int	=> Atom
