@@ -145,7 +145,7 @@ structure Flags :> FLAGS = struct
       desc=GetOpt.NoArg (fn () => Flag.set flag_purity_check),
       help="Enable checking contract functions for purity"},
      {short = "", long=["no-purity-check"],
-      desc=GetOpt.NoArg (fn () => Flag.set flag_purity_check),
+      desc=GetOpt.NoArg (fn () => Flag.unset flag_purity_check),
       help="Disable checking contract functions for purity"},
      {short = "l", long=["library"],
       desc=GetOpt.ReqArg ((fn (s) => (libraries := s :: !libraries)), "<lib>"),
