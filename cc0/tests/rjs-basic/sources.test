@@ -2,6 +2,8 @@ return 5             ~ anno1.c0
 return 5             ~ anno2.c0
 return 0             ~ anno3.c0
 error                ~ anno4.c0
+return 0             ~ carsten-pure.c0
+return 0             ~ carsten-pure.c0 -d
 return 1             ~ check-arr.c0 -d
 return 208           ~ collatz.c0
 return 71            ~ collatz2.c0

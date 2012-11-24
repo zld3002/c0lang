@@ -1,0 +1,12 @@
+#use <file>
+
+bool is_move(int m) {
+  return true;
+}
+
+int main()
+//@requires is_move(1);
+{
+  return 0;
+}
+
