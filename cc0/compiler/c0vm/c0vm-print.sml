@@ -15,16 +15,20 @@ struct
 		then "0" ^ s else s
 
   fun u8(i) = (* 0 <= i < 256 *)
-      pad8(Int.fmt StringCvt.HEX i)
+      if i < 0 orelse i >= 256 then raise Fail ("Invalid bytecode: u8: " ^ (Int.toString i))
+      else pad8(Int.fmt StringCvt.HEX i)
   fun u16(c) = (* 0 <= c < 65536 *)
-      u8(c div 256) ^ " " ^ u8(c mod 256)
+      if c < 0 orelse c >= 65536 then raise Fail ("Invalid bytecode: u16: " ^ (Int.toString c))
+      else u8(c div 256) ^ " " ^ u8(c mod 256)
   fun u32(c) =
       u16(Word32.toInt(Word32.>>(c,Word.fromInt(16)))) ^ " "
       ^ u16(Word32.toInt(Word32.mod(c,Word32.fromInt(65536))))
   fun s8(b) = (* -128 <= b < 127 *)
-      u8(if b < 0 then b+256 else b)
+      if b < ~128 orelse b >= 128 then raise Fail ("Invalid bytecode: s8: " ^ (Int.toString b))
+      else u8(if b < 0 then b+256 else b)
   fun s16(c) = (* -2^15 <= c < 2^15-1 *)
-      u16(if c < 0 then c+65536 else c)
+      if c < ~32768 orelse c >= 32768 then raise Fail ("Invalid bytecode: s16: " ^ (Int.toString c))
+      else u16(if c < 0 then c+65536 else c)
   fun s16dec(c) = if c < 0
 		  then "-" ^ Int.toString(~c)
 		  else Int.toString(c)

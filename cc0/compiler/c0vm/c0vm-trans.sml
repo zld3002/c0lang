@@ -156,6 +156,7 @@ struct
 		then "0" ^ s
 		else s
   val maxint16 = 65536
+  val maxint15 = 32768
   val maxint8 = 256
   val maxint7 = 128
 
@@ -220,7 +221,8 @@ struct
       fun new_native(g, num_args, ext) =
 	  let val n = !nindex
 	      val ntindex = C0VMNative.native_index(Symbol.name(g))
-	      val _ = if ntindex < 0
+	      val _ = if ntindex < 0 orelse ntindex >= maxint16 orelse
+                   n < 0 orelse n >= maxint16
 		      then ( ErrorMsg.error ext ("unsupported native function " ^ Symbol.name(g)) ;
 			     raise ErrorMsg.Error )
 		      else ()
@@ -269,9 +271,23 @@ struct
   val ngoto = V.il(V.goto(0))
 
   fun resolve_break (V.Inst(V.goto(1),anno,ext)::bcs') acc = (* 1 = Continue *)
-        resolve_break bcs' (V.Inst(V.goto(~(V.code_length(acc))),anno,ext)::acc)
+      let val len = V.code_length(acc)
+          val _ = if len >= maxint15
+                  then ( ErrorMsg.error NONE ("break jump too long") ;
+                         raise ErrorMsg.Error )
+                  else ()
+      in
+        resolve_break bcs' (V.Inst(V.goto(~len),anno,ext)::acc)
+       end
     | resolve_break (bcs as (V.Inst(V.goto(2),anno,ext)::bcs')) acc = (* 2 = Break *)
-        resolve_break bcs' (V.Inst(V.goto(V.code_length(bcs)),anno,ext)::acc)
+      let val len = V.code_length(bcs)
+          val _ = if len >= maxint15
+                  then ( ErrorMsg.error NONE ("break jump too long") ;
+                         raise ErrorMsg.Error )
+                  else ()
+      in
+        resolve_break bcs' (V.Inst(V.goto(len),anno,ext)::acc)
+      end
     | resolve_break (inst::bcs') acc = resolve_break bcs' (inst::acc)
     | resolve_break (nil) acc = List.rev acc
 
@@ -300,12 +316,16 @@ struct
   fun trans_rel binop is1 is2 anno ext =
       let val isfcase =
               [V.Inst(V.pop, "", ext),
-	       V.Inst(V.bipush(0), "false", ext)]
-	  val nfcase = V.code_length(isfcase)
+               V.Inst(V.bipush(0), "false", ext)]
+          val nfcase = V.code_length(isfcase)
+          val _ = if nif + nfcase >= maxint15
+                  then ( ErrorMsg.error NONE ("Jump too long") ;
+                         raise ErrorMsg.Error )
+                  else ()
       in [V.Inst(V.bipush(1), "true", ext)]
-	 @ is1 @ is2
-	 @ [V.Inst(V.if_icmp(trel(binop), nif+nfcase), anno, ext)]
-	 @ isfcase
+         @ is1 @ is2
+         @ [V.Inst(V.if_icmp(trel(binop), nif+nfcase), anno, ext)]
+         @ isfcase
       end
 
   fun trans_binop A.LESS is1 is2 anno ext = trans_rel A.LESS is1 is2 anno ext
@@ -319,37 +339,47 @@ struct
 
   fun lookup (A.VarDecl(y, t, e_opt, ext)::vlist) i x =
       case Symbol.compare(x,y)
-        of EQUAL => i
+        of EQUAL => if i < 0 orelse i >= maxint8
+                    then ( ErrorMsg.error NONE ("too many variables") ;
+                          raise ErrorMsg.Error )
+                    else i
          | _ => lookup vlist (i+1) x
 
   fun trans_exp env vlist (A.Var(x)) ext =
       let val vindex = lookup vlist 0 x
       in
-	  [V.Inst(V.vload(vindex), Symbol.name(x), ext)]
+          [V.Inst(V.vload(vindex), Symbol.name(x), ext)]
       end
     | trans_exp env vlist (A.IntConst(w)) ext =
       if Word32.<(w, Word32.fromInt(maxint7))
       then [V.Inst(V.bipush(Word32.toInt(w)),
-		   Word32Signed.toString(w), ext)]
+                   Word32Signed.toString(w), ext)]
       else let val i = next_cindex()
-	       val _ = Array.update(int_pool, i, w)
-	   in 
-	       [V.Inst(V.ildc(i), "c[" ^ Int.toString(i) ^ "] = "
-				  ^ Word32Signed.toString(w), ext)]
-	   end
+               val _ = Array.update(int_pool, i, w)
+           in 
+               [V.Inst(V.ildc(i), "c[" ^ Int.toString(i) ^ "] = "
+                                  ^ Word32Signed.toString(w), ext)]
+           end
     | trans_exp env vlist (A.StringConst(s)) ext =
       let val i = next_sindex()
-	  val spos = get_slength()
-	  val _ = inc_slength(String.size(s)+1) (* add 1 for '\0' char *)
-	  val _ = Array.update(string_pool, i, s)
+          val spos = get_slength()
+          val _ = inc_slength(String.size(s)+1) (* add 1 for '\0' char *)
+          val _ = Array.update(string_pool, i, s)
       in
-	  [V.Inst(V.aldc(spos),
-		  "s[" ^ Int.toString(spos) ^ "] = \"" ^ String.toCString(s) ^ "\"",
-		  ext)]
+          [V.Inst(V.aldc(spos),
+                  "s[" ^ Int.toString(spos) ^ "] = \"" ^ String.toCString(s) ^ "\"",
+                  ext)]
       end 
     | trans_exp env vlist (A.CharConst(c)) ext =
       (* 0 <= ord(c) < 128 *)
-      [V.Inst(V.bipush(Char.ord(c)), "'" ^ Char.toCString c ^ "'", ext)]
+      let val i = Char.ord(c)
+          val _  = (if i < 0 orelse i >= maxint7
+                   then ( ErrorMsg.error NONE ("Illegal char constant") ;
+                          raise ErrorMsg.Error )
+                   else ())
+      in 
+        [V.Inst(V.bipush(i), "'" ^ Char.toCString c ^ "'", ext)]
+      end
     | trans_exp env vlist (A.True) ext =
       [V.Inst(V.bipush(1), "true", ext)]
     | trans_exp env vlist (A.False) ext =
@@ -358,20 +388,20 @@ struct
       [V.Inst(V.aconst_null, "NULL", ext)]
     | trans_exp env vlist (e as A.OpExp(A.DEREF, [e1])) ext =
       let val is1 = trans_exp env vlist e1 ext
-	  val size = sizeof(Syn.syn_exp_expd env e)
-	  val load_inst = (case size of 1 => V.cmload | 4 => V.imload | 8 => V.amload)
+          val size = sizeof(Syn.syn_exp_expd env e)
+          val load_inst = (case size of 1 => V.cmload | 4 => V.imload | 8 => V.amload)
       in
-	  is1 @ [V.Inst(load_inst, A.Print.pp_exp(e), ext)]
+          is1 @ [V.Inst(load_inst, A.Print.pp_exp(e), ext)]
       end
     | trans_exp env vlist (e as A.OpExp(A.SUB, [lv1,e2])) ext =
       let val is1 = trans_exp env vlist lv1 ext
-	  val is2 = trans_exp env vlist e2 ext
-	  val size = sizeof(Syn.syn_exp_expd env e)
-	  val load_inst = (case size of 1 => V.cmload | 4 => V.imload | 8 => V.amload)
+          val is2 = trans_exp env vlist e2 ext
+          val size = sizeof(Syn.syn_exp_expd env e)
+          val load_inst = (case size of 1 => V.cmload | 4 => V.imload | 8 => V.amload)
       in
-	  is1 @ is2
-	  @ [V.Inst(V.aadds, "&" ^ A.Print.pp_exp(e), ext),
-	     V.Inst(load_inst, A.Print.pp_exp(e), ext)]
+          is1 @ is2
+          @ [V.Inst(V.aadds, "&" ^ A.Print.pp_exp(e), ext),
+             V.Inst(load_inst, A.Print.pp_exp(e), ext)]
       end
     | trans_exp env vlist (e as A.OpExp(A.LOGNOT, [e1])) ext =
       trans_exp env vlist e1 ext
@@ -391,59 +421,80 @@ struct
         trans_exp env vlist (A.OpExp(A.COND, [e1, A.True, e2])) ext
     | trans_exp env vlist (A.OpExp(A.COND, [e1, e2, e3])) ext =
       let val is1 = trans_exp env vlist e1 ext
-	  val is2 = trans_exp env vlist e2 ext
-	  val n2 = V.code_length is2
-	  val else_lab = next_glabel("else")
-	  val is3 = trans_exp env vlist e3 ext
-	  val n3 = V.code_length is3
-	  val endif_lab = next_glabel("endif")
+          val is2 = trans_exp env vlist e2 ext
+          val n2 = V.code_length is2
+          val else_lab = next_glabel("else")
+          val is3 = trans_exp env vlist e3 ext
+          val n3 = V.code_length is3
+          val endif_lab = next_glabel("endif")
+          val _ = if nif + n2 + ngoto >= maxint15 orelse n3+ngoto >= maxint15
+                  then ( ErrorMsg.error NONE ("jump too big") ;
+                         raise ErrorMsg.Error )
+                  else ()
       in
-	  is1
-	  @ [V.Inst(V.bipush(0), "", ext),
-	     V.Inst(V.if_icmp(V.eq, nif+n2+ngoto),
-		    "if " ^ A.Print.pp_exp(e1) ^ " goto " ^ else_lab, ext)]
-	  @ is2 @ [V.Inst(V.goto(n3+ngoto), "goto " ^ endif_lab, ext)]
-	  @ [V.Comment(else_lab)] @ is3
-	  @ [V.Comment(endif_lab)]
+          is1
+          @ [V.Inst(V.bipush(0), "", ext),
+             V.Inst(V.if_icmp(V.eq, nif+n2+ngoto),
+                    "if " ^ A.Print.pp_exp(e1) ^ " goto " ^ else_lab, ext)]
+          @ is2 @ [V.Inst(V.goto(n3+ngoto), "goto " ^ endif_lab, ext)]
+          @ [V.Comment(else_lab)] @ is3
+          @ [V.Comment(endif_lab)]
       end
     | trans_exp env vlist (e as A.OpExp(opr, [e1, e2])) ext =
       let val is1 = trans_exp env vlist e1 ext
-	  val is2 = trans_exp env vlist e2 ext
-	  val anno = A.Print.pp_exp e
+          val is2 = trans_exp env vlist e2 ext
+          val anno = A.Print.pp_exp e
       in
-	  trans_binop opr is1 is2 anno ext
+          trans_binop opr is1 is2 anno ext
       end 
     | trans_exp env vlist (e as A.Select(lv1, f)) ext =
       let val is1 = trans_lv env vlist lv1 ext (* computes address *)
-	  val t1 = Syn.syn_exp_expd env lv1
-	  val foffset = get_offset t1 f
-	  val data_size = sizeof(Syn.syn_exp_expd env e)
-	  val load_inst = (case data_size of 1 => V.cmload | 4 => V.imload | 8 => V.amload)
+          val t1 = Syn.syn_exp_expd env lv1
+          val foffset = get_offset t1 f
+          val data_size = sizeof(Syn.syn_exp_expd env e)
+          val load_inst = (case data_size of 1 => V.cmload | 4 => V.imload | 8 => V.amload)
       in
-	  is1			(* compute address *)
-	  @ [V.Inst(V.aaddf(foffset), "&" ^ A.Print.pp_exp e, ext)]
-	  @ [V.Inst(load_inst, A.Print.pp_exp e, ext)]
+          is1                        (* compute address *)
+          @ [V.Inst(V.aaddf(foffset), "&" ^ A.Print.pp_exp e, ext)]
+          @ [V.Inst(load_inst, A.Print.pp_exp e, ext)]
       end 
     | trans_exp env vlist (e as A.FunCall(g, es)) ext =
       (case Funtab.lookup(g)
-	of SOME(c) => trans_exps env vlist es ext
-		      @ [V.Inst(V.invokestatic(c),
-			 A.Print.pp_exp(e), ext)]
-	 | NONE => (* should be native (library) function *)
-	   (let
-		val c = native_index(g, ext)
-	    in
-		trans_exps env vlist es ext
-		@ [V.Inst(V.invokenative(c), A.Print.pp_exp(e), ext)]
-	    end))
+        of SOME(c) => let val _ = if c >= maxint16
+                                  then ( ErrorMsg.error NONE ("static function index too big") ;
+                                         raise ErrorMsg.Error )
+                                  else ()
+                      in trans_exps env vlist es ext
+                         @ [V.Inst(V.invokestatic(c),
+                            A.Print.pp_exp(e), ext)]
+                      end
+         | NONE => (* should be native (library) function *)
+           (let
+                val c = native_index(g, ext)
+            in
+                trans_exps env vlist es ext
+                @ [V.Inst(V.invokenative(c), A.Print.pp_exp(e), ext)]
+            end))
     | trans_exp env vlist (e as A.Alloc(t)) ext =
-      [V.Inst(V.new(sizeof(t)), A.Print.pp_exp(e), ext)]
+      let val size = sizeof(t)
+          val _  = (if size < 0 orelse size >= maxint8
+                   then ( ErrorMsg.error NONE ("new: struct too big") ;
+                          raise ErrorMsg.Error )
+                   else ())
+      in [V.Inst(V.new(size), A.Print.pp_exp(e), ext)]
+      end
     | trans_exp env vlist (e as A.AllocArray(t, e1)) ext =
-      trans_exp env vlist e1 ext
-      @ [V.Inst(V.newarray(sizeof(t)), A.Print.pp_exp(e), ext)]
+      let val size = sizeof(t)
+          val _  = (if size < 0 orelse size >= maxint8
+                   then ( ErrorMsg.error NONE ("newarray: array elements too big") ;
+                          raise ErrorMsg.Error )
+                   else ())
+      in trans_exp env vlist e1 ext
+         @ [V.Inst(V.newarray(size), A.Print.pp_exp(e), ext)]
+      end
     | trans_exp env vlist (e as A.Length(e1)) ext =
         trans_exp env vlist e1 ext
-	@ [V.Inst(V.arraylength, A.Print.pp_exp(e), ext)]
+        @ [V.Inst(V.arraylength, A.Print.pp_exp(e), ext)]
     | trans_exp env vlist (A.Marked(marked_exp)) ext = 
         trans_exp env vlist (Mark.data marked_exp) (Mark.ext marked_exp) 
     (* these two should be impossible here *)
@@ -454,22 +505,22 @@ struct
   and trans_exps env vlist nil ext = []
     | trans_exps env vlist (e::es) ext =
         trans_exp env vlist e ext
-	@ trans_exps env vlist es ext
+        @ trans_exps env vlist es ext
   and trans_lv env vlist (A.OpExp(A.DEREF, [lv1])) ext =
-        trans_exp env vlist lv1 ext	(* lv1 computes address *)
+        trans_exp env vlist lv1 ext        (* lv1 computes address *)
     | trans_lv env vlist (lv as A.OpExp(A.SUB, [lv1, e2])) ext =
       let val is1 = trans_exp env vlist lv1 ext (* lv1 computes address *)
-	  val is2 = trans_exp env vlist e2 ext
+          val is2 = trans_exp env vlist e2 ext
       in
-	  is1 @ is2
-	  @ [V.Inst(V.aadds, "&" ^ A.Print.pp_exp(lv), ext)]
+          is1 @ is2
+          @ [V.Inst(V.aadds, "&" ^ A.Print.pp_exp(lv), ext)]
       end
     | trans_lv env vlist (e as A.Select(lv1, f)) ext =
       let val is1 = trans_lv env vlist lv1 ext
-	  val t1 = Syn.syn_exp_expd env lv1
-	  val foffset = get_offset t1 f
+          val t1 = Syn.syn_exp_expd env lv1
+          val foffset = get_offset t1 f
       in
-	  is1 @ [V.Inst(V.aaddf(foffset), "&" ^ A.Print.pp_exp e, ext)]
+          is1 @ [V.Inst(V.aaddf(foffset), "&" ^ A.Print.pp_exp e, ext)]
       end
     | trans_lv env vlist (A.Marked(marked_exp)) ext =
         trans_lv env vlist (Mark.data marked_exp) (Mark.ext marked_exp)
@@ -478,45 +529,53 @@ struct
         trans_assign env vlist oper_opt l1 e2 ext
     | trans_stm env vlist (A.Exp(e)) ext =
         trans_exp env vlist e ext
-	@ [V.Inst(V.pop, "(ignore result)", ext)]
+        @ [V.Inst(V.pop, "(ignore result)", ext)]
     | trans_stm env vlist (A.Seq(ds, ss)) ext = trans_seq env vlist ds ss ext
     | trans_stm env vlist (A.StmDecl(d)) ext = (* empty scope *)
         trans_seq env vlist [d] [] ext
     | trans_stm env vlist (A.If(e1, s2, s3)) ext =
       let val is1 = trans_exp env vlist e1 ext
-	  val is2 = trans_stm env vlist s2 ext
-	  val n2 = V.code_length is2
-	  val else_lab = next_glabel("else")
-	  val is3 = trans_stm env vlist s3 ext
-	  val n3 = V.code_length is3
-	  val endif_lab = next_glabel("endif")
+          val is2 = trans_stm env vlist s2 ext
+          val n2 = V.code_length is2
+          val else_lab = next_glabel("else")
+          val is3 = trans_stm env vlist s3 ext
+          val n3 = V.code_length is3
+          val endif_lab = next_glabel("endif")
+          val _ = if nif+n2+ngoto >= maxint15 orelse n3+ngoto >= maxint15
+                  then ( ErrorMsg.error NONE ("jump too big") ;
+                         raise ErrorMsg.Error )
+                  else ()
       in
-	  is1
-	  @ [V.Inst(V.bipush(0), "", ext),
-	     V.Inst(V.if_icmp(V.eq, nif+n2+ngoto),
-		    "if " ^ A.Print.pp_exp(e1) ^ " goto " ^ else_lab, ext)]
-	  @ is2 @ [V.Inst(V.goto(n3+ngoto), "goto " ^ endif_lab, ext)]
-	  @ [V.Comment(else_lab)] @ is3
-	  @ [V.Comment(endif_lab)]
+          is1
+          @ [V.Inst(V.bipush(0), "", ext),
+             V.Inst(V.if_icmp(V.eq, nif+n2+ngoto),
+                    "if " ^ A.Print.pp_exp(e1) ^ " goto " ^ else_lab, ext)]
+          @ is2 @ [V.Inst(V.goto(n3+ngoto), "goto " ^ endif_lab, ext)]
+          @ [V.Comment(else_lab)] @ is3
+          @ [V.Comment(endif_lab)]
       end
     | trans_stm env vlist (A.While(e1, _, s2)) ext = (* ignore invariants *)
       let val loop_lab = next_glabel("loop")
-	  val is1 = trans_exp env vlist e1 ext
-	  val n1 = V.code_length is1
-	  val is2 = trans_stm env vlist s2 ext
-	  val n2 = V.code_length is2
-	  val endloop_lab = next_glabel("endloop")
-	  val is0 = [V.Comment(loop_lab)]
-		    @ is1
-		    @ [V.Inst(V.bipush(0), "", ext),
-		       V.Inst(V.if_icmp(V.eq, nif+n2+ngoto),
-			      "if " ^ A.Print.pp_exp(e1) ^ " goto " ^ endloop_lab, ext)]
-		    @ is2
-		    @ [V.Inst(V.goto(~(n1+V.il(V.bipush(0))+nif+n2)),
-			      "goto " ^ loop_lab, ext)]
-		    @ [V.Comment(endloop_lab)]
+          val is1 = trans_exp env vlist e1 ext
+          val n1 = V.code_length is1
+          val is2 = trans_stm env vlist s2 ext
+          val n2 = V.code_length is2
+          val endloop_lab = next_glabel("endloop")
+          val _ = if nif + n2 + ngoto >= maxint15 orelse n1+ V.il(V.bipush(0)) +nif+n2 >= maxint15
+                  then ( ErrorMsg.error NONE ("jump too big") ;
+                         raise ErrorMsg.Error )
+                  else ()
+          val is0 = [V.Comment(loop_lab)]
+                    @ is1
+                    @ [V.Inst(V.bipush(0), "", ext),
+                       V.Inst(V.if_icmp(V.eq, nif+n2+ngoto),
+                              "if " ^ A.Print.pp_exp(e1) ^ " goto " ^ endloop_lab, ext)]
+                    @ is2
+                    @ [V.Inst(V.goto(~(n1+V.il(V.bipush(0))+nif+n2)),
+                              "goto " ^ loop_lab, ext)]
+                    @ [V.Comment(endloop_lab)]
       in
-	  resolve_break is0 nil
+          resolve_break is0 nil
       end 
     (* no A.For *)
     | trans_stm env vlist (A.Continue) ext =
@@ -525,27 +584,31 @@ struct
         [V.Inst(V.goto(2), "break", ext)] (* break = goto(2) *)
     | trans_stm env vlist (A.Return(NONE)) ext =
         [V.Inst(V.bipush(0),"dummy return value", ext),
-	 V.Inst(V.return, "", ext)]
+         V.Inst(V.return, "", ext)]
     | trans_stm env vlist (A.Return(SOME(e))) ext =
         trans_exp env vlist e ext
-	@ [V.Inst(V.return, "", ext)]
+        @ [V.Inst(V.return, "", ext)]
     | trans_stm env vlist (A.Assert(e1, e2s)) ext =
       let val assertok_lab = next_glabel("assert")
-	  val e2 = case e2s
-		    of [] => A.StringConst(location ext ^ ": assertion failed")
-		     | e2s => join e2s
-	  val is1 = trans_exp env vlist e1 ext
-	  val is2 = trans_exp env vlist e2 ext
-	  val n2 = V.code_length is2
-	  val error = native_index(Symbol.symbol("error"), ext)
-	  val ninvoke = V.il(V.invokenative(error))
+          val e2 = case e2s
+                    of [] => A.StringConst(location ext ^ ": assertion failed")
+                     | e2s => join e2s
+          val is1 = trans_exp env vlist e1 ext
+          val is2 = trans_exp env vlist e2 ext
+          val n2 = V.code_length is2
+          val error = native_index(Symbol.symbol("error"), ext)
+          val ninvoke = V.il(V.invokenative(error))
+          val _ = if nif + n2 + ninvoke >= maxint15 
+                  then ( ErrorMsg.error NONE ("jump too big") ;
+                         raise ErrorMsg.Error )
+                  else ()
       in
-	  is1
-	  @ [V.Inst(V.bipush(0), "false", ext)]
-	  @ [V.Inst(V.if_icmp(V.ne,nif+n2+ninvoke), "goto " ^ assertok_lab, ext)]
-	  @ is2
-	  @ [V.Inst(V.invokenative(error), "error " ^ A.Print.pp_exp(e2), ext)]
-	  @ [V.Comment(assertok_lab)]
+          is1
+          @ [V.Inst(V.bipush(0), "false", ext)]
+          @ [V.Inst(V.if_icmp(V.ne,nif+n2+ninvoke), "goto " ^ assertok_lab, ext)]
+          @ is2
+          @ [V.Inst(V.invokenative(error), "error " ^ A.Print.pp_exp(e2), ext)]
+          @ [V.Comment(assertok_lab)]
       end
     | trans_stm env vlist (A.Anno(specs)) ext =
       (* ignore annotations; handled in ../type/dyn-check.sml *)
@@ -554,84 +617,97 @@ struct
         trans_stm env vlist (Mark.data marked_stm) (Mark.ext marked_stm)
   and trans_seq env vlist nil ss ext =
       ( track_num_vars(vlist) ;
-	trans_stms env vlist ss ext )
+        trans_stms env vlist ss ext )
     | trans_seq env vlist ((d as A.VarDecl(x,t,NONE,_))::ds) ss ext =
         trans_seq (Symbol.bind env (x,t)) (vlist @ [d]) ds ss ext
     | trans_seq env vlist ((d as A.VarDecl(x,t,SOME(e),ext'))::ds) ss ext =
       let val vlist' = vlist @ [d]
-	  val env' = Symbol.bind env (x, t)
+          val env' = Symbol.bind env (x, t)
       in
-	  trans_exp env vlist e ext'
-	  @ [V.Inst(V.vstore(lookup vlist' 0 x),
-		    A.Print.pp_stm(A.Assign(NONE, A.Var(x), e)),
-		    ext')]
-	  @ trans_seq env' vlist' ds ss ext
+          trans_exp env vlist e ext'
+          @ [V.Inst(V.vstore (lookup vlist' 0 x),
+                    A.Print.pp_stm(A.Assign(NONE, A.Var(x), e)),
+                    ext')]
+          @ trans_seq env' vlist' ds ss ext
       end
   and trans_stms env vlist nil ext = []
     | trans_stms env vlist (s::ss) ext =
         trans_stm env vlist s ext @ trans_stms env vlist ss ext
   and trans_assign env vlist NONE (A.Var(x)) e ext = 
         trans_exp env vlist e ext
-	@ [V.Inst(V.vstore(lookup vlist 0 x),
-		  A.Print.pp_stm(A.Assign(NONE, A.Var(x), e)),
-		  ext)]
+        @ [V.Inst(V.vstore(lookup vlist 0 x),
+                  A.Print.pp_stm(A.Assign(NONE, A.Var(x), e)),
+                  ext)]
     | trans_assign env vlist (SOME(opr)) (A.Var(x)) e ext =
         [V.Inst(V.vload(lookup vlist 0 x), Symbol.name(x), ext)]
-	@ trans_exp env vlist e ext
-	@ [V.Inst(V.binop(tbinop(opr)), "", ext)]
+        @ trans_exp env vlist e ext
+        @ [V.Inst(V.binop(tbinop(opr)), "", ext)]
         @ [V.Inst(V.vstore(lookup vlist 0 x),
-		  A.Print.pp_stm(A.Assign(SOME(opr), A.Var(x), e)),
-		  ext)]
+                  A.Print.pp_stm(A.Assign(SOME(opr), A.Var(x), e)),
+                  ext)]
     | trans_assign env vlist oper_opt (A.Marked(marked_exp)) e ext =
         trans_assign env vlist oper_opt (Mark.data marked_exp) e (Mark.ext marked_exp)
     | trans_assign env vlist (NONE) lv1 e2 ext =
       let val is1 = trans_lv env vlist lv1 ext (* computes address of lv, not value! *)
-	  val is2 = trans_exp env vlist e2 ext
-	  val size = sizeof(Syn.syn_exp_expd env lv1)
-	  val store_inst = (case size of 1 => V.cmstore | 4 => V.imstore | 8 => V.amstore)
+          val is2 = trans_exp env vlist e2 ext
+          val size = sizeof(Syn.syn_exp_expd env lv1)
+          val store_inst = (case size of 1 => V.cmstore | 4 => V.imstore | 8 => V.amstore)
       in
-	  is1 @ is2
-	  @ [V.Inst(store_inst, A.Print.pp_stm(A.Assign(NONE, lv1, e2)), ext)]
+          is1 @ is2
+          @ [V.Inst(store_inst, A.Print.pp_stm(A.Assign(NONE, lv1, e2)), ext)]
       end 
     | trans_assign env vlist (SOME(opr)) lv1 e2 ext =
       let val is1 = trans_lv env vlist lv1 ext (* computes address of lv, not value! *)
-	  val is2 = trans_exp env vlist e2 ext
-	  val size = sizeof(Syn.syn_exp_expd env lv1)
-	  val load_inst = (case size of 1 => V.cmload | 4 => V.imload | 8 => V.amload)
-	  val store_inst = (case size of 1 => V.cmstore | 4 => V.imstore | 8 => V.amstore)
+          val is2 = trans_exp env vlist e2 ext
+          val size = sizeof(Syn.syn_exp_expd env lv1)
+          val load_inst = (case size of 1 => V.cmload | 4 => V.imload | 8 => V.amload)
+          val store_inst = (case size of 1 => V.cmstore | 4 => V.imstore | 8 => V.amstore)
       in
-	  is1
-	  @ [V.Inst(V.dup, "(save &" ^ A.Print.pp_exp(lv1) ^ ")", ext)]
-	  @ [V.Inst(load_inst, A.Print.pp_exp(lv1), ext)]
-	  @ is2
-	  @ [V.Inst(V.binop(tbinop(opr)), "", ext)]
-	  @ [V.Inst(store_inst, A.Print.pp_stm(A.Assign(SOME(opr), lv1, e2)), ext)]
+          is1
+          @ [V.Inst(V.dup, "(save &" ^ A.Print.pp_exp(lv1) ^ ")", ext)]
+          @ [V.Inst(load_inst, A.Print.pp_exp(lv1), ext)]
+          @ is2
+          @ [V.Inst(V.binop(tbinop(opr)), "", ext)]
+          @ [V.Inst(store_inst, A.Print.pp_stm(A.Assign(SOME(opr), lv1, e2)), ext)]
       end 
 
   fun trans_gdecl (A.Function(g, rtp, params, SOME(body), specs, is_external, ext)) =
       (* is_external = false ? perhaps not for C0 libraries like <rand> *)
       (* function definition *)
       let val findex = ( case Funtab.lookup(g)
-			  of NONE => if Symbol.name(g) = "main" then 0
-				     else next_findex()
-			   | SOME(findex) => findex )
-	  val _ = Funtab.bind(g, findex)
+                          of NONE => if Symbol.name(g) = "main" then 0
+                                     else next_findex()
+                           | SOME(findex) => findex )
+          val _ = Funtab.bind(g, findex)
 (*
-	  val _ = print((if is_external then "External" else "Internal")
-			^ "Def: " ^ Symbol.name(g) ^ "\n")
+          val _ = print((if is_external then "External" else "Internal")
+                        ^ "Def: " ^ Symbol.name(g) ^ "\n")
 *)
-	  val num_args = length(params)
-	  val _ = track_num_vars(params)
+          val num_args = length(params)
+          val _ = track_num_vars(params)
+          val _  = (if num_args < 0 orelse num_args >= maxint8
+                   then ( ErrorMsg.error NONE ("too many arguments of function: " ^ (Symbol.name g)) ;
+                          raise ErrorMsg.Error )
+                   else ())
           (* make possibly implicit return explicit for functions returning void *)
-	  val body' = (case Syn.expand_def(rtp)
+          val body' = (case Syn.expand_def(rtp)
                        of A.Void => A.Seq([], [body, A.Return(NONE)])
                           | _ => body)
-	  val env0 = Syn.syn_decls Symbol.empty params
-	  val is = trans_stm env0 params body' ext
-	  val num_vars = get_num_vars()
-	  val fi = V.FI {name = Symbol.name(g),
-		         num_args = num_args, num_vars = num_vars,
-		         code_length = V.code_length(is), code = is}
+          val env0 = Syn.syn_decls Symbol.empty params
+          val is = trans_stm env0 params body' ext
+          val num_vars = get_num_vars()
+          val _  = (if num_vars < 0 orelse num_vars >= maxint8
+                   then ( ErrorMsg.error NONE ("too many variables in function: " ^ (Symbol.name g)) ;
+                          raise ErrorMsg.Error )
+                   else ())
+          val code_length = V.code_length(is)
+          val _  = (if code_length < 0 orelse code_length >= maxint16
+                   then ( ErrorMsg.error NONE ("body of function: " ^ (Symbol.name g) ^ "too long") ;
+                          raise ErrorMsg.Error )
+                   else ())
+          val fi = V.FI {name = Symbol.name(g),
+                         num_args = num_args, num_vars = num_vars,
+                         code_length = code_length, code = is}
           val _ = Array.update(function_pool, findex, SOME(fi))
       in
           ()
@@ -641,30 +717,30 @@ struct
       (* assign index for forward declaration of non-library function *)
       (* this decl, and any previous decl must be non-library (false) *)
       ( case (Funtab.lookup(g), Symtab.lookup(g))
-      	 of (NONE, SOME(A.Function(g', rtp', params', bodyOpt', specs', false, ext')))
-	    (* is_external = true allowed in spring'11 revision *)
-	    => let val findex = if Symbol.name(g) = "main" then 0
-				else next_findex()
-				     
-		   (* val _ = print("Internal Decl:" ^ Symbol.name(g) ^ "\n") *)
-		   val _ = Funtab.bind(g, findex)
-		   val _ = Array.update(function_pool, findex, NONE)
-	       in 
-		   ()
-	       end
-	  | (_, _) => ((* print("Internal Decl (ign): " ^ Symbol.name(g) ^ "\n") *)) )
+               of (NONE, SOME(A.Function(g', rtp', params', bodyOpt', specs', false, ext')))
+            (* is_external = true allowed in spring'11 revision *)
+            => let val findex = if Symbol.name(g) = "main" then 0
+                                else next_findex()
+                                     
+                   (* val _ = print("Internal Decl:" ^ Symbol.name(g) ^ "\n") *)
+                   val _ = Funtab.bind(g, findex)
+                   val _ = Array.update(function_pool, findex, NONE)
+               in 
+                   ()
+               end
+          | (_, _) => ((* print("Internal Decl (ign): " ^ Symbol.name(g) ^ "\n") *)) )
     | trans_gdecl (A.Function(g, rtp, params, NONE, specs, true, ext)) =
       (* ignore declarations in libraries *)
       ((* print("External Decl (ign): " ^ Symbol.name(g) ^ "\n") *))
     | trans_gdecl (A.TypeDef(a,t,ext)) =
-        ()			(* ignore typedef *)
+        ()                        (* ignore typedef *)
     | trans_gdecl (A.Struct(s, NONE, library, ext)) =
-        ()			(* ignore struct declaration *)
+        ()                        (* ignore struct declaration *)
     | trans_gdecl (gdecl as A.Struct(s, SOME(fields), library, ext)) =
       (* struct s; compute and store field offsets *)
       let val _ = comp_size (SOME(gdecl))
       in
-	  ()
+          ()
       end
     | trans_gdecl (gdecl as A.Pragma(A.Raw(pname, pargs), ext)) =
       ()
