@@ -252,7 +252,7 @@ cc0-test: bin/cc0-test
 bin/cc0-test: bin tests/drivers/*
 	$(MLTON) $@ tests/drivers/$(notdir $@).mlb
 
-vm/c0vm: vm/*.h vm/*.c vm/*.h0
+vm/c0vm: vm/*.h vm/*.c vm/include/*.h0
 	$(MAKE) -C vm
 
 .PHONY: c0vm-test bin/c0vm-test
