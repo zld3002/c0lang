@@ -82,6 +82,7 @@ val lib_curses = List.foldr Map.insert' Map.empty (mapN (
 (* Library file *)
 val lib_file = List.foldr Map.insert' Map.empty (mapN (
 ("file_close",           _import "__c0ffi_file_close" public: fnptr;) ::
+("file_closed",          _import "__c0ffi_file_closed" public: fnptr;) ::
 ("file_eof",             _import "__c0ffi_file_eof" public: fnptr;) ::
 ("file_read",            _import "__c0ffi_file_read" public: fnptr;) ::
 ("file_readline",        _import "__c0ffi_file_readline" public: fnptr;) ::

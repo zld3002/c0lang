@@ -17,10 +17,14 @@ file_t file_read(c0_string path) {
   return f;
 }
 
+bool file_closed(file_t f) {
+  assert(f != NULL);
+  return f->handle == NULL;
+}
+
 void file_close(file_t f) {
   assert(f != NULL);
-  if (f->handle == NULL) 
-    c0_abort("file_close: file already closed");
+  assert(!file_closed(f));
   if (EOF == fclose(f->handle)) {
     c0_abort("Could not close file");
   }
@@ -30,8 +34,7 @@ void file_close(file_t f) {
 
 bool file_eof(file_t f) {
   assert(f != NULL);
-  if (f->handle == NULL) 
-    c0_abort("file_eof: file is closed");
+  assert(!file_closed(f));
   if (EOF == fgetc(f->handle)) {
     return true;
   }
@@ -41,8 +44,7 @@ bool file_eof(file_t f) {
 
 c0_string file_readline(file_t f) {
   assert(f != NULL);
-  if (f->handle == NULL) 
-    c0_abort("file_readline: file is closed");
+  assert(!file_closed(f));
   if (feof(f->handle) || file_eof(f)) {
     c0_abort("Cannot read more lines - already at end of file");
   }

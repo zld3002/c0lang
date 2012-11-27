@@ -14,6 +14,7 @@
 struct file;
 typedef struct file * file_t;
 file_t file_read(c0_string path);
+bool file_closed(file_t f);
 void file_close(file_t f);
 bool file_eof(file_t f);
 c0_string file_readline(file_t f);
@@ -22,6 +23,10 @@ c0_string file_readline(file_t f);
 
 void *__c0ffi_file_read(void **args) {
   return (void *) file_read((c0_string) args[0]);
+}
+
+void *__c0ffi_file_closed(void **args) {
+  return (void *) (intptr_t) file_closed((file_t) args[0]);
 }
 
 void *__c0ffi_file_close(void **args) {

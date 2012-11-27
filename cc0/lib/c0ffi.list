@@ -63,6 +63,7 @@ cc_wunderon
 
 lib file
 file_close
+file_closed
 file_eof
 file_read
 file_readline

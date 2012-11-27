@@ -12,13 +12,20 @@ file_t file_read(string path);
 /* Release any resources associated with the file handle.
  * This function should not be invoked twice on the same handle.
  */
+
+bool file_closed(file_t f)
+  //@requires f != NULL;
+  ;
+
 void file_close(file_t f)
   //@requires f != NULL;
+  //@requires !file_closed(f);
   ;
 
 /* Test if we have read the whole file. */
 bool file_eof(file_t f)
   //@requires f != NULL;
+  //@requires !file_closed(f);
   ;
 
 /* Read a line from the given file (without the trailing newline)
@@ -28,5 +35,6 @@ bool file_eof(file_t f)
  */
 string file_readline(file_t f)
   //@requires f != NULL;
+  //@requires !file_closed(f);
   //@requires !file_eof(f);
   ;
