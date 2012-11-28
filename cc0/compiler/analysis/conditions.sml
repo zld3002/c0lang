@@ -383,7 +383,7 @@ end
 (* Tests *)
 
 val () = let
-    val do_tests = true
+    val do_tests = false
     val print_z3_test_verbose = true
     fun print(str) =
 	if print_z3_test_verbose then

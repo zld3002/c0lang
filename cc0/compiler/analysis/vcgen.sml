@@ -27,8 +27,8 @@ struct
 
   (* Add call to check in here that if false returns an error for the
    * current location and assertion. *)
-  fun assert e =
-    let val _ = C.assert e
+  fun assert f e =
+    let val _ = f e
     in if !debug_asserts
         then [VError.VerificationError(NONE,"Assert: " ^ (AAst.Print.pp_aexpr e) ^ "\n")]
         else []
@@ -37,55 +37,55 @@ struct
   fun convert_array exp = 
     AAst.Length exp
 
-  fun divmod_assert e1 e2 =
+  fun divmod_assert assert e1 e2 =
     (assert(AAst.Op(Ast.NOTEQ,[e2,ZERO]))) @
     (assert(AAst.Op(Ast.LOGNOT,[AAst.Op(Ast.LOGAND,
                 [AAst.Op(Ast.EQ,[e1,AAst.IntConst(Word32Signed.TMIN)]),
                  AAst.Op(Ast.EQ,[e2,AAst.IntConst(Word32.fromInt(~1))])])])))
 
-  fun process_exp exp =
+  fun process_exp assert exp =
     case exp of
       AAst.Op(oper,es) => 
         ((*List.map process_exp es;*)
           case (oper,es) of
             (Ast.DEREF,[e]) => assert(AAst.Op(Ast.NOTEQ,[e,ZERO]))
-          | (Ast.DIVIDEDBY,[e1,e2]) => divmod_assert e1 e2
-          | (Ast.MODULO,[e1,e2]) => divmod_assert e1 e2
+          | (Ast.DIVIDEDBY,[e1,e2]) => divmod_assert assert e1 e2
+          | (Ast.MODULO,[e1,e2]) => divmod_assert assert e1 e2
           | (Ast.SUB,[e1,e2]) =>
               (assert (AAst.Op(Ast.GEQ,[e2,ZERO]))) @ 
           (* consider length in precoditions to be variable, put it in here *)
                (assert (AAst.Op(Ast.LESS,[e2,convert_array e1])))
           | _ => [])
     | AAst.AllocArray(t,e) => assert(AAst.Op(Ast.GEQ,[e,ZERO]))
-    | AAst.Select(e,field) => process_exp e
-    | AAst.Call(f,es) => List.foldr (fn (e,l) => (process_exp e) @ l) [] es
-    | AAst.MarkedE m => process_exp (Mark.data m)
+    | AAst.Select(e,field) => process_exp assert e
+    | AAst.Call(f,es) => List.foldr (fn (e,l) => (process_exp assert e) @ l) [] es
+    | AAst.MarkedE m => process_exp assert (Mark.data m)
     | _ => []
 
-  fun process_stm stm = 
+  fun process_stm assert stm = 
     case stm of
       AAst.Nop => []
-    | AAst.Seq(s1,s2) => (process_stm s1) @ (process_stm s2)
-    | AAst.Assert e => (process_exp e) @ (assert e)
+    | AAst.Seq(s1,s2) => (process_stm assert s1) @ (process_stm assert s2)
+    | AAst.Assert e => (process_exp assert e) @ (assert e)
     | AAst.Annotation e => raise Unimplemented
     | AAst.Def(v,e) =>
     (* Keep track of length if array variable *)
-        (process_exp e) @ (assert(AAst.Op(Ast.EQ,[AAst.Local v,e])))
+        (process_exp assert e) @ (assert(AAst.Op(Ast.EQ,[AAst.Local v,e])))
     (* assert new info about length of A in assign of array *)
     | AAst.Assign(e1,NONE,e2) =>
-        (process_exp e1) @ (process_exp e2) @
+        (process_exp assert e1) @ (process_exp assert e2) @
           (assert(AAst.Op(Ast.EQ,[e1,e2])))
     | AAst.Assign(e1,SOME oper,e2) =>
-        (process_exp e1) @ (process_exp e2) @
+        (process_exp assert e1) @ (process_exp assert e2) @
           (assert (AAst.Op(Ast.EQ,[e1,AAst.Op(oper,[e1,e2])])))
-    | AAst.Expr e => process_exp e
+    | AAst.Expr e => process_exp assert e
     | AAst.Break => raise Unimplemented
     | AAst.Continue => raise Unimplemented
     | AAst.Return NONE => []
-    | AAst.Return (SOME e) => process_exp e
+    | AAst.Return (SOME e) => process_exp assert e
     | AAst.If(e,s1,s2,phis) => raise Unimplemented
     | AAst.While(cntphis,e,es,s,brkphis) => raise Unimplemented
-    | AAst.MarkedS m => process_stm (Mark.data m)
+    | AAst.MarkedS m => process_stm assert (Mark.data m)
 
   fun get_returns stm =
     case stm of
@@ -110,9 +110,10 @@ struct
 
   fun generate_vc (AAst.Function(_,_,types,_,requires,stm,ensures)) debug =
     let
+      val assert = assert (C.assert types)
       val _ = debug_asserts := debug
       val _ = List.map assert requires
-      val errs = process_stm stm
+      val errs = process_stm assert stm
       (* Get the list of return values, check that they work in ensures
        * when replacing \result *)
       val retvals = get_returns stm
