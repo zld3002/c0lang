@@ -6,7 +6,7 @@
 signature VCGEN =
 sig
 
-  val generate_vc : AAst.afunc -> unit
+  val generate_vc : AAst.afunc -> bool -> unit
 
 end
 
@@ -16,39 +16,46 @@ struct
 
   exception Unimplemented 
 
-  val ZERO = AAst.IntConst(Word32.fromInt(0))
+  val ZERO = AAst.IntConst(Word32Signed.ZERO)
+
+  val debug_asserts = ref false
 
   (* Tell preprocessing of ssa to do isolation
-   * remove conversion, check assigns only at top level *)
+   * remove conversion, check assigns only at top level
+   *   <- can then just check top level for things like
+   *      array accesses or array assigns*)
+
+  fun assert e =
+    let val _ =
+      if !debug_asserts
+        then print ("Assert: " ^ (AAst.Print.pp_aexpr e) ^ "\n")
+        else ()
+    in C.assert e
+    end
 
   fun convert_array exp = 
     AAst.Length exp
 
-  (*fun convert_length exp = 
-    case exp of
-      AAst.Op(oper,es) => AAst.Op(oper,List.map convert_length es)
-    | AAst.Call(f,es) => AAst.Call(f,List.map convert_length es)
-    | AAst.Length e => convert_array e
-    | AAst.MarkedE m => convert_length (Mark.data m)	  
-    | _ => exp*)
-
   fun divmod_assert e1 e2 =
-    C.assert(AAst.Op(Ast.NOTEQ,[e2,ZERO])) (* add INTMIN /% -1 *)
+    (assert(AAst.Op(Ast.NOTEQ,[e2,ZERO]));
+     assert(AAst.Op(Ast.LOGNOT,[AAst.Op(Ast.LOGAND,
+                [AAst.Op(Ast.NOTEQ,[e1,AAst.IntConst(Word32Signed.TMIN)]),
+                 AAst.Op(Ast.NOTEQ,[e2,AAst.IntConst(Word32.fromInt(~1))])])])))
 
   fun process_exp exp =
     case exp of
       AAst.Op(oper,es) => 
         ((*List.map process_exp es;*)
           case (oper,es) of
-            (Ast.DEREF,[e]) => C.assert (AAst.Op(Ast.NOTEQ,[e,ZERO]))
+            (Ast.DEREF,[e]) => assert (AAst.Op(Ast.NOTEQ,[e,ZERO]))
           | (Ast.DIVIDEDBY,[e1,e2]) => divmod_assert e1 e2
           | (Ast.MODULO,[e1,e2]) => divmod_assert e1 e2
           | (Ast.SUB,[e1,e2]) =>
-              (C.assert (AAst.Op(Ast.GEQ,[e2,ZERO]));
+              (assert (AAst.Op(Ast.GEQ,[e2,ZERO]));
           (* consider length in precoditions to be variable, put it in here *)
-               C.assert (AAst.Op(Ast.LESS,[e2,convert_array e1])))
+               assert (AAst.Op(Ast.LESS,[e2,convert_array e1])))
           | _ => ())
-    | AAst.AllocArray(t,e) => C.assert (AAst.Op(Ast.GEQ,[e,ZERO]))
+    | AAst.AllocArray(t,e) => assert (AAst.Op(Ast.GEQ,[e,ZERO]))
     | AAst.Select(e,field) => process_exp e
     | AAst.Call(f,es) => (List.map process_exp es;())
     | AAst.MarkedE m => process_exp (Mark.data m)
@@ -58,18 +65,18 @@ struct
     case stm of
       AAst.Nop => []
     | AAst.Seq(s1,s2) => (process_stm s1) @ (process_stm s2)
-    | AAst.Assert e => (process_exp;C.assert e;[])
+    | AAst.Assert e => (process_exp;assert e;[])
     | AAst.Annotation e => raise Unimplemented
     | AAst.Def(v,e) =>
     (* Keep track of length if array variable *)
-        (process_exp e;C.assert(AAst.Op(Ast.EQ,[AAst.Local v,convert_array e]));[])
+        (process_exp e;[])
     (* assert new info about length of A in assign of array *)
     | AAst.Assign(e1,NONE,e2) =>
         (process_exp e1;process_exp e2;
-         C.assert (AAst.Op(Ast.EQ,[e1,e2]));[])
+         assert (AAst.Op(Ast.EQ,[e1,e2]));[])
     | AAst.Assign(e1,SOME oper,e2) =>
         (process_exp e1;process_exp e2;
-         C.assert (AAst.Op(Ast.EQ,[e1,AAst.Op(oper,[e1,e2])]));[])
+         assert (AAst.Op(Ast.EQ,[e1,AAst.Op(oper,[e1,e2])]));[])
     | AAst.Expr e => (process_exp e;[])
     | AAst.Break => raise Unimplemented
     | AAst.Continue => raise Unimplemented
@@ -79,11 +86,13 @@ struct
     | AAst.While(cntphis,e,es,s,brkphis) => raise Unimplemented
     | AAst.MarkedS m => process_stm (Mark.data m)
 
-  fun generate_vc (AAst.Function(_,_,_,_,requires,stm,ensures)) = 
+  fun generate_vc (AAst.Function(_,_,types,_,requires,stm,ensures)) debug =
     let
-      val _ = List.map (C.assert(* o convert_length*)) requires
+      val _ = C.StartZ3 ()
+      val _ = debug_asserts := debug
+      val _ = List.map assert requires
       val retvals = process_stm stm
-      (* Get the list of return values, chack that they work in ensures
+      (* Get the list of return values, check that they work in ensures
        * when replacing \result *)
       fun replace_result retval exp =
         case exp of
@@ -95,11 +104,11 @@ struct
         | AAst.AllocArray(t,e) => AAst.AllocArray(t,replace_result retval e)
         | AAst.Select(e,s) => AAst.Select(replace_result retval e,s)
         | AAst.MarkedE m => replace_result retval (Mark.data m)
-      val _ = List.map ((List.map C.assert) o
-                (fn e => List.map (fn f => f e) (List.map replace_result retvals))) ensures
+      val _ = List.map ((List.map assert) o
+                (fn e => List.map (fn r => replace_result r e) retvals)) ensures
     in if C.check ()
-         then ()
-         else raise Fail "Conditions did not hold"
+         then C.EndZ3 ()
+         else (C.EndZ3 ();raise Fail "Conditions did not hold")
     end
 
 end
