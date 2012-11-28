@@ -7,7 +7,7 @@ signature CONDITIONS =
 sig
 
     (* Tries to assert a boolean expression. *)
-    val assert : AAst.aexpr -> unit
+    val assert : (Ast.tp SymMap.map) -> (AAst.aexpr -> unit)
 
     (* Checks if the current assertions on the stack are satisfiable or not.
      * Returns true if satisfiable, false if not satisfiable or unknown.
@@ -111,7 +111,7 @@ fun readFromZ3() =
 	    )
     end
 
-fun assert e =
+fun assert(map)(e) =
     if (z3Started()) then
 	let
 	    fun getLocalList(e : AAst.aexpr list) : AAst.aexpr list =
@@ -150,7 +150,7 @@ fun assert e =
 		    AAst.Local((sym, gen)) => localName(e)
 		  | AAst.Op(oper, exprlist) => (
 		    case oper of
-			Ast.SUB => raise Unimplemented
+			Ast.SUB => raise Unimplemented (* Not seen *)
 		      | Ast.LOGNOT => (
 			let
 			    val [x] = exprlist
@@ -287,19 +287,19 @@ fun assert e =
 			    "(ite " ^ (assert_expr(x)) ^ " " ^ (assert_expr(y)) ^ " " ^ (assert_expr(z)) ^ ")"
 			end)
 		    )
-		  | AAst.Call(sym, exprlist) => raise Unimplemented
+		  | AAst.Call(sym, exprlist) => raise Unimplemented (* Most likely not seen *)
 		  | AAst.IntConst(word) => (
 		    "(_ bv" ^ Word32.fmt(StringCvt.DEC)(word) ^ " 32)")
 		  | AAst.BoolConst(bool) => (Bool.toString bool)
-		  | AAst.StringConst(str) => raise Unimplemented
-		  | AAst.CharConst(ch) => raise Unimplemented
-		  | AAst.Alloc(tp) => raise Unimplemented
-		  | AAst.Null => raise Unimplemented (* ("(_ bv0 32)")? *)
-		  | AAst.Result => raise Unimplemented
-		  | AAst.Length(expr) => raise Unimplemented
-		  | AAst.Old(AAst.Local(sym, gen)) => raise Unimplemented
-		  | AAst.AllocArray(tp,expr) => raise Unimplemented
-		  | AAst.Select(expr,sym) => raise Unimplemented
+		  | AAst.StringConst(str) => raise Unimplemented (* Not arithmetic *)
+		  | AAst.CharConst(ch) => raise Unimplemented (* Not arithmetic *)
+		  | AAst.Alloc(tp) => raise Unimplemented (* No pointers *)
+		  | AAst.Null => raise Unimplemented (* No pointers *)
+		  | AAst.Result => raise Unimplemented (* Not seen *)
+		  | AAst.Length(AAst.Local(sym, gen)) => raise Unimplemented (* Treat as a _length variable *)
+		  | AAst.Old(AAst.Local(sym, gen)) => raise Unimplemented (* ??? *)
+		  | AAst.AllocArray(tp,expr) => raise Unimplemented (* Not seen *)
+		  | AAst.Select(expr,sym) => raise Unimplemented (* Struct fields, we'll deal with this later *)
 		  | AAst.MarkedE(mk) => assert_expr(Mark.data(mk))
 		  | _ => raise Unimplemented
 
@@ -384,7 +384,7 @@ end
 
 val () = let
     val do_tests = true
-    val print_z3_test_verbose = false
+    val print_z3_test_verbose = true
     fun print(str) =
 	if print_z3_test_verbose then
 	    TextIO.print(str)
@@ -393,6 +393,12 @@ val () = let
     fun break() =
 	((print "--------------------\n");
 	 Conditions.reset())
+    val assert =
+        let
+          val mp = SymMap.empty
+        in
+          Conditions.assert(mp)
+        end
 in
     if do_tests then
 	let
@@ -406,39 +412,39 @@ in
 			(print "==ASSERT(expr)[expected]==\n");
 			break();
 			(print "  ASSERT(true)[true]\n");
-			Conditions.assert(AAst.BoolConst(true));
+			assert(AAst.BoolConst(true));
 			Conditions.check())
 	    val false = ((print "  ASSERT(false)[false]\n");
-			 Conditions.assert(AAst.BoolConst(false));
+			 assert(AAst.BoolConst(false));
 			 Conditions.check())
 	    val () = break()
 	    val true = ((print "  ASSERT(t0 = 10)[true]\n");
-			Conditions.assert(
+			assert(
 			AAst.Op(Ast.EQ,
 				[AAst.Local(Symbol.symbol("t0"), 0),
 				 AAst.IntConst(Word32.fromInt 10)]));
 			Conditions.check())
 	    val false = ((print "  ASSERT(t0 != 10)[false]\n");
-			 Conditions.assert(
+			 assert(
 			 AAst.Op(Ast.NOTEQ,
 				 [AAst.Local(Symbol.symbol("t0"), 0),
 				  AAst.IntConst(Word32.fromInt 10)]));
 			 Conditions.check())
 	    val () = break()
 	    val true = ((print "  ASSERT(t1 = 10)[true]\n");
-			Conditions.assert(
+			assert(
 			AAst.Op(Ast.EQ,
 				[AAst.Local(Symbol.symbol("t1"), 0),
 				 AAst.IntConst(Word32.fromInt 10)]));
 			Conditions.check())
 	    val true = ((print "  ASSERT(t2 = 10)[true]\n");
-			Conditions.assert(
+			assert(
 			AAst.Op(Ast.EQ,
 				[AAst.Local(Symbol.symbol("t2"), 0),
 				 AAst.IntConst(Word32.fromInt 10)]));
 			Conditions.check())
 	    val true = ((print "  ASSERT(t1*t2 == 100)[true]\n");
-			Conditions.assert(
+			assert(
 			AAst.Op(Ast.EQ,
 				[AAst.Op(Ast.TIMES,
 					 [AAst.Local(Symbol.symbol("t1"), 0),
@@ -446,7 +452,7 @@ in
 				 AAst.IntConst(Word32.fromInt 100)]));
 			Conditions.check())
 	    val false = ((print "  ASSERT(t1*t2 != 100)[false]\n");
-			 Conditions.assert(
+			 assert(
 			 AAst.Op(Ast.NOTEQ,
 				 [AAst.Op(Ast.TIMES,
 					  [AAst.Local(Symbol.symbol("t1"), 0),
@@ -455,14 +461,14 @@ in
 			 Conditions.check())
 	    val () = break()
 	    val true = ((print "  ASSERT(100 > 10)[true]\n");
-			Conditions.assert(
+			assert(
 			AAst.Op(Ast.GREATER,
 				[AAst.IntConst(Word32.fromInt 100),
 				 AAst.IntConst(Word32.fromInt 10)]));
 			Conditions.check())
 	    val () = break()
 	    val true = ((print "  ASSERT((512 ^ 1023) = 511)[true]\n");
-			Conditions.assert(
+			assert(
 			AAst.Op(Ast.EQ,
 				[AAst.Op(Ast.XOR,
 					 [AAst.IntConst(Word32.fromInt 512),
@@ -471,7 +477,7 @@ in
 			Conditions.check())
 	    val () = break()
 	    val true = ((print "  ASSERT(~256 == -257)[true]\n");
-			Conditions.assert(
+			assert(
 			AAst.Op(Ast.EQ,
 				[AAst.Op(Ast.COMPLEMENT,
 					 [AAst.IntConst(Word32.fromInt 256)]),
@@ -479,27 +485,27 @@ in
 			Conditions.check())
 	    val () = break()
 	    val false = ((print "  ASSERT(true && false)[false]\n");
-			 Conditions.assert(
+			 assert(
 			 AAst.Op(Ast.LOGAND,
 				 [AAst.BoolConst(true),
 				  AAst.BoolConst(false)]));
 			 Conditions.check())
 	    val () = break()
 	    val true = ((print "  ASSERT(true || false)[true]\n");
-			Conditions.assert(
+			assert(
 			AAst.Op(Ast.LOGOR,
 				[AAst.BoolConst(true),
 				 AAst.BoolConst(false)]));
 			Conditions.check())
 	    val () = break()
 	    val true = ((print "  ASSERT(t2 = 0)[true]\n");
-			Conditions.assert(
+			assert(
 			AAst.Op(Ast.EQ,
 				[AAst.Local(Symbol.symbol("t2"), 0),
 				 AAst.IntConst(Word32.fromInt 0)]));
 			Conditions.check())
 	    val true = ((print "  ASSERT(t2 == 0 ? true : false)[true]\n");
-			Conditions.assert(
+			assert(
 			AAst.Op(Ast.COND,
 				[AAst.Op(Ast.EQ,
 					 [AAst.Local(Symbol.symbol("t2"), 0),
@@ -509,7 +515,7 @@ in
 			Conditions.check())
 	    val () = break()
 	    val true = ((print "  ASSERT(10 % 3 == 1)[true]\n");
-			Conditions.assert(
+			assert(
 			AAst.Op(Ast.EQ,
 				[AAst.Op(Ast.MODULO,
 					 [AAst.IntConst(Word32.fromInt(10)),
@@ -517,7 +523,7 @@ in
 				 AAst.IntConst(Word32.fromInt(1))]));
 			Conditions.check())
 	    val true = ((print "  ASSERT(-10 % 3 == -1)[true]\n");
-			Conditions.assert(
+			assert(
 			AAst.Op(Ast.EQ,
 				[AAst.Op(Ast.MODULO,
 					 [AAst.IntConst(Word32.fromInt(~10)),
@@ -525,7 +531,7 @@ in
 				 AAst.IntConst(Word32.fromInt(~1))]));
 			Conditions.check())
 	    val true = ((print "  ASSERT(10 % -3 == 1)[true]\n");
-			Conditions.assert(
+			assert(
 			AAst.Op(Ast.EQ,
 				[AAst.Op(Ast.MODULO,
 					 [AAst.IntConst(Word32.fromInt(10)),
@@ -534,7 +540,7 @@ in
 			Conditions.check())
 	    val () = break()
 	    val true = ((print "  ASSERT(10 / 3 == 3)[true]\n");
-			Conditions.assert(
+			assert(
 			AAst.Op(Ast.EQ,
 				[AAst.Op(Ast.DIVIDEDBY,
 					 [AAst.IntConst(Word32.fromInt(10)),
@@ -542,7 +548,7 @@ in
 				 AAst.IntConst(Word32.fromInt(3))]));
 			Conditions.check())
 	    val true = ((print "  ASSERT(-10 / 3 == -3)[true]\n");
-			Conditions.assert(
+			assert(
 			AAst.Op(Ast.EQ,
 				[AAst.Op(Ast.DIVIDEDBY,
 					 [AAst.IntConst(Word32.fromInt(~10)),
@@ -550,7 +556,7 @@ in
 				 AAst.IntConst(Word32.fromInt(~3))]));
 			Conditions.check())
 	    val true = ((print "  ASSERT(-10 / -3 == 3)[true]\n");
-			Conditions.assert(
+			assert(
 			AAst.Op(Ast.EQ,
 				[AAst.Op(Ast.DIVIDEDBY,
 					 [AAst.IntConst(Word32.fromInt(~10)),
