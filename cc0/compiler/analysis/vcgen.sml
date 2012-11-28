@@ -40,8 +40,8 @@ struct
   fun divmod_assert e1 e2 =
     (assert(AAst.Op(Ast.NOTEQ,[e2,ZERO]))) @
     (assert(AAst.Op(Ast.LOGNOT,[AAst.Op(Ast.LOGAND,
-                [AAst.Op(Ast.NOTEQ,[e1,AAst.IntConst(Word32Signed.TMIN)]),
-                 AAst.Op(Ast.NOTEQ,[e2,AAst.IntConst(Word32.fromInt(~1))])])])))
+                [AAst.Op(Ast.EQ,[e1,AAst.IntConst(Word32Signed.TMIN)]),
+                 AAst.Op(Ast.EQ,[e2,AAst.IntConst(Word32.fromInt(~1))])])])))
 
   fun process_exp exp =
     case exp of
@@ -70,7 +70,7 @@ struct
     | AAst.Annotation e => raise Unimplemented
     | AAst.Def(v,e) =>
     (* Keep track of length if array variable *)
-        process_exp e
+        (process_exp e) @ (assert(AAst.Op(Ast.EQ,[AAst.Local v,e])))
     (* assert new info about length of A in assign of array *)
     | AAst.Assign(e1,NONE,e2) =>
         (process_exp e1) @ (process_exp e2) @
@@ -106,6 +106,7 @@ struct
     | AAst.AllocArray(t,e) => AAst.AllocArray(t,replace_result retval e)
     | AAst.Select(e,s) => AAst.Select(replace_result retval e,s)
     | AAst.MarkedE m => replace_result retval (Mark.data m)
+    | _ => exp
 
   fun generate_vc (AAst.Function(_,_,types,_,requires,stm,ensures)) debug =
     let

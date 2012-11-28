@@ -28,7 +28,7 @@ struct
     end
   fun verifCheck prog =
     let
-      val debug = false
+      val debug = true
       val _ = Conditions.StartZ3 ()
       fun checkFunc f =
         (Conditions.reset();VCGen.generate_vc f debug)
