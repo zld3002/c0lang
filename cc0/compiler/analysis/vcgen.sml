@@ -15,24 +15,14 @@ struct
   structure C = Conditions
 
   exception Unimplemented 
+  exception CodeError of VError.error list
 
   val ZERO = AAst.IntConst(Word32Signed.ZERO)
-
-  val debug_asserts = ref false
 
   (* Tell preprocessing of ssa to do isolation (done)
    * remove conversion, check assigns only at top level
    *   <- can then just check top level for things like
    *      array accesses or array assigns*)
-
-  (* Add call to check in here that if false returns an error for the
-   * current location and assertion. *)
-  fun assert f e =
-    let val _ = f e
-    in if !debug_asserts
-        then [VError.VerificationError(NONE,"Assert: " ^ (AAst.Print.pp_aexpr e) ^ "\n")]
-        else []
-    end
 
   fun convert_array exp = 
     AAst.Length exp
@@ -109,9 +99,42 @@ struct
     | _ => exp
 
   fun generate_vc (AAst.Function(_,_,types,_,requires,stm,ensures)) debug =
-    let
-      val assert = assert (C.assert types)
-      val _ = debug_asserts := debug
+    (let
+      (* Add call to check in here that if false returns an error for the
+       * current location and assertion. *)
+      val assert_fun = C.assert types
+      val verr = VError.VerificationError
+      (* Check asserts, assert what we don't want to be the case, if true (satisfiable),
+         then add an warning error. Then assert what we want to be the case, and if that
+         fails quit and error because that means that the result always fails. *)
+      val assert =
+          fn e =>
+            let
+              val _ = C.push()
+              val nege = AAst.Op(Ast.LOGNOT,[e])
+              val _ = assert_fun nege
+              val is_sat = C.check()
+              val errs = if is_sat
+                    then [verr(NONE,"Error case " ^ (AAst.Print.pp_aexpr nege)
+                            ^ "is satisfiable")]
+                    else []
+              val _ = C.pop()
+              val _ = assert_fun e
+              val is_correct = C.check()
+              val errs = if is_correct
+                    then errs
+                    else errs @ [verr(NONE,"It does not hold that "
+                                  ^ (AAst.Print.pp_aexpr nege))]
+              val errs = if debug
+                    (* Have two lists, one for errors and one for debug asserts *)
+                    then errs @ [verr(NONE,"Assert: " ^
+                          (AAst.Print.pp_aexpr e) ^ "\n")]
+                    else errs
+            in
+              if is_correct
+                then errs
+                else raise CodeError errs
+            end
       val _ = List.map assert requires
       val errs = process_stm assert stm
       (* Get the list of return values, check that they work in ensures
@@ -119,9 +142,8 @@ struct
       val retvals = get_returns stm
       val _ = List.map ((List.map assert) o
                 (fn e => List.map (fn r => replace_result r e) retvals)) ensures
-    in if C.check ()
-         then errs
-         else errs @ [VError.VerificationError(NONE,"Conditions did not hold")]
-    end
+    in errs
+    end)
+      handle CodeError errs => errs 
 
 end
