@@ -4,22 +4,26 @@
 struct file;
 typedef struct file* file_t;  /* file handle or NULL */
 
+/* true iff the file has been closed */
+bool file_closed(file_t f)
+  //@requires f != NULL;
+  ;
+
 /* Create a handle for reading from the file given by the specified
  * path, NULL if the file cannot be opened for reading.
  */
-file_t file_read(string path);
+file_t file_read(string path)
+ //@ensures \result == NULL || !file_closed(\result);
+ ;
 
 /* Release any resources associated with the file handle.
  * This function should not be invoked twice on the same handle.
  */
 
-bool file_closed(file_t f)
-  //@requires f != NULL;
-  ;
-
 void file_close(file_t f)
   //@requires f != NULL;
   //@requires !file_closed(f);
+  //@ensures file_closed(f);
   ;
 
 /* Test if we have read the whole file. */
