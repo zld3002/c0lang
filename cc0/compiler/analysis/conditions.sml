@@ -111,9 +111,40 @@ fun readFromZ3() =
 	    )
     end
 
-fun assert(map)(e) =
+fun assert(map : Ast.tp SymMap.map)(e) =
     if (z3Started()) then
 	let
+	    fun localName(AAst.Local(sym, gen)) =
+		    ((Symbol.nameFull(sym)) ^ "_" ^ (Int.toString(gen)))
+              | localName _ = raise Unimplemented
+
+	    fun localType(e as AAst.Local(sym, gen)) =
+                (case SymMap.find(map, sym) of
+                   SOME tp => (
+                   case tp of
+                     Ast.Int => SOME "(_ BitVec 32)"
+                   | Ast.Bool => SOME "Bool"
+                   | Ast.String => raise Unimplemented
+                   | Ast.Char => raise Unimplemented
+                   | Ast.Pointer(_) => raise Unimplemented
+                   | Ast.Array(_) => raise Unimplemented
+                   | Ast.TypeName(_) => NONE
+                   | Ast.Void => NONE
+                   | Ast.Any => NONE
+                   | _ => raise Unimplemented
+                   )
+                 | _ => (* Default to int32 *)
+		   SOME "(_ BitVec 32)")
+              | localType _ = raise Unimplemented
+
+            fun localArrayLengthName(e as AAst.Local(sym, gen)) =
+                (localName(e) ^ "_length")
+              | localArrayLengthName _ = raise Unimplemented
+
+            fun localLenToLocal(AAst.Length(y as AAst.Local(sym, gen))) = 
+                (AAst.Local(Symbol.symbol(localArrayLengthName(y)), gen))
+              | localLenToLocal _ = raise Unimplemented
+
 	    fun getLocalList(e : AAst.aexpr list) : AAst.aexpr list =
 		case e of
 		    [] => []
@@ -129,21 +160,13 @@ fun assert(map)(e) =
 		      | AAst.Alloc(_) => []
 		      | AAst.Null => []
 		      | AAst.Result => []
-		      | AAst.Length(expr) => getLocalList([expr])
-		      | AAst.Old(expr) => getLocalList([expr])
+		      | AAst.Length(AAst.Local(sym, gen)) => [localLenToLocal(x)]
+		      | AAst.Old(AAst.Local(sym, gen)) => raise Unimplemented
 		      | AAst.AllocArray(_, expr) => getLocalList([expr])
 		      | AAst.Select(expr, _) => getLocalList([expr])
 		      | AAst.MarkedE(mk) => [Mark.data(mk)]
+                      | _ => []
 		    )@getLocalList(xs)
-
-	    fun localName(e : AAst.aexpr) =
-		let
-		    val AAst.Local((sym, gen)) = e;
-		in
-		    (Symbol.name(sym)) ^ "_" ^ (Int.toString(gen))
-		end
-	    fun localType(e : AAst.aexpr) =
-		"(_ BitVec 32)"
 
 	    fun assert_expr(e : AAst.aexpr) =
 		case e of
@@ -296,7 +319,7 @@ fun assert(map)(e) =
 		  | AAst.Alloc(tp) => raise Unimplemented (* No pointers *)
 		  | AAst.Null => raise Unimplemented (* No pointers *)
 		  | AAst.Result => raise Unimplemented (* Not seen *)
-		  | AAst.Length(AAst.Local(sym, gen)) => raise Unimplemented (* Treat as a _length variable *)
+		  | AAst.Length(AAst.Local(sym, gen)) => assert_expr(localLenToLocal(e)) (* Treat as a _length variable *)
 		  | AAst.Old(AAst.Local(sym, gen)) => raise Unimplemented (* ??? *)
 		  | AAst.AllocArray(tp,expr) => raise Unimplemented (* Not seen *)
 		  | AAst.Select(expr,sym) => raise Unimplemented (* Struct fields, we'll deal with this later *)
@@ -312,7 +335,11 @@ fun assert(map)(e) =
 	    fun declareList(ls) =
 		case ls of
 		    [] => ()
-		  | x::xs => (printToZ3("(declare-const " ^ (localName(x)) ^ " " ^ localType(x) ^ ")\n");declareList(xs);())
+		  | x::xs => (
+                    (case localType(x) of
+                       SOME y => (printToZ3("(declare-const " ^ (localName(x)) ^ " " ^ y ^ ")\n"))
+                     | _ => ());
+                    declareList(xs);())
 	    val raw_expr = assert_expr(e)
 	in
 	    (if print_local_var_list then
@@ -384,7 +411,7 @@ end
 
 val () = let
     val do_tests = false
-    val print_z3_test_verbose = true
+    val print_z3_test_verbose = false
     fun print(str) =
 	if print_z3_test_verbose then
 	    TextIO.print(str)
@@ -562,6 +589,19 @@ in
 					 [AAst.IntConst(Word32.fromInt(~10)),
 					  AAst.IntConst(Word32.fromInt(~3))]),
 				 AAst.IntConst(Word32.fromInt(3))]));
+			Conditions.check())
+	    val () = break()
+	    val true = ((print "  ASSERT(\\length(A) = 10)[true]\n");
+			assert(
+			AAst.Op(Ast.EQ,
+				[AAst.Length(AAst.Local(Symbol.symbol("A"), 0)),
+				 AAst.IntConst(Word32.fromInt(10))]));
+			Conditions.check())
+	    val false = ((print "  ASSERT(\\length(A) == 11)[false]\n");
+			assert(
+			AAst.Op(Ast.EQ,
+				[AAst.Length(AAst.Local(Symbol.symbol("A"), 0)),
+				 AAst.IntConst(Word32.fromInt(11))]));
 			Conditions.check())
 	    val () = break()
 	    val false = ((print "Testing Z3 destroy...\n");
