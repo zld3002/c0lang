@@ -372,6 +372,18 @@ fun finalize {library_headers} =
                          (* Static check does not compile the program. *)
 	                 raise FINISHED
 	             end) ()
+        (* Run verification condition checking *)
+        val _ = Flag.guard Flags.flag_verif_check 
+	           (fn () => 
+	             let val verrors = AnalysisTop.verifCheck oprogram
+	                 val _ = map (say o VError.pp_error) verrors
+	                 val _ = case verrors of
+	                            [] => say "No verification condition errors."
+	                          | _ => ()
+	             in 
+                         (* Verification conditions check does not compile the program. *)
+	                 raise FINISHED
+	             end) ()
 	             
         (* Determine output files Based on the initial files *)
         (* use last input file as name for intermediate .c and .h files *)

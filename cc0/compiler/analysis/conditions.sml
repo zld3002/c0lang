@@ -5,6 +5,7 @@
 
 signature CONDITIONS =
 sig
+    exception Unimplemented
 
     (* Tries to assert a boolean expression. *)
     val assert : (Ast.tp SymMap.map) -> (AAst.aexpr -> unit)

@@ -12,6 +12,7 @@ signature FLAGS = sig
   val flag_dyn_check : Flag.flag
   val flag_static_check : Flag.flag
   val flag_purity_check : Flag.flag
+  val flag_verif_check : Flag.flag
   val flag_save_files : Flag.flag
   val flag_exec : Flag.flag
   val flag_bytecode : Flag.flag 
@@ -54,6 +55,7 @@ structure Flags :> FLAGS = struct
   val flag_dyn_check = Flag.flag "dyn-check"
   val flag_static_check = Flag.flag "static-check"
   val flag_purity_check = Flag.flag "purity-check"
+  val flag_verif_check = Flag.flag "verif-check"
   val flag_save_files = Flag.flag "save-files"
   val flag_exec = Flag.flag "exec"
   val flag_bytecode = Flag.flag "bytecode"
@@ -111,7 +113,8 @@ structure Flags :> FLAGS = struct
                                flag_version, flag_no_log,
                                flag_ast, flag_exec, flag_bytecode, 
                                flag_static_check, flag_purity_check,
-                               flag_save_files, flag_trace, flag_print_codes];
+                               flag_verif_check, flag_save_files,
+                               flag_trace, flag_print_codes];
           (* Set default flags *)
           List.app Flag.set [];
 
@@ -144,6 +147,9 @@ structure Flags :> FLAGS = struct
      {short = "", long=["purity-check"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_purity_check),
       help="Enable checking contract functions for purity"},
+     {short = "", long=["verif-check"],
+      desc=GetOpt.NoArg (fn () => Flag.set flag_verif_check),
+      help="Enable verification condition checking"},
      {short = "", long=["no-purity-check"],
       desc=GetOpt.NoArg (fn () => Flag.unset flag_purity_check),
       help="Disable checking contract functions for purity"},
