@@ -27,6 +27,8 @@ struct
     val caller_id = Symbol.symbol "_caller"
     val caller_var = A.Var(caller_id)
     val caller_decl = A.VarDecl(caller_id, A.String, NONE, NONE)
+    val caller_decl_main = 
+        A.VarDecl(caller_id, A.String, SOME (A.StringConst "(none)"), NONE)
 
     (* tfm_test env e = (ds, ss, e')
      * Assumes env |- e : tp for some tp
@@ -172,6 +174,8 @@ struct
       | extract_post env (_::specs) = extract_post env specs
       | extract_post env nil = ([], [], [])
 
+    fun is_main_fn g = EQUAL = Symbol.compare (g, Symbol.symbol "main")
+
     fun is_external_fun g =
 	( case Symtab.lookup g
 	   of SOME(A.Function(g', rtp, params, bodyOpt, specs, is_extern, ext)) => is_extern
@@ -204,7 +208,7 @@ struct
 	in
 	    (* if g is not an external function, we add the caller
              * location in the form of a string as an additional argument *)
-	    A.FunCall(g_last, if is_extern
+	    A.FunCall(g_last, if is_extern orelse is_main_fn g_last
 			      then es'
 			      else es' @ [A.StringConst(location(ext))])
 	end 
@@ -289,7 +293,9 @@ struct
 			   of A.Void => []
 			    | _ => [A.VarDecl (result_id, rtp, NONE, ext)]
             (* params1 has caller_id as additional string argument *)
-	    val params1 = params @ [caller_decl]
+	    val (params1, ds0) = if is_main_fn g
+                          then (params, [caller_decl_main]) 
+                          else (params @ [caller_decl], [])
 	    val env0 = Syn.syn_decls Symbol.empty params1
 	    val env1 = Symbol.bind env0 (Symbol.symbol "\\result", rtp)
 	    val (ds1, ss1, ass1) = extract_pre env1 specs (* ds1 = ss1 = [] *)
@@ -299,9 +305,9 @@ struct
             (* add possibly redundant (dead-code) post-condition *)
 	    (* to make sure it is checked in case there is no return in body s *)
 	    val body'' = case rtp
-			 of A.Void => A.Seq(ds1 @ ds2 @ dresult,
+			 of A.Void => A.Seq(ds0 @ ds1 @ ds2 @ dresult,
 					    ss1 @ ss2 @ ass1 @ [body'] @ ass2)
-			  | _ => A.Seq(ds1 @ ds2 @ dresult,
+			  | _ => A.Seq(ds0 @ ds1 @ ds2 @ dresult,
 				       ss1 @ ss2 @ ass1 @ [body'])
 	    val body''' = fv_stm body'' ext
 	in

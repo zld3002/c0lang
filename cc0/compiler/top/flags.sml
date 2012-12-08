@@ -112,11 +112,11 @@ structure Flags :> FLAGS = struct
           List.app Flag.unset [flag_verbose, flag_help,
                                flag_version, flag_no_log,
                                flag_ast, flag_exec, flag_bytecode, 
-                               flag_static_check, flag_purity_check,
+                               flag_static_check, 
                                flag_verif_check, flag_save_files,
                                flag_trace, flag_print_codes];
           (* Set default flags *)
-          List.app Flag.set [];
+          List.app Flag.set [flag_purity_check];
 
           (* Set other defaults *)
           opt_level := 0; libraries := []; runtime := "c0rt"; a_out := "a.out";
@@ -144,12 +144,12 @@ structure Flags :> FLAGS = struct
      {short = "S", long=["static-check"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_static_check),
       help="Check contracts and safety statically"},
-     {short = "", long=["purity-check"],
-      desc=GetOpt.NoArg (fn () => Flag.set flag_purity_check),
-      help="Enable checking contract functions for purity"},
      {short = "", long=["verif-check"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_verif_check),
       help="Enable verification condition checking"},
+     (* {short = "", long=["purity-check"],
+      desc=GetOpt.NoArg (fn () => Flag.set flag_purity_check),
+      help="Enable checking contract functions for purity"}, *)
      {short = "", long=["no-purity-check"],
       desc=GetOpt.NoArg (fn () => Flag.unset flag_purity_check),
       help="Disable checking contract functions for purity"},
