@@ -391,6 +391,17 @@ error message is issued and the computation is aborted.  Assertion
 statements are \emph{always} executed, no matter whether contracts are
 checked dynamically (see Section~\ref{sec:contracts}).
 
+\subsection{Errors}
+
+An error statement has the form
+\begin{verbatim}
+error(s);
+\end{verbatim}
+where $s$ is a string expression. Errors are intended to be used as a
+response to bad user input, whereas failed assertions indicate an
+internal error of the program. Executing an error statement will print
+the string and then immediately terminate the program.
+
 \section{Characters}
 
 Characters are a special type to represent components of strings.
@@ -486,7 +497,7 @@ be locally resolved in expressions where relevant.  For example,
 a function call \verb'f(NULL)' is well-typed if \verb'f'
 expects an argument of type \verb'int*' or \verb'bool*' or
 \verb'int[]*', etc.  The one exception to this rule is code of
-the form \verb'*NULL' which could be used at an arbitary type
+the form \verb'*NULL' which could be used at an arbitrary type
 $t$.  In order to avoid this typical ambiguity, it is an error
 to write \verb'*NULL' in programs.
 
@@ -778,7 +789,7 @@ true false NULL alloc alloc_array
 
 We present the grammar in a similarly abbreviated style in
 Figure~\ref{fig:grammar}.  Here, [brackets] surround optional
-constituents.  Identifers occupy four name spaces: variables and
+constituents.  Identifiers occupy four name spaces: variables and
 function names \verb'<vid>', type names \verb'<aid>', struct names
 \verb'<sid>' and field names \verb'<fid>'.  Variable and function
 names may not conflict with type names; otherwise the same identifiers
@@ -806,6 +817,7 @@ can be reused.
          | return [<exp>] ;
          | { <stmt>* }
          | assert ( <exp> ) ;
+         | error ( <exp> ) ; 
 
 <simple> ::= <lv> <asnop> <exp>
            | <lv> ++
@@ -907,7 +919,7 @@ Section~\ref{sec:contracts}.
 \caption{C0 grammar extensions for annotations}
 \end{figure}
 
-This extension introduces another ambiguity, because a statment of the
+This extension introduces another ambiguity, because a statement of the
 form \verb'<anno> <anno> <stmt>' could be one statement with two
 annotations, or an annotated annotated statement.  We resolve this by
 always interpreting it as a single statement with two annotations, or
@@ -941,7 +953,7 @@ The static semantics enforces the following conditions.
   block in each function, each locally declared variable
   is initialized before its use.
 \item Function parameters and locally declared variables
-  with overlaping scopes may not have the same name.
+  with overlapping scopes may not have the same name.
 \item Names of functions or variables may not collide with the names
   of defined types.
 \item Functions may be declared multiple times with consistent
@@ -956,6 +968,13 @@ The static semantics enforces the following conditions.
   Therefore, when a collection of sources is compiled, at
   least one of them must define \verb'main' to match the
   above prototype.
+
+  The return value of \verb'main' is not treated as an indication of
+  success or failure of the program as it is in C; any program that
+  returns from main prints the returned integer and signals to the
+  operating system that the program completed successfully, whereas
+  any program that returns by executing the \verb'error' statement
+  signals to the operating system that it returned unsuccessfully.
 \item Field names within each struct must be pairwise distinct.
 \item Expressions \verb'*NULL' are disallowed.
 \item Type \verb'void' is used only as the return type of functions.
@@ -990,11 +1009,15 @@ In addition we check in annotations:
 \hypertarget{sec:updates}{}
 
 \begin{description}
-\item[Rev. 1511, Jan 30 2011.] A stand-alone semicolon \verb"';'" is
+\item[Jan 30 2011.] A stand-alone semicolon \verb"';'" is
   now flagged as an error rather than interpreted as an empty
   statement.  Remember that conditionals, loops, and blocks are
   \emph{not} terminated by a semicolon.  Use an empty block \verb'{}'
   as a statement with no effect.
+\item[Dec 8 2012] Added the error statement to the langauge and
+  clarified that returning a non-zero integer from \verb'main' does
+  not signal unsuccessful execution to the operating system, though
+  running the error statement does.
 \end{description}
 
 \end{document}
