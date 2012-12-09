@@ -33,3 +33,4 @@ void* _chk_null (void* p);
 // for this trick, or "Swallowing the Semicolon" from Apple's Developer docs,
 // http://developer.apple.com/library/mac/#documentation/DeveloperTools/gcc-4.0.1/cpp/Swallowing-the-Semicolon.html)
 #define cc0_assert(cond, msg) do { if (!(cond)) { c0_abort(c0_string_tocstr(msg)); } } while(0)
+

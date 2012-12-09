@@ -135,6 +135,8 @@ struct
            in (err @ err', g'', r1@r2, b1@b2, c1@c2) end
        | AAst.Assert e => let val(err, t,f) = (Ctx.analyzeBoolExpr types gamma (ext,e))
                           in (err, t, [], [], []) end
+       | AAst.Error e => raise Fail "Rob doesn't know what to do here"
+            (* This obviously isn't right. -rjs Dec 8 2012 *) 
        | AAst.Annotation e => 
            let val (err, t) = Ctx.proveBoolExpr types gamma (ext,e) true
                val err' = if Ctx.isBot t then [VerificationError (getExt ext e,

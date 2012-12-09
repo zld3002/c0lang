@@ -13,6 +13,12 @@ void raise_msg(int signal, const char* msg) {
   raise(signal);
 }
 
+void c0_error(const char *msg) {
+  fprintf(stderr, "Error: %s\n", msg);
+  fflush(stderr);
+  exit(EXIT_FAILURE);
+}
+
 void c0_abort(const char *reason) {
   raise_msg(SIGABRT, reason);
 }

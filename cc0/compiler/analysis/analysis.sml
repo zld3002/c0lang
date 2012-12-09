@@ -77,6 +77,7 @@ struct
          Nop => stmt
        | Seq (a,b) => Seq(relabelStmt rl a, relabelStmt rl b)
        | Assert e => Assert(relabel rl e)
+       | Error e => Error(relabel rl e)
        | Annotation e => Annotation(relabel rl e)
        | Def ((v,i), e) => Def(
                        (case LocalMap.find (rl, (v,i)) of 
@@ -167,6 +168,7 @@ struct
          end
      | ssa ((Ast.Exp e), env) = (Expr (label env e), env, [], [], [])
      | ssa ((Ast.Assert (e,_)), env) = (Assert (label env e), env, [], [], [])
+     | ssa ((Ast.Error e), env) = (Error (label env e), env, [], [], [])
      | ssa ((Ast.Anno annos), env) = (foldr (Seq) Nop (map (Annotation o (labelSpec env)) annos)
                                       , env, [], [], [])
      | ssa (stm,e) = raise UnsupportedConstruct ("ssa: "^(Ast.Print.pp_stm stm))
@@ -183,6 +185,7 @@ struct
        | While(p, e, specs, a, p') => While(p, e, specs, simplifySeq a, p')
        | Nop => Nop
        | Assert _ => stm
+       | Error _ => stm
        | Annotation _ => stm
        | Def _ => stm
        | Assign _ => stm
@@ -220,6 +223,7 @@ struct
            Nop => S.empty
          | Seq (a,b) => S.union(usedS a, usedS b)
          | Assert e => usedE e
+         | Error e => usedE e
          | Annotation e => usedE e
          | Def (l, e) => usedE e
          | Assign (lv, oper, e) => S.union(usedE lv, usedE e)
@@ -258,6 +262,7 @@ struct
              in (While(pb', e, invs, b', pe'), cpb orelse cpe orelse cb) end
          | Nop => (stm, false)
          | Assert _ => (stm, false)
+         | Error _ => (stm, false) (* Is this right? -rjs Dec 8 2012 *)
          | Annotation _ => (stm, false)
          | Def _ => (stm, false)
          | Assign _ => (stm, false)

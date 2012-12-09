@@ -91,6 +91,7 @@ struct
         (process_stm ext typemap assert s1) @
           (process_stm ext typemap assert s2)
     | AAst.Assert e => (process_exp ext assert e) @ (assert ext false e)
+    | AAst.Error e => [] (* This probably isn't right. -rjs Dec 8 2012 *) 
     | AAst.Annotation e => (process_exp ext assert e) @ (assert ext false e)
     | AAst.Def((v,i),e) =>
         let

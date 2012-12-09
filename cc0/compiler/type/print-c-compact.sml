@@ -299,6 +299,9 @@ struct
           (* We reduce e2s to a single string by concatenation, to avoid
            * variadic functions or macros *)
 	  indent n ("cc0_assert(" ^ pp_exp env e1 ^ ", " ^ pp_stringlist env e2s ^ ");")
+      | pp_stm n env (A.Error(e)) =
+          indent n ("c0_error(" ^ pp_exp env e ^ ");\n") 
+          ^ indent n ("exit(EXIT_FAILURE);")
       | pp_stm n env (A.Anno(specs)) = (* should not arise *)
 	  indent n ";"
       | pp_stm n env (A.Markeds(marked_stm)) =

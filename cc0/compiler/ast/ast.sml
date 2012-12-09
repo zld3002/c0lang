@@ -55,7 +55,8 @@ sig
     | Continue				    (* continue; *)
     | Break				    (* break; *)
     | Return of exp option		    (* return [e]; *)
-    | Assert of exp * exp list              (* assert(e); error msgs) *)
+    | Assert of exp * exp list              (* assert(e); error msgs *)
+    | Error of exp                          (* error(e); *)
     | Anno of spec list		            (* @assert or @loop_invariant *)
     | Markeds of stm Mark.marked            (* mark with source region info *)
 
@@ -173,6 +174,7 @@ struct
     | Break				    (* break; *)
     | Return of exp option		    (* return [e]; *)
     | Assert of exp * exp list              (* assert(e); error msgs) *)
+    | Error of exp                          (* error(e); *)
     | Anno of spec list		            (* @assert or @loop_invariant *)
     | Markeds of stm Mark.marked            (* mark with source region info *)
 
@@ -347,6 +349,8 @@ struct
 	indent n "return;"
       | pp_stm n (Assert(e1, e2s)) = (* drop error msgs *)
 	indent n "assert(" ^ pp_exp e1 ^ ");"
+      | pp_stm n (Error(e)) = (* drop error msgs *)
+	indent n "error(" ^ pp_exp e ^ ");"
       | pp_stm n (Anno(specs)) = pp_specs n specs
       | pp_stm n (Markeds(marked_stm)) =
 	  pp_stm n (Mark.data marked_stm)

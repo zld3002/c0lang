@@ -399,6 +399,10 @@ struct
          | A.Assert (e, [e2]) =>
               indent ^ "assert(" ^ pp_exp e ^ ", " ^ pp_exp e2 ^ ");\n"
          *)
+         | A.Error e => 
+              (* XXX THIS IS WRONG BUT I DON'T KNOW THE RIGHT THING IN C# *)
+              (* -rjs Dec 8, 2012 *)
+              indent ^ "assert(false);\n" 
          | A.Anno(_) => 
               "" (* If an Anno is present, it means debug mode is off *)
          | A.Markeds(ms) =>

@@ -179,7 +179,7 @@ fun lex_code (pos, charstream, code_state) =
            | _ =>                 (T.STAR,   pos, pos+1, cs, s))
        | M.Cons (#"#", cs) => 
          if (code_state <> NORMAL)
-         then (T.ERROR, pos, pos+1, cs, s)
+         then (T.LEX_ERROR, pos, pos+1, cs, s)
               before error (pos, pos+1) "#pragma in annotation"
          else lex_pragma (pos+1, cs, [ #"#" ])
        | M.Cons (#"/", cs) => 
@@ -190,7 +190,7 @@ fun lex_code (pos, charstream, code_state) =
                 M.Cons (#"@", cs) => 
                 (case code_state of
                     NORMAL => (T.ANNO_BEGIN, pos, pos+3, cs, CODE ANNO_LINE)
-                  | _ =>      (T.ERROR,      pos, pos+3, cs, s)
+                  | _ =>      (T.LEX_ERROR,  pos, pos+3, cs, s)
                     before error (pos, pos+3) "no nested annotations")
               | _ => lex_comment_line (pos+2, cs, code_state))
            | M.Cons (#"*", cs) => 
@@ -198,7 +198,7 @@ fun lex_code (pos, charstream, code_state) =
                 M.Cons (#"@", cs) =>
                 (case code_state of
                     NORMAL => (T.ANNO_BEGIN, pos, pos+3, cs, CODE ANNO)
-                  | _ =>      (T.ERROR,      pos, pos+3, cs, s)
+                  | _ =>      (T.LEX_ERROR,  pos, pos+3, cs, s)
                     before error (pos, pos+3) "no nested annotations")
               | _ => lex_comment (pos+2, cs, 1, code_state))
            | _ => (T.SLASH, pos, pos+1, cs, s))
@@ -252,13 +252,13 @@ fun lex_code (pos, charstream, code_state) =
             case end_anno of
                NONE => 
                (if code_state <> NORMAL then lex_code (pos+1, cs, code_state)
-                else ((T.ERROR, pos, pos+1, cs, s)
+                else ((T.LEX_ERROR, pos, pos+1, cs, s)
                 before error (pos, pos)
                       "character '@' is illegal outside of an annotation"))
              | SOME cs => 
                (if code_state = ANNO 
                 then (T.ANNO_END, pos, pos+3, cs, CODE NORMAL)
-                else ((T.ERROR,   pos, pos+3, cs, s)
+                else ((T.LEX_ERROR,   pos, pos+3, cs, s)
                       before error (pos, pos+3)
 		             "token '@*/' outside delimited annotation"))
          end
@@ -269,7 +269,7 @@ fun lex_code (pos, charstream, code_state) =
              ("result", n, cs) => (T.BS_RESULT, pos, pos+n, cs, s)
            | ("length", n, cs) => (T.BS_LENGTH, pos, pos+n, cs, s)
            | ("old", n, cs) =>    (T.BS_OLD,    pos, pos+n, cs, s)
-           | (bs, n, cs) =>       (T.ERROR,     pos, pos+n, cs, s)
+           | (bs, n, cs) =>       (T.LEX_ERROR, pos, pos+n, cs, s)
              before error (pos, pos)
                 ("illegal escaped identifier: '\\" ^ bs ^ "'"))
 
@@ -297,12 +297,12 @@ fun lex_code (pos, charstream, code_state) =
          in 
             case (c, M.force cs) of 
                (SOME c, M.Cons (#"'", cs)) => (T.CHRLIT(c), pos, pos'+1, cs, s)
-             | (_, M.Nil) =>                  (T.ERROR,     pos, pos', cs, s)
+             | (_, M.Nil) =>                  (T.LEX_ERROR, pos, pos', cs, s)
                before error (pos, pos')
                "incomplete char constant: expected ''' but found end of input"
-             | (NONE, M.Cons (#"'", cs)) =>   (T.ERROR,    pos, pos'+1, cs, s) (* msg? *)
-             | (NONE, _) =>                   (T.ERROR,    pos, pos', cs, s)   (* msg? *)
-             | (SOME _, M.Cons (c, _)) =>     (T.ERROR,    pos, pos', cs, s) 
+             | (NONE, M.Cons (#"'", cs)) =>   (T.LEX_ERROR, pos, pos'+1, cs, s) (* msg? *)
+             | (NONE, _) =>                   (T.LEX_ERROR, pos, pos', cs, s)   (* msg? *)
+             | (SOME _, M.Cons (c, _)) =>     (T.LEX_ERROR, pos, pos', cs, s) 
                before error (pos, pos'+1)
                ("bad char constant: expected ''' but found '" ^ Char.toCString c ^ "'")
          end
@@ -311,7 +311,7 @@ fun lex_code (pos, charstream, code_state) =
        | M.Cons (#"\"", cs) => 
          let val (pos', cs, string) = lex_string (pos+1, cs, []) in
             case string of 
-               NONE =>     (T.ERROR,        pos, pos', cs, s)
+               NONE =>     (T.LEX_ERROR,    pos, pos', cs, s)
              | SOME str => (T.STRLIT(str),  pos, pos', cs, s)
          end
 
@@ -326,7 +326,7 @@ fun lex_code (pos, charstream, code_state) =
              in (T.HEXNUM(num), pos, pos+n, cs, s) end
            | M.Cons (c, cs'') => 
              if Char.isDigit c 
-             then (T.ERROR, pos, pos+2, cs'', s)
+             then (T.LEX_ERROR, pos, pos+2, cs'', s)
                   before error (pos, pos+2)
                   "non-zero integer constants cannot start with '0'"
              else (T.DECNUM("0"), pos, pos+1, cs', s)
@@ -360,13 +360,14 @@ fun lex_code (pos, charstream, code_state) =
             | ("ensures", n, cs) =>     (T.ENSURES, pos, pos+n, cs, s)
             | ("loop_invariant", n, cs) => (T.LOOP_INVARIANT, pos, pos+n, cs, s)
             | ("assert", n, cs) =>      (T.ASSERT, pos, pos+n, cs, s)
+            | ("error", n, cs) =>       (T.ERROR, pos, pos+n, cs, s)
             | (ident, n, cs) =>         (T.IDENT(ident), pos, pos+n, cs, s))
           (* Numerical constants *)
           else if Char.isDigit c 
           then 
           (let val (num, n, cs) = run_number (0, [], charstream)
            in (T.DECNUM(num), pos, pos+n, cs, s) end)
-          else (T.ERROR, pos, pos+1, cs', s)
+          else (T.LEX_ERROR, pos, pos+1, cs', s)
              before error (pos, pos)
              ("illegal character: '" ^ Char.toString c ^ "'"))
    end

@@ -148,6 +148,7 @@ struct
      | Seq (a,b) => 
          buildContext (buildContext ctx a) b
      | Assert (e) => ctx
+     | Error (e) => ctx 
      | Annotation (e) => ctx
      | Def((sym,i),e) => 
          let val tp = C.typeof ctx sym
@@ -248,6 +249,7 @@ struct
        Nop => imms
      | Seq (a,b) => constraints ctx (constraints ctx imms a) b
      | Assert (e) => imms
+     | Error e => imms 
      | Annotation (e) => imms
      | Def(l, e) => conassign imms (C.lookup ctx l, syn_extended ctx e)
      | Assign (lv, oper, e) => conassign imms (syn_extended ctx lv, syn_extended ctx e)
@@ -335,6 +337,7 @@ struct
        Nop => []
      | Seq (a,b) => (check mark ctx imms a) @ (check mark ctx imms b)
      | Assert (e) => checkE mark ctx imms e
+     | Error (e) => checkE mark ctx imms e
      | Annotation (e) => []
      | Def(l, e) => checkE mark ctx imms e
      | Assign (lv, oper, e) =>
@@ -401,6 +404,7 @@ struct
        Nop => []
      | Seq (a, b) => (needspurityS a) @ (needspurityS b)
      | Assert e => [] (* assert(e) is not an "annotation" *)
+     | Error e => [] 
      | Annotation e => needspurityE e
      | Def _ => []
      | Assign _ => []

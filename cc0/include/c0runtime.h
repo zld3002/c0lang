@@ -21,6 +21,7 @@ typedef struct c0_array c0_array;
 C0API void c0_runtime_init();
 
 // Aborts execution and notifies the user of the reason
+C0API void c0_error(const char *msg);
 C0API void c0_abort(const char *reason);
 C0API void c0_abort_mem(const char *reason);
 

@@ -1,3 +1,7 @@
+/* This used to be a test of the library function error, but now that
+ * error has been moved into the language itself it has a different
+ * nature - returning failure instead of abort */
+
 #use <conio>
 
 int f(int x) {

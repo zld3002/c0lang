@@ -258,6 +258,11 @@ struct
 	in
 	    (ss1 @ ss2 @ [marks (A.Assert(p1, p2s)) ext])
 	end
+      | iso_stm env (A.Error e) ext = 
+        let val (ss1, p1) = iso_exp env e ext
+        in
+            (ss1 @ [marks (A.Error e) ext])
+        end
       | iso_stm env (A.Anno(specs)) ext = (* ignore specs here *)
 	  []
       | iso_stm env (A.Markeds(marked_stm)) ext =

@@ -18,7 +18,6 @@ void printbool(bool b);
 void printchar(c0_char c);
 bool eof();
 c0_string readline();
-void error(c0_string s);
 
 /* Wrappers */
 
@@ -55,10 +54,5 @@ void *__c0ffi_eof(void **args) {
 void *__c0ffi_readline(void **args) {
   (void) args; /* suppress error */
   return (void *) readline();
-}
-
-void *__c0ffi_error(void **args) {
-  error((c0_string) args[0]);
-  return NULL;
 }
 

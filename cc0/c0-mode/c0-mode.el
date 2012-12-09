@@ -150,7 +150,7 @@
 
 ;; Keywords unaccounted for by all the other defs
 (c-lang-defconst c-other-kwds
-  c0 '("alloc" "alloc_array" "assert"))
+  c0 '("alloc" "alloc_array" "assert" "error"))
 
 ;; C0 uses #use, like #include in C, and has no other preprocessor directives.
 ;; However, the lines below cause Emacs to hang when processing

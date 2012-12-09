@@ -504,6 +504,8 @@ and p_stmt ST = case first ST of
   | T.LBRACE => ST |> p_stmt_block (* don't shift *)
   | T.ASSERT => ST |> shift >> p_terminal T.LPAREN >> p_exp >> p_terminal T.RPAREN >> p_terminal T.SEMI
 		   >> reduce r_stmt
+  | T.ERROR => ST |> shift >> p_terminal T.LPAREN >> p_exp >> p_terminal T.RPAREN >> p_terminal T.SEMI
+		   >> reduce r_stmt
   | T.ANNO_BEGIN => ST |> push (Annos []) (* do not shift! *)
 		       >> p_annos >> p_stmt >> reduce r_stmt
   | _ => ST |> p_simple >> p_terminal T.SEMI >> reduce r_stmt
@@ -580,6 +582,8 @@ and r_stmt (S $ Tok(T.IF,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_) $ St
       S $ m_stm(resolve_scope(slist, ([],[])),join r1 r2)
   | r_stmt (S $ Tok(T.ASSERT,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_) $ Tok(T.SEMI,r2)) =
       S $ m_stm(A.Assert(e, nil),join r1 r2)
+  | r_stmt (S $ Tok(T.ERROR,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_) $ Tok(T.SEMI,r2)) =
+      S $ m_stm(A.Error e,join r1 r2)
   | r_stmt (S $ Annos(specs) $ Stm(s,r)) =
       S $ m_stm(A.Seq([], [A.Anno(specs), s]),r) (* needs to become one stmt *)
   | r_stmt (S $ Simple(s,r1) $ Tok(T.SEMI,r2)) = S $ m_stm(s,join r1 r2)

@@ -312,6 +312,9 @@ struct
         ( lv_exp defs e1 ext
 	; List.app (fn e => lv_exp defs e ext) e2s 
 	; defs )
+    | lv_stm env defs (A.Error e) ext = 
+        ( lv_exp defs e ext
+        ; defs)
     | lv_stm env defs (A.Anno(specs)) ext =
         ( List.app (fn spec => lv_spec defs spec ext) specs
 	; defs )
@@ -380,6 +383,7 @@ struct
     | nr_stm (A.Return _) ext =
         ( ErrorMsg.error ext ("return not allowed") ; raise ErrorMsg.Error )
     | nr_stm (A.Assert _) ext = ()
+    | nr_stm (A.Error _) ext = ()
     | nr_stm (A.Anno _) ext = ()
     | nr_stm (A.Markeds(marked_stm)) ext =
         ( nr_stm (Mark.data marked_stm) (Mark.ext marked_stm) )
@@ -456,6 +460,7 @@ struct
     | chk_unassigned pvars (A.Break) ext = ()
     | chk_unassigned pvars (A.Return _) ext = ()
     | chk_unassigned pvars (A.Assert _) ext = ()
+    | chk_unassigned pvars (A.Error _) ext = ()
     | chk_unassigned pvars (A.Anno _) ext = ()
     | chk_unassigned pvars (A.Markeds(marked_stm)) ext =
         chk_unassigned pvars (Mark.data marked_stm) (Mark.ext marked_stm)
@@ -577,6 +582,7 @@ struct
     | rt_stm (A.Assert(e1, e2s)) ext =
         ( rt_exp e1 R.ORDINARY ext
 	; List.app (fn e => rt_exp e R.ORDINARY ext) e2s )
+    | rt_stm (A.Error e) ext = rt_exp e R.ORDINARY ext
     | rt_stm (A.Anno(specs)) ext =
         List.app (fn spec => rt_spec spec R.ASSERTION ext) specs
     | rt_stm (A.Markeds(marked_stm)) ext =
@@ -873,6 +879,8 @@ struct
     | chk_stm env (A.Assert(e1, e2s)) rtp loop ext =
         ( chk_exp env e1 A.Bool ext ;
 	  List.app (fn e => chk_exp env e A.String ext) e2s )
+    | chk_stm env (A.Error e) rtp loop ext = 
+        chk_exp env e A.String ext
     | chk_stm env (A.Anno(specs)) rtp loop ext =
         List.app (fn spec => chk_spec env spec ext) specs
     | chk_stm env (A.Seq(ds,ss)) rtp loop ext =
@@ -1005,6 +1013,7 @@ struct
     | elim_for (A.Break) (_::_) ext = A.Break
     | elim_for (s as A.Return _) step_opts ext = s
     | elim_for (s as A.Assert _) step_opts ext = s
+    | elim_for (s as A.Error _) step_opts ext = s 
     | elim_for (s as A.Anno(specs)) step_opts ext = s
     | elim_for (A.Markeds(marked_stm)) step_opts ext = (* preserve marks *)
         A.Markeds(Mark.mark' (elim_for (Mark.data marked_stm) step_opts (Mark.ext marked_stm),
@@ -1023,7 +1032,7 @@ struct
   (* Checking control flow *)
   (*************************)
 
-  (* rc_stm s = true if every finite control flow path in s ends with 'return' *)
+  (* rc_stm s = true if every finite control flow path in s ends with 'return' or 'error' *)
   (* assumes for-loops have been eliminated *)
   fun rc_stm (A.Assign(oper_op, lv, e)) = false
     | rc_stm (A.Seq(ds,ss)) = rc_stms ss
@@ -1034,6 +1043,7 @@ struct
     | rc_stm (A.Return(SOME(e))) = true
     | rc_stm (A.Return(NONE)) = false (* empty return not permitted *)
     | rc_stm (A.Assert _) = false
+    | rc_stm (A.Error _) = true
     | rc_stm (A.Anno _) = false
     | rc_stm (A.Markeds(marked_stm)) =
         rc_stm (Mark.data marked_stm)

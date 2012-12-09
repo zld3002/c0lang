@@ -148,6 +148,7 @@ struct
       | dc_stm env (A.Return(NONE)) post =
 	  A.Seq(nil, post @ [A.Return(NONE)])
       | dc_stm env (s as A.Assert _) post = s
+      | dc_stm env (s as A.Error _) post = s
       | dc_stm env (A.Anno(specs)) post =
 	let val ([], [], ass) = specs_to_assert env specs
 	(* no \old allowed in assertions, only postconditions *)
@@ -245,6 +246,8 @@ struct
 	  A.Return(SOME(fv_exp e ext))
       | fv_stm (A.Assert(e1, e2s)) ext =
 	  A.Assert(fv_exp e1 ext, List.map (fn e => fv_exp e ext) e2s)
+      | fv_stm (A.Error e) ext = 
+          A.Error(fv_exp e ext)
       (* A.Anno should be impossible *)
       | fv_stm (A.Markeds(marked_stm)) ext =
 	  A.Markeds(Mark.mark'(fv_stm (Mark.data marked_stm) (Mark.ext marked_stm),

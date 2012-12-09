@@ -9,7 +9,6 @@ args_string
 
 lib conio
 eof
-error
 print
 printbool
 printchar

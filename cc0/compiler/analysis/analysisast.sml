@@ -33,6 +33,7 @@ sig
        Nop
      | Seq of astmt * astmt
      | Assert of aexpr (* assert(e); *)
+     | Error of aexpr (* error(e); *)
      | Annotation of aexpr (* //@assert e; *)
      | Def of loc * aexpr (* Local (v,i) = e *)
      | Assign of aexpr * (Ast.oper option) * aexpr
@@ -87,6 +88,7 @@ struct
        Nop
      | Seq of astmt * astmt
      | Assert of aexpr (* assert(e); *)
+     | Error of aexpr (* error(e); *)
      | Annotation of aexpr (* //@assert e; *)
      | Def of loc * aexpr (* Local (v,i) = e *)
      | Assign of aexpr * (Ast.oper option) * aexpr
@@ -149,6 +151,7 @@ struct
 		fun pp_astmt (Nop) = "(void)"
 		  | pp_astmt (Seq(s, s')) = (pp_astmt s) ^ ";\n" ^ (pp_astmt s')
 		  | pp_astmt (Assert(e)) = "assert(" ^ (pp_aexpr e) ^ ")"
+		  | pp_astmt (Error(e)) = "error(" ^ (pp_aexpr e) ^ ")"
 		  | pp_astmt (Annotation(e)) = "/*@assert(" ^ (pp_aexpr e) ^ ")*/"
 		  | pp_astmt (Def((sym,i), e)) = (Symbol.name sym) ^ "`" ^ (Int.toString i) ^ " := " ^ (pp_aexpr e)
 		  | pp_astmt (Assign(lv, oper, e)) = 

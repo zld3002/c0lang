@@ -91,6 +91,8 @@ struct
        | Return (NONE) => (Return (NONE), empty, mapping)
        | Assert (e, errs) =>
            (Assert (color mapping e, map (color mapping) errs), empty, mapping)
+       | Error e => 
+           (Error (color mapping e), empty, mapping)
        | Anno annos => (Anno (map (specColor mapping) annos), empty, mapping)
        | Markeds m => 
            let val (s', mapping', types) = preprocess' (Mark.data m, mapping)

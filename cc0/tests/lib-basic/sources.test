@@ -21,4 +21,4 @@ lib => segfault          ~ string_array_oob.c0 -lstring
 lib => abort             ~ string_array_oob2.c0 -lstring -d
 lib => return 0          ~ char_int.c0 -lstring
 lib => abort             ~ char_int_oob.c0 -lstring
-lib => abort             ~ conio_error.c0 -lconio
+lib => failure           ~ conio_error.c0 -lconio
