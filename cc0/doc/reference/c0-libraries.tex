@@ -91,8 +91,6 @@ bool eof();		   /* test end-of-file on standard input  */
 string readline()          /* read a line from standard input */
 //@requires !eof();        /* do not include the trailing newline */
   ;
-
-void error(string s);      /* print s to standard error and abort */
 \end{verbatim}
 \end{small}
 
@@ -403,6 +401,9 @@ int[] image_data(image_t image)
   standard input.  This fixes a problem with \verb'^D' during
   \verb'readline' and end of stream for shell redirect to stdin.
   \verb'readline' now requires \verb'!eof()'.
+\item[Rev. C0.0167, Dec 8, 2012.]  Conio Library.
+  Function \verb'error' has been removed from the conio library, since
+  it now exists as a language primitive.
 \end{description}
 
 \end{document}
