@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 
 int function(int[] A, int n) {
     if (n == 0) {

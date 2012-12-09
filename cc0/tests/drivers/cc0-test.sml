@@ -13,6 +13,7 @@ structure Test = Testing (struct
     | SIGALRM
     | CompileError
     | LinkError
+    | EXIT_FAILURE
     | UnexpectedReturnValue of Word8.word
     | NoResultValue
 
@@ -26,6 +27,7 @@ structure Test = Testing (struct
      | SIGALRM => "Program timed out"
      | CompileError => "Program failed to compile"
      | LinkError => "Program failed to link"
+     | EXIT_FAILURE => "Program returned 1, presumably via error()" 
      | UnexpectedReturnValue w => 
        "Runtime error: returned " ^  Word8.toString w ^ " (linker failed?)"
      | NoResultValue => "Returned successfuly, but no result value was written"
@@ -39,6 +41,7 @@ structure Test = Testing (struct
   fun did_abort r = r = SIGABRT
   fun did_infloop r = r = SIGALRM
   fun did_error r = r = CompileError
+  fun did_failure r = r = EXIT_FAILURE
 
   (* XXX: assume we're run from the c0 directory *)
   val cc0 =
@@ -123,14 +126,18 @@ structure Test = Testing (struct
       val () = FS.unlink result_file
     in
         case status of 
-          (* NB: a link error may manifest with either success or failure as
-             its exit code (on Linux i think it's 0, on OS X it's otherwise),
-             so the code here and above (function get_result) has to be robust
-             in reporting link errors. *)
+          (* NB: a link error may manifest with either success or
+             failure as its exit code (on Linux I think it's 0, on OS
+             X it's otherwise), so the code here and above (function
+             get_result) has to be robust in reporting link errors. If
+             a linker error gives the exit status 1, then the harness
+             will become confused.*)
+
           P.W_EXITED =>
           (case result of
               NONE => NoResultValue
             | SOME result => result)
+        | P.W_EXITSTATUS 0wx1 => EXIT_FAILURE
         | P.W_EXITSTATUS w => 
           (case result of 
               SOME LinkError => LinkError

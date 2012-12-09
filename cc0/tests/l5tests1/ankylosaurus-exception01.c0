@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 // Sanity check for array out of bounds access
 
 int main()

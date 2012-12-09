@@ -15,7 +15,8 @@ signature TEST_IMPL = sig
   val did_div_by_zero : result -> bool
   val did_abort : result -> bool
   val did_infloop : result -> bool
-  val did_error : result -> bool
+  val did_error : result -> bool (* Compiler error *)
+  val did_failure : result -> bool (* EXIT_FAILURE *)
 
   (* The "string list" is a list of files that are suitable
    * for opening relative to the current directory or options
@@ -164,6 +165,7 @@ end
         | (T ("=>", [ t_phi, t_spec ])) => 
           if phi t_phi then spec t_spec else []
         | (T ("error", []))               => [ Impl.did_error ]
+        | (T ("failure", []))             => [ Impl.did_failure ]
         | (T ("infloop", []))             => [ Impl.did_infloop ]
         | (T ("segfault", []))            => [ Impl.did_segfault ]
         | (T ("abort", []))               => [ Impl.did_abort ]

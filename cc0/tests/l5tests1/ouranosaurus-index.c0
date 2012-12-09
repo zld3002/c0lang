@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 // (from wikipedia)
 int assign(int[] dest, int index, int src) 
 {

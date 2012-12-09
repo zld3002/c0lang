@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 struct bidoof { int bidoof; };
 int main() {
     struct bidoof[] arr = alloc_array(struct bidoof, 0);

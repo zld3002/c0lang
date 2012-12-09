@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 // Originally 6
 // everone's favorite array indexing error
 

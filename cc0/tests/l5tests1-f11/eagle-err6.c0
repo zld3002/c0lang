@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 int main() {
   // these two arrays should be allocated near each other
   bool[] barr1 = alloc_array(bool, 100);

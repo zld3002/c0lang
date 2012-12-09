@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 
 int[] foo(int len) {
     return alloc_array(int, len);

@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 
 int initialize(int[] A) {
     int i;

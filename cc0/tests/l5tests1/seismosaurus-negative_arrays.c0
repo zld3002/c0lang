@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 /* negative numbers are out of bounds */
 
 int main (){

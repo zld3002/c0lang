@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 int main() {
 	int[] f = alloc_array(int, 255);
 	/* benefits compilers which hoist the array check outside the loop */

@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 // You only evaluate conditions once, right?
 int uhoh(int *bar) {
   if (*bar == 0) {

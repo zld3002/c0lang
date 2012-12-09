@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 // array access check
 int main () {
   int SIZE = 255;

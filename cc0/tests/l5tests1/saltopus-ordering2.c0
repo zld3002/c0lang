@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 
 /* I really hope the ref compiler behaves as speced here... This is the most
  * sensical failure mode, I think... */

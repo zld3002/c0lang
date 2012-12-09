@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 
 int main(){
 	int[] arr = alloc_array(int, 100);

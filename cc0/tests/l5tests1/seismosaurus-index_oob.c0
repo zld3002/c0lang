@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 
 int getIndex() {
 	return 2048;

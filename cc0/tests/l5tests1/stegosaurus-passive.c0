@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 /* Don't optimize too aggressively */
 /* (or at least, still do bounds checking) */
 int main() {
