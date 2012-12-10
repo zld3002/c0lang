@@ -58,6 +58,7 @@ datatype cmd =
  | Assign of binop option * exp * exp * Mark.ext
  | CCall of id option * id * exp list * Mark.ext 
  | Assert of exp * string * Mark.ext
+ | Error of exp * Mark.ext
  | CondJump of exp * Mark.ext * label
  | Jump of label
  | Return of (exp * Mark.ext) option
@@ -134,6 +135,8 @@ fun cmdToString (cmd: cmd): string =
     (* | Call _ => "CALL" *)
     | Assert (e1, msg, pos) => (*Mark.show pos ^ "\n" ^*)
       "Assert " ^ expToString false e1 ^ " \"" ^ msg ^ "\""
+    | Error (e1, pos) => (*Mark.show pos ^ "\n" ^*)
+      "Error " ^ " \"" ^ expToString false e1 ^ "\""
     | CondJump (e1, pos, l) =>  (*Mark.show pos ^ "\n" ^ *)
       "Go to L" ^ Int.toString l ^ " if not " ^ expToString false e1
     | Jump l => 

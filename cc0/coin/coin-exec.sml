@@ -14,7 +14,8 @@ val GREAT_SUCCESS: status    = (0wx0, "")
 val WRITE_ERROR: status      = (0wx1, "Could not write to file\n")
 val COMPILER_ERROR: status   = (0wx2, "Did not compile\n")
 val LINK_ERROR: status       = (0wx3, "Some libraries did not link\n")
-fun RUNTIME_ERROR s: status  = (0wx4, "Internal bug in coin: " ^ s ^ "\n")
+val EXIT_FAILURE: status     = (0wx4, "")
+fun RUNTIME_ERROR s: status  = (0wx5, "Internal bug in coin: " ^ s ^ "\n")
 
 structure FS = Posix.FileSys
 
@@ -110,6 +111,9 @@ let
             | Error.AssertionFailed s => 
               (print (s ^ "\n")
                ; raiseSignal Posix.Signal.abrt)
+            | Error.ErrorCalled s => 
+              (print ("Error: " ^ s ^ "\n")
+               ; die EXIT_FAILURE)
             | Error.Uninitialized => die (RUNTIME_ERROR "Uninitialized data")
             | Error.Allocation => die (RUNTIME_ERROR "Can't allocate memory")
             | Error.Compilation => die (RUNTIME_ERROR "Code transformation")

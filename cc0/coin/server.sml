@@ -86,6 +86,7 @@ functor Server
            | (Error.Allocation) => hstr("Error: allocation failed!")
            | (Error.Compilation) => hstr("Error: could not compile.")
            | (Error.AssertionFailed s) => hstr s
+           | (Error.ErrorCalled s) => hstr ("Error: "^s)
            | (Done status) => raise Done(status)
            | (Error.Dynamic str) => 
                 hstr ("Error (DYNAMIC SEMANTICS, PLEASE REPORT): " ^ str)

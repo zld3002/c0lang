@@ -271,6 +271,10 @@ in
          else raise Error.AssertionFailed msg
        ; PC (pc+1))
 
+    | C0.Error (e, pos) => 
+       ( current_pos := SOME pos
+       ; raise Error.ErrorCalled (State.to_string (Eval.eval_exp state e)))
+
     | C0.CondJump (e, pos, altlab) =>
        ( current_pos := SOME pos
        ; if (State.to_bool (Eval.eval_exp state e))

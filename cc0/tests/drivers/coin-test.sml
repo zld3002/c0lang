@@ -16,6 +16,7 @@ structure Test = Testing (struct
        framework -- we only distinguish them in order to give a more
        informative error message if one occurs. *)
     | LinkError
+    | EXIT_FAILURE
     | RuntimeError
     | NoResultValue
     | UnexpectedExitStatus of Word8.word
@@ -31,6 +32,7 @@ structure Test = Testing (struct
      | SIGALRM => "Program timed out"
      | CompileError => "Program failed to compile"
      | LinkError => "Program failed to link"
+     | EXIT_FAILURE => "Program returned 1, presumably via error()" 
      | RuntimeError => "Program exposed internal bug in coin"
      | NoResultValue => "Program could not write a result value"
      | UnexpectedExitStatus w => "Runtime error: coin_exec exited with status "
@@ -47,6 +49,7 @@ structure Test = Testing (struct
   fun did_abort r = r = SIGABRT
   fun did_infloop r = r = SIGALRM
   fun did_error r = r = CompileError
+  fun did_failure r = r = EXIT_FAILURE
 
   (* XXX BAD: assume we're run from the c0 directory 
    * 
@@ -115,7 +118,8 @@ structure Test = Testing (struct
         | P.W_EXITSTATUS 0wx1 => NoResultValue
         | P.W_EXITSTATUS 0wx2 => CompileError
         | P.W_EXITSTATUS 0wx3 => LinkError
-        | P.W_EXITSTATUS 0wx4 => RuntimeError
+        | P.W_EXITSTATUS 0wx4 => EXIT_FAILURE
+        | P.W_EXITSTATUS 0wx5 => RuntimeError
         | P.W_EXITSTATUS w => 
           (case result of 
               SOME LinkError => LinkError (* may be impossible? *)

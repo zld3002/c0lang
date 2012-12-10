@@ -79,7 +79,7 @@ fun EndZ3 () =
 	    val SOME ((a, b), p) = ! z3proc
 	in
 	    Unix.kill(p, Posix.Signal.kill);
-	    Unix.reap(p);
+	    ignore (Unix.reap(p));
 	    (z3proc := NONE);
 	    ()
 	end

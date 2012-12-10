@@ -10,5 +10,6 @@ structure Error = struct
   exception ArrayOutOfBounds of int * int
   exception ArraySizeNegative of int
   exception AssertionFailed of string
+  exception ErrorCalled of string
 
 end

@@ -160,6 +160,8 @@ fun cStms stms pos =
 	    (* fix: allow other strings.  5/16/11 -fp *)
             [ Assert (cExp pos e1, s, mExp pos e1) ]
           | Ast.Assert _ => raise Error.Internal "Unexpected assertion arg"
+          | Ast.Error e1 => 
+            [ Error (cExp pos e1, mExp pos e1) ]
           | Ast.Anno _ => []
           | Ast.Markeds mrk => 
             (case Mark.ext mrk of 
