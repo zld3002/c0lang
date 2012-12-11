@@ -58,7 +58,9 @@ c0_string c0_string_join(c0_string a, c0_string b) {
 }
 
 c0_string c0_string_fromcstr(const char *s) {
-  return strdup(s);
+  char *c = c0_alloc(strlen(s) + 1);
+  strcpy(c, a);
+  return c;
 }
 
 const char *c0_string_tocstr(c0_string s) {
