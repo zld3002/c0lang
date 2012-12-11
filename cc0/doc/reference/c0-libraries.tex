@@ -77,7 +77,7 @@ that each library will be loaded at most once.
 The \verb'conio' library contains functions for performing basic
 console input and output.  Note that output may be \emph{buffered},
 which means output does not necessarily appear on the console
-until a newline character is printed.
+until a newline character is printed or \verb'flush()' is called.
 
 \begin{small}
 \begin{verbatim}
@@ -86,11 +86,14 @@ void println(string s);    /* print s with trailing newline */
 void printint(int i);      /* print i to standard output */
 void printbool(bool b);    /* print b to standard output */
 void printchar(char c);    /* print c to standard output */
+void flush();              /* flush standard output */
 
 bool eof();		   /* test end-of-file on standard input  */
 string readline()          /* read a line from standard input */
 //@requires !eof();        /* do not include the trailing newline */
   ;
+
+void abort(string s);      /* Print s to standard error, raise SIGABRT */
 \end{verbatim}
 \end{small}
 

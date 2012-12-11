@@ -14,6 +14,10 @@ void println(c0_string s) {
   c0_string_freecstr(cstr);
 }
 
+void flush() {
+  fflush(stdout);
+}
+
 void printint(int i) {
   printf("%d", i);
 }

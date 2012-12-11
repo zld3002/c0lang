@@ -13,6 +13,7 @@
 
 void print(c0_string s);
 void println(c0_string s);
+void flush();
 void printint(int i);
 void printbool(bool b);
 void printchar(c0_char c);
@@ -29,6 +30,12 @@ void *__c0ffi_print(void **args) {
 
 void *__c0ffi_println(void **args) {
   println((c0_string) args[0]);
+  return NULL;
+}
+
+void *__c0ffi_flush(void **args) {
+  (void) args; /* suppress error */
+  flush();
   return NULL;
 }
 

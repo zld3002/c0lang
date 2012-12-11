@@ -10,6 +10,7 @@ args_string
 lib conio
 abort
 eof
+flush
 print
 printbool
 printchar
