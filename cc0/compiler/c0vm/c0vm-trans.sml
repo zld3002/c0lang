@@ -612,7 +612,7 @@ struct
       end
     | trans_stm env vlist (A.Error(e)) ext = 
         trans_exp env vlist e ext
-        @ [V.Inst(V.athrow, "error" ^ A.Print.pp_exp(e), ext)]
+        @ [V.Inst(V.athrow, "error " ^ A.Print.pp_exp(e), ext)]
     | trans_stm env vlist (A.Anno(specs)) ext =
       (* ignore annotations; handled in ../type/dyn-check.sml *)
       []
