@@ -8,6 +8,7 @@ args_parse
 args_string
 
 lib conio
+abort
 eof
 print
 printbool

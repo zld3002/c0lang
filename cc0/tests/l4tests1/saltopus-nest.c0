@@ -1,4 +1,4 @@
-//test return 5
+//test !cc0_c0vm => return 5
 struct a42 {
 	 int f43;
 };

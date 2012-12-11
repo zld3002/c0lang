@@ -1,4 +1,4 @@
-//test return 1
+//test !cc0_c0vm => return 1
 int main()
 {
   int a1=1;

@@ -26,6 +26,11 @@ void printchar(char c) {
   putchar(c);
 }
 
+void abort(c0_string s) {
+  const char *cstr = c0_string_tocstr(s);
+  c0_abort(cstr);
+}
+
 c0_string readline() {
   return freadline(stdin);
 }

@@ -11,6 +11,7 @@ structure Test = Testing (struct
     | SIGSEGV
     | SIGFPE
     | SIGALRM
+    | EXIT_FAILURE
     | CompileError
     | CompileTimeout
     | RuntimeError
@@ -21,6 +22,7 @@ structure Test = Testing (struct
     | result_to_string SIGSEGV = "Program segfaulted"
     | result_to_string SIGFPE  = "Program divided by zero"
     | result_to_string SIGALRM = "Program timed out"
+    | result_to_string EXIT_FAILURE = "Program returned, signaling failure"
     | result_to_string CompileError = "Program failed to compile"
     | result_to_string CompileTimeout = "Compilation timed out"
     | result_to_string RuntimeError = "Program failed to link"
@@ -29,6 +31,7 @@ structure Test = Testing (struct
     | did_return (SOME w) (Return w') = w = w'
     | did_return _ _ = false
 
+  fun did_failure r = r = EXIT_FAILURE
   fun did_segfault r = r = SIGSEGV
   fun did_div_by_zero r = r = SIGFPE
   fun did_abort r = r = SIGABRT
@@ -132,7 +135,7 @@ structure Test = Testing (struct
     in
         case status of 
           P.W_EXITED => valOf result (* handled below *)
-        | P.W_EXITSTATUS 0w1 => raise Failed "Program couldn't write result!"
+        | P.W_EXITSTATUS 0w1 => EXIT_FAILURE
         | P.W_EXITSTATUS w => valOf result (* handled below *)
         | P.W_SIGNALED s =>
           if      s = Posix.Signal.fpe  then SIGFPE

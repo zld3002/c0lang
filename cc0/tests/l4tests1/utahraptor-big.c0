@@ -1,4 +1,4 @@
-//test return 0
+//test !cc0_c0vm => return 0
 //I sure hope you don't allocate on the stack, and used calloc
 struct big {
 int x1;

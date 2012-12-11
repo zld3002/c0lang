@@ -12,3 +12,4 @@ typedef char c0_char;
 #include <c0runtime.h>
 
 #endif // __C0RTAPI_H__
+

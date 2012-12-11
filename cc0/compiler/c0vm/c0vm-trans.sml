@@ -247,7 +247,7 @@ struct
 	      new_native(g, length(params), ext)
             | (NONE, NONE) =>
 	      case Symbol.name(g)
-	       of "error" => new_native(g, 1, ext)
+	       of "abort" => new_native(g, 1, ext)
 		| "string_join" => new_native(g, 2, ext)
 		| _ => ( ErrorMsg.error ext ("undefined function " ^ Symbol.name(g))
 		       ; raise ErrorMsg.Error ))
@@ -596,8 +596,8 @@ struct
           val is1 = trans_exp env vlist e1 ext
           val is2 = trans_exp env vlist e2 ext
           val n2 = V.code_length is2
-          val error = native_index(Symbol.symbol("error"), ext)
-          val ninvoke = V.il(V.invokenative(error))
+          val abort = native_index(Symbol.symbol("abort"), ext)
+          val ninvoke = V.il(V.invokenative(abort))
           val _ = if nif + n2 + ninvoke >= maxint15 
                   then ( ErrorMsg.error NONE ("jump too big") ;
                          raise ErrorMsg.Error )
@@ -607,9 +607,12 @@ struct
           @ [V.Inst(V.bipush(0), "false", ext)]
           @ [V.Inst(V.if_icmp(V.ne,nif+n2+ninvoke), "goto " ^ assertok_lab, ext)]
           @ is2
-          @ [V.Inst(V.invokenative(error), "error " ^ A.Print.pp_exp(e2), ext)]
+          @ [V.Inst(V.invokenative(abort), "abort " ^ A.Print.pp_exp(e2), ext)]
           @ [V.Comment(assertok_lab)]
       end
+    | trans_stm env vlist (A.Error(e)) ext = 
+        trans_exp env vlist e ext
+        @ [V.Inst(V.athrow, "error" ^ A.Print.pp_exp(e), ext)]
     | trans_stm env vlist (A.Anno(specs)) ext =
       (* ignore annotations; handled in ../type/dyn-check.sml *)
       []

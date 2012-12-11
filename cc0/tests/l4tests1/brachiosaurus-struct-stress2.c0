@@ -1,4 +1,4 @@
-//test return 0
+//test cc0_c0vm => return 0
 // Verifies you keep your struct sizes in some sort of map.
 struct s0
 {

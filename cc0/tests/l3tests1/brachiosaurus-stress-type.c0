@@ -1,4 +1,4 @@
-//test return 748784
+//test !cc0_c0vm => return 748784
 typedef int l0;
 typedef l0 l1;
 typedef l1 l2;

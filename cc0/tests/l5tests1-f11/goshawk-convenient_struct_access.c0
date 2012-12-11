@@ -1,4 +1,4 @@
-//test segfault
+//test !cc0_c0vm => segfault
 //"conveniently" access a vaild address
 
 struct s1 {

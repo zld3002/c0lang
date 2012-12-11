@@ -12,3 +12,5 @@ bool eof();		   /* test end-of-file on standard input  */
 string readline()          /* read a line from standard input */
 //@requires !eof();        /* do not include the trailing newline */
   ;
+
+void abort(string s);      /* Print s to standard error, raise SIGABRT */
