@@ -70,17 +70,17 @@ struct args {
 };
 typedef struct args* args_t;
 
-int get_int (const char *arg) {
+bool get_int (const char *arg, int *ans) {
   errno = 0;
   char *endptr;
   long int li = strtol(arg, &endptr, 10);
   if (errno == 0 && !isspace(*arg) && *arg != '+' /* don't allow leading space or + */
       && INT_MIN <= li && li <= INT_MAX		  /* ensure in range for int */
       && endptr != arg && *endptr == '\0') { /* ensure whole string is parsed */
-    return (int)li;
+    *ans = (int)li;
+    return true;
   } else {
-    fprintf(stderr, "\"%s\" is not a valid integer\n", arg);
-    c0_abort("invalid command line argument");
+    return false;
   }
 }
 
@@ -108,11 +108,15 @@ args_t args_parse() {
 	*(bool*)l->ptr = true;
 	break;
       case ARGS_INT:
-	*(int*)l->ptr = get_int(*argv);
+        if(argc == 0) return NULL;
+        int ans;
+	if(!get_int(*argv, &ans)) return NULL;
+	*(int*)l->ptr = ans;
 	argc--; argv++;
 	break;
       case ARGS_STRING:
-	*(c0_string*)l->ptr = c0_string_fromliteral(*argv);
+        if(argc == 0) return NULL;
+	*(c0_string*)l->ptr = c0_string_fromcstr(*argv);
 	argc--; argv++;
 	break;
       }

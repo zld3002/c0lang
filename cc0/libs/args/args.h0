@@ -35,9 +35,9 @@ typedef struct args* args_t;
 /* Parse the program's arguments according to any flags and options
  * set up by previous calls. Any unrecognized arguments are
  * returned in order in \result->argv.
+ *
+ * If there is an error, args_parse will return NULL.
  */
 args_t args_parse()
-  //@ensures \result != NULL;
-  //@ensures \result->argc >= 0;
-  //@ensures \result->argc == \length(\result->argv);
+  //@ensures \result == NULL || \result->argc == \length(\result->argv);
   ;

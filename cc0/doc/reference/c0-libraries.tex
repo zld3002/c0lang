@@ -21,7 +21,7 @@
 
 \title{C0 Libraries}
 \author{15-122: Principles of Imperative Computation \\ Frank Pfenning}
-\date{September 2011\\Compiler revision 2301 (Wed Sep 14 2011;
+\date{September 2011\\(Updated Tue Dec 11 2011;
   \hyperlink{sec:updates}{updates})}
 
 \usepackage{fancyhdr}
@@ -67,8 +67,8 @@ Reference} for more information on C0.
 
 Libraries can be include on the command line using \verb'-l lib' or in
 files with \verb'#use <lib>'.  The latter is recommended to make
-source files less dependent on context.  The implementation ensures
-that each library will be loaded at most once.
+source files less dependent on context.  Each library will be loaded
+at most once.
 
 \section{Input/Output}
 
@@ -88,16 +88,16 @@ void printbool(bool b);    /* print b to standard output */
 void printchar(char c);    /* print c to standard output */
 void flush();              /* flush standard output */
 
-bool eof();		   /* test end-of-file on standard input  */
+bool eof();                /* test end-of-file on standard input  */
+
 string readline()          /* read a line from standard input */
 //@requires !eof();        /* do not include the trailing newline */
   ;
 
-void abort(string s);      /* Print s to standard error, raise SIGABRT */
+void abort(string s);      /* Print s to stderr, raise SIGABRT */
 \end{verbatim}
 \end{small}
 
-\clearpage
 \subsection{\tt file}
 
 The \verb'file' library contains functions for reading files, line by
@@ -183,11 +183,11 @@ typedef struct args* args_t;
 /* Parse the program's arguments according to any flags and options
  * set up by previous calls. Any unrecognized arguments are
  * returned in order in \result->argv.
+ *
+ * If there is an error, args_parse will return NULL.
  */
 args_t args_parse()
-  //@ensures \result != NULL;
-  //@ensures \result->argc >= 0;
-  //@ensures \result->argc == \length(\result->argv);
+  //@ensures \result == NULL || \result->argc == \length(\result->argv);
   ;
 \end{verbatim}
 \end{small}
