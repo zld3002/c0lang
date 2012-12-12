@@ -14,6 +14,8 @@ Files
   safety.sml: Generic safety analysis, handles control flow
   purity.sml: Checks annotation functions for externally visible effects.
   top.sml: Top level functions for invoking the purity and safety analyzes.
+  conditions.sml: Interface for using Z3 to SAT-solve verifications.
+  vcgen.sml: Verification of contracts and other potential errors.
 
 Current Issues:
   -Isolation will cause problems for some programs if the special lv &= e 
