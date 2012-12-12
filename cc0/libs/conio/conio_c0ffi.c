@@ -13,10 +13,10 @@
 
 void print(c0_string s);
 void println(c0_string s);
-void flush();
 void printint(int i);
 void printbool(bool b);
 void printchar(c0_char c);
+void flush();
 bool eof();
 c0_string readline();
 void abort(c0_string s);
@@ -33,12 +33,6 @@ void *__c0ffi_println(void **args) {
   return NULL;
 }
 
-void *__c0ffi_flush(void **args) {
-  (void) args; /* suppress error */
-  flush();
-  return NULL;
-}
-
 void *__c0ffi_printint(void **args) {
   printint((int) (intptr_t) args[0]);
   return NULL;
@@ -51,6 +45,12 @@ void *__c0ffi_printbool(void **args) {
 
 void *__c0ffi_printchar(void **args) {
   printchar((c0_char) (intptr_t) args[0]);
+  return NULL;
+}
+
+void *__c0ffi_flush(void **args) {
+  (void) args; /* suppress error */
+  flush();
   return NULL;
 }
 

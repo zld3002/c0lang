@@ -138,6 +138,11 @@ struct
 	  ; if Flag.isset Flags.flag_help orelse not (isSome sources)
 	    then (say versioninfo ; say usageinfo ; raise EXIT)
 	    else ()
+          ; if Flag.isset Flags.flag_dyn_check andalso !Flags.runtime = "unsafe"
+            then ( say "unsafe runtime (-runsafe) cannot be \
+                       \combined with dynamic checks (-d)"
+                 ; raise EXIT)
+            else ()
 	  ; valOf sources )
       end
 
@@ -294,9 +299,9 @@ fun finalize {library_headers} =
   fun main (name, args) =
       let
         val usage = 
-            if "sml" = #file (OS.Path.splitDirFile (CommandLine.name ())) 
+            if "sml" = #file (OS.Path.splitDirFile (CommandLine.name ()))
             then ("Top.test \"[OPTION...] SOURCEFILE\";")
-            else (CommandLine.name () ^ " [OPTION...] SOURCEFILE")
+            else ("cc0 [OPTION...] SOURCEFILE")
 	val header = "Usage: " ^ usage ^ "\nwhere OPTION is"
         val options = Flags.core_options @ Flags.compiler_options
         val versioninfo = "C0 reference compiler (cc0) revision "
