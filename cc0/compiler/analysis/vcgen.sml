@@ -19,10 +19,6 @@ struct
 
   val ZERO = AAst.IntConst(Word32Signed.ZERO)
 
-  (* Tell preprocessing of ssa to do isolation (done)
-   * remove conversion, check assigns only at top level
-   *   <- can then just check top level for things like
-   *      array accesses or array assigns*)
  (* Add ternary conditionals to z3 so we can assert about them *)
 
   fun negate_exp exp =
@@ -91,7 +87,7 @@ struct
         (process_stm ext typemap assert s1) @
           (process_stm ext typemap assert s2)
     | AAst.Assert e => (process_exp ext assert e) @ (assert ext false e)
-    | AAst.Error e => [] (* This probably isn't right. -rjs Dec 8 2012 *) 
+    | AAst.Error e => raise Unimplemented
     | AAst.Annotation e => (process_exp ext assert e) @ (assert ext false e)
     | AAst.Def((v,i),e) =>
         let
@@ -150,12 +146,10 @@ struct
 
   fun generate_vc (AAst.Function(_,_,types,_,requires,stm,ensures)) debug =
     (let
-      (* Add call to check in here that if false returns an error for the
-       * current location and assertion. *)
       val assert_fun = C.assert types
       val verr = VError.VerificationError
       (* Check asserts, assert what we don't want to be the case, if true (satisfiable),
-         then add an warning error. Then assert what we want to be the case, and if that
+         then add a warning error. Then assert what we want to be the case, and if that
          fails quit and error because that means that the result always fails. *)
       fun assert ext just_assert e =
         let

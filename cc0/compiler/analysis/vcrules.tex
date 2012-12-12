@@ -1,0 +1,179 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1.6in]{geometry}
+\usepackage{proof}
+\usepackage{amsmath,amsthm,amssymb}
+\usepackage{tipa}
+
+% font{
+\usepackage{pxfonts}
+%% fix sans serif
+\renewcommand\sfdefault{cmss}
+\DeclareMathAlphabet{\mathsf}{OT1}{cmss}{m}{n}
+\SetMathAlphabet{\mathsf}{bold}{OT1}{cmss}{b}{n}
+% }font
+
+\oddsidemargin 0cm
+\topmargin -2cm
+\textwidth 16.5cm
+\textheight 23.5cm
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt plus 1pt}
+
+\theoremstyle{definition}
+\newtheorem{task}{Task}
+
+\newcommand\true{\;\textit{true}}
+\newcommand\ddd{\raisebox{0.2em}[1.3em]{$\vdots$}}
+\newcommand\com{\raisebox{0.3em}{$\ ,\ \ $}}
+\newcommand\hyp[2]{\infer[#1]{#2}{}}
+
+\newcommand\ttt{\texttt}
+\renewcommand\and{\mathop{\wedge}}
+\renewcommand\or{\mathop{\vee}}
+\newcommand\ent{\vdash}
+\newcommand\G{\Gamma}
+\newcommand\tri{\triangleright}
+\newcommand\openc{\text{\textopencorner}}
+\newcommand\closec{\text{\textcorner}}
+\newcommand\con[1]{\openc #1 \closec}
+\newcommand\imp[2]{\G #1 \ent \ttt{#2}}
+\newcommand\impt[3]{\G #1 \ent \ttt{#2} \tri #3}
+
+\title{}
+\author{}
+\date{}
+
+\begin{document}
+% \maketitle
+
+
+The following are the set of rules for generating verification conditions. They verify contracts, as well as check for other potential errors.
+
+\section*{Statements}
+
+\subsection*{Assignments}
+
+\[
+  \infer[]{\impt{}{lv = e}{\G_2 \and lv = \con{e}}}{\impt{}{lv}{\G_1} & \impt{_1}{e}{\G_2}}
+\]
+
+\subsection*{Returns}
+
+\[
+  \infer[]{\impt{}{return e}{\G_2 \and lv = \con{e}}}{\impt{}{e}{\G_1} & \imp{_1}{[e/$\backslash$result]post}}
+\]
+
+\subsection*{Asserts}
+
+\[
+  \infer[]{\impt{}{assert e}{ERROR}}{\imp{}{$\neg$ e}}\quad
+  \infer[WARN]{\impt{}{assert e}{\G_1 \and \con{e}true}}{}
+\]
+
+\[
+  \infer[]{\impt{}{assert e}{\G_1 \and \con{e}true}}{\impt{}{e}{\G_1}}
+\]
+
+
+\subsection*{Ifs}
+
+\[
+  \infer[]{\impt{}{if e then s$_1$ else s$_2$}{\G_2 \or \G_3}}{
+    \impt{}{e}{\G_1} &
+    \impt{_1 \and \con{e} true}{s$_1$}{\G_2} &
+    \impt{_2 \and \con{e} false}{s$_2$}{\G_3}}
+\]
+
+\subsection*{Whiles}
+
+We define $\G|_\ttt{UV}$ to be $\G$ restricted to the unchanging vars with the loop
+
+\[
+  \infer[]{\impt{}{while(e) linv \{s\}}{ERROR}}{
+    \imp{}{$\neg$ linv}}
+\]
+
+\[
+  \infer[]{\impt{}{while(e) linv \{s\}}{ERROR}}{
+    \impt{}{linv}{\G_1} & 
+    \impt{_1|_\ttt{UV} \and \con{linv}}{e}{\G_2} &
+    \impt{_2 \and \con{e} true}{s}{\G_3} &
+    \imp{_3}{$\neg$ linv}}
+\]
+
+The following are warnings because either the invariants could not be verified at the start of the loop or 
+after going around the loop.
+
+\[
+  \infer[WARN]{\impt{}{while(e) linv \{s\}}{\G_2 \and \con{e} false}}{
+    \impt{|_\ttt{UV} \and \con{linv}}{e}{\G_1} &
+    \impt{_1 \and \con{e} true}{s}{\G_2}}
+\]
+
+\[
+  \infer[WARN]{\impt{}{while(e) linv \{s\}}{\G_2 \and \con{e} false}}{
+    \impt{|_\ttt{UV} \and \con{linv}}{e}{\G_1} &
+    \impt{_1 \and \con{e} true}{s}{\G_2} &
+    \imp{_2}{linv}}
+\]
+
+\[
+  \infer[WARN]{\impt{}{while(e) linv \{s\}}{\G_3 \and \con{e} false}}{
+    \impt{}{linv}{\G_1} & 
+    \impt{_1|_\ttt{UV} \and \con{linv}}{e}{\G_2} &
+    \impt{_2 \and \con{e} true}{s}{\G_3}}
+\]
+
+\[
+  \infer[]{\impt{}{while(e) linv \{s\}}{\G_3 \and \con{e} false}}{
+    \impt{}{linv}{\G_1} & 
+    \impt{_1|_\ttt{UV} \and \con{linv}}{e}{\G_2} &
+    \impt{_2 \and \con{e} true}{s}{\G_3} &
+    \imp{_3}{linv}}
+\]
+
+\subsection*{Sequence}
+
+\[
+  \infer[]{\impt{}{s$_1$ ; s$_2$}{\G_2}}{
+    \impt{}{s$_1$}{\G_1} &
+    \impt{_1}{s$_2$}{\G_2}}
+\]
+
+\section*{Expressions}
+
+\subsection*{Pointer Dereferences}
+
+\[
+  \infer[]{\impt{}{*p}{\G}}{\imp{}{p != NULL}}\quad\quad
+  \infer[]{\impt{}{*p}{ERROR}}{\imp{}{p==NULL}}\quad\quad
+  \infer[WARN]{\impt{}{*p}{\G \and p \neq NULL}}{}
+\]
+
+\subsection*{If/Else Expressions}
+
+\[
+  \infer[]{\impt{}{e$_1$?e$_2$:e$_3$}{\G_2 \or \G_3}}{
+    \impt{}{e$_1$}{\G_1} &
+    \impt{_1 \and \con{e_1} true}{e$_2$}{\G_2} &
+    \impt{_2 \and \con{e_1} false}{e$_3$}{\G_3}}
+\]
+
+\subsection*{Array Accesses}
+
+\[
+  \infer[]{\impt{}{A[e]}{ERROR}}{\impt{}{e}{\G_1} & \imp{_1}{0 $>$ e}}\quad\quad
+  \infer[]{\impt{}{A[e]}{ERROR}}{\impt{}{e}{\G_1} & \imp{_1}{e $\geq$ $\backslash$length(A)}}
+\]
+
+\[
+  \infer[WARN]{\impt{}{A[e]}{\G_1 \and 0 \leq \con{e} \and \con{e} < \backslash length(A)}}{\impt{}{e}{\G_1}}
+\]
+
+\[
+  \infer[]{\impt{}{A[e]}{\G_1}}{\impt{}{e}{\G_1} & \imp{_1}{0 $\leq$ e} & \imp{_1}{e $<$ $\backslash$length(A)}}
+\]
+
+
+\end{document}

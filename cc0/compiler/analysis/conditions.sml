@@ -1,5 +1,6 @@
 (* C0 Compiler
  * Constraint store for VCGen
+ * Jason Chow
  * Matthew McKay <mjmckay@andrew.cmu.edu>
  *)
 
