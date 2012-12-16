@@ -247,7 +247,7 @@ struct
 	      new_native(g, length(params), ext)
             | (NONE, NONE) =>
 	      case Symbol.name(g)
-	       of "abort" => new_native(g, 1, ext)
+	       of "pabort" => new_native(g, 1, ext)
 		| "string_join" => new_native(g, 2, ext)
 		| _ => ( ErrorMsg.error ext ("undefined function " ^ Symbol.name(g))
 		       ; raise ErrorMsg.Error ))
@@ -596,7 +596,7 @@ struct
           val is1 = trans_exp env vlist e1 ext
           val is2 = trans_exp env vlist e2 ext
           val n2 = V.code_length is2
-          val abort = native_index(Symbol.symbol("abort"), ext)
+          val abort = native_index(Symbol.symbol("pabort"), ext)
           val ninvoke = V.il(V.invokenative(abort))
           val _ = if nif + n2 + ninvoke >= maxint15 
                   then ( ErrorMsg.error NONE ("jump too big") ;
@@ -607,7 +607,7 @@ struct
           @ [V.Inst(V.bipush(0), "false", ext)]
           @ [V.Inst(V.if_icmp(V.ne,nif+n2+ninvoke), "goto " ^ assertok_lab, ext)]
           @ is2
-          @ [V.Inst(V.invokenative(abort), "abort " ^ A.Print.pp_exp(e2), ext)]
+          @ [V.Inst(V.invokenative(abort), "pabort " ^ A.Print.pp_exp(e2), ext)]
           @ [V.Comment(assertok_lab)]
       end
     | trans_stm env vlist (A.Error(e)) ext = 

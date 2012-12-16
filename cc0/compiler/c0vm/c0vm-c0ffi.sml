@@ -18,9 +18,9 @@ fun native_index("") =                      ~1
   | native_index("args_string") =           3
 
 (* conio *)
-  | native_index("abort") =                 4
-  | native_index("eof") =                   5
-  | native_index("flush") =                 6
+  | native_index("eof") =                   4
+  | native_index("flush") =                 5
+  | native_index("pabort") =                6
   | native_index("print") =                 7
   | native_index("printbool") =             8
   | native_index("printchar") =             9

@@ -30,7 +30,7 @@ void printchar(char c) {
   putchar(c);
 }
 
-void abort(c0_string s) {
+void pabort(c0_string s) {
   const char *cstr = c0_string_tocstr(s);
   c0_abort(cstr);
 }

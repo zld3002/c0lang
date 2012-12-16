@@ -19,7 +19,7 @@ void printchar(c0_char c);
 void flush();
 bool eof();
 c0_string readline();
-void abort(c0_string s);
+void pabort(c0_string s);
 
 /* Wrappers */
 
@@ -64,8 +64,8 @@ void *__c0ffi_readline(void **args) {
   return (void *) readline();
 }
 
-void *__c0ffi_abort(void **args) {
-  abort((c0_string) args[0]);
+void *__c0ffi_pabort(void **args) {
+  pabort((c0_string) args[0]);
   return NULL;
 }
 
