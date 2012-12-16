@@ -1,0 +1,40 @@
+
+------------------------------------------
+Verification Conditions
+------------------------------------------
+
+The code for this is contained within the files vcgen.sml and conditions.sml.
+It also makes use of Z3, which can be found in the externals directory. The
+purpose of VC is to statically verify contracts and other assumptions made
+in code (like indices are within bounds of an array, no division by 0, etc.).
+Not only does it check if the code explicitly breaks one of these assumptions
+(like explicitly dividing by zero), but it also checks if the code could
+potentially break one of these assumptions (for example, by dividing by a
+function argument that wasn't required to be nonzero). This is done by using
+the SAT-solving capabilities of Z3, which asserts statements about the code
+and sees if there is a conflict. In vcrules.tex, the various assumptions are
+described, with differentiation between warnings and errors, where a warning
+is something that could potentially be wrong (i.e. is SAT-solvable), while
+an error is something that always holds to be true (i.e. is explicitly invalid
+in the code).
+
+The file vcgen.sml does the work of processing the code, which is in SSA form
+and has been run through isolation (to make things like array access on the
+top level for easier checking). While going through the code, certain
+expressions are asserted based on the assumptions derived from the code, as
+mentioned above. To assert something, it makes a call to the assert function
+in conditions.sml, which interfaces with Z3. When given an expression to
+assert, it is translated into code that Z3 understands, and sent to Z3 to
+process. If it can satisfy the assertions that it has made so far, then it
+returns with true, otherwise it returns false. This result is then used by
+vcgen to generate error messages, if warranted by the result of the call to Z3.
+
+Currently, VC is only implemented for straightline code in C0, and will not
+work on code with conditionals or loops. However, as outlined in vcrules, most
+of what is required for these features have been worked out, and they just need
+to be implemented. The current code does check for division errors, as well as
+out of bounds array accesses (which it does by keeping track of array lengths).
+It also checks to make sure that the ensures statements are valid for each
+possible return expression. Another future addition would be using requires and
+ensures contracts to make assertions about function calls and verify that they
+are made correctly.
