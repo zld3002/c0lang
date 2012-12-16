@@ -1,9 +1,14 @@
-gc - gc7.2.alpha6 from http://www.hpl.hp.com/personal/Hans_Boehm/gc/
+gc - gc7.2d
+gc-old1 - gc7.2.alpha6
      Boehm-Weiser conservative collector
-libpng - libpng-1.5.7 from http://www.libpng.org/pub/png/libpng.html
-         PNG image library used by <img> library
-zlib - zlib-1.2.5 from http://zlib.net/
-       compression library used by libpng (and other programs like openssl)
+     http://www.hpl.hp.com/personal/Hans_Boehm/gc/
+libpng - libpng-1.5.7
+     PNG image library used by <img> library
+     http://www.libpng.org/pub/png/libpng.html
+zlib - zlib-1.2.5 
+     compression library used by libpng 
+     (and other programs like openssl)
+     http://zlib.net/
 
 ----------------------------------------------------------------------
 No longer used:
