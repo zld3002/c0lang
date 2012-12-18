@@ -1,44 +1,19 @@
 #include <signal.h>
+#include <c0runtime.h>
 #include "cc0lib.h"
 
-int _idiv (int x, int y) {
-  return x/y;
+void c0_idiv_asn (int* px, int y) {
+  *px = c0_idiv(*px, y);
 }
 
-int _imod (int x, int y) {
-  return x%y;
+void c0_imod_asn (int* px, int y) {
+  *px = c0_imod(*px, y);
 }
 
-int _sal (int x, int y) {
-  return x << y;
+void c0_sal_asn (int* px, int y) {
+  *px = c0_sal(*px, y);
 }
 
-int _sar (int x, int y) {
-  return x >> y;
+void c0_sar_asn (int* px, int y) {
+  *px = c0_sar(*px, y);
 }
-
-void _idiv_asn (int* px, int y) {
-  *px /= y;
-}
-
-void _imod_asn (int* px, int y) {
-  *px %= y;
-}
-
-void _sal_asn (int* px, int y) {
-  *px <<= y;
-}
-
-void _sar_asn (int* px, int y) {
-  *px >>= y;
-}
-
-void* _chk_null (void* A) {
-  if (A == NULL) {
-    fprintf(stderr, "attempt to dereference null pointer\n");
-    fflush(stderr);
-    raise(SIGSEGV);
-  }
-  return A;
-}
-

@@ -1,25 +1,16 @@
-#ifndef _BARE_H
-#define _BARE_H
+#ifndef __BARE_H__
+#define __BARE_H__
 
-/* C0 runtime types */
-#include <stdbool.h>
-
-struct c0_array {
-    int count;
-    int elt_size;
-    char elems[];
-};
-
-typedef char c0_char;
-typedef const char *c0_string;
-
-#define C0_HAVE_CONCRETE_RUNTIME
+#define C0_RUNTIME_IMPLEMENTS_LENGTH
 #include <c0runtime.h>
 
-#ifdef CC0
+struct c0_array_header {
+  c0_int count;
+  c0_int elt_size;
+  c0_char elems[];
+};
+
 // For slight speed gain, inline:
-#define c0_string_fromliteral(s) s
+#define c0_string_fromliteral(s) (s)
 
-#endif /* CC0 */
-
-#endif /* _BARE_H */
+#endif /* __BARE_H__ */

@@ -66,7 +66,7 @@ struct args_list *args_get(const char *name) {
 
 struct args {
   int argc;
-  c0_array* argv;		/* string[] */
+  c0_array argv;		/* string[] */
 };
 typedef struct args* args_t;
 
@@ -123,7 +123,7 @@ args_t args_parse() {
     }
   }
 
-  c0_array* args_array = c0_array_alloc(sizeof(c0_string), other_count);
+  c0_array args_array = c0_array_alloc(sizeof(c0_string), other_count);
   /* reverse linked list order to obtain command line order */
   for (int i = other_count-1; 0 <= i; i--) {
     *(c0_string*)c0_array_sub(args_array, i, sizeof(c0_string)) =

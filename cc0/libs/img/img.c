@@ -15,13 +15,13 @@
 struct image {
   int width;
   int height;
-  c0_array* pixels;
+  c0_array pixels;
 };
 typedef struct image* image_t;
 
 image_t image_create(int width, int height) {
   assert(0 < width && 0 < height);
-  c0_array* pixels = c0_array_alloc(sizeof(int), width*height);
+  c0_array pixels = c0_array_alloc(sizeof(int), width*height);
   image_t image = c0_alloc(sizeof(struct image));
   image->width = width;
   image->height = height;
@@ -49,7 +49,7 @@ int image_height(image_t image) {
   return image->height;
 }
 
-c0_array* image_data(image_t image) {
+c0_array image_data(image_t image) {
   assert(image != NULL);
   return image->pixels;
 }
@@ -62,7 +62,7 @@ void image_destroy(image_t image) {
 void image_to_png_bytes(png_bytep* dest, image_t src) {
   int width = src->width;
   int height = src->height;
-  c0_array* pixels = src->pixels;
+  c0_array pixels = src->pixels;
   for (int i = 0; i < height; i++) {
     dest[i] = c0_alloc(sizeof(png_byte)*4*width);
     for (int x = 0; x < width; x++) {
@@ -77,7 +77,7 @@ void image_to_png_bytes(png_bytep* dest, image_t src) {
 void rgba_parse(png_bytep* row_pointers, image_t image) {
   int width = image->width;
   int height = image->height;
-  c0_array* pixels = image->pixels;
+  c0_array pixels = image->pixels;
   for (int y = 0; y < height; y++) {
     png_byte* row = row_pointers[y];
     for (int x = 0; x < width; x++) {
@@ -91,7 +91,7 @@ void rgba_parse(png_bytep* row_pointers, image_t image) {
 void rgb_parse(png_bytep* row_pointers, image_t image) {
   int width = image->width;
   int height = image->height;
-  c0_array* pixels = image->pixels;
+  c0_array pixels = image->pixels;
   for (int y = 0; y < height; y++) {
     png_byte* row = row_pointers[y];
     for (int x = 0; x < width; x++) {
@@ -191,7 +191,7 @@ void image_save(image_t image, c0_string path) {
 
   int width = image->width;
   int height = image->height;
-  c0_array* pixels = image->pixels;
+  c0_array pixels = image->pixels;
 
   FILE * fp = fopen(filename, "wb");
   if (fp == NULL) {

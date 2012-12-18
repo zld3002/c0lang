@@ -1,4 +1,4 @@
-//test return 5
+//test div-by-zero
 //shifting gets masked to 5 bits.
 
 int main()

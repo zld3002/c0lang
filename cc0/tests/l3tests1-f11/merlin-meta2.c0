@@ -43,6 +43,6 @@ int s, int r, int q, int p, int o, int n, int m, int PEWPEWLAZERBEAMS)
   m = 99;
   n = 98;
 
-  return z+x-w+v-m+n-r+u-s+t-v*q<<PEWPEWLAZERBEAMS;
+  return z+x-w+v-m+n-r+u-s+t-v*q<<(PEWPEWLAZERBEAMS&0x1F);
 }
 

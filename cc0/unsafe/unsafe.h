@@ -1,3 +1,6 @@
+#ifndef __UNSAFE_H__
+#define __UNSAFE_H__
+
 #include <string.h>
 #include <stdbool.h>
 
@@ -10,8 +13,8 @@ typedef char c0_char;
 // structure remains undefined.
 struct c0_array;
 
-#define C0_HAVE_CONCRETE_RUNTIME
-#include "c0runtime.h"
+#undef C0_RUNTIME_IMPLEMENTS_LENGTH
+#include <c0runtime.h>
 
 // Check if we're being compiled by cc0 and provide
 // these macros that inline calls to the runtime
@@ -42,4 +45,6 @@ struct c0_array;
 #define c0_string_fromliteral(s) s
 
 #endif
+
+#endif // __UNSAFE_H__
 

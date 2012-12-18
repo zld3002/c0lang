@@ -1,4 +1,4 @@
-//test return 32
+//test div-by-zero
 
 int main() {
   int x = 1;

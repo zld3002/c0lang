@@ -1,4 +1,4 @@
-//test return 2147483647
+//test div-by-zero
 
 int main ()
 {

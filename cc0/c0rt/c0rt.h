@@ -1,15 +1,17 @@
-#ifndef __C0RTAPI_H__
-#define __C0RTAPI_H__
-
-#ifndef __cplusplus
-#include <stdbool.h>
-#endif
-
-typedef const char* c0_string;
-typedef char c0_char;
+#ifndef __C0RT_H__
+#define __C0RT_H__
 
 #define C0_HAVE_CONCRETE_RUNTIME
 #include <c0runtime.h>
 
-#endif // __C0RTAPI_H__
+struct c0_array_header {
+  c0_int count;
+  c0_int elt_size;
+  c0_char elems[];
+};
+
+// For slight speed gain, inline:
+#define c0_string_fromliteral(s) (s)
+
+#endif // __C0RT_H__
 

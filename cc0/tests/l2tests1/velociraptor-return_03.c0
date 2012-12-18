@@ -1,4 +1,4 @@
-//test return 13
+//test div-by-zero
 // bitops
 
 int main() {

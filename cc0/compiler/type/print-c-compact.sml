@@ -32,10 +32,10 @@ end
  *   allocations raise an exception if they fail, rather than returning NULL
  *   they also initialize to 0
  * - assertions are handled with macro cc0_assert(e, msg1, msg2, ...)
- * - e1/e2 is compiled as _idiv(e1,e2) to check for overflow
- * - e1%e2 is compiled as _imod(e1,e2) to check for overflow
- * - e1<<e2 is compiled as _sal(e1,e2) to mask e2 to 32 bits
- * - e1>>e2 is compiled as _sar(e1,e2) to mask e2 to 32 bits
+ * - e1/e2 is compiled as c0_idiv(e1,e2) to check for overflow
+ * - e1%e2 is compiled as c0_imod(e1,e2) to check for overflow
+ * - e1<<e2 is compiled as c0_sal(e1,e2) to mask e2 to 32 bits
+ * - e1>>e2 is compiled as c0_sar(e1,e2) to mask e2 to 32 bits
  * - evaluation order is undefined, which is handled by isolating
  *   expressions which may have an effect.  For example,
  *   f(g(x),h(3)) might be translated as
@@ -165,19 +165,19 @@ struct
       | pp_exp env (A.OpExp(oper as A.DIVIDEDBY, [e1, e2])) =
 	if is_safe_div e2
 	then "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
-	else "_idiv(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
+	else "c0_idiv(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
       | pp_exp env (A.OpExp(oper as A.MODULO, [e1, e2])) =
 	if is_safe_div e2
 	then "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
-	else "_imod(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
+	else "c0_imod(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
       | pp_exp env (A.OpExp(oper as A.SHIFTLEFT, [e1, e2])) =
 	if is_safe_shift e2
 	then "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
-	else "_sal(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
+	else "c0_sal(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
       | pp_exp env (A.OpExp(oper as A.SHIFTRIGHT, [e1, e2])) =
 	if is_safe_shift e2
 	then "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
-	else "_sar(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
+	else "c0_sar(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
       | pp_exp env (A.OpExp(A.SUB, [e1,e2])) =
 	let val A.Array(tp) = Syn.syn_exp_expd env e1
 	in
@@ -234,13 +234,13 @@ struct
           (* hack: x <*>= e means x = &e *)
 	  pp_exp env lv ^ " = " ^ "&(" ^ pp_exp env e ^ ")" ^ ";"
       | pp_assign env (A.Assign(SOME(A.DIVIDEDBY), lv, e)) =
-	  pp_assign_effect_op env ("_idiv", lv, e)
+	  pp_assign_effect_op env ("c0_idiv", lv, e)
       | pp_assign env (A.Assign(SOME(A.MODULO), lv, e)) =
-	  pp_assign_effect_op env ("_imod", lv, e)
+	  pp_assign_effect_op env ("c0_imod", lv, e)
       | pp_assign env (A.Assign(SOME(A.SHIFTLEFT), lv, e)) =
-	  pp_assign_effect_op env ("_sal", lv, e)
+	  pp_assign_effect_op env ("c0_sal", lv, e)
       | pp_assign env (A.Assign(SOME(A.SHIFTRIGHT), lv, e)) =
-	  pp_assign_effect_op env ("_sar", lv, e)
+	  pp_assign_effect_op env ("c0_sar", lv, e)
       | pp_assign env (A.Assign(SOME(oper), lv, e)) =
 	  pp_exp env lv ^ " " ^ pp_oper oper ^ "= " ^ pp_exp env e ^ ";"
 
