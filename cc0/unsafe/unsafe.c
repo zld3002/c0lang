@@ -41,10 +41,6 @@ c0_int c0_sar(c0_int x, c0_int y) { return x>>y; }
 
 /* Memory */
 
-void c0_abort_mem(const char *reason) {
-  raise_msg(SIGSEGV, reason);
-}
-
 c0_pointer c0_alloc(size_t size) {
   void* p = GC_MALLOC(size);
   bzero(p, size);
