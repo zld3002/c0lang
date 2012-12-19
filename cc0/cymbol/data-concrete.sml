@@ -14,7 +14,9 @@ structure ConcreteData :> CONCRETE_DATA = struct
   val bool_to_string = fn true => "true" | false => "false"
   val int_to_string = Word32Signed.toString
 
-  val mask_shift_5 = fn x => Word.fromInt(Word32.toInt(Word32.andb (x, 0wx1F)))
+  fun mask_shift_5 x =
+     if Word32.>(x, 0wx1F) then raise Div
+     else Word.fromInt(Word32.toInt x)
 
   val int_not = fn x => Word32.-(0wx0, x)
   val bool_not = not

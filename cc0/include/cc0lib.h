@@ -10,11 +10,6 @@
  * Implementation: cc0/lib/cc0lib.c
  */
 
-// We need stdlib.h so that we can use exit(EXIT_FAILURE) after a call
-// to c0_error, which convinces the compiler that branch of the
-// program never returns.
-#include <stdlib.h>
-
 void c0_idiv_asn(int *px, int y); // *x /= y, x not null
 void c0_imod_asn(int *px, int y); // *x %= y, x not null
 void c0_sal_asn(int *px, int y);  // *x <<= y, x not null
