@@ -437,8 +437,8 @@ fun finalize {library_headers} =
                  (path_concat (out_dir, cname))
                  (fn cstream =>
                   TextIO.output (cstream, PrintC.pp_program program
-			                 [!Flags.runtime ^ ".h",
-			                  cc0_lib ^ ".h",
+                                         [cc0_lib ^ ".h",
+                                          !Flags.runtime ^ ".h",
                                           hname]
 			                 (!Flags.opt_level)))
 

@@ -1,0 +1,12 @@
+//test return 1
+int main ()
+{
+	int i = 2147483647;
+	for (int j = 0; j < 31; j++)
+	{
+		i = i >> j;
+		i = i << j;
+	}
+	i = i >> 30; // makes it 1
+	return i;
+}

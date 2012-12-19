@@ -12,7 +12,6 @@
 #ifndef __C0RUNTIME_H__
 #define __C0RUNTIME_H__
 
-#include <stddef.h>
 #include <stdbool.h>
 
 /* C0 types */

@@ -8,7 +8,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include <c0runtime.h>  /* for c0_runtime_init() */
+#include <c0runtime.h>  /* for c0_runtime_init(), c0_runtime_cleanup() */
 
 int _c0_main();
 int c0_argc;
@@ -17,29 +17,29 @@ char **c0_argv;
 FILE *really_fopen(const char *filename, const char *mode,
                    char *error)
 {
-    FILE *f = fopen(filename, mode);
-    if (f == NULL) {
-        perror(error);
-        exit(1);
-    }
-    return f;
+  FILE *f = fopen(filename, mode);
+  if (f == NULL) {
+    perror(error);
+    exit(1);
+  }
+  return f;
 }
 
 void really_fwrite(const void *ptr, size_t size, size_t nitems, FILE *stream,
-                    char *error)
+                    char *error) 
 {
-    if (fwrite(ptr, size, nitems, stream) < nitems) {
-        perror(error);
-        exit(1);
-    }
+  if (fwrite(ptr, size, nitems, stream) < nitems) {
+    perror(error);
+    exit(1);
+  }
 }
 
 void really_fclose(FILE *stream, char *error)
 {
-    if (fclose(stream) != 0) {
-        perror(error);
-        exit(1);
-    }
+  if (fclose(stream) != 0) {
+    perror(error);
+    exit(1);
+  }
 }
 
 int main(int argc, char **argv) {
@@ -62,11 +62,8 @@ int main(int argc, char **argv) {
     really_fwrite(&x, sizeof(int), 1, f, "Couldn't write to $C0_RESULT_FILE");
     really_fclose(f, "Couldn't close $C0_RESULT_FILE");
   }
-  /*
-  // the old, simple behavior:
-  int x = _c0_main();
-  printf("%d\n", x);
-  */
+
+  c0_runtime_cleanup();
 
   return 0;
 }

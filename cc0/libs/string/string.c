@@ -62,7 +62,7 @@ c0_string string_tolower(c0_string s) {
     return c0_string_fromcstr(low);
 }
 
-bool string_terminated(c0_array* A, int n) {
+bool string_terminated(c0_array A, int n) {
   int i;
   for (i = 0; i < n; i++) {
     if (*(c0_char*)c0_array_sub(A, i, sizeof(c0_char)) == '\0') return true;
@@ -70,9 +70,9 @@ bool string_terminated(c0_array* A, int n) {
   return false;
 }
 
-c0_array* string_to_chararray(c0_string s) {
+c0_array string_to_chararray(c0_string s) {
   int len = c0_string_length(s); // does not include \0
-  c0_array* A = c0_array_alloc(sizeof(c0_char),len+1);
+  c0_array A = c0_array_alloc(sizeof(c0_char),len+1);
   const char *str = c0_string_tocstr(s);
   int i;
   for (i = 0; str[i] != '\0'; i++)
@@ -82,7 +82,7 @@ c0_array* string_to_chararray(c0_string s) {
   return A;
 }
 
-c0_string string_from_chararray(c0_array *A) {
+c0_string string_from_chararray(c0_array A) {
   int len; char *cstr; int i;
   for (len = 0; *(c0_char*)c0_array_sub(A, len, sizeof(c0_char)) != '\0'; len++);
   cstr = c0_alloc(len+1);

@@ -1,4 +1,4 @@
-/* CC0 helper macros
+/* CC0 helper interfacs
  *
  * Primitives used by the cc0 compiler that aren't specificed as part
  * of the cc0 runtime go here.
@@ -6,8 +6,13 @@
  * This header file uses c0runtime.h functions, but does not include
  * the c0runtime.h header because it does not know whether the runtime
  * has defined C0_RUNTIME_IMPELEMENTS_LENGTH or not.
+ *
+ * Implementation: cc0/lib/cc0lib.c
  */
 
+// We need stdlib.h so that we can use exit(EXIT_FAILURE) after a call
+// to c0_error, which convinces the compiler that branch of the
+// program never returns.
 #include <stdlib.h>
 
 void c0_idiv_asn(int *px, int y); // *x /= y, x not null

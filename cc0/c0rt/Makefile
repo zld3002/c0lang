@@ -1,6 +1,6 @@
 RUNTIME = true
 LIBNAME = c0rt
-SOURCES = array.cpp gc.c panic.cpp ../bare/cstr.c init.c
+SOURCES = c0rt.c ../bare/cstr.c
 DEPTH = ..
 REQUIRES = gc
 

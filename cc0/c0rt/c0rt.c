@@ -2,14 +2,16 @@
 #include <stdio.h>
 #include <signal.h>
 #include <limits.h>
+#include <gc.h>
 #include <c0runtime.h>
+#include <strings.h> // defines bzero()
 
 void c0_runtime_init() {
-  // nothing to do for the bare runtime
+    GC_INIT();
 }
 
 void c0_runtime_cleanup() {
-  // nothing to do for the bare runtime
+  // nothing to do for the c0rt runtime
 }
 
 void raise_msg(int signal, const char* msg) {
@@ -70,10 +72,14 @@ void c0_abort_mem(const char *reason) {
   raise_msg(SIGSEGV, reason);
 }
 
-c0_pointer c0_alloc(size_t elt_size) {
-  int* p = calloc(1, elt_size);
-  if (p == NULL) c0_abort_mem("allocation failed");
-  return (void *)p;
+c0_pointer c0_alloc(size_t size) {
+  if (!size)
+    size = 1;
+
+  void* p = GC_MALLOC(size);
+  if (!p) c0_abort_mem("allocation failed");
+  bzero(p, size);
+  return p;
 }
 
 void* c0_deref(c0_pointer a){
@@ -87,14 +93,13 @@ c0_array c0_array_alloc(size_t elemsize, c0_int elemcount) {
   if (elemsize > 0 && elemcount > ((1<<30)-8)/elemsize)
     c0_abort_mem("array size too large");
 
-  c0_array p = calloc(1, sizeof(struct c0_array_header) + elemcount*elemsize);
-  if (p == NULL) c0_abort_mem("array allocation failed");
+  c0_array p = c0_alloc(sizeof(struct c0_array_header) + elemcount*elemsize);
   p->count = elemcount;              /* initialize number of elements */
   p->elt_size = elemsize;            /* store element size */
   return p;
 }
 
-void* c0_array_sub(c0_array A, int i, size_t elemsize) {
+void* c0_array_sub(c0_array A, c0_int i, size_t elemsize) {
   if (A == NULL) c0_abort_mem("attempt to access default zero-size array");
   if (((unsigned)i) >= (unsigned)(A->count))
     c0_abort_mem("array index out of bounds");

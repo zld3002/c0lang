@@ -3,10 +3,15 @@
 #include <signal.h>
 #include <limits.h>
 #include <gc.h>
-#include "unsafe.h"
+#include <c0runtime.h>
+#include <strings.h> // defines bzero()
 
 void c0_runtime_init() {
-    GC_INIT();
+  GC_INIT();
+}
+
+void c0_runtime_cleanup() {
+  // nothing to do for the c0rt runtime
 }
 
 void raise_msg(int signal, const char* msg) {
@@ -15,36 +20,42 @@ void raise_msg(int signal, const char* msg) {
   raise(signal);
 }
 
+void c0_error(const char *msg) {
+  fprintf(stderr, "Error: %s\n", msg);
+  fflush(stderr);
+  exit(EXIT_FAILURE);
+}
+
 void c0_abort(const char *reason) {
   raise_msg(SIGABRT, reason);
 }
+
+
+/* Arithmetic */
+
+c0_int c0_idiv(c0_int x, c0_int y) { return x/y; }
+c0_int c0_imod(c0_int x, c0_int y) { return x%y; }
+c0_int c0_sal(c0_int x, c0_int y) { return x<<y; }
+c0_int c0_sar(c0_int x, c0_int y) { return x>>y; }
+
+
+/* Memory */
 
 void c0_abort_mem(const char *reason) {
   raise_msg(SIGSEGV, reason);
 }
 
-void* c0_alloc(size_t bytes) {
-  void* p = GC_malloc(bytes);
-  if (!p)
-    c0_abort_mem("Out of memory");
-  bzero(p, bytes);
+c0_pointer c0_alloc(size_t size) {
+  void* p = GC_MALLOC(size);
+  bzero(p, size);
   return p;
 }
 
-c0_array* c0_array_alloc(size_t elemsize, int elemcount) {
-  if (elemsize == 0 || elemcount < 0)
-    c0_abort_mem("Bad allocation request");
-  // XXX: won't calloc check for this? Not entirely sure what we're checking
-  // here...
-  if (INT_MAX / elemsize < elemcount)
-    c0_abort_mem("Allocation request is too large");
-  c0_array* arr = c0_alloc(elemsize*elemcount);
-  if (!arr)
-    c0_abort_mem("Out of memory");
-  return arr;
+c0_array c0_array_alloc(size_t elemsize, c0_int elemcount) {
+  return c0_alloc(elemsize*elemcount);
 }
 
-void* c0_array_sub(c0_array *a, int idx, size_t elemsize) {
+void* c0_array_sub(c0_array a, c0_int idx, size_t elemsize) {
   return ((char*)a) + idx*elemsize;
 }
 
