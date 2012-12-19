@@ -1,4 +1,4 @@
-//test div-by-zero
+//test safe => div-by-zero
 /* Causes an error by parsing a number that converts to the largest negative
  * number, then dividing by -1, causing a division exception.
  * Similar to the test provided, but reading the intel manual, there are

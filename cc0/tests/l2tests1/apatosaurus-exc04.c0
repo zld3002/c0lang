@@ -1,4 +1,4 @@
-//test div-by-zero
+//test safe => div-by-zero
 // make sure while loops loop correctly then boom
 int main ()
 {

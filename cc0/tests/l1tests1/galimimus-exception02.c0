@@ -1,4 +1,4 @@
-//test div-by-zero
+//test safe => div-by-zero
 // mod by 0
 int main()
 {

@@ -1,4 +1,4 @@
-//test div-by-zero
+//test safe => div-by-zero
 int main() {
   int min = -2147483648;
   return min % -1;

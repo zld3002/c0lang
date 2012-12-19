@@ -1,4 +1,4 @@
-//test div-by-zero
+//test safe => div-by-zero
 int main() {
 	for (int i = 0; 1 / 0 == 7; i++) {
 		break;

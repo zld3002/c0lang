@@ -1,4 +1,4 @@
-//test div-by-zero
+//test safe => div-by-zero
 // division error due to overflow
 int main()
 {

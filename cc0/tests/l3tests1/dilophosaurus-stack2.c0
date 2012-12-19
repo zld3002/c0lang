@@ -1,4 +1,4 @@
-//test div-by-zero
+//test safe => div-by-zero
 
 // this function blow the stack
 int stackOverflow(int x, int y, int z, int w, int v){

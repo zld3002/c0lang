@@ -1,4 +1,4 @@
-//test div-by-zero
+//test safe => div-by-zero
 
 int factorial(int n){
 	if (n < 0) return 1/0;

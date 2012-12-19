@@ -1,4 +1,4 @@
-//test div-by-zero
+//test safe => div-by-zero
 /* this really just duplicates tests from l1....no new exceptions */
 int main(){
     int TMIN = -2147483648;
