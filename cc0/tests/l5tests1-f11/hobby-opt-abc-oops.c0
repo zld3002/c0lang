@@ -1,4 +1,4 @@
-//test div-by-zero
+//test safe => div-by-zero
 
 // check if abc is moved out of loop and before
 // side-effectful 1/0

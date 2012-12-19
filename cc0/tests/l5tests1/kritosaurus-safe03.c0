@@ -1,4 +1,4 @@
-//test div-by-zero
+//test safe => div-by-zero
 
 struct bounded_array {
     int size;

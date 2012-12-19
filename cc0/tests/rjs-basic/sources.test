@@ -3,27 +3,27 @@ return 5             ~ anno2.c0
 return 0             ~ anno3.c0
 error                ~ anno4.c0
 return 0             ~ carsten-pure.c0
-return 0             ~ carsten-pure.c0 -d
-return 1             ~ check-arr.c0 -d
+safe => return 0     ~ carsten-pure.c0 -d
+safe => return 1     ~ check-arr.c0 -d
 return 208           ~ collatz.c0
 return 71            ~ collatz2.c0
 return 4             ~ array.c0
 !safe => return *; safe => segfault ~ arrayerr.c0
 return 30            ~ demo.c0
-div-by-zero          ~ divzero.c0
+safe => div-by-zero  ~ divzero.c0
 typecheck, !cymbol => error ~ dynamic.c0
 failure              ~ error1.c0
 return 1             ~ error2.c0
 failure              ~ error3.c0
 failure              ~ error4.c0
 failure              ~ error5.c0
-failure              ~ error5.c0 -d
+safe => failure      ~ error5.c0 -d
 return 1             ~ evil-name1.c0
 return 1             ~ evil-name2.c0
-return 2             ~ evil-name3.c0 -d
-abort                ~ evil-name4.c0 -d
-abort                ~ evil-name5.c0 -d
-return 2             ~ evil-name6.c0 -d
+safe => return 2     ~ evil-name3.c0 -d
+safe => abort        ~ evil-name4.c0 -d
+safe => abort        ~ evil-name5.c0 -d
+safe => return 2     ~ evil-name6.c0 -d
 return 90            ~ for.c0
 error                ~ for-bad.c0
 return 2             ~ fun.c0
@@ -50,7 +50,7 @@ typecheck, !cymbol => error; cymbol => return 16 ~ refine2.c0
 typecheck => error   ~ refine3.c0
 return 0             ~ refine4.c0
 typecheck, !cymbol => error; cymbol => return 0 ~ return.c0
-abort                ~ ruhroh.c0 -d
+safe => abort        ~ ruhroh.c0 -d
 return 1             ~ solo.c0
 lib => return 12     ~ strlib.c0 -lstring
 return 0             ~ string.c0

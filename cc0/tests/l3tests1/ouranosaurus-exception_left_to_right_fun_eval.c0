@@ -1,4 +1,4 @@
-//test div-by-zero
+//test safe => div-by-zero
 // args must evaluate from left to right
 
 int f1() {

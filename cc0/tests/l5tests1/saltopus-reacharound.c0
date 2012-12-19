@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 
 /* test allocation with INT_MIN as the size */
 

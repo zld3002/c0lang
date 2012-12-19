@@ -1,4 +1,4 @@
-//test div-by-zero
+//test safe => div-by-zero
 //data structure that has an array and its size and maintains a failure code
 
 int arraycopy(int size, int[] a, int[] b) {
