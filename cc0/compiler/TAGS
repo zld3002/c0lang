@@ -1,23 +1,51 @@
 
 csharp_sources.cm,0
 
-newparse_sources.cm,0
+sources1.cm,0
 
-sources.cm,0
+sources2.cm,0
+
+sources3.cm,0
 
 compile-cc0-csharp.sml,0
 
-compile-cc0-newparse.sml,0
+compile-cc0-parse1.sml,0
 
-compile-cc0.sml,0
+compile-cc0-parse2.sml,0
 
-newparse/c0.lex,0
+compile-cc0-parse3.sml,0
 
-parse/c0.lex,0
+parse1/c0.lex,0
 
-parse/c0.grm,0
+parse2/c0.lex,0
+
+parse1/c0.grm,0
+
+analysis/analysis.sml,0
+
+analysis/analysisast.sml,0
+
+analysis/conditions.sml,0
+
+analysis/env.sml,0
+
+analysis/error.sml,0
+
+analysis/nullity.sml,0
+
+analysis/preprocess.sml,0
+
+analysis/purity.sml,0
+
+analysis/safety.sml,0
+
+analysis/top.sml,0
+
+analysis/vcgen.sml,0
 
 ast/ast.sml,0
+
+c0vm/c0vm-c0ffi.sml,0
 
 c0vm/c0vm-native.sml,0
 
@@ -27,29 +55,33 @@ c0vm/c0vm-trans.sml,0
 
 c0vm/c0vm.sml,0
 
-newparse/ast-npsnyder.sml,0
+parse1/parse-pragma.sml,0
 
-newparse/c0.lex.sml,0
+parse1/parse.sml,0
 
-newparse/newlex.sml,0
+parse1/parsestate.sml,0
 
-newparse/newlex_terminal.sml,0
+parse2/c0.lex.sml,0
 
-newparse/newtokens.sml,0
+parse2/newlex.sml,0
 
-newparse/parse-fp.sml,0
+parse2/newlex_terminal.sml,0
 
-newparse/parse.sml,0
+parse2/newtokens.sml,0
 
-newparse/parsestate.sml,0
+parse2/parse.sml,0
 
-parse/ast-crude-c.sml,0
+parse3/lex.sml,0
 
-parse/parse-pragma.sml,0
+parse3/parse-pragma.sml,0
 
-parse/parse.sml,0
+parse3/parse.sml,0
 
-parse/parsestate.sml,0
+parse3/parsestate.sml,0
+
+parse3/stream.sml,0
+
+parse3/terminal.sml,0
 
 top/buildid.sml,0
 
@@ -59,15 +91,17 @@ top/flags.sml,0
 
 top/go.sml,0
 
-top/test.sml,0
+top/top-fp.sml,0
 
 top/top.sml,0
 
 type/dyn-check.sml,0
 
-type/print-c-signed.sml,0
+type/iso-noext.sml,0
 
-type/print-c-simple-assign.sml,0
+type/iso.sml,0
+
+type/print-c-compact.sml,0
 
 type/print-c.sml,0
 
@@ -77,11 +111,9 @@ type/symtab.sml,0
 
 type/syn.sml,0
 
-type/typechecker-safe.sml,0
-
-type/typechecker-single-anno.sml,0
-
 type/typechecker.sml,0
+
+util/char.sml,0
 
 util/errormsg.sml,0
 

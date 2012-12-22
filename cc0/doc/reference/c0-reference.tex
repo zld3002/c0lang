@@ -595,7 +595,8 @@ extension) and process it before processing the rest of the file.
 
 Either form of the directive will not perform any action if
 the library or file has already been loaded during the current
-compilation process.
+compilation process.  \verb'#use' directives must precede all
+other declarations in a file.
 
 \section{Contracts}
 \label{sec:contracts}
@@ -930,6 +931,8 @@ multiple annotations in the general case.
 The static semantics enforces the following conditions.
 
 \begin{itemize}
+\item \verb'#use' directives must precede all other
+  declarations.
 \item All operators and functions are used with the
   correct number of arguments of the correct type,
   as explained in the sections on the various language
@@ -1014,10 +1017,12 @@ In addition we check in annotations:
   statement.  Remember that conditionals, loops, and blocks are
   \emph{not} terminated by a semicolon.  Use an empty block \verb'{}'
   as a statement with no effect.
-\item[Dec 8 2012] Added the error statement to the langauge and
+\item[Dec 8 2012.] Added the error statement to the langauge and
   clarified that returning a non-zero integer from \verb'main' does
   not signal unsuccessful execution to the operating system, though
   running the error statement does.
+\item[Dec 22 2012.] \verb'#use' directives must precede all other
+  declarations.
 \end{description}
 
 \end{document}

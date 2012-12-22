@@ -403,7 +403,10 @@ and r_gdecl (S $ Tp(tp,r1) $ Ident(vid,_) $ VarDecls(parmlist) $ Tok(T.SEMI,r2))
 and p_pragma ST = case first ST of
     T.PRAGMA(line) => (* call external parser *)
     let val pragma = ParsePragma.parse_pragma line NONE
-    in ST |> drop >> push (GDecl(A.Pragma(pragma, NONE))) end
+    (* in ST |> drop >> push (GDecl(A.Pragma(pragma, NONE))) end *)
+    (* use line below instead to obtain correct region for pragma *)
+    (* December 22, 2012 -fp *)
+    in ST |> shift >> push (Pragma(pragma)) >> reduce r_gdecl end
 
 (* Type definitions *)
 (* S = _ $ 'typedef' *)
@@ -883,7 +886,7 @@ and e_terminal (r, t_needed, t) = case t of
   | _ => error_expected (r, t_needed, t)
 
 (* Top-level functions *)
-fun parse_gdecls filename process_library process_file token_front =
+fun parse_gdecls filename process_library process_file prelude token_front =
     let
 	(* During initial parse, the second argument in A.UseLib
          * or A.UseFile will be NONE.  Once the library or filename
@@ -891,11 +894,24 @@ fun parse_gdecls filename process_library process_file token_front =
 	 * process_library or process_file function, these resulting
          * global declarations are filled in.  Other pragmas are passed
          * through in raw form. *)
-	fun process_pragma (A.Pragma(A.UseLib(libname, NONE), ext)) =
-	      A.Pragma(A.UseLib(libname, SOME(process_library libname)), ext)
-	  | process_pragma (A.Pragma(A.UseFile(usefile, NONE), ext)) =
-	      A.Pragma(A.UseFile(usefile, SOME(process_file filename usefile)), ext)
-	  | process_pragma (gdecl) = gdecl
+	fun process_pragma true (A.Pragma(A.UseLib(libname, NONE), ext)) =
+	      (A.Pragma(A.UseLib(libname, SOME(process_library libname)), ext),
+               true)
+	  | process_pragma true (A.Pragma(A.UseFile(usefile, NONE), ext)) =
+	      (A.Pragma(A.UseFile(usefile, SOME(process_file filename usefile)), ext),
+               true)
+          | process_pragma true (gdecl as A.Pragma(_, _)) =
+              (* unknown pragma; continue in prelude mode *)
+              (gdecl, true)
+          | process_pragma false (A.Pragma(A.UseLib _, ext)) =
+              ( ErrorMsg.error ext ("#use directives must precede all other declarations")
+              ; raise ErrorMsg.Error )
+          | process_pragma false (A.Pragma(A.UseFile _, ext)) =
+              ( ErrorMsg.error ext ("#use directives must precede all other declarations")
+              ; raise ErrorMsg.Error )
+	  | process_pragma prelude gdecl =
+              (* not a pragma, return prelude' = false *)
+              (gdecl, false)
 	val ST as (S, token_front') = p_gdecl (Bot, token_front)
 	val () = if !ErrorMsg.anyErrors then raise ErrorMsg.Error else ()
     in  (* do not call 'first ST' below, because we do not want to look past EOL *)
@@ -904,9 +920,9 @@ fun parse_gdecls filename process_library process_file token_front =
 	    (* nothing parsed, e.g., whole file already processed *)
 	  | (Bot $ GDecl(gdecl), _) =>
 	    let val _ = update_typetab gdecl (* update table of type names *)
-		val gdecl' = process_pragma gdecl (* process #use pragmas *)
+		val (gdecl', prelude') = process_pragma prelude gdecl (* process #use pragmas *)
 	    in
-		gdecl' :: parse_gdecls filename process_library process_file token_front'
+		gdecl' :: parse_gdecls filename process_library process_file prelude' token_front'
 	    end
     end
 
@@ -921,7 +937,7 @@ fun parse filename process_library process_file =
     SafeIO.withOpenIn filename (fn instream =>
       let val _ = PS.pushfile filename (* start at pos 0 in filename *)
 	  val token_stream = C0Lex.makeLexer (fn _ => TextIO.input instream)
-	  val decls = parse_gdecls filename process_library process_file (M.force token_stream)
+	  val decls = parse_gdecls filename process_library process_file true (M.force token_stream)
 	  val _ = PS.popfile ()
       in decls end)
     handle e as IO.Io _ => ( ErrorMsg.error NONE (exnMessage e) ;

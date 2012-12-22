@@ -545,10 +545,14 @@ fun finalize {library_headers} =
       handle ErrorMsg.Error => ( say "Compilation failed" ; OS.Process.failure )
 	   | EXIT => OS.Process.failure
 	   | FINISHED => OS.Process.success
-           | e => ( say ("Unexpected exception in cc0:\n" ^ (exnMessage e) ^"\n" (* ^(foldr (fn (a,b) => a^"\n"^b) "" (SMLofNJ.exnHistory e)) *)) ;
-   (* Above extra bits commented out by Rob, Nov 15 2012. 
-    * The compiler needs to compile with MLton! - Rob *)
-                    OS.Process.failure )
+           | e => ( say ("Unexpected exception in cc0:\n" ^ exnMessage e ^ "\n")
+                  ; OS.Process.failure
+                  (* next line for development mode *)
+                  (* ; raise e *)
+                  )
+           (* foldr (fn (a,b) => a ^ "\n" ^ b) "" (SMLofNJ.exnHistory e) *)
+           (* Above extra bits commented out by Rob, Nov 15 2012. 
+            * The compiler needs to compile with MLton! - Rob *)
 
   fun test s = main ("", String.tokens Char.isSpace s)
 
