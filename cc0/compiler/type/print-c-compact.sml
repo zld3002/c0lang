@@ -69,8 +69,9 @@ struct
    (* is_safe_shift k = true if 0 <= k & k < 32, so n << k and n >> k is defined.
     * assumes n >> k for negative n is arithmetic right shift, not logical *)
    fun is_safe_shift (A.IntConst(w)) =
-       Word32Signed.signed_less(MINUSONE, w)
-       andalso Word32Signed.signed_less(w, THIRTYTWO)
+       Word32.<(w, THIRTYTWO)
+       (* Word32Signed.signed_less(MINUSONE, w)
+          andalso Word32Signed.signed_less(w, THIRTYTWO) *)
      | is_safe_shift _ = false
 
     (*

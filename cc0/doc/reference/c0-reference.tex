@@ -154,13 +154,13 @@ digits are not case sensitive, so we can also use \verb'X' and
 Binary bitwise operations on values of type \tint\ are \verb'&' (and),
 \verb'^' (exclusive or), \verb'|' (or), and we also have unary bitwise
 complement \verb'~'.  The hybrid shift operators \verb'n << k' and
-\verb'n >> k' shift the bits of $n$ by $k$.  Here, $k$ is masked to
-the lower 5 bits, so that the actual shift is always in the range from
-0 to 31.  On the left shift, the lower bits are filled with 0; on the
-right shift the higher bit is copied.  This means that left shift by
-$k$ is equal to multiplication by $2^k$, and right shift $k$ is like
-division by $2^k$, except that it truncates towards $-\infty$ rather
-than $0$.
+\verb'n >> k' shift the bits of $n$ by $k$.  Here, $k$ is required to
+be in the range from 0 to 31, inclusively.  Otherwise, it raises an
+arithmetic exception.  On the left shift, the lower bits are filled
+with 0; on the right shift the higher bit is copied.  This means that
+left shift by $k$ is equal to multiplication by $2^k$, and right shift
+$k$ is like division by $2^k$, except that it truncates towards
+$-\infty$ rather than $0$.
 
 The default value for integers, which is needed for some allocation
 operations, is $0$.
@@ -1021,6 +1021,9 @@ In addition we check in annotations:
   clarified that returning a non-zero integer from \verb'main' does
   not signal unsuccessful execution to the operating system, though
   running the error statement does.
+\item[Dec 18 2012.] Left and right shift operations now require their
+  second operand $k$ to be in the range $0 \leq k < 32$.  Otherwise,
+  an arithmetic exception is raised.
 \item[Dec 22 2012.] \verb'#use' directives must precede all other
   declarations.
 \end{description}
