@@ -1,7 +1,7 @@
 return 5             ~ anno1.c0
 return 5             ~ anno2.c0
 return 0             ~ anno3.c0
-error                ~ anno4.c0
+return 0             ~ anno4.c0
 return 0             ~ carsten-pure.c0
 safe => return 0     ~ carsten-pure.c0 -d
 safe => return 1     ~ check-arr.c0 -d

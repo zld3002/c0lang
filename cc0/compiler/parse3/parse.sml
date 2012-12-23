@@ -349,11 +349,15 @@ fun resolve_scope (A.StmDecl(d)::ss, (ds_rev, nil)) =
   | resolve_scope (A.StmDecl(d)::ss, (ds_rev, scope_rev as (_::_))) =
       (* decl in middle of block, create new scope and append at end *)
       A.Seq(List.rev ds_rev, List.rev (resolve_scope(ss, ([d], nil))::scope_rev))
+  (* Sequences may now be terminated by annotations *)
+  (* Dec 22, 2012 -fp *)
+  (*
   | resolve_scope (A.Anno(specs as (_::_))::nil, (ds_rev, scope_rev)) =
       (* non-empty annotation cannot be last stmt in block, allow? *)
       ( ErrorMsg.error (spec_ext (List.last specs))
 		       ("annotation must precede statement" ^^ "use '{}' after annotation if necessary")
       ; raise ErrorMsg.Error )
+  *)
   | resolve_scope (s::ss, (ds_rev, scope_rev)) =
       (* s not decl, add to current scope *)
       resolve_scope (ss, (ds_rev, s::scope_rev))

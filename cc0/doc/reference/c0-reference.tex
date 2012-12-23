@@ -910,9 +910,9 @@ Section~\ref{sec:contracts}.
 
 <gdefn> ::= ...
           | <tp> <vid> ( [<tp> <vid> (, <tp> <vid>)*] ) <anno>*
-            { <stmt>* }
+            { <stmt>* <anno>* }
 
-<stmt> ::= ... | <anno>+ <stmt>
+<stmt> ::= ... | <anno>+ <stmt> | { <stmt>* <anno>+ }
 
 <exp> ::= ... | \result | \length ( <exp> ) | \old ( <exp> )
 \end{verbatim}
@@ -1017,7 +1017,7 @@ In addition we check in annotations:
   statement.  Remember that conditionals, loops, and blocks are
   \emph{not} terminated by a semicolon.  Use an empty block \verb'{}'
   as a statement with no effect.
-\item[Dec 8 2012.] Added the error statement to the langauge and
+\item[Dec 8 2012.] Added the error statement to the language and
   clarified that returning a non-zero integer from \verb'main' does
   not signal unsuccessful execution to the operating system, though
   running the error statement does.
@@ -1026,6 +1026,7 @@ In addition we check in annotations:
   an arithmetic exception is raised.
 \item[Dec 22 2012.] \verb'#use' directives must precede all other
   declarations.
+\item[Dec 22 2012.] Statement blocks may end in annotations.
 \end{description}
 
 \end{document}
