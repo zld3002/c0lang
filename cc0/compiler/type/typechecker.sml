@@ -1131,6 +1131,10 @@ struct
 		 ( ErrorMsg.error ext ("type name '" ^ Symbol.name aid ^ "' defined more than once\n"
 				       ^ "previous definition at " ^ Mark.show (Option.valOf ext'))
 		 ; raise ErrorMsg.Error )
+          | SOME(A.Function(gid, _, _, _, _, _, ext')) =>
+                 ( ErrorMsg.error ext ("type name '" ^ Symbol.name aid ^ "' already used as function name\n"
+                                       ^ "function definition at " ^ Mark.show (Option.valOf ext'))
+                 ; raise ErrorMsg.Error )
       ; tdef )
     | tc_gdecl (sdecl as A.Struct(sid, NONE, is_extern, ext)) is_library =
       ( case Structtab.lookup sid
