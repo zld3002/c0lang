@@ -1112,6 +1112,12 @@ struct
   (* Checking global declarations *)
   (********************************)
 
+  fun is_extern_fun g =
+      (case Symtab.lookup g
+        of SOME(A.Function(g', rtp', params', body', specs', is_extern', ext'))
+           => is_extern'
+         | _ => false)
+
   (* tc_gdecl gdecl is_library = gdecl'
    * Type-check a global declaration and return a modified declaration
    * where the is_library status of gdecl has been updated appropriately, and
@@ -1161,7 +1167,8 @@ struct
      ; sdecl )
     | tc_gdecl (A.Function(g, rtp, params, NONE, specs, _, ext)) is_library =
       (* function declaration, override is_extern with current context is_library *)
-      let val fdecl = A.Function(g, rtp, params, NONE, specs, is_library, ext) 
+      let val was_extern = is_extern_fun g
+          val fdecl = A.Function(g, rtp, params, NONE, specs, was_extern orelse is_library, ext) 
 	  val () = case Symtab.lookup g
 		    of NONE => Symtab.bind (g, fdecl)
 		     | SOME(A.Function(g', rtp', params', NONE, specs', is_extern', ext')) =>

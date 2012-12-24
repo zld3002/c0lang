@@ -327,7 +327,7 @@ struct
 
     (* dc_gdecl gdecl = gdecls' transforms global declaration to add
      * function versioning and turn contract annotations into asserts.
-     * Sometimes we need to split a declaration in two*)
+     * Sometimes we need to split a declaration in two *)
     fun dc_gdecl (d as A.Function(g, rtp, params, SOME(s), specs, is_external, ext)) =
         (* Symbol instance remains the same for definition; no new function environment *)
 	(* Add caller id argument to function *)
