@@ -589,26 +589,16 @@ struct
         trans_exp env vlist e ext
         @ [V.Inst(V.return, "", ext)]
     | trans_stm env vlist (A.Assert(e1, e2s)) ext =
-      let val assertok_lab = next_glabel("assert")
-          val e2 = case e2s
+      let val e2 = case e2s
                     of [] => A.StringConst(location ext ^ ": assertion failed")
                      | e2s => join e2s
-          val is1 = trans_exp env vlist e1 ext
-          val is2 = trans_exp env vlist e2 ext
-          val n2 = V.code_length is2
-          val abort = native_index(Symbol.symbol("pabort"), ext)
-          val ninvoke = V.il(V.invokenative(abort))
-          val _ = if nif + n2 + ninvoke >= maxint15 
-                  then ( ErrorMsg.error NONE ("jump too big") ;
-                         raise ErrorMsg.Error )
-                  else ()
       in
-          is1
-          @ [V.Inst(V.bipush(0), "false", ext)]
-          @ [V.Inst(V.if_icmp(V.ne,nif+n2+ninvoke), "goto " ^ assertok_lab, ext)]
-          @ is2
-          @ [V.Inst(V.invokenative(abort), "pabort " ^ A.Print.pp_exp(e2), ext)]
-          @ [V.Comment(assertok_lab)]
+        trans_exp env vlist e1 ext
+        @ trans_exp env vlist e2 ext
+        @ [V.Inst(V.assert, 
+                  "assert " ^ A.Print.pp_exp(e1) 
+                  ^ " with failure message " ^ A.Print.pp_exp(e2), 
+                  ext)]
       end
     | trans_stm env vlist (A.Error(e)) ext = 
         trans_exp env vlist e ext

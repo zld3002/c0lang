@@ -147,9 +147,6 @@ structure Flags :> FLAGS = struct
      {short = "", long=["verif-check"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_verif_check),
       help="Enable verification condition checking"},
-     (* {short = "", long=["purity-check"],
-      desc=GetOpt.NoArg (fn () => Flag.set flag_purity_check),
-      help="Enable checking contract functions for purity"}, *)
      {short = "", long=["no-purity-check"],
       desc=GetOpt.NoArg (fn () => Flag.unset flag_purity_check),
       help="Disable checking contract functions for purity"},

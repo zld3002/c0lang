@@ -57,7 +57,6 @@ continue => goto #cont
 break => goto #done
 return(e) => is, return
 return => bipush 0, return
-assert(e1,e2) => is1, if_cmpeq #ok, is2, invokenative e2, #ok:
 
 t x => .  (x|->nextaddr())
 (t x = e) => is, vstore <addr(x)>

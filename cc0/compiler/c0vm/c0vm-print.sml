@@ -67,6 +67,7 @@ struct
     | pp_inst2 (V.if_icmp(V.le, offset)) = ("A4 " ^ s16(offset), "if_icmple " ^ s16dec(offset))
     | pp_inst2 (V.goto(offset)) = ("A7 " ^ s16(offset), "goto " ^ s16dec(offset))
     | pp_inst2 (V.athrow) = ("BF", "athrow")
+    | pp_inst2 (V.assert) = ("CF", "assert")
     | pp_inst2 (V.invokestatic(c)) = ("B8 " ^ u16(c), "invokestatic " ^ Int.toString(c))
     | pp_inst2 (V.return) = ("B0","return")
     | pp_inst2 (V.invokenative(c)) = ("B7 " ^ u16(c), "invokenative " ^ Int.toString(c))

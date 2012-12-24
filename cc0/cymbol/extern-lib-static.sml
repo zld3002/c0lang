@@ -25,7 +25,6 @@ val lib_args = List.foldr Map.insert' Map.empty (mapN (
 val lib_conio = List.foldr Map.insert' Map.empty (mapN (
 ("eof",                  _import "__c0ffi_eof" public: fnptr;) ::
 ("flush",                _import "__c0ffi_flush" public: fnptr;) ::
-("pabort",               _import "__c0ffi_pabort" public: fnptr;) ::
 ("print",                _import "__c0ffi_print" public: fnptr;) ::
 ("printbool",            _import "__c0ffi_printbool" public: fnptr;) ::
 ("printchar",            _import "__c0ffi_printchar" public: fnptr;) ::

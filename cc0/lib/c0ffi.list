@@ -10,7 +10,6 @@ args_string
 lib conio
 eof
 flush
-pabort
 print
 printbool
 printchar

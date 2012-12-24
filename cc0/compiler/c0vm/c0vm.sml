@@ -34,7 +34,7 @@ sig
    | nop
    | if_icmp of comparison * branch_offset
    | goto of branch_offset
-   | athrow
+   | athrow | assert
    (* functions *)
    | invokestatic of pool_index
    | return
@@ -116,7 +116,7 @@ struct
    | nop
    | if_icmp of comparison * branch_offset
    | goto of branch_offset
-   | athrow
+   | athrow | assert
    (* functions *)
    | invokestatic of pool_index
    | return
@@ -174,6 +174,7 @@ struct
     | il (if_icmp(_,offset)) = 3
     | il (goto(offset)) = 3
     | il athrow = 1
+    | il assert = 1
      (* functions *)
     | il (invokestatic(c)) = 3
     | il (return) = 1
