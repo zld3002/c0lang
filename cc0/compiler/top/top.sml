@@ -321,6 +321,10 @@ fun finalize {library_headers} =
                            usageinfo = usageinfo,
                            args = args}
 	val () = if null sources then errfn "Error: no input file" else ()
+        val () = (* not (null (!runtime_args)) => Flag.isset Flag.flag_exec *)
+                 if null (!Flags.runtime_args)
+                    orelse Flag.isset Flags.flag_exec then ()
+                 else errfn "Error: -a in cc0 only makes sense combined with -x"
 
         (* copy sources, record command line *)
         val () =
@@ -453,6 +457,9 @@ fun finalize {library_headers} =
 	    ^ (if Flag.isset Flags.flag_verbose then " -Wall -Wextra" else " -w")
             ^ " -O" ^ Int.toString (!Flags.opt_level)
             ^ " -o " ^ (!Flags.a_out)
+            (* Dec 24, 2012, implements the -c flag *)
+            ^ (if null (!Flags.gcc_args) then "" else " ")
+            ^ String.concatWith " " (List.rev (!Flags.gcc_args))
 
         (* gcc command for linking with static libraries *)
 	val gcc_static_lib_command = fn () =>

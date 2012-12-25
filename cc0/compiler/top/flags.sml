@@ -21,6 +21,8 @@ signature FLAGS = sig
   val base_dir : string ref
   val search_path : string list ref
   val libraries : string list ref
+  val gcc_args : string list ref
+  val runtime_args : string list ref
   val runtime : string ref
   val a_out : string ref
   val bytecode_arch : int ref
@@ -65,9 +67,11 @@ structure Flags :> FLAGS = struct
   val base_dir = ref ""                       (* see reset_flags ()        *)
   val search_path : string list ref = ref []  (* Search path for libraries  *)
   val libraries : string list ref = ref []    (* Desired libraries          *)
+  val runtime_args : string list ref = ref [] (* Arguments for runtime      *)
+  val gcc_args : string list ref = ref []     (* Arguments for gcc          *)
   val runtime  = ref ""                       (* Runtime (bare, c0rt, unsafe) *)
   val a_out = ref ""                          (* Output executable *)
-  val bytecode_arch = ref 64		      (* Architecture for bytecode *)
+  val bytecode_arch = ref 64                  (* Architecture for bytecode *)
 
   val flag_trace = Flag.flag "trace"
   val flag_print_codes = Flag.flag "print_codes"
@@ -120,6 +124,7 @@ structure Flags :> FLAGS = struct
 
           (* Set other defaults *)
           opt_level := 0; libraries := []; runtime := "c0rt"; a_out := "a.out";
+          runtime_args := []; gcc_args := [];
 	  bytecode_arch := 64;
           SOME (#2 (GetOpt.getOpt {argOrder = GetOpt.Permute,
 		                   options = options,
@@ -157,6 +162,10 @@ structure Flags :> FLAGS = struct
       desc=GetOpt.ReqArg
                ((fn (s) => (search_path := !search_path @ [ s ])),"<dir>"),
       help="Add <dir> to the search path for libraries"},
+     {short = "a", long=[],
+      desc=GetOpt.ReqArg 
+              ((fn (s) => (runtime_args := s :: !runtime_args)), "<arg>"),
+      help="Pass an argument to the executing C0 program"},
      {short = "V", long=["version"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_version),
       help="Print version number and compile info"}]
@@ -194,12 +203,16 @@ structure Flags :> FLAGS = struct
      {short = "b", long=["bytecode"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_bytecode),
       help="Generate bytecode instead of executable"},
-     {short = "m", long=["bytecode-arch"],
+     {short = "m", long=["bc-arch"],
       desc=GetOpt.ReqArg ((fn (s) => (bytecode_arch := parse_bytecode_arch s)), "<arch>"),
       help="Generate bytecode for architecture <arch>, 64 or 32 (default 64)"},
      {short = "o", long=["output"],
       desc=GetOpt.ReqArg ((fn (s) => (a_out := s)), "<file>"),
       help="Place the executable output into <file>"},
+     {short = "c", long=[],
+      desc=GetOpt.ReqArg 
+              ((fn (s) => (gcc_args := s :: !gcc_args)), "<arg>"),
+      help="Pass an argument to the c compiler"},
      {short = "n", long=["no-log"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_no_log),
       help="Disable logging for this compile"},
