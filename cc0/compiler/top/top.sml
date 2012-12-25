@@ -539,10 +539,13 @@ fun finalize {library_headers} =
 	    then let val exec_command =
 			 OS.Path.joinDirFile {dir=OS.Path.currentArc,
 					      file=(!Flags.a_out)}
+                     val exec_with_args = 
+                         String.concatWith " " 
+                            (exec_command :: rev (!Flags.runtime_args))
 		     val () = Flag.guard Flags.flag_verbose
-		              (fn () => say ("% " ^ exec_command)) ()
+		              (fn () => say ("% " ^ exec_with_args)) ()
 		 in
-		     OS.Process.system exec_command
+		     OS.Process.system exec_with_args
 		 end
 	    else status
 
