@@ -1,0 +1,126 @@
+/* Ternary search tries
+ * 15-122 Principles of Imperative Computation, Fall 2010
+ * Frank Pfenning
+ */
+
+/* 
+ * We implement this as an existence trie
+ * so it is not an abstract type.  All strings
+ * to be inserted are implicitly terminated by '.' to obtain
+ * the property that no string is a prefix of another
+ */
+
+#use <string>
+
+typedef struct trie* trie;
+struct trie {
+  char c;			/* discriminating character */
+  trie left;
+  trie middle;
+  trie right;
+};
+
+typedef struct tst* tst;
+struct tst {
+  trie root;
+};
+
+/* externally visible functions */
+tst tst_new();
+bool tst_search(tst TST, string s);
+void tst_insert(tst TST, string s);
+
+bool is_wordchar(char c) {
+  return 'a' <= c && c <= 'z';
+}
+
+bool is_word(string s) {
+  int len = string_length(s);
+  int i;
+  for (i = 0; i < len; i++)
+    if (!is_wordchar(string_charat(s,i)))
+      return false;
+  return true;
+}
+
+/* checking invariants */
+bool is_trie_root(trie T);
+bool is_trie(trie T, char lower, char upper) {
+  if (T == NULL) return true;
+  //@assert T != NULL;
+  if (!(is_wordchar(T->c) || T->c == '.')) return false;
+  if (!(lower < T->c && T->c < upper)) return false;
+  return
+    is_trie(T->left, lower, T->c)
+    && (   (T->c == '.' && T->middle == NULL)
+	|| (T->c != '.' && is_trie_root(T->middle)) )
+    && is_trie(T->right, T->c, upper);
+}
+
+bool is_trie_root(trie T) {
+  // bug workaround for purity checking
+  // //@assert true || is_trie(T, ' ', '~');
+  return is_trie(T, ' ', '~');
+}
+
+bool is_tst(tst TST) {
+  // bug workaround for purity checking
+  // //@assert true || is_trie_root(TST->root);
+  return TST != NULL && is_trie_root(TST->root);
+}
+
+/* operations on tsts */
+tst tst_new()
+//@ensures is_tst(\result);
+{
+  tst TST = alloc(struct tst);
+  TST->root = NULL;
+  return TST;
+}
+
+bool trie_search(trie T, string s, int i)
+//@requires is_trie_root(T);
+//@requires is_word(s);
+//@requires 0 <= i && i <= string_length(s);
+{ char si = (i == string_length(s)) ? '.' : string_charat(s, i);
+  assert(is_wordchar(si) || si == '.');
+  if (T == NULL) return false;
+  if (si == '.' && T->c == '.') return true;
+  if (si < T->c) return trie_search(T->left, s, i);
+  else if (si > T->c) return trie_search(T->right, s, i);
+  else //@assert(si == T->c);
+    return trie_search(T->middle, s, i+1);
+}
+
+bool tst_search(tst TST, string s)
+//@requires is_tst(TST);
+//@requires is_word(s);
+{
+  return trie_search(TST->root, s, 0);
+}
+
+trie trie_insert(trie T, string s, int i)
+//@requires is_trie_root(T);
+//@requires is_word(s);
+//@requires 0 <= i && i <= string_length(s);
+{ char si = (i == string_length(s)) ? '.' : string_charat(s, i);
+  assert(is_wordchar(si) || si == '.');
+  if (T == NULL) {
+    T = alloc(struct trie);
+    T->c = si; T->left = NULL; T->right = NULL;
+    T->middle = NULL;
+  }
+  if (si == '.' && T->c == '.') return T;
+  if (si < T->c) T->left = trie_insert(T->left, s, i);
+  else if (si > T->c) T->right = trie_insert(T->right, s, i);
+  else T->middle = trie_insert(T->middle, s, i+1);
+  return T;
+}
+
+void tst_insert(tst TST, string s)
+//@requires is_tst(TST);
+//@requires is_word(s);
+{
+  TST->root = trie_insert(TST->root, s, 0);
+  return;
+}

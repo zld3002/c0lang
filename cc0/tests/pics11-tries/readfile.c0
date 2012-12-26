@@ -1,0 +1,123 @@
+#use <parse>
+#use <file>
+#use <string>
+
+// NB: more than just space, actually -- matches any "interword" character
+bool is_space(char c) {
+    return c == ' ' || c == '\t' || c == '\n' || c == '\r'
+        || c == ',' || c == '.' || c == ';' || c == ':' || c == '"'
+        || c == '-' || c == '!' || c == '?'
+        || c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}';
+}
+
+/* returns the word in sentence starting at i, lowercased, and sets *newi
+   to the beginning of the next word, or just past the end of the sentence
+   if there is no next word */
+string word(string sentence, int i, int *newi)
+//@requires 0 <= i && i < string_length(sentence);
+//@requires !is_space(string_charat(sentence, i));
+//@ensures string_length(\result) > 0;
+//@ensures *newi <= string_length(sentence);
+{
+    int j = i+1;
+    int len = string_length(sentence);
+    /* find next space */
+    while (j < len && !is_space(string_charat(sentence, j)))
+    //@loop_invariant 0 <= j && j <= len;
+    {
+        j++;
+    }
+    *newi = j;
+    return string_tolower(string_sub(sentence, i, j));
+}
+
+int skip_space(string sentence, int i)
+//@requires 0 <= i && i <= string_length(sentence);
+//@ensures \result == string_length(sentence) || !is_space(string_charat(sentence, \result));
+{
+    int j = i;
+    int len = string_length(sentence);
+    while (j < string_length(sentence) && is_space(string_charat(sentence, j)))
+    {
+        j++;
+    }
+    return j;
+}
+
+
+struct reader {
+    file_t file;
+    string current;
+    int current_idx;
+};
+
+typedef struct reader reader_t;
+
+/* a reader is valid if its buffer pointer is either in bounds for its
+   buffer or just past the end of its buffer.
+   TODO: fit this into pre- and post-conditions of functions below... */
+bool reader_valid(reader_t *r) {
+    return r == NULL
+        || (0 <= r->current_idx && r->current_idx <= string_length(r->current));
+}
+
+bool at_space(reader_t *r)
+//@requires r != NULL;
+{
+    return r->current_idx < string_length(r->current)
+        && is_space(string_charat(r->current, r->current_idx));
+}
+
+reader_t *get_reader(string fname)
+//@ensures \result == NULL || !at_space(\result);
+{
+    file_t file = file_read(fname);
+    if (file_eof(file)) {
+        return NULL;    /* special case: null reader is empty */
+    } else {
+        reader_t *r = alloc(reader_t);
+        r->file = file;
+        r->current = file_readline(file);
+        r->current_idx = skip_space(r->current, 0);
+        return r;
+    }
+}
+
+string read_word(reader_t *r)
+//@requires r == NULL || !at_space(r);
+//@ensures r == NULL || !at_space(r);
+{
+    /* no strings available from the empty reader */
+    if (r == NULL) return "";
+
+    /* if we're at the end of a line, read lines until we get to a new word */
+    while (r->current_idx == string_length(r->current) && !file_eof(r->file))
+    //@loop_invariant !at_space(r);
+    {
+        r->current = file_readline(r->file);
+        r->current_idx = skip_space(r->current, 0);
+    }
+
+    /* two cases: either we're at a word char or we've exhausted the file */
+    /*@ assert (r->current_idx < string_length(r->current)
+                && !is_space(string_charat(r->current, r->current_idx)))
+            || (r->current_idx == string_length(r->current)
+                && file_eof(r->file));
+    @*/
+    if (r->current_idx < string_length(r->current))
+    //@assert !is_space(string_charat(r->current, r->current_idx));
+    // (follows from !at_space(r))
+    {
+        int *newi = alloc(int);
+        string w = word(r->current, r->current_idx, newi);
+        r->current_idx = skip_space(r->current, *newi);
+        return w;
+    } else
+    //@assert (r->current_idx == string_length(r->current));
+    //@assert file_eof(r->file);
+    {
+        // no word, and current string exhausted
+        return "";
+    }
+}
+

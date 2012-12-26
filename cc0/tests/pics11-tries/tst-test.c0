@@ -1,0 +1,54 @@
+/* Testing ternary search trees (TSTs)
+ * 15-122 Principles of Imperative Computation, Fall 2010
+ * Frank Pfenning
+ * Updated for Spring 2011: Tom Cortina
+ */
+
+#use <conio>
+#use <string>
+#use <file>
+
+// cc0 readfile.c0 tst.c0 tst-test.c0
+
+int main() {
+  int limit = 1<<20; /* 1M */
+  string[] A = alloc_array(string, limit);
+  reader_t* r = get_reader("test.txt");    /* test with -d */ 
+  // reader_t* r = get_reader("scrabble.txt"); 
+  // reader_t* r = get_reader("shaks12.txt"); 
+  tst TST = tst_new();
+  int max_length = 0;
+  string max_string = "";
+  int n = 0; int i;
+  string s = read_word(r);
+  while (!string_equal(s,"")) {
+    if (is_word(s)) {
+      A[n] = s; n++;
+      assert(n < limit);                /* not too many elements */
+      if (string_length(s) > max_length) {
+	max_length = string_length(s);
+	max_string = s;
+      }
+      tst_insert(TST, s);
+      assert(tst_search(TST,s));        /* string found immediately after insertion */
+    }
+    s = read_word(r);
+  }
+  print("Read "); printint(n); print(" words; max length is ");
+  printint(max_length); print(" ("); print(max_string); print(")\n");
+  for (i = 0; i < n; i++)
+    assert(tst_search(TST,A[i]));       /* string found after all inserts */
+  assert(!tst_search(TST,"foo"));       /* foo not found */
+  assert(!tst_search(TST,"srcambled")); /* srcambled not found */
+  assert(!tst_search(TST,""));          /* empty string not found */
+  assert(!tst_search(TST,"aq"));        /* string aq found */
+  /* insert in reverse order */
+  TST = tst_new();
+  for (i = 0; i < n; i++) {
+    tst_insert(TST, A[n-1-i]);
+  }
+  for (i = 0; i < n; i++) 
+    assert(tst_search(TST, A[i]));      /* string found after reverse insertion */
+  print("All tests passed!\n");
+  return 0;
+}
