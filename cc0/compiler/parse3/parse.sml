@@ -384,22 +384,24 @@ and e_gdecl ST = case first ST of
 			        ^^ "function definitions should not be terminated by ';'")
   | t => parse_error (here ST, "unexpected token " ^ t_toString t ^ " at top level")
 
-and r_gdecl (S $ Tp(tp,r1) $ Ident(vid,_) $ VarDecls(parmlist) $ Tok(T.SEMI,r2)) =
+and r_gdecl S = r_gdecl_1 S    (* mlton performance bug work-around *)
+and r_gdecl_1 (S $ Tp(tp,r1) $ Ident(vid,_) $ VarDecls(parmlist) $ Tok(T.SEMI,r2)) =
        S $ GDecl(A.Function(vid, tp, parmlist, NONE, nil, false, PS.ext(join r1 r2)))
-  | r_gdecl (S $ Tp(tp,r1) $ Ident(vid,_) $ VarDecls(parmlist) $ Annos(specs) $ Tok(T.SEMI,r2)) =
+  | r_gdecl_1 (S $ Tp(tp,r1) $ Ident(vid,_) $ VarDecls(parmlist) $ Annos(specs) $ Tok(T.SEMI,r2)) =
        S $ GDecl(A.Function(vid, tp, parmlist, NONE, specs, false, PS.ext(join r1 r2)))
-  | r_gdecl (S $ Tp(tp,r1) $ Ident(vid,_) $ VarDecls(parmlist) $ Stm(stm,r2)) =
+  | r_gdecl_1 (S $ Tp(tp,r1) $ Ident(vid,_) $ VarDecls(parmlist) $ Stm(stm,r2)) =
        S $ GDecl(A.Function(vid, tp, parmlist, SOME(stm), nil, false, PS.ext(join r1 r2)))
-  | r_gdecl (S $ Tp(tp,r1) $ Ident(vid,_) $ VarDecls(parmlist) $ Annos(specs) $ Stm(stm,r2)) =
+  | r_gdecl_1 (S $ Tp(tp,r1) $ Ident(vid,_) $ VarDecls(parmlist) $ Annos(specs) $ Stm(stm,r2)) =
        S $ GDecl(A.Function(vid, tp, parmlist, SOME(stm), specs, false, PS.ext(join r1 r2)))
-  | r_gdecl (S $ Tok(T.STRUCT,r1) $ Ident(sid,_) $ Tok(T.SEMI,r2)) =
+  | r_gdecl_1 S = r_gdecl_2 S
+and r_gdecl_2 (S $ Tok(T.STRUCT,r1) $ Ident(sid,_) $ Tok(T.SEMI,r2)) =
       S $ GDecl(A.Struct(sid, NONE, false, PS.ext(join r1 r2)))
-  | r_gdecl (S $ Tok(T.STRUCT,r1) $ Ident(sid,_)
+  | r_gdecl_2 (S $ Tok(T.STRUCT,r1) $ Ident(sid,_)
 	       $ Tok(T.LBRACE,_) $ Fields(fields) $ Tok(T.RBRACE,_) $ Tok(T.SEMI,r2)) =
       S $ GDecl(A.Struct(sid, SOME(fields), false, PS.ext(join r1 r2)))
-  | r_gdecl (S $ Tok(T.TYPEDEF,r1) $ Tp(tp,_) $ Ident(aid,_) $ Tok(T.SEMI,r2)) =
+  | r_gdecl_2 (S $ Tok(T.TYPEDEF,r1) $ Tp(tp,_) $ Ident(aid,_) $ Tok(T.SEMI,r2)) =
       S $ GDecl(A.TypeDef(aid, tp, PS.ext(join r1 r2)))
-  | r_gdecl (S $ Tok(T.PRAGMA(s),r) $ Pragma(pragma)) =
+  | r_gdecl_2 (S $ Tok(T.PRAGMA(s),r) $ Pragma(pragma)) =
       S $ GDecl(A.Pragma(pragma, PS.ext(r)))
 
 (* Pragmas *)
@@ -569,33 +571,36 @@ and p_loopbody ST = ST |> push (Annos []) >> p_annos >> p_stmt
 and m_stm(s,r) = Stm(mark_stm(s,r), r)
 and m_simple(s,r) = Simple(mark_stm(s,r), r)
 
-and r_stmt (S $ Tok(T.IF,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_) $ Stm(s1,_)
+and r_stmt S = r_stmt_1 S     (* mlton performance bug work-around *)
+and r_stmt_1 (S $ Tok(T.IF,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_) $ Stm(s1,_)
 	      $ Tok(T.ELSE,_) $ Stm(s2,r2)) =
       S $ m_stm(A.If(e, s1, s2),join r1 r2)
-  | r_stmt (S $ Tok(T.IF,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_) $ Stm(s1,r2)) =
+  | r_stmt_1 (S $ Tok(T.IF,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_) $ Stm(s1,r2)) =
       S $ m_stm(A.If(e, s1, Nop),join r1 r2)
-  | r_stmt (S $ Tok(T.WHILE,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_)
+  | r_stmt_1 (S $ Tok(T.WHILE,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_)
 	      $ Annos(invs) $ Stm(s,r2)) =
       S $ m_stm(A.While(e, invs, s),join r1 r2)
-  | r_stmt (S $ Tok(T.FOR,r1) $ Tok(T.LPAREN,_) $ Simple(s1,_) $ Tok(T.SEMI,_)
+  | r_stmt_1 (S $ Tok(T.FOR,r1) $ Tok(T.LPAREN,_) $ Simple(s1,_) $ Tok(T.SEMI,_)
 	      $ Exp(e2,_) $ Tok(T.SEMI,_) $ Simple(s3,_) $ Tok(T.RPAREN,_)
 	      $ Annos(invs) $ Stm(s4,r2)) =
       S $ m_stm(A.For(s1, e2, s3, invs, s4),join r1 r2)
-  | r_stmt (S $ Tok(T.CONTINUE,r1) $ Tok(T.SEMI,r2)) = S $ m_stm(A.Continue,join r1 r2)
-  | r_stmt (S $ Tok(T.BREAK,r1) $ Tok(T.SEMI,r2)) = S $ m_stm(A.Break,join r1 r2)
-  | r_stmt (S $ Tok(T.RETURN,r1) $ Tok(T.SEMI,r2)) = S $ m_stm(A.Return(NONE),join r1 r2)
-  | r_stmt (S $ Tok(T.RETURN,r1) $ Exp(e,_) $ Tok(T.SEMI,r2)) = S $ m_stm(A.Return(SOME(e)),join r1 r2)
-  | r_stmt (S $ Tok(T.LBRACE,r1) $ Stms(slist) $ Tok(T.RBRACE,r2)) =
+  | r_stmt_1 S = r_stmt_2 S
+and r_stmt_2 (S $ Tok(T.CONTINUE,r1) $ Tok(T.SEMI,r2)) = S $ m_stm(A.Continue,join r1 r2)
+  | r_stmt_2 (S $ Tok(T.BREAK,r1) $ Tok(T.SEMI,r2)) = S $ m_stm(A.Break,join r1 r2)
+  | r_stmt_2 (S $ Tok(T.RETURN,r1) $ Tok(T.SEMI,r2)) = S $ m_stm(A.Return(NONE),join r1 r2)
+  | r_stmt_2 (S $ Tok(T.RETURN,r1) $ Exp(e,_) $ Tok(T.SEMI,r2)) = S $ m_stm(A.Return(SOME(e)),join r1 r2)
+  | r_stmt_2 (S $ Tok(T.LBRACE,r1) $ Stms(slist) $ Tok(T.RBRACE,r2)) =
       S $ m_stm(resolve_scope(slist, ([],[])),join r1 r2)
-  | r_stmt (S $ Tok(T.ASSERT,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_) $ Tok(T.SEMI,r2)) =
+  | r_stmt_2 S = r_stmt_3 S
+and r_stmt_3 (S $ Tok(T.ASSERT,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_) $ Tok(T.SEMI,r2)) =
       S $ m_stm(A.Assert(e, nil),join r1 r2)
-  | r_stmt (S $ Tok(T.ERROR,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_) $ Tok(T.SEMI,r2)) =
+  | r_stmt_3 (S $ Tok(T.ERROR,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_) $ Tok(T.SEMI,r2)) =
       S $ m_stm(A.Error e,join r1 r2)
-  | r_stmt (S $ Annos(specs) $ Stm(s,r)) =
+  | r_stmt_3 (S $ Annos(specs) $ Stm(s,r)) =
       S $ m_stm(A.Seq([], [A.Anno(specs), s]),r) (* needs to become one stmt *)
-  | r_stmt (S $ Simple(s,r1) $ Tok(T.SEMI,r2)) = S $ m_stm(s,join r1 r2)
+  | r_stmt_3 (S $ Simple(s,r1) $ Tok(T.SEMI,r2)) = S $ m_stm(s,join r1 r2)
   (* the above should be exhaustive *)
-  (* r_stmt S = ( println (stackToString S) ; raise Domain ) *)
+  (* r_stmt_3 S = ( println (stackToString S) ; raise Domain ) *)
 
 and r_decl_or_assign (S $ Tp(tp,r1) $ Ident(vid,r2)) =
       S $ Simple(A.StmDecl(A.VarDecl(vid, tp, NONE, PS.ext(join r1 r2))), join r1 r2)
@@ -815,58 +820,64 @@ and p_explist2 ST = case first ST of
 and r_explist (S $ Exps(es) $ Exp(e,_)) = S $ Exps(es @ [e])
 
 (* reducing expressions *)
-and (* literal constants *)
-    r_exp (S $ Tok(T.DECNUM(s),r)) = S $ m_exp (A.IntConst(dec2word32(s,r)), r)
-  | r_exp (S $ Tok(T.HEXNUM(s),r)) = S $ m_exp(A.IntConst(hex2word32(s,r)),r)
-  | r_exp (S $ Tok(T.STRLIT(s),r)) = S $ m_exp(A.StringConst(s),r)
-  | r_exp (S $ Tok(T.CHRLIT(s),r)) = S $ m_exp(A.CharConst(str2char(s,r)),r)
-  | r_exp (S $ Tok(T.TRUE,r)) = S $ m_exp(A.True,r)
-  | r_exp (S $ Tok(T.FALSE,r)) = S $ m_exp(A.False,r)
-  | r_exp (S $ Tok(T.NULL,r)) = S $ m_exp(A.Null,r)
-  | r_exp (S $ Tok(T.IDENT(s),r)) = S $ Ident(Symbol.symbol s, r)
-  | r_exp (S $ Tok(T.BS_RESULT,r)) = S $ m_exp(A.Result, r)
+and r_exp S = r_exp_1 S        (* mlton performance bug work-around *)
 
-  (* function calls and pseudo-function calls *)
-  | r_exp (S $ Tok(T.ALLOC,r1) $ Tok(T.LPAREN,_) $ Tp(tp,_) $ Tok(T.RPAREN,r2)) =
+(* literal constants *)
+and r_exp_1 (S $ Tok(T.DECNUM(s),r)) = S $ m_exp (A.IntConst(dec2word32(s,r)), r)
+  | r_exp_1 (S $ Tok(T.HEXNUM(s),r)) = S $ m_exp(A.IntConst(hex2word32(s,r)),r)
+  | r_exp_1 (S $ Tok(T.STRLIT(s),r)) = S $ m_exp(A.StringConst(s),r)
+  | r_exp_1 (S $ Tok(T.CHRLIT(s),r)) = S $ m_exp(A.CharConst(str2char(s,r)),r)
+  | r_exp_1 (S $ Tok(T.TRUE,r)) = S $ m_exp(A.True,r)
+  | r_exp_1 (S $ Tok(T.FALSE,r)) = S $ m_exp(A.False,r)
+  | r_exp_1 (S $ Tok(T.NULL,r)) = S $ m_exp(A.Null,r)
+  | r_exp_1 (S $ Tok(T.IDENT(s),r)) = S $ Ident(Symbol.symbol s, r)
+  | r_exp_1 (S $ Tok(T.BS_RESULT,r)) = S $ m_exp(A.Result, r)
+  | r_exp_1 S = r_exp_2 S
+
+(* function calls and pseudo-function calls *)
+and r_exp_2 (S $ Tok(T.ALLOC,r1) $ Tok(T.LPAREN,_) $ Tp(tp,_) $ Tok(T.RPAREN,r2)) =
       S $ m_exp(A.Alloc(tp),join r1 r2)
-  | r_exp (S $ Tok(T.ALLOC_ARRAY,r1) $ Tok(T.LPAREN,_) $ Tp(tp,_) $ Tok(T.COMMA,_) $ Exp(e,_) $ Tok(T.RPAREN,r2)) =
+  | r_exp_2 (S $ Tok(T.ALLOC_ARRAY,r1) $ Tok(T.LPAREN,_) $ Tp(tp,_) $ Tok(T.COMMA,_) $ Exp(e,_) $ Tok(T.RPAREN,r2)) =
       S $ m_exp(A.AllocArray(tp, e),join r1 r2)
-  | r_exp (S $ Tok(T.BS_LENGTH,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,r2)) =
+  | r_exp_2 (S $ Tok(T.BS_LENGTH,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,r2)) =
       S $ m_exp(A.Length(e),join r1 r2)
-  | r_exp (S $ Tok(T.BS_OLD,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,r2)) =
+  | r_exp_2 (S $ Tok(T.BS_OLD,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,r2)) =
       S $ m_exp(A.Old(e),join r1 r2)
-  | r_exp (S $ Ident(vid,r1) $ Tok(T.LPAREN,_) $ Exps(es) $ Tok(T.RPAREN,r2)) =
+  | r_exp_2 (S $ Ident(vid,r1) $ Tok(T.LPAREN,_) $ Exps(es) $ Tok(T.RPAREN,r2)) =
       S $ m_exp(A.FunCall(vid, es),join r1 r2)
+  | r_exp_2 S = r_exp_3 S
 
-  (* field access *)
-  | r_exp (S $ Exp(e,r1) $ Tok(T.DOT,_) $ Ident(fid,r2)) =
+(* field access *)
+and r_exp_3 (S $ Exp(e,r1) $ Tok(T.DOT,_) $ Ident(fid,r2)) =
       S $ m_exp(A.Select(e, fid),join r1 r2)
-  | r_exp (S $ Exp(e,r1) $ Tok(T.ARROW,_) $ Ident(fid,r2)) =
+  | r_exp_3 (S $ Exp(e,r1) $ Tok(T.ARROW,_) $ Ident(fid,r2)) =
       S $ m_exp(A.Select(A.OpExp(A.DEREF, [e]), fid), join r1 r2)
 
   (* identifiers, must come after field access *)
-  | r_exp (S $ Ident(vid,r)) = S $ m_exp(A.Var(vid), r)
+  | r_exp_3 (S $ Ident(vid,r)) = S $ m_exp(A.Var(vid), r)
 
   (* array access *)
-  | r_exp (S $ Exp(e1,r1) $ Tok(T.LBRACKET,_) $ Exp(e2,_) $ Tok(T.RBRACKET,r2)) =
+  | r_exp_3 (S $ Exp(e1,r1) $ Tok(T.LBRACKET,_) $ Exp(e2,_) $ Tok(T.RBRACKET,r2)) =
       S $ m_exp(A.OpExp(A.SUB, [e1,e2]), join r1 r2)
 
-  (* operator precedence *)
-  | r_exp (S $ Tok(LPAREN,r1) $ Exp(e,_) $ Tok(RPAREN,r2)) = S $ m_exp(e,join r1 r2)
-  | r_exp (S $ Exp(e1,r1) $ Infix(_, T.QUEST, _, _) $ Exp(e2,_) $ Infix(_, T.COLON, _, _) $ Exp(e3,r2)) =
+  | r_exp_3 S = r_exp_4 S
+
+(* operator precedence *)
+and r_exp_4 (S $ Tok(LPAREN,r1) $ Exp(e,_) $ Tok(RPAREN,r2)) = S $ m_exp(e,join r1 r2)
+  | r_exp_4 (S $ Exp(e1,r1) $ Infix(_, T.QUEST, _, _) $ Exp(e2,_) $ Infix(_, T.COLON, _, _) $ Exp(e3,r2)) =
       S $ m_exp(A.OpExp (A.COND, [e1, e2, e3]), join r1 r2)
 
   (* move the next two cases to the p_exp_prec function? *)
-  | r_exp (S $ Exp(e1,r1) $ Infix(_, T.QUEST, _, _) $ Exp(e2,r2)) =
+  | r_exp_4 (S $ Exp(e1,r1) $ Infix(_, T.QUEST, _, _) $ Exp(e2,r2)) =
       parse_error (join r1 r2, "Conditional 'e1 ? e2 : e3' without else-clause ': e3'")
-  | r_exp (S $ Exp(e1,r1) $ Infix(_, T.COLON, _, _) $ Exp(e3,r2)) =
+  | r_exp_4 (S $ Exp(e1,r1) $ Infix(_, T.COLON, _, _) $ Exp(e3,r2)) =
       parse_error (join r1 r2, "Conditional 'e1 ? e2 : e3' without then-clause '? e2'")
 
-  | r_exp (S $ Exp(e1,r1) $ Infix(_, t2, _, o2) $ Exp(e2,r2)) = S $ m_exp(A.OpExp(o2, [e1,e2]), join r1 r2)
-  | r_exp (S $ Prefix(_, t1, r1, o1) $ Exp(e1,r2)) = S $ m_exp(A.OpExp(o1, [e1]), join r1 r2)
+  | r_exp_4 (S $ Exp(e1,r1) $ Infix(_, t2, _, o2) $ Exp(e2,r2)) = S $ m_exp(A.OpExp(o2, [e1,e2]), join r1 r2)
+  | r_exp_4 (S $ Prefix(_, t1, r1, o1) $ Exp(e1,r2)) = S $ m_exp(A.OpExp(o1, [e1]), join r1 r2)
 
   (* default case: alrady reduced, must be last *)
-  | r_exp (S $ Exp(e,r)) = S $ Exp(e,r)
+  | r_exp_4 (S $ Exp(e,r)) = S $ Exp(e,r)
 
 and p_ident ST = case first ST of
     T.IDENT(s) => ST |> drop >> push (Ident(Symbol.symbol s, here ST))
