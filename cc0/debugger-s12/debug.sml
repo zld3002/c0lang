@@ -199,6 +199,7 @@ struct
           | Ast.Break => not_expected "a break"
           | Ast.Return _ => not_expected "a return"
           | Ast.Assert _ => not_expected "an assertion"
+          | Ast.Error _ => not_expected "an error" 
           | Ast.Anno _ => not_expected "an annotation"
       end
 
@@ -387,7 +388,7 @@ struct
   
   (* Typecheck, enforcing the presence of a correctly-defined main function *)
 
-   val {library_headers, program} = 
+   val {library_headers, program, oprogram} = 
    let 
       val main = Symbol.symbol "main" 
       val maindecl = Ast.Function (main, Ast.Int, [], NONE, nil, false, NONE)
@@ -401,6 +402,10 @@ struct
       Top.finalize {library_headers = library_headers}
        handle _ => raise COMPILER_ERROR
  
+   val () =
+      Top.static_analysis oprogram 
+       handle _ => raise COMPILER_ERROR      
+
   in
       (case call_main (library_headers, program)
 	of SOME(retval) =>

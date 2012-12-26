@@ -42,7 +42,7 @@ let
 
    (* Typecheck, enforcing the presence of a correctly-defined main function *)
 
-   val {library_headers, program, ...} = 
+   val {library_headers, program, oprogram} = 
    let 
       val main = Symbol.symbol "main" 
       val maindecl = Ast.Function (main, Ast.Int, [], NONE, nil, false, NONE)
@@ -55,6 +55,10 @@ let
    val {library_wrappers} = 
       Top.finalize {library_headers = library_headers}
        handle _ => die COMPILER_ERROR
+
+   val () =
+      Top.static_analysis oprogram 
+       handle _ => die COMPILER_ERROR      
 
    (* Check environment variable, start outputting data *)
 

@@ -31,6 +31,7 @@ sig
       string list -> {library_headers : Ast.program, program : Ast.program, oprogram : Ast.program}
   val finalize : 
       {library_headers : Ast.program} -> {library_wrappers: Ast.program}
+  val static_analysis : Ast.program -> unit
 end
 
 structure Top :> TOP =
@@ -296,6 +297,44 @@ fun finalize {library_headers} =
         { library_wrappers = library_wrappers } 
       end
 
+fun static_analysis oprogram = 
+let
+        (* Run purity check *)
+        val _ = Flag.guard Flags.flag_purity_check 
+	           (fn () => 
+	             let val verrors = AnalysisTop.purityCheck oprogram
+	                 val _ = map (say o VError.pp_error) verrors
+	             in 
+	                 case verrors of
+	                    [] => ()
+	                  | _ => raise EXIT (* die on error. *)
+	             end) ()
+        (* Run static checking *)
+        val _ = Flag.guard Flags.flag_static_check 
+	           (fn () => 
+	             let val verrors = AnalysisTop.staticCheck oprogram
+	                 val _ = map (say o VError.pp_error) verrors
+	                 val _ = case verrors of
+	                            [] => say "No static errors."
+	                          | _ => ()
+	             in 
+                         (* Static check does not compile the program. *)
+	                 raise FINISHED
+	             end) ()
+        (* Run verification condition checking *)
+        val _ = Flag.guard Flags.flag_verif_check 
+	           (fn () => 
+	             let val verrors = AnalysisTop.verifCheck oprogram
+	                 val _ = map (say o VError.pp_error) verrors
+	                 val _ = case verrors of
+	                            [] => say "No verification condition errors."
+	                          | _ => ()
+	             in 
+                         (* Verification conditions check does not compile the program. *)
+	                 raise FINISHED
+	             end) ()
+  in () end	             
+
   fun main (name, args) =
       let
         val usage = 
@@ -358,42 +397,8 @@ fun finalize {library_headers} =
         (* Load the program into memory *)
         val {library_headers, program, oprogram} = typecheck_and_load sources
         val {library_wrappers} = finalize {library_headers = library_headers}
+        val () = static_analysis oprogram
 
-        (* Run purity check *)
-        val _ = Flag.guard Flags.flag_purity_check 
-	           (fn () => 
-	             let val verrors = AnalysisTop.purityCheck oprogram
-	                 val _ = map (say o VError.pp_error) verrors
-	             in 
-	                 case verrors of
-	                    [] => ()
-	                  | _ => raise EXIT (* die on error. *)
-	             end) ()
-        (* Run static checking *)
-        val _ = Flag.guard Flags.flag_static_check 
-	           (fn () => 
-	             let val verrors = AnalysisTop.staticCheck oprogram
-	                 val _ = map (say o VError.pp_error) verrors
-	                 val _ = case verrors of
-	                            [] => say "No static errors."
-	                          | _ => ()
-	             in 
-                         (* Static check does not compile the program. *)
-	                 raise FINISHED
-	             end) ()
-        (* Run verification condition checking *)
-        val _ = Flag.guard Flags.flag_verif_check 
-	           (fn () => 
-	             let val verrors = AnalysisTop.verifCheck oprogram
-	                 val _ = map (say o VError.pp_error) verrors
-	                 val _ = case verrors of
-	                            [] => say "No verification condition errors."
-	                          | _ => ()
-	             in 
-                         (* Verification conditions check does not compile the program. *)
-	                 raise FINISHED
-	             end) ()
-	             
         (* Determine output files Based on the initial files *)
         (* use last input file as name for intermediate .c and .h files *)
 	val last_source = List.last sources
