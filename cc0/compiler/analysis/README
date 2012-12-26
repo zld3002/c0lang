@@ -23,5 +23,4 @@ Current Issues:
   -Nullity checks do not track heap locations or use other function's
   posconditions.
   -SSA conversion is exponential in the number of nested loops.
-  -Purity check does not say where the function is called to require purity.
   -Purity checker is very uncommented.

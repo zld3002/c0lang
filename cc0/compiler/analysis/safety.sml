@@ -26,7 +26,7 @@ sig
    (* learn facts from an expression, checking safety as well. *)
    val analyzeExpr : (Ast.tp SymMap.map) -> context ->
          (Mark.ext option * AAst.aexpr) -> (VError.error list * context)
-   (* learn facts from an return, checking safety as well. *)
+   (* learn facts from a return, checking safety as well. *)
    val analyzeReturn : Ast.tp -> (Ast.tp SymMap.map) -> context ->
          (Mark.ext option * AAst.aexpr) -> (VError.error list * context)
    (* analyze a boolean expression, given the context that results when it evalutes
@@ -82,7 +82,7 @@ struct
                   ([], g) invs
          (* check the invariants on entering the loop: *)
          val (errFirst, _) = checkInvs (analyzePhis gamma 0)
-         val errFirst = Wrap ("loop inv may not hold on entry: ", errFirst)
+         val errFirst = wrap ("loop inv may not hold on entry: ", errFirst)
          (* generate a generic context that is from any number of iterations arround
             the loop: *)
          val loopCtx = foldl (fn (phi, g) => Ctx.havocPhi types g phi) gamma phis
@@ -108,13 +108,13 @@ struct
             and the way checkStmt collects the contexts are the same, the indices
             are the same (except offset by 2 because of the entering of the loop
             and normal loop return to top. *)
-         val errSec = Wrap ("loop inv may not hold when body completes: ", errSec)
+         val errSec = wrap ("loop inv may not hold when body completes: ", errSec)
          fun checkConts i cs = 
              case cs of [] => []
                       | c::cs' => (#1(checkInvs (analyzePhis c i))) @
                                   (checkConts (i+1) cs')
          val errConts = checkConts 2 conts
-         val errConts = Wrap ("loop inv may not hold on continue: ", errConts)
+         val errConts = wrap ("loop inv may not hold on continue: ", errConts)
          val ctxend = Ctx.lub (fg, foldl Ctx.lub Ctx.bot brks)
          val ctxend' = foldl (fn (phi, g) => Ctx.analyzePhi types g phi) ctxend phis
          
@@ -157,8 +157,12 @@ struct
        | AAst.Continue => ([], Ctx.bot, [], [], [gamma])
        | AAst.Return (SOME e) =>
            let val (errs, gamma') = Ctx.analyzeReturn rtp types gamma (ext, e)
-           in (errs, gamma', [], [], []) end
-       | AAst.Return (NONE) => ([], Ctx.bot, [gamma], [], [])
+               val (errs2, tgamma, fgamma) =
+                 case rtp of
+                    Ast.Bool => (Ctx.analyzeBoolExpr types gamma (ext, e))
+                  | _ => ([], Ctx.bot, Ctx.bot)
+           in (errs, Ctx.bot, [(gamma', tgamma, fgamma)], [], []) end
+       | AAst.Return (NONE) => ([], Ctx.bot, [(gamma, Ctx.bot, Ctx.bot)], [], [])
        | AAst.If (cond, t, f,phis) => 
            let val (err, ct, cf) = Ctx.analyzeBoolExpr types gamma (ext, cond)
                val err' = (if Ctx.isBot ct then
@@ -169,7 +173,7 @@ struct
                            else [])
                val (errt, gt, r1, b1, c1) = (checkStmt rtp types ct (ext, t))
                val (errf, gf, r2, b2, c2) = (checkStmt rtp types cf (ext, f))
-           in (err @ err' @ errt @ errf, foldl (fn (phi, g) => Ctx.analyzePhi types g phi) (Ctx.glb (gt, gf)) phis,
+           in (err @ err' @ errt @ errf, foldl (fn (phi, g) => Ctx.analyzePhi types g phi) (Ctx.lub (gt, gf)) phis,
                r1@r2, b1@b2, c1@c2) end
        | AAst.While (phis, guard, invs, body,endphis) => 
            checkWhile rtp types gamma ext (phis, guard, invs, body, endphis)
@@ -185,9 +189,7 @@ struct
      in
        foldl (check) ([], Ctx.empty) reqs
      end
-   (* check that the ensures clause are safe and attempt to prove them. note this
-      currently doesn't work very well because the return value is not tracked in
-      the context. *)
+   (* check that the ensures clause are safe and attempt to prove them. *)
    fun checkEnsures types ctx ens = 
      let fun check (spec, (errs, g)) =
             let val (e, g') = Ctx.proveBoolExpr types g (NONE, spec) true
@@ -199,7 +201,21 @@ struct
    fun checkFunc rtp types reqs body ens =
       let val (errs, ctx) = checkRequires types reqs
           val (errs', ctx', rets, _, _) = checkStmt rtp types ctx (NONE, body)
-          val (errs'', ctx'') = checkEnsures types (foldl Ctx.lub ctx' rets) ens
+          val ret_contexts = map #1 rets
+          val (tctxes, fctxes) = (map #2 rets, map #3 rets)
+          (*val _ = TextIO.print "function ----\n"
+          val _ = TextIO.print (AAst.Print.pp_astmt body ^ "\n")
+          val _ = List.app (fn c => TextIO.print ("function summary (trues):" ^ Ctx.pp_context c ^ "\n")) tctxes*)
+          val (errs'', ctx'') = checkEnsures types (foldl Ctx.lub ctx' ret_contexts) ens
+          val (_, tctx) = checkEnsures types (foldl Ctx.lub ctx' tctxes) ens
+          val (_, fctx) = checkEnsures types (foldl Ctx.lub ctx' fctxes) ens
+          (*val _ = 
+            case rtp of
+               Ast.Bool => (TextIO.print ("function summary (true) :" ^ Ctx.pp_context tctx ^ "\n");
+                            TextIO.print ("function summary (false):" ^ Ctx.pp_context fctx ^ "\n")
+                            )
+             | _ => ()
+           *)  
       in errs @ errs' @ errs'' end
    
 end

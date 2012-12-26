@@ -12,19 +12,39 @@ struct
       fun checkFunc (AAst.Function(rtp, name, types, formals, reqs, s, ens)) =
               NullityAnalysis.checkFunc rtp types reqs s ens
       fun check funcs = List.concat (map checkFunc funcs)
-      val funcs = Analysis.analyze true prog
+      val funcs = Analysis.analyze false prog
     in
       check funcs
     end
   fun purityCheck prog =
     let
       val funcs = (Analysis.analyze false prog)
-      val purefuncs = (foldr SymSet.union SymSet.empty
-                           (map Purity.needspurity funcs))
-      fun isPure (AAst.Function(rtp, name, types, formals, reqs, s, ens)) =
-        SymSet.member(purefuncs, name)
+                           
+      val none = ([], SymMap.empty)
+      fun merge [] = none
+        | merge [x] = x
+        | merge ((e1, m1)::(e2, m2)::rest) =
+           let val e = (e1 @ e2, SymMap.unionWith #1 (m1, m2))
+           in merge (e::rest) end
+           
+      fun isPure pf (AAst.Function(rtp, name, types, formals, reqs, s, ens)) =
+        isSome (SymMap.find(pf, name))
+        
+      fun round overallpf funcs_to_check errors_so_far =
+        let val fs = List.filter (isPure funcs_to_check) funcs
+            val results = map (Purity.purity overallpf) fs
+            val (errors, newpure) = merge results
+            val errors' = errors @ errors_so_far
+        in 
+          case SymMap.numItems newpure of
+             0 => errors'
+           | _ => round (SymMap.unionWith #1 (overallpf, newpure)) newpure errors'
+        end
+        
+      val annotationfuncs = foldr (SymMap.unionWith #1) SymMap.empty
+                                  (map (Purity.needspurity) funcs)
     in
-      List.concat (map (Purity.purity purefuncs) (List.filter isPure funcs))
+      round annotationfuncs annotationfuncs []
     end
   fun verifCheck prog =
     let

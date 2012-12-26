@@ -96,7 +96,8 @@ end
     [{short = "l", long=["library"], desc = reqarg "-l", help=""},
      {short = "L", long=[], desc = reqarg "-L", help=""},
      {short = "d", long=["dyn-check"], desc = noarg "-d", help=""},
-     {short = "", long=["no-purity-check"], desc = noarg "--no-purity-check", help=""}]
+     {short = "", long=["no-purity-check"], desc = noarg "--no-purity-check", help=""},
+     {short = "", long=["purity-check"], desc = noarg "--purity-check", help=""}]
 
   fun check_readable filename =
     (* i think this is slightly saner --wjl *)

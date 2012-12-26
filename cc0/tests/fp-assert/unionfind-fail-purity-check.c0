@@ -1,4 +1,4 @@
-//test error 
+//should fail with purity checking enabled.
 
 typedef struct ufs* ufs;
 struct ufs {
@@ -44,10 +44,7 @@ bool valid_ufs (ufs eqs)
   }
   for (i = 0; i < size; i++)
     if (!depth_bounded(eqs,i))
-    {
-      //@assert !depth_bounded(eqs, i);
       return false;
-    }
   return true;
 }
 

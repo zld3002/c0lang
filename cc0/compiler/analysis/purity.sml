@@ -1,12 +1,23 @@
 
 signature PURITY = 
 sig
-  val purity: SymSet.set -> AAst.afunc -> VError.error list
-  val needspurity: AAst.afunc -> SymSet.set
+
+  type pureset = VError.error SymMap.map
+  
+  (* Check the purity of a function, assuming the given set contains the pure
+     functions. Returns a list of purity errors, as well as a map of further
+     functions that must be considered pure. *)  
+  val purity: pureset -> AAst.afunc -> VError.error list * pureset
+  
+  (* Gives a map from symbols of functions that need purity, to reasons (given
+     as Verification Notes) as to why they need purity (this lets us give better
+     error messages). *)
+  val needspurity: AAst.afunc -> pureset
 end
 
-structure Purity =
+structure Purity :> PURITY =
 struct
+  type pureset = VError.error SymMap.map
   type sym = Symbol.symbol
   type ident = string
   
@@ -300,71 +311,82 @@ struct
          
   fun checkMutability ctx imms tp = #2(checkMut ctx imms SymSet.empty tp)
     
+    
+  
+  val checkEmpty = ([], SymMap.empty)
+  fun mergeCheck [] = checkEmpty
+    | mergeCheck [x] = x
+    | mergeCheck ((e1, m1)::(e2, m2)::rest) =
+       let val e = (e1 @ e2, SymMap.unionWith #1 (m1, m2))
+       in mergeCheck (e::rest) end
+      
+    
   fun checkCall mark ctx imms f args =
     case C.isPure ctx f of
-       true => [] (* no constraints in this case *)
+       true => checkEmpty (* no constraints in this case *)
      | false => 
-         let val immutables = (map (fn a => checkMutability ctx imms (syn_extended ctx a)) args)
-         in
-           case List.foldl (fn (a,b) => a orelse b) false immutables of
-              true => [VError.VerificationError(mark, "cannot call impure function which may modify previously visible memory.")]
-            | false => []
-         end  
+         case List.exists (fn a => checkMutability ctx imms 
+                                            (syn_extended ctx a))
+                            args of
+            true => ([], SymMap.insert(SymMap.empty, f, VError.VerificationNote(mark, 
+                        Symbol.name f ^ " must be pure because it is called on previously visible state from here")))
+          | false => checkEmpty
     
   fun checkE mark ctx imms e =
     case e of
-       Local l => []
+       Local l => checkEmpty
      | Op (oper, args) =>
-         List.concat (map (fn e =>checkE mark ctx imms e) args)
+         mergeCheck (map (fn e =>checkE mark ctx imms e) args)
      | Call (f, args) => 
-         let val errs = List.concat (map (fn e =>checkE mark ctx imms e) args)
-         in errs @ (checkCall mark ctx imms f args) end
-     | IntConst _ => []
-     | BoolConst _ => []
-     | StringConst _ => []
-     | CharConst _ => []
-     | Alloc _ => []
-     | Null => []
-     | Result => []
+         let val errs = mergeCheck (map (fn e =>checkE mark ctx imms e) args)
+         in mergeCheck[errs, checkCall mark ctx imms f args] end
+     | IntConst _ => checkEmpty
+     | BoolConst _ => checkEmpty
+     | StringConst _ => checkEmpty
+     | CharConst _ => checkEmpty
+     | Alloc _ => checkEmpty
+     | Null => checkEmpty
+     | Result => checkEmpty
      | Length e' => checkE mark ctx imms e'
      | Old e' => checkE mark ctx imms e'
      | AllocArray (tp, e') => checkE mark ctx imms e'
      | Select (e', field) => checkE mark ctx imms e'
-     | MarkedE (m) => checkE (Mark.ext m)  ctx imms (Mark.data m)
+     | MarkedE (m) => checkE (Mark.ext m) ctx imms (Mark.data m)
      
   fun check mark ctx imms s = 
     case s of     
-       Nop => []
-     | Seq (a,b) => (check mark ctx imms a) @ (check mark ctx imms b)
+       Nop => checkEmpty
+     | Seq (a,b) => mergeCheck [check mark ctx imms a, check mark ctx imms b]
      | Assert (e) => checkE mark ctx imms e
-     | Error (e) => checkE mark ctx imms e
-     | Annotation (e) => []
+     | Annotation (e) => checkEmpty
+     | Error (e) => checkE mark ctx imms e 
      | Def(l, e) => checkE mark ctx imms e
      | Assign (lv, oper, e) =>
-                   (if isImm (imms, getlvtag ctx lv)
-                    then [VError.VerificationError(mark, 
-                           "assignment may modify previously visible memory.")]
-                    else []) @ (checkE mark ctx imms e) @ (checkE mark ctx imms lv)
+         mergeCheck
+         [if isImm (imms, getlvtag ctx lv)
+          then ([VError.VerificationError(mark, 
+                 "assignment may modify previously visible memory")], SymMap.empty)
+          else checkEmpty, checkE mark ctx imms e, checkE mark ctx imms lv]
                     
      | Expr e => (checkE mark ctx imms e)
-     | Break => []
-     | Continue => []
+     | Break => checkEmpty
+     | Continue => checkEmpty
      | Return (SOME e) => (checkE mark ctx imms e)
-     | Return (NONE) => []
+     | Return (NONE) => checkEmpty
      | If (e, a, b, phi) => 
-          (checkE mark ctx imms e) @ 
-          (check mark ctx imms a) @
-          (check mark ctx imms b)
+         mergeCheck [checkE mark ctx imms e,
+                     check mark ctx imms a,
+                     check mark ctx imms b]
      | While (phi, g, loopinv, b, phi') =>
-          (checkE mark ctx imms g) @
-          (check mark ctx imms b)
+         mergeCheck[checkE mark ctx imms g, check mark ctx imms b]
      | MarkedS m => check (Mark.ext m) ctx imms (Mark.data m)
      
   
-  fun purity purefuncs (Function(rtp, name, tps, formals, reqs, body, ens)) =
+  fun purity puremap (Function(rtp, name, tps, formals, reqs, body, ens)) =
     let fun markAndBindArg ((_, t, loc), c) =
           let val (c', et) = tp_extend_imm_rec c t
           in C.bind c' loc et end
+        val purefuncs = SymSet.addList(SymSet.empty, map (#1) (SymMap.listItemsi puremap))
         val ctxArgs = foldl markAndBindArg (C.empty (tps, purefuncs)) formals
         (* HACKITY HACK: add all structs to the context, so that we never ask
            the context about something it hasn't seen before. *)
@@ -378,14 +400,20 @@ struct
               else iter imms'
            end
         val imms = iter immempty
-        val errors = check NONE ctx imms body
-    in errors end
+        val (errors, newset) = check NONE ctx imms body
+        val reason = valOf(SymMap.find(puremap, name))
+    in (case errors of
+           [] => []
+         | a => a @ [reason], newset) end
   
   fun needspurityE e = 
     case e of
        Local l => []
      | Op (oper, args) => (List.concat (map needspurityE args))
-     | Call (f, args) => [f] @ (List.concat (map needspurityE args))
+     | Call (f, args) =>
+         [SymMap.insert(SymMap.empty, f,
+                    VError.VerificationNote (NONE, Symbol.name f ^ " must be pure because it is called in an annotation from here"))]
+          @ (List.concat (map needspurityE args))
      | IntConst _ => []
      | BoolConst _ => []
      | StringConst _ => []
@@ -397,7 +425,9 @@ struct
      | Old e' => needspurityE e'
      | AllocArray (tp, e') => needspurityE e'
      | Select (e', field) => needspurityE e'
-     | MarkedE (m) => needspurityE (Mark.data m)
+     | MarkedE (m) =>
+        let val np = needspurityE (Mark.data m)
+        in map (SymMap.map (fn e => VError.enclose e (Mark.ext m))) np end
        
   fun needspurityS s = 
     case s of 
@@ -418,7 +448,7 @@ struct
      | MarkedS m => needspurityS (Mark.data m)
      
   fun needspurity (Function(rtp, name, tps, formals, reqs, body, ens)) =
-    foldr SymSet.add' SymSet.empty
+    foldr (SymMap.unionWith #1) SymMap.empty
        (
          (List.concat (map needspurityE reqs)) @
          (needspurityS body) @
