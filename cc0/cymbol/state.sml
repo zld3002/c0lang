@@ -542,7 +542,8 @@ functor StateFn (structure Data : DATA
   in
      List.app 
         (fn (s,v) =>
-            TextIO.print (Symbol.name s^": "^(value_string v)^"\n")) 
+            if Symbol.Internal = #1 (Symbol.nname s) then ()
+            else TextIO.print (Symbol.name s^": "^(value_string v)^"\n")) 
         (List.concat (map get_elems locals))
   end
 

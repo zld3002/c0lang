@@ -35,8 +35,11 @@ fun process_ast pre current_lib =
         (fn () => print (pre ^ "Processing " ^ Symbol.name x ^ " (native)\n"))
         ()
      ; case current_lib of 
-          NONE => raise Error.Internal ("Library function " ^ Symbol.name x
-                                        ^ " outside of any library")
+          NONE => 
+          (Flag.guard Flags.flag_verbose
+              (fn () => print (pre ^ "Re-processing " ^ Symbol.name x 
+                               ^ " (native)\n"))
+              ())
         | SOME (lib_name, NONE) => 
           (Flag.guard Flags.flag_verbose
               (fn () => print (pre ^ "Failed to load; library not present\n"))
@@ -127,27 +130,25 @@ fun reload prog = (CT.reset (); app (process_ast "" NONE) prog)
 
 fun print_one (x, (tp, args)) = 
    let 
-      fun str_args [] = []
-        | str_args [(tp, x)] =
-             if Flag.isset Flags.flag_dyn_check
-                then []
-             else [Ast.Print.pp_tp tp^" "^Symbol.name x]
-        | str_args ((tp, x) :: args) = 
-             (Ast.Print.pp_tp tp^" "^Symbol.name x) :: str_args args
+      fun str_args (tp, x) = 
+         if Symbol.Internal = #1 (Symbol.nname x) then NONE 
+         else SOME (Ast.Print.pp_tp tp ^ " " ^ Symbol.name x)
+      val args' = List.mapPartial str_args args
    in
     ( print (Ast.Print.pp_tp tp)
     ; print " "
     ; print (Symbol.name x)
-    ; print ("("^String.concatWith ", " (str_args args)^");"))
+    ; print ("("^String.concatWith ", " args'^");"))
    end
 
 val print = 
  fn () => app (fn (x, Native (ty, _)) => 
-                  (print_one (x, ty); print " // Library function\n")
+                     (print_one (x, ty); print " // Library function\n")
                 | (x, AbsentNative (ty, _)) => 
-                  (print_one (x, ty); print " // Broken library function\n")
+                     (print_one (x, ty); print " // Broken library function\n")
                 | (x, Interpreted (ty, _)) => 
-                  (print_one (x, ty); print "\n"))
+                     if Symbol.Internal = #1 (Symbol.nname x) then ()
+                     else (print_one (x, ty); print "\n"))
               (map (fn x => (x, valOf (CT.lookup x))) (CT.list ()))
           
 end
