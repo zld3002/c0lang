@@ -1,0 +1,107 @@
+/* Stacks
+ * 15-122 Principles of Imperative Computation, Spring 2011
+ * Alternative implementation accounting for the possibility
+ * of circular lists, based on a student suggestion in lecture
+ * Frank Pfenning
+ */
+
+typedef int elem;
+
+/* Interface to stacks of elems */
+
+typedef struct stack* stack;
+
+bool stack_empty(stack S);	/* O(1) */
+stack stack_new();		/* O(1) */
+void push(stack S, elem e);	/* O(1) */
+elem pop(stack S)		/* O(1) */
+//@requires !stack_empty(S);
+  ;
+int stack_size(stack S);	/* O(1) */
+
+/* Implementation of stacks */
+
+/* Aux structure of linked lists */
+typedef struct list* list;
+struct list {
+  elem data;
+  list next;
+};
+
+/* is_segment_size(start, end, n) = true if [start->..->end)
+ * is a list segment with exactly n elements.  This avoids
+ * the possibility of divergence on circular lists.
+ */
+bool is_segment_size(list start, list end, int n)
+//@requires n >= 0;
+{
+  list p = start;
+  while (p != end) {
+    if (p == NULL || n == 0) return false;
+    p = p->next;
+    n = n-1;
+  }
+  return n == 0;
+}
+
+/* Stacks */
+
+struct stack {
+  list top;
+  list bottom;
+  int size;			/* num of elements in stack */
+};
+
+bool is_stack(stack S) {
+  if (S == NULL) return false;
+  if (S->top == NULL || S->bottom == NULL) return false;
+  if (S->size < 0) return false;
+  return is_segment_size(S->top, S->bottom, S->size);
+}
+
+int stack_size(stack S)
+//@requires is_stack(S);
+{
+  return S->size;
+}
+
+bool stack_empty(stack S)
+//@requires is_stack(S);
+{
+  return S->top == S->bottom;	/* or: S->size == 0 */
+}
+
+stack stack_new()
+//@ensures is_stack(\result);
+//@ensures stack_empty(\result);
+{
+  stack S = alloc(struct stack);
+  list l = alloc(struct list);	/* does not need to be initialized! */
+  S->top = l;
+  S->bottom = l;
+  S->size = 0;
+  return S;
+}
+
+void push(stack S, elem e)
+//@requires is_stack(S);
+//@ensures is_stack(S);
+{
+  list l = alloc(struct list);
+  l->data = e;
+  l->next = S->top;
+  S->top = l;
+  (S->size)++;
+}
+
+elem pop(stack S)
+//@requires is_stack(S);
+//@requires !stack_empty(S);
+//@ensures is_stack(S);
+{
+  assert(!stack_empty(S));
+  elem e = S->top->data;
+  S->top = S->top->next;
+  (S->size)--;
+  return e;
+}

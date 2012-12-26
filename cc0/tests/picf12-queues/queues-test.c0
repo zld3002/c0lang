@@ -1,0 +1,19 @@
+/* Simple testing of lists and queues
+ * 15-122 Principles of Imperative Computation, Fall 2010
+ * Frank Pfenning
+ */
+
+#use <string>
+#use <conio>
+
+int main () {
+  /* black-box test: use only the interface */
+  queue Q = queue_new();
+  enq(Q, "A");
+  enq(Q, "B");
+  assert(string_equal(deq(Q), "A"));
+  assert(string_equal(deq(Q), "B"));
+  assert(queue_empty(Q));
+  print("All tests passed!\n");
+  return(0);
+}

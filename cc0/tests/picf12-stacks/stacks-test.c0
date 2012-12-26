@@ -1,0 +1,48 @@
+/* Testing stacks
+ *
+ * 15-122 Principles of Imperative Computation, Fall 2012
+ * Frank Pfenning
+ */
+
+#use <conio>
+
+/* printstack(S, k) prints the top k elements
+ * of the stack, and '...' if there are more.
+ * Rightmost element is top of stack.
+ */
+void printstack(stack S, int k)
+//@requires k >= 0;
+{
+  stack T = stack_new();
+  while (!stack_empty(S) && k > 0)
+    //@loop_invariant k >= 0;
+    {
+    push(T, pop(S));
+    k--;
+    }
+  if (!stack_empty(S))
+    print("... ");
+  while (!stack_empty(T)) {
+    int x = pop(T);
+    printint(x); print(" ");
+    push(S, x);
+  }
+  /* at this point T's header will become unreachable */
+  return;
+}
+
+int main() {
+  stack S = stack_new();
+  push(S, 12);
+  push(S, 15);
+  push(S, 20);
+  push(S, 42);
+  printstack(S, 3); print("\n");
+  assert(pop(S) == 42);
+  assert(pop(S) == 20);
+  assert(pop(S) == 15);
+  assert(pop(S) == 12);
+  assert(stack_empty(S));
+  print("All tests passed!\n");
+  return 0;
+}

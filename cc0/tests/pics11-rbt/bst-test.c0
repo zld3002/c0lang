@@ -1,0 +1,56 @@
+/* Testing binary search trees
+ * 15-122 Principles of Imperative Computation, Fall 2010
+ * Frank Pfenning
+ */
+
+// cc0 -lstring -lconio rand.h0 lcg.c0 bst.c0 bst-test.c0 -d
+#use <string>
+#use <conio>
+#use <rand>
+
+#use "bst.h0"
+
+elem elem_fromint(int k) {
+  string s = string_fromint(k);
+  elem e = alloc(struct elem);
+  e->word = s;
+  e->count = k;
+  return e;
+}
+
+elem elem_fromstring(string s) {
+  elem e = alloc(struct elem);
+  e->word = s;
+  return e;
+}
+
+int main() {
+  int n = (1<<8)+1;		// 1<<9 for -d; 1<<13 for timing
+  int num_tests = 2;		// 10 for -d;  100 for timing
+  int i; int j;
+  int seed = 0xc0c0ffee;
+  rand_t gen = init_rand(seed);
+  elem[] A = alloc_array(elem, n);
+
+  print("Testing bst of size "); printint(n);
+  print(" "); printint(num_tests); print(" times\n");
+  for (j = 0; j < num_tests; j++) {
+    bst B = bst_new();
+    for (i = 0; i < n; i++) {
+      elem e = elem_fromint(rand(gen));
+      A[i] = e;
+      if (bst_search(B, elem_key(e)) != NULL) continue; // don't insert duplicate keys
+      bst_insert(B, e);
+      assert(bst_search(B, elem_key(e)) == e);
+    }
+    for (i = 0; i < n; i++) {
+      assert(bst_search(B, elem_key(A[i])) == A[i]);
+    }
+    assert(bst_search(B, "a0b") == NULL);
+    assert(bst_search(B, "82 3") == NULL);
+    // next line violates interface...
+    assert(is_bst(B));
+  }
+  print("All tests succeeded!\n");
+  return 0;
+}

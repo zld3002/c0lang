@@ -1,0 +1,71 @@
+/* Timing linear and binary search
+ * 15-122 Principle of Imperative Computation, Spring 2011
+ * Frank Pfenning
+ */
+
+#use <conio>
+#use <args>
+#use <rand>
+#use <util>
+
+/*
+ * Need to run this without the search
+ * to understand the behavior of setting
+ * up the test as compared to performing it
+ *
+ * Argument passing could improve that, but
+ * we avoid this complication
+ */
+
+int find_time (int exp, int num_tests) {
+
+  int seed = 0xdeadbeef;
+  rand_t gen = init_rand(seed);
+  int n = 1<<exp;
+
+  int[] A = alloc_array(int, n);
+
+  print("Timing "); printint(num_tests);
+  print(" times with 2^"); printint(exp);
+  print(" elements\n");
+
+  /* generated sorted array */
+  A[0] = 0;
+  for (int i = 0; i < n-1; i++)
+    //@loop_invariant 0 <= i && i <= n-1;
+    {
+      int dx = abs(rand(gen) % (int_max()/n));
+      A[i+1] = A[i]+dx;
+    }
+
+  /* timing search */
+  /* first, elements in the array */
+  for (int i = 0; i < num_tests; i++) {
+    int j = abs(rand(gen) % n);
+    binsearch(A[j], A, n);
+  }
+
+  /* then random elements */
+  for (int i = 0; i < num_tests; i++) {
+    int x = rand(gen);
+    binsearch(x, A, n);
+  }
+
+  return 0;
+}
+
+int main () {
+  /* parse -e <exponent> -r <repeats> */
+
+  int* e_ptr = alloc(int);	/* -e <exponent> */
+  *e_ptr = 18;		/* default value */
+  args_int("-e", e_ptr);
+
+  int* r_ptr = alloc(int);	/* -r <repeat> */
+  *r_ptr = 1000;		/* default */
+  args_int("-r", r_ptr);
+
+  args_parse();
+
+  return find_time(*e_ptr, *r_ptr);
+}

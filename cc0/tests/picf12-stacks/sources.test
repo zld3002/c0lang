@@ -1,0 +1,2 @@
+return 0        ~ -d stacks.c0 stacks-test.c0
+return 0        ~ -d stacks-alt.c0 stacks-test.c0

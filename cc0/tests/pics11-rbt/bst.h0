@@ -1,0 +1,52 @@
+/* Red/black trees
+ * 15-122 Principles of Imperative Computation, Fall 2010
+ * Frank Pfenning
+ */
+
+/* compile with -lstring */
+#use <string>
+
+/*************************/
+/* Client types and code */
+/*************************/
+
+/* elements */
+struct elem {
+  string word; /* key */
+  int count;   /* information */
+};
+
+/* key comparison */
+int compare(string s1, string s2) {
+  return string_compare(s1,s2);
+}
+
+/* extracting keys from elements */
+string elem_key(struct elem* e)
+//@requires e != NULL;
+{
+  return e->word;
+}
+
+string default_key() {
+  return "";
+}
+
+/******************************/
+/* Interface type definitions */
+/******************************/
+
+typedef string key;
+typedef struct elem* elem;  /* NULL must be an elem */
+key elem_key(elem e);
+int compare(key k1, key k2);
+key default_key();
+
+/*************/
+/* Interface */
+/*************/
+
+typedef struct bst* bst;
+bst bst_new();
+void bst_insert(bst B, elem x);
+elem bst_search(bst B, key k);  /* return NULL if not in tree */
