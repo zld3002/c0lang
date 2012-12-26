@@ -256,7 +256,7 @@ in
                       Eval.eval_binop oper (Eval.get (state, loc), v)
       in 
        ( Eval.put (state, loc, v')
-       ; print_result (NONE, v)
+       ; print_result (SOME e1, v)
        ; lastval := Eval.get (state, loc)
             (* Put followed by get (as opposed to lastval := v) associates 
              * NULL values with their type *)

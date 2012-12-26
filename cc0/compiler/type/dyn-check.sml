@@ -18,7 +18,7 @@ struct
       | location (SOME(mark)) = Mark.show(mark)
 
     (* implementing \result in postconditions @ensures *)
-    val result_id = Symbol.new "_result" (* create new internal name *)
+    val result_id = Symbol.nsymbol Symbol.Internal "_result" (* create new internal name *)
     val result_var = A.Var(result_id)
 
     (* implementing caller blame assignment in @requires
