@@ -123,7 +123,8 @@ struct
       val next = ref 0
       fun next_t () =
 	  let val _ = next := !next+1
-	  in Symbol.symbol ("_tmp_" ^ Int.toString (!next)) end
+          (* create new internal symbol *)
+	  in Symbol.new ("_tmp_" ^ Int.toString (!next)) end
   in
     fun new_tmp (tp) ext =
 	let val t = next_t ()

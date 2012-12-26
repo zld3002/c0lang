@@ -13,14 +13,20 @@
 
 signature SYMBOL =
 sig
+  datatype NameSpace = User | Internal
   type symbol
   val compare : symbol * symbol -> order (* compare symbols by their creation time *)
 
-  val reset : unit -> unit	(* resets the hash table in which the symbols are stored *)
+  (* original interface *)
+  val reset : unit -> unit      (* resets the hash table in which the symbols are stored *)
   val symbol : string -> symbol (* returns the symbol with given name (creating if necessary) *)
-  val new : string -> symbol (* generates a new symbol with given name *)
+  val new : string -> symbol    (* generates a new symbol with given name *)
   val name : symbol -> string	(* returns a name associated with symbol *)
-  val nameFull : symbol -> string	(* returns the full internal name of a symbol *)
+  val nameFull : symbol -> string (* returns the full internal name of a symbol *)
+
+  (* name space extension *)
+  val nsymbol : NameSpace -> string -> symbol
+  val nname : symbol -> NameSpace * string
 
   (* symbol tables -- allows association of any type with each symbol *)
   type 'a table
@@ -53,37 +59,44 @@ end
 
 structure Symbol :> SYMBOL =
 struct
-  type symbol = string * int
+  datatype NameSpace = User | Internal
+  type symbol = NameSpace * string * int
 
-  fun compare ((n, i), (n', i')) = Int.compare (i, i')
+  fun compare ((nsp, n, i), (nsp', n', i')) = Int.compare (i, i')
 
   local
     exception Symbol
     val nexts = ref 0
     fun initht () =
-      HashTable.mkTable (HashString.hashString, fn (x, y) => String.compare (x, y) = EQUAL)
-      (128, Symbol)
+        HashTable.mkTable (HashString.hashString,
+                           fn (x, y) => String.compare (x, y) = EQUAL)
+                          (512, Symbol)
     val ht = ref (initht ())
   in
     fun reset () = (nexts := 0;
 		    ht := initht ())
-    fun symbol name =
+    fun nsymbol namespace name =
 	(case HashTable.find (!ht) name
-	  of SOME i => (name, i)
+	  of SOME i => (namespace, name, i)
 	   | NONE =>
 	     let
 		 val i = !nexts before nexts := !nexts + 1
+                 val () = HashTable.insert (!ht) (name, i)
 	     in
-		 HashTable.insert (!ht) (name, i);
-		 (name, i)
+		 (namespace, name, i)
 	     end)
+    fun symbol name = nsymbol User name
     fun new name = 
-       let val i = !nexts before nexts := !nexts + 1
-       in (name, i) end
+        (* don't enter into hash table, which means that 'name'
+         * can never be recognized from input *)
+        let val i = !nexts before nexts := !nexts + 1
+        in (Internal, name, i) end
   end
 
-  fun name (n, i) = n
-  fun nameFull (n, i) = n ^ "$" ^ (Int.toString i)
+  fun name (namespace, name, i) = name
+  fun nameFull (namespace, name, i) = name ^ "$" ^ (Int.toString i)
+
+  fun nname (namespace, name, i) = (namespace, name)
 
   structure Map = BinaryMapFn (struct
 				 type ord_key = symbol

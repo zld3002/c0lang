@@ -47,8 +47,6 @@ ast/ast.sml,0
 
 c0vm/c0vm-c0ffi.sml,0
 
-c0vm/c0vm-native.sml,0
-
 c0vm/c0vm-print.sml,0
 
 c0vm/c0vm-trans.sml,0

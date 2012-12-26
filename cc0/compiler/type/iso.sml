@@ -26,9 +26,7 @@ struct
 
    (* is_safe_shift k = true if 0 <= k & k < 32, so n << k and n >> k is defined.
     * assumes n >> k for negative n is arithmetic right shift, not logical *)
-   fun is_safe_shift (A.IntConst(w)) =
-       Word32Signed.signed_less(MINUSONE, w)
-       andalso Word32Signed.signed_less(w, THIRTYTWO)
+   fun is_safe_shift (A.IntConst(w)) = Word32.<(w, THIRTYTWO)
      | is_safe_shift _ = false
    
    (* iso_exp env e ext = (ss, p)
@@ -92,8 +90,35 @@ struct
 		   (ss1 @ ss2 @ [sd], t)
 	       end 
        end
-     (* A.SHIFTLEFT and A.SHIFTRIGHT may translate to function calls,
-      * but the calls are pure *)
+     (* A.SHIFTLEFT and A.SHIFTRIGHT may translate to function calls *)
+     (* These calls are no longer pure, due to range restriction on e2 *)
+     (* Dec 24, 2012 -fp *)
+     | iso_exp env (e as A.OpExp(A.SHIFTLEFT, [e1,e2])) ext =
+       let val (ss1, p1) = iso_exp env e1 ext
+	   val (ss2, p2) = iso_exp env e2 ext
+       in
+	   if is_safe_shift p2
+	   then (ss1 @ ss2, A.OpExp(A.SHIFTLEFT, [p1, p2]))
+	   else let
+		   val tp = Syn.syn_exp env e
+		   val (sd, t) = new_tmp_init (tp, A.OpExp(A.SHIFTLEFT, [p1, p2])) ext
+	       in
+		   (ss1 @ ss2 @ [sd], t)
+	       end
+       end
+     | iso_exp env (e as A.OpExp(A.SHIFTRIGHT, [e1,e2])) ext =
+       let val (ss1, p1) = iso_exp env e1 ext
+	   val (ss2, p2) = iso_exp env e2 ext
+       in
+	   if is_safe_shift p2
+	   then (ss1 @ ss2, A.OpExp(A.SHIFTRIGHT, [p1, p2]))
+	   else let
+		   val tp = Syn.syn_exp env e
+		   val (sd, t) = new_tmp_init (tp, A.OpExp(A.SHIFTRIGHT, [p1, p2])) ext
+	       in
+		   (ss1 @ ss2 @ [sd], t)
+	       end 
+       end
      | iso_exp env (A.OpExp(A.LOGAND, [e1, e2])) ext =
          iso_exp env (A.OpExp(A.COND, [e1, e2, A.False])) ext
      | iso_exp env (A.OpExp(A.LOGOR, [e1, e2])) ext =

@@ -68,10 +68,7 @@ struct
 
    (* is_safe_shift k = true if 0 <= k & k < 32, so n << k and n >> k is defined.
     * assumes n >> k for negative n is arithmetic right shift, not logical *)
-   fun is_safe_shift (A.IntConst(w)) =
-       Word32.<(w, THIRTYTWO)
-       (* Word32Signed.signed_less(MINUSONE, w)
-          andalso Word32Signed.signed_less(w, THIRTYTWO) *)
+   fun is_safe_shift (A.IntConst(w)) = Word32.<(w, THIRTYTWO)
      | is_safe_shift _ = false
 
     (*
@@ -104,16 +101,20 @@ struct
     fun pp_field f = "_c0_" ^ Symbol.name f
     fun pp_struct s = "struct _c0_" ^ Symbol.name s
     fun pp_typename t = "_c0_" ^ Symbol.name t
-    fun pp_var id = "_c0v_" ^ Symbol.name id  (* not sure if this could be _c0_ *)
+    fun pp_var id =
+        case Symbol.nname id
+          of (Symbol.User, name) => "_c0v_" ^ name
+             (* '_c0v_' avoids shadowing of functions with local variables *)
+           | (Symbol.Internal, name) => "_c0t_" ^ name
+             (* '_c0t_' avoids conflict between user and internal names *)
+             (* code itself is responsible for freshness *)
     fun pp_fun id =
-	let
-	    val name = Symbol.name id
-	in
-	    if is_external id
-	    then name
-	    else "_c0_" ^ name
-	end
-    fun pp_extfun id = Symbol.name id  (* extern function: do not munge *)
+        case Symbol.nname id
+         of (Symbol.User, name) =>
+            if is_external id   (* difficult to fold into namespace; use symbol table *)
+            then name
+            else "_c0_" ^ name
+          | (Symbol.Internal, name) => "_c0t_" ^ name
 
     (* pp_tp tp = str, converting tp to C equivalent *)
     fun pp_tp (A.Int) = "int"	       (* should be: int32_t in <stdint.h>? *)

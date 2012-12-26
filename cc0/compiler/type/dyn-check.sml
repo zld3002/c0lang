@@ -18,13 +18,13 @@ struct
       | location (SOME(mark)) = Mark.show(mark)
 
     (* implementing \result in postconditions @ensures *)
-    val result_id = Symbol.symbol "_result"
+    val result_id = Symbol.new "_result" (* create new internal name *)
     val result_var = A.Var(result_id)
 
     (* implementing caller blame assignment in @requires
      * caller_var is added as an additional argument of type string
      * to all functions, and used in generated asserts *)
-    val caller_id = Symbol.symbol "_caller"
+    val caller_id = Symbol.new "_caller" (* create new internal name *)
     val caller_var = A.Var(caller_id)
     val caller_decl = A.VarDecl(caller_id, A.String, NONE, NONE)
     val caller_decl_main = 
@@ -300,7 +300,8 @@ struct
                           then (params, [caller_decl_main]) 
                           else (params @ [caller_decl], [])
 	    val env0 = Syn.syn_decls Symbol.empty params1
-	    val env1 = Symbol.bind env0 (Symbol.symbol "\\result", rtp)
+	    (* val env1 = Symbol.bind env0 (Symbol.symbol "\\result", rtp) *)
+	    val env1 = Symbol.bind env0 (result_id, rtp) (* replaced "\\result" -fp *)
 	    val (ds1, ss1, ass1) = extract_pre env1 specs (* ds1 = ss1 = [] *)
 	    val (ds2, ss2, ass2) = extract_post env1 specs (* ss2 = computations of \old(e) *)
             (* ass2 = postcondition; insert before return *)
@@ -318,7 +319,9 @@ struct
 	end
 
     fun next_name (fun_name, fun_index) =
-	let val g = Symbol.symbol (fun_name ^ "__" ^ Int.toString fun_index)
+        (* create new internal function version name *)
+	let
+            val g = Symbol.new (fun_name ^ "__" ^ Int.toString fun_index)
 	in
 	    case Symtab.lookup(g)
 	     of NONE => (g, fun_index)
