@@ -7,9 +7,10 @@ safe => abort       	    ~ mergesort-fail.c0 -d
 safe => return 1    	    ~ queue.c0 -d
 safe => return 2            ~ stack.c0 -d
 safe => return 1    	    ~ unionfind.c0 -d --no-purity-check
+error                       ~ unionfind.c0 -d
 safe => abort       	    ~ unionfind-fail.c0 -d --no-purity-check
-error                       ~ unionfind-fail-purity-check.c0 -d --purity-check
-safe => return 1            ~ unionfind-pure.c0 -d --purity-check
+error                       ~ unionfind-fail-purity-check.c0
+safe => return 1            ~ unionfind-pure.c0 -d
 safe => lib => return 0     ~ libsym0.c0 -d -lstring
 safe => lib => error        ~ libsym1.c0 -d -lstring
 safe => lib => return 0     ~ hex.c0 -d -lstring -lconio
