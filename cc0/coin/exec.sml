@@ -148,7 +148,7 @@ let
    val () = current_depth := 0
    val () = current_pos := SOME pos
 in
-   case call_step (fun_name, actual_args, pos) of
+  (case call_step (fun_name, actual_args, pos) of
       Native res => res
     | Interp ((_, formal_args), code) => 
        ( State.push_fun (state, fun_name, (fun_name, pos))
@@ -164,8 +164,8 @@ in
           ( ignore (State.pop_fun state)
           ; Flag.guard Flags.flag_trace
                (fn () => print ("Ending execution of "^f^"\n")) 
-               ()))
-   before current_depth := old_depth
+               ())))
+ before current_depth := old_depth
 end
 
 
