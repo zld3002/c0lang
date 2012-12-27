@@ -329,7 +329,7 @@ struct
                                             (syn_extended ctx a))
                             args of
             true => ([], SymMap.insert(SymMap.empty, f, VError.VerificationNote(mark, 
-                        Symbol.name f ^ " must be pure because it is called on previously visible state from here")))
+                        "function '" ^ Symbol.name f ^ "' must be pure because it is called on previously allocated state from here")))
           | false => checkEmpty
     
   fun checkE mark ctx imms e =
@@ -365,7 +365,8 @@ struct
          mergeCheck
          [if isImm (imms, getlvtag ctx lv)
           then ([VError.VerificationError(mark, 
-                 "assignment may modify previously visible memory")], SymMap.empty)
+                 "function called from contract may have side effect\n"
+                 ^ "assignment may modify previously allocated memory")], SymMap.empty)
           else checkEmpty, checkE mark ctx imms e, checkE mark ctx imms lv]
                     
      | Expr e => (checkE mark ctx imms e)
@@ -412,7 +413,7 @@ struct
      | Op (oper, args) => (List.concat (map needspurityE args))
      | Call (f, args) =>
          [SymMap.insert(SymMap.empty, f,
-                    VError.VerificationNote (NONE, Symbol.name f ^ " must be pure because it is called in an annotation from here"))]
+                    VError.VerificationNote (NONE, "function '" ^ Symbol.name f ^ "' must be pure because it is called in an annotation from here"))]
           @ (List.concat (map needspurityE args))
      | IntConst _ => []
      | BoolConst _ => []

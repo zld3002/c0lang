@@ -28,13 +28,13 @@ struct
           | VN (NONE, s) => VN(SOME r, s)
           | _ => e
    fun pp_error (VE (SOME e, s)) =
-                    "error at " ^ (Mark.show e) ^ ": " ^ s
+                    (Mark.show e) ^ ":error:" ^ s
      | pp_error (VE (NONE, s)) =
-                    "error: " ^ s
+                    ":error: " ^ s
      | pp_error (VN (SOME e, s)) =
-                    "note " ^ (Mark.show e) ^ ": " ^ s
+                    (Mark.show e) ^ ":note:" ^ s
      | pp_error (VN (NONE, s)) =
-                    "note: " ^ s
+                    ":note:" ^ s
 end
 
 signature LOCAL_MAP = ORD_MAP where type Key.ord_key = Symbol.symbol * int

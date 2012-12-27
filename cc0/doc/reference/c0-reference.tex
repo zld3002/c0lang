@@ -719,6 +719,19 @@ according to its precondition (\verb'//@requires'), the assert
 annotations should not fail; in that sense they express expected
 internal invariants of functions, just like loop invariants.
 
+\subsection{Purity}
+
+Functions that are called from annotations must be \emph{pure}, which
+means that they may not modify previously allocated memory.  Allowing
+such contracts could lead to different results, depending on whether
+contract checking is enabled or not.  Other kinds of effects, like
+input, output, or exceptions are permitted.  The C0 language
+implementation performs a light analysis pass over the code to uncover
+functions used in annotations with side effects and gives an
+appropriate error message.  Since purity for contract functions is at
+present not strictly part of the language definition, purity checking
+can be disabled by passing the flag \verb'--no-purity-check'.
+
 \section{Grammar}
 
 We now summarize the grammar rules of the language.
@@ -1032,6 +1045,7 @@ In addition we check in annotations:
   declarations.
 \item[Dec 22 2012.] Statement blocks may end in annotations.
 \item[Dec 27 2012.] Conditional expressions must have small type.
+\item[Dec 27 2012.] Documented purity checking.
 \end{description}
 
 \end{document}
