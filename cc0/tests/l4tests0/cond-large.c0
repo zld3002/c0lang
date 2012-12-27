@@ -1,3 +1,6 @@
+//test error
+
+// was (when conditionals of large type where allowed):
 //test !cc0_c0vm => return 0
 
 struct b {

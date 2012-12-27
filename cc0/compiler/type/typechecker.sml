@@ -84,6 +84,12 @@ struct
         chk_known_size (tp_expand aid) ext
     (* A.Void, A.Any should not be asked *)
 
+  (* is_small tp = true if tp is a small type *)
+  fun is_small (A.TypeName(aid)) = is_small (tp_expand aid)
+    | is_small (A.Void) = false
+    | is_small (A.StructName _) = false
+    | is_small _ = true
+
   (* chk_small tp ext = (), raises Error if the type is
    * not small, that is, its value cannot be held in a variable *)
   fun chk_small (A.Int) ext = ()
@@ -695,7 +701,10 @@ struct
 					    ^ "then branch: " ^ P.pp_tp tp2 ^ "\n"
 					    ^ "else branch: " ^ P.pp_tp tp3)
 		      ; raise ErrorMsg.Error )
-	    | SOME(tp) => tp
+	    | SOME(tp) => if is_small tp
+                          then tp
+                          else ( ErrorMsg.error ext ("conditional expression has large type")
+                               ; raise ErrorMsg.Error )
       end 
     | syn_exp env (A.OpExp(oper,es)) ext =
       (* all remaining operators are on integers only *)

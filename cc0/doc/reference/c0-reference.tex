@@ -184,10 +184,14 @@ evaluated.  Similarly, in \verb'b || c', if $b$ evaluates to \vtrue,
 then $c$ is not evaluated.  There is also a unary operator of logical
 negation \verb'!' (not).
 
-Booleans can be tested with a ternary operator \verb'b ? e1 : e2'
+Booleans can be tested with a conditional expression (also
+called \emph{ternary operator}) \verb'b ? e1 : e2'
 which first evaluates $b$.  If $b$ is \vtrue, it then evaluates
 $e_1$ and returns its value, otherwise it evaluates $e_2$
-and returns its value.
+and returns its value.  In conditional expressions, both
+branches $e_1$ and $e_2$ must have the same type, and this type
+must be \emph{small} (see the sections on functions and
+structs).
 
 Booleans can be compared for equality (\verb'==') and disequality
 (\verb'!=').
@@ -1027,6 +1031,7 @@ In addition we check in annotations:
 \item[Dec 22 2012.] \verb'#use' directives must precede all other
   declarations.
 \item[Dec 22 2012.] Statement blocks may end in annotations.
+\item[Dec 27 2012.] Conditional expressions must have small type.
 \end{description}
 
 \end{document}

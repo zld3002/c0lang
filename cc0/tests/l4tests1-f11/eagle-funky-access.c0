@@ -1,3 +1,6 @@
+//test error
+
+// was (before conditionals were required to have small type):
 //test return 4
 
 struct s1 {
