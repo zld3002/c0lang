@@ -1,4 +1,4 @@
-//test return -382401888
+//test !cc0_c0vm => return -382401888
 
 // Do you constant fold? This should become just (a += 49995000)
 int main() {

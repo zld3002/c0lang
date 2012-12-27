@@ -84,6 +84,24 @@ struct
         chk_known_size (tp_expand aid) ext
     (* A.Void, A.Any should not be asked *)
 
+(*
+ fun chk_depth 0 tp ext =
+     ( ErrorMsg.error ext ("structs too deeply nested (limit: 4)\n" ^ "[Hint: use pointer or array indirections]")
+     ; raise ErrorMsg.Error )
+   | chk_depth d (A.StructName(sid)) ext =
+       chk_depth_struct (d-1) (Structtab.lookup sid) ext
+   | chk_depth d (A.TypeName(aid)) ext =
+       chk_depth d (tp_expand aid) ext
+   | chk_depth d _ ext = ()
+ and chk_depth_struct d (SOME(A.Struct(_, SOME(fields), _, _))) ext =
+       chk_depth_fields d fields ext
+   | chk_depth_struct d _ ext = ()
+ and chk_depth_fields d nil ext = ()
+   | chk_depth_fields d (A.Field(_, tp, _)::fields) ext =
+     ( chk_depth d tp ext
+     ; chk_depth_fields d fields ext )
+*)
+
   (* is_small tp = true if tp is a small type *)
   fun is_small (A.TypeName(aid)) = is_small (tp_expand aid)
     | is_small (A.Void) = false
@@ -1115,6 +1133,8 @@ struct
 	( chk_diff_fields f fields
 	; chk_tp tp ext
 	; chk_known_size tp ext
+        (* currently disabled, to allow more of the regression tests to compile *)
+        (* ; chk_depth 3 tp ext *)    (* are at depth 1, allow 3 more *)
 	; chk_struct_fields fields )
 
   (********************************)

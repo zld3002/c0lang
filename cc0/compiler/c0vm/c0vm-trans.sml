@@ -98,6 +98,11 @@ struct
   fun nyi msg ext = ( ErrorMsg.error ext ("unimplemented feature: " ^ msg) ;
 		      raise ErrorMsg.Error )
 
+  val maxint16 = 65536
+  val maxint15 = 32768
+  val maxint8 = 256
+  val maxint7 = 128
+
   fun get_fields_gdecl(SOME(A.Struct(_,SOME(fields),_,_))) = fields
 
   fun get_fields(s) = get_fields_gdecl (Structtab.lookup s)
@@ -138,15 +143,15 @@ struct
 	of EQUAL => f'offset
          | _ => get_field_offset offsets f)
 
-  fun get_offset (A.StructName(s)) f =
+  fun get_offset (A.StructName(s)) f ext =
       let val SOME(size, offsets) =
 	      (case Structsizetab.lookup(s)
 		of NONE => ( ignore(comp_size(Structtab.lookup(s))) ; Structsizetab.lookup(s) )
 		 | so => so)
 	  val offset = get_field_offset offsets f
-	  val _ = if offset > 255
-		  then ( ErrorMsg.error NONE ("field offset too big") ;
-			 raise ErrorMsg.Error )
+	  val _ = if offset >= maxint8
+		  then ( ErrorMsg.error ext ("field offset too big")
+		       ; raise ErrorMsg.Error )
 		  else ()
       in
 	  offset
@@ -155,10 +160,6 @@ struct
   fun pad2z(s) = if String.size(s) < 2
 		then "0" ^ s
 		else s
-  val maxint16 = 65536
-  val maxint15 = 32768
-  val maxint8 = 256
-  val maxint7 = 128
 
   local 
       val cindex = ref 0
@@ -450,7 +451,7 @@ struct
     | trans_exp env vlist (e as A.Select(lv1, f)) ext =
       let val is1 = trans_lv env vlist lv1 ext (* computes address *)
           val t1 = Syn.syn_exp_expd env lv1
-          val foffset = get_offset t1 f
+          val foffset = get_offset t1 f ext
           val data_size = sizeof(Syn.syn_exp_expd env e)
           val load_inst = (case data_size of 1 => V.cmload | 4 => V.imload | 8 => V.amload)
       in
@@ -477,14 +478,20 @@ struct
             end))
     | trans_exp env vlist (e as A.Alloc(t)) ext =
       let val size = sizeof(t)
+              (* Overflow should be impossible here, since it would have been caught earlier *)
+              (* handle Overflow => ( ErrorMsg.error ext ("newarray: array elements way too big")
+                                                  ; raise ErrorMsg.Error ) *)
           val _  = (if size < 0 orelse size >= maxint8
-                   then ( ErrorMsg.error NONE ("new: struct too big") ;
+                   then ( ErrorMsg.error ext ("new: struct too big") ;
                           raise ErrorMsg.Error )
                    else ())
       in [V.Inst(V.new(size), A.Print.pp_exp(e), ext)]
       end
     | trans_exp env vlist (e as A.AllocArray(t, e1)) ext =
       let val size = sizeof(t)
+              (* Overflow should be impossible here, since it would have been caught earlier *)
+              (* handle Overflow => ( ErrorMsg.error ext ("newarray: array elements way too big")
+                                                  ; raise ErrorMsg.Error ) *)
           val _  = (if size < 0 orelse size >= maxint8
                    then ( ErrorMsg.error NONE ("newarray: array elements too big") ;
                           raise ErrorMsg.Error )
@@ -518,7 +525,7 @@ struct
     | trans_lv env vlist (e as A.Select(lv1, f)) ext =
       let val is1 = trans_lv env vlist lv1 ext
           val t1 = Syn.syn_exp_expd env lv1
-          val foffset = get_offset t1 f
+          val foffset = get_offset t1 f ext
       in
           is1 @ [V.Inst(V.aaddf(foffset), "&" ^ A.Print.pp_exp e, ext)]
       end
@@ -730,8 +737,14 @@ struct
     | trans_gdecl (A.Struct(s, NONE, library, ext)) =
         ()                        (* ignore struct declaration *)
     | trans_gdecl (gdecl as A.Struct(s, SOME(fields), library, ext)) =
-      (* struct s; compute and store field offsets *)
-      let val _ = comp_size (SOME(gdecl))
+      (* struct s; compute and store field offsets, check max size *)
+      let val size = comp_size (SOME(gdecl))
+                     handle Overflow => ( ErrorMsg.error ext ("struct way too big")
+                                        ; raise ErrorMsg.Error )
+          val () = if size >= maxint8
+                   then ( ErrorMsg.error ext ("struct size " ^ Int.toString size ^ " too big")
+                        ; raise ErrorMsg.Error )
+                   else ()
       in
           ()
       end

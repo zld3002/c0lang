@@ -434,8 +434,8 @@ and p_struct_body ST = case first ST of
   | _ => ST |> p_tp >> p_ident >> p_terminal_h T.SEMI "terminate all struct fields with ';'"
 	    >> reduce r_fields >> p_struct_body
 
-and r_fields (S $ Fields(fs) $ Tp(tp,_) $ Ident(fid,_) $ Tok(T.SEMI,_)) =
-      S $ Fields(fs @ [A.Field(fid, tp, NONE)])
+and r_fields (S $ Fields(fs) $ Tp(tp,r1) $ Ident(fid,_) $ Tok(T.SEMI,r2)) =
+      S $ Fields(fs @ [A.Field(fid, tp, PS.ext(join r1 r2))])
 
 (* Annotations *)
 (* return S $ Annos(specs) or just S *)
