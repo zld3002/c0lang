@@ -343,6 +343,7 @@ struct
        | SOME (CodeTab.Native _) => ()
        | SOME (CodeTab.AbsentNative _) => raise LINK_ERROR
        | SOME (CodeTab.Interpreted _) => ()
+       | SOME (CodeTab.Builtin _) => ()
 
 
   fun call_main (library_headers, program) =
@@ -405,6 +406,8 @@ struct
    val () =
       Top.static_analysis oprogram 
        handle _ => raise COMPILER_ERROR      
+
+   val () = Builtins.reset {argv = rev (!Flags.runtime_args)}
 
   in
       (case call_main (library_headers, program)

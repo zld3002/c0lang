@@ -25,7 +25,10 @@ datatype builtin =
 
 structure ArgsLib =
 struct
-   val name = Symbol.symbol "args"
+   val sym_args = Symbol.symbol "args"
+   val sym_argc = Symbol.symbol "argc"
+   val sym_argv = Symbol.symbol "argv"
+
    datatype args_type = ARGS_BOOL | ARGS_INT | ARGS_STRING
    val argv: string list ref = ref []
    val args_list: (args_type * string * State.addr) list ref = ref []
@@ -90,8 +93,27 @@ struct
                 end
  
       val args = loop (!argv) []
-   in 
-      State.null
+ 
+      val res = State.alloc (state, Ast.StructName sym_args)
+      val res_addr = #2 (valOf (State.to_pointer res))
+      val res_argc = State.offset_field (state, res_addr, sym_args, sym_argc)
+      val res_argv = State.offset_field (state, res_addr, sym_args, sym_argv)
+
+      val val_argc = Word32.fromInt (length args)
+      val () = State.put_addr (state, res_argc, State.int val_argc)
+
+      val val_argv = State.alloc_array (state, Ast.String, val_argc)
+      val () = State.put_addr (state, res_argv, val_argv)
+      val addr_argv = #2 (State.to_array val_argv) 
+      fun argloop n [] = ()
+        | argloop n (arg :: args) = 
+          let val addr = State.offset_index (state, addr_argv, n)
+          in 
+           ( State.put_addr (state, (Ast.String, addr), State.string arg) 
+           ; argloop (n+1) args) 
+          end
+      val () = argloop 0 args
+   in res
    end handle _ => State.null
 
 end
