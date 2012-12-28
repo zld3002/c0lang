@@ -38,10 +38,3 @@ c0_string readline() {
 bool eof() {
   return (bool)(feof(stdin) ? 1 : 0);
 }
-
-void error(c0_string s) {
-  const char *cstr = c0_string_tocstr(s);
-  c0_abort(cstr);
-  /* should be unnecessary, since c0_abort will exit: */
-  c0_string_freecstr(cstr);
-}
