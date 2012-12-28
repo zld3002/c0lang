@@ -67,7 +67,10 @@ in
  ; CodeTab.reload_libs (!Flags.libraries)
 
    (* Load all C0 code (invokes the pseudocompiler in compile.sml) *)
- ; CodeTab.reload (library_headers @ program))
+ ; CodeTab.reload (library_headers @ program)
+
+   (* Reset built-in functions state *)
+ ; Builtins.reset {argv = rev (!Flags.runtime_args)})
 end
 
 (* Isolate a top-level statement that has been type-checked and annotated *) 

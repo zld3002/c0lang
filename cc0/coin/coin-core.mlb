@@ -21,6 +21,7 @@ local
    exec-sig.sml
    exec.sml
 in
+   structure Builtins
    structure Eval
    structure CodeTab
    structure Exec

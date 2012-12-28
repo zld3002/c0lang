@@ -43,13 +43,13 @@ struct
    fun args_int (_, name, ptr) =
       case State.to_pointer ptr of 
          NONE => raise Error.AssertionFailed "ptr != NULL [args_int]"
-       | SOME (Ast.Int, addr) => args_add (ARGS_BOOL, name, addr)
+       | SOME (Ast.Int, addr) => args_add (ARGS_INT, name, addr)
        | _ => raise Error.Dynamic "[args_int]" 
 
    fun args_string (_, name, ptr) =
       case State.to_pointer ptr of 
          NONE => raise Error.AssertionFailed "ptr != NULL [args_string]"
-       | SOME (Ast.String, addr) => args_add (ARGS_BOOL, name, addr)
+       | SOME (Ast.String, addr) => args_add (ARGS_STRING, name, addr)
        | _ => raise Error.Dynamic "[args_string]" 
 
    fun args_parse state =
