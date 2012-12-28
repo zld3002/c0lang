@@ -1,9 +1,11 @@
 structure CodeTab :> sig
    type fun_ty = Ast.tp * (Ast.tp * Symbol.symbol) list 
+   type precon = ConcreteState.value list -> unit
    datatype function = 
-      Native of fun_ty * NativeCall.function 
+      Native of fun_ty * precon * NativeCall.function 
     | AbsentNative of fun_ty * string
     | Interpreted of fun_ty * C0Internal.program
+    | Builtin of fun_ty * Builtins.impl
    val lookup : Symbol.symbol -> function option
    val list : unit -> Symbol.symbol list
    val reload_libs : string list -> unit
@@ -13,10 +15,12 @@ end =
 struct
 
 type fun_ty = Ast.tp * (Ast.tp * Symbol.symbol) list 
+type precon = ConcreteState.value list -> unit
 datatype function = 
-   Native of fun_ty * NativeCall.function
+   Native of fun_ty * precon * NativeCall.function 
  | AbsentNative of fun_ty * string
  | Interpreted of fun_ty * C0Internal.program
+ | Builtin of fun_ty * Builtins.impl
 
 structure LibTab = Symtab (type entrytp = NativeLibrary.library)
 structure CT = Symtab (type entrytp = function)
@@ -30,32 +34,43 @@ fun process_ast pre current_lib =
   | Ast.TypeDef (x, tp, pos) => () (* typedefs already in Symtab *)
                                 
   | Ast.Function (x, tp, args, NONE, spec, true, pos) => 
-    (* This is a library function; make sure we have the impl. *)
+    (* This is a library function; make sure we have an impl. *)
     (Flag.guard Flags.flag_verbose
         (fn () => print (pre ^ "Processing " ^ Symbol.name x ^ " (native)\n"))
         ()
-     ; case current_lib of 
-          NONE => 
-          (Flag.guard Flags.flag_verbose
-              (fn () => print (pre ^ "Re-processing " ^ Symbol.name x 
-                               ^ " (native)\n"))
-              ())
-        | SOME (lib_name, NONE) => 
-          (Flag.guard Flags.flag_verbose
-              (fn () => print (pre ^ "Failed to load; library not present\n"))
-              ()
-           ; CT.bind (x, AbsentNative ((tp, map vardecl args), lib_name)))
-        | SOME (lib_name, SOME lib) => 
-          let in
-             case NativeLibrary.get lib (Symbol.name x) of
-		NONE => 
-                (print ("WARNING Function `" ^ Symbol.name x 
-			^ "' not present in implementation of library <"
-			^ lib_name ^ ">\n")
+     ; case Builtins.lookup x of
+          Builtins.Impl f =>  
+           ( Flag.guard Flags.flag_verbose
+                (fn () => print (pre^"Using built-in version of "
+                                 ^Symbol.name x ^"\n"))
+                ()
+           ; CT.bind (x, Builtin ((tp, map vardecl args), f)))
+        | Builtins.Precon precon => 
+            (case current_lib of 
+                NONE => 
+                 ( Flag.guard Flags.flag_verbose
+                      (fn () => print (pre^"Re-processing "^Symbol.name x 
+                                       ^" (native)\n"))
+                      ())
+              | SOME (lib_name, NONE) => 
+                 ( Flag.guard Flags.flag_verbose
+                      (fn () => print (pre^"Failed to load;\
+                                      \ library not present\n"))
+                      ()
                  ; CT.bind (x, AbsentNative ((tp, map vardecl args), lib_name)))
-	      | SOME impl => 
-		CT.bind (x, Native((tp, map vardecl args), impl))
-	  end)
+              | SOME (lib_name, SOME lib) => 
+                let in
+                   case NativeLibrary.get lib (Symbol.name x) of
+                      NONE => 
+                       ( print ("WARNING Function `"^Symbol.name x 
+                                ^"' not present in implementation of library <"
+                                ^lib_name^">\n")
+                       ; CT.bind (x, AbsentNative ((tp, map vardecl args), 
+                                                   lib_name)))
+                    | SOME impl => 
+                         CT.bind (x, Native((tp, map vardecl args), precon, 
+                                            impl))
+                end))
 
   | Ast.Function (x, tp, args, SOME stm, spec, false, SOME pos) => 
     (* This is a defined function; compile it. *)
@@ -117,14 +132,18 @@ fun load_lib [] lib = print ("WARNING: failed to load library <" ^ lib ^ ">\n")
            ; LibTab.bind (Symbol.symbol lib, lib_ptr))
     end
 
+fun try_lib lib = 
+   if Builtins.replaced lib 
+   then Flag.guard Flags.flag_verbose 
+           (fn () => print ("Library " ^ lib ^ " built-in\n")) ()
+   else ( Flag.guard Flags.flag_verbose
+             (fn () => (print ("Trying to load library " ^ lib ^ "\n"))) ()
+        ; load_lib (!Flags.search_path) lib)
+
 fun reload_libs libs = 
-  (app (NativeLibrary.close o valOf o LibTab.lookup) (LibTab.list ())
-   ; LibTab.reset ()
-   ; app (fn lib => 
-             (Flag.guard Flags.flag_verbose
-                 (fn () => (print ("Trying to load library " ^ lib ^ "\n"))) ()
-              ; load_lib (!Flags.search_path) lib))
-         libs)
+  ( app (NativeLibrary.close o valOf o LibTab.lookup) (LibTab.list ())
+  ; LibTab.reset ()
+  ; app try_lib libs)
 
 fun reload prog = (CT.reset (); app (process_ast "" NONE) prog)
 
@@ -142,8 +161,10 @@ fun print_one (x, (tp, args)) =
    end
 
 val print = 
- fn () => app (fn (x, Native (ty, _)) => 
+ fn () => app (fn (x, Native (ty, _, _)) => 
                      (print_one (x, ty); print " // Library function\n")
+                | (x, Builtin (ty, _)) => 
+                     (print_one (x, ty); print " // Built-in function\n")
                 | (x, AbsentNative (ty, _)) => 
                      (print_one (x, ty); print " // Broken library function\n")
                 | (x, Interpreted (ty, _)) => 

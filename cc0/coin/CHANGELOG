@@ -1,7 +1,7 @@
-0.1.1 --> 0.1.2 
-Jan 11, 2011: Reconfigured to use Spring 2011 variant of C0 and C0 compiler. 
+0.1.1 --> 0.1.2
+Jan 11, 2011: Reconfigured to use Spring 2011 variant of C0 and C0 compiler.
 
-0.1.2 --> 0.1.3 
+0.1.2 --> 0.1.3
 Jan 11, 2011: Added versioning information
               Changed prompt from ">>>" to "-->" to distinguish from Python
               Added support for pragmas, though you can't actually #load.
@@ -24,7 +24,7 @@ Jan 13, 2011: Handle assertion language
 Jan 14, 2011: Integrate compiler infrastructrue
               Compiler now loads structs and typedefs correctly
               Better pretty-printing of e->f
-              
+
 0.1.6 --> 0.2.0
 Jan 14, 2011: Pre-populate tables with functions
               Handle interpretedcalls correctly
@@ -34,7 +34,7 @@ Jan 14, 2011: Pre-populate tables with functions
 0.2.0 --> 0.2.1
 Jan 15, 2011: Switch to the native heap
 
-0.2.1 --> 0.2.2 
+0.2.1 --> 0.2.2
 Jan 16, 2011: Deal with problem parsing annotations with declarations
               Add --print-codes option
               Search paths for the implementation of native libraries
@@ -46,12 +46,12 @@ Jan 16, 2011: Deal with problem parsing annotations with declarations
 0.2.2 --> 0.2.3
 Jan 16, 2011: Add #functions, #structs, and #locals pragmas to Coin
               Fixed problem with function calls not expanding typedefs
-              Change codename from "Pfennig" to "Penny" to avoid confusing 
+              Change codename from "Pfennig" to "Penny" to avoid confusing
               the students, who have mostly thought it's "Pfenning" misspelled
 
 0.2.3 --> 0.2.4
 Jan 21, 2011: Fixed bug reported by Frank and William: function calls depended
-              on incorrect information 
+              on incorrect information
 Feb 3, 2011:  Fixed bug reported by Karl: stack depth not reset when native
               functions called. Also improved --trace messages, adding depth.
 Feb 4, 2011:  Make logical and/or parts of the internal language rather than
@@ -78,7 +78,7 @@ May 12, 2011: Null pointers were occasionally raising a dynamic typing error
               Fix sign conversion issues for integers. 
               Show caller when @requires assertions are violated
 Jun 6, 2011:  Make chars display as '\0' not '\000'
-              Refuse to print straings with non-displayable characters in 
+              Refuse to print straings with non-displayable characters in
               Coin (these can appear thanks to the string library)
 
 0.2.7 --> 0.2.8
@@ -106,7 +106,7 @@ Aug 25, 2012: Modify state's typechecking so that NULLs can be given
               bytecode compilation aware of the return types of
               functions.
 Aug 25, 2012: Fix #functons printing bug associated with the -d option
-              
+
 0.3.0 --> 0.3.1
 Aug 29, 2012: Fix bug - isolation at coin's toplevel did not use
               annotations and did not eliminate for-loops, which

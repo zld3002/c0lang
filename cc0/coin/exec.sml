@@ -98,19 +98,37 @@ fun call_step (fun_name, actual_args, pos) : call_info =
                               ">, did not load correctly")
     | SOME (CodeTab.Interpreted (f_ty, code)) => 
          Interp (f_ty, code)
-    | SOME (CodeTab.Native ((return_ty, arg_tys), fptr)) => 
+    | SOME (CodeTab.Native ((return_ty, arg_tys), precon, fptr)) => 
       let 
          val fnative = Symbol.symbol (Symbol.name fun_name ^ " (native)") 
          val () = Flag.guard Flags.flag_trace
                      (fn () => print ("Calling native "^Symbol.name fun_name^
                                       "\n"))
                      ()
-         val () = State.push_fun (state, fnative, (fnative, pos))
+         val () = State.push_fun (state, fun_name, (fun_name, pos))
          val old_pos = !current_pos
          val () = current_pos := SOME ((0,0),(0,0),"< in native code >")
+         val () = precon actual_args
          val args = ListPair.zip (map #1 arg_tys, actual_args)
          val res = Calling.call state (fptr, return_ty, args)
       in 
+       ( Flag.guard Flags.flag_trace
+            (fn () => print ("Done with native "^Symbol.name fun_name^"\n"))
+            ()
+       ; ignore (State.pop_fun state)
+       ; current_pos := old_pos 
+       ; Native(res))
+      end
+    | SOME (CodeTab.Builtin (f_ty, f)) =>
+      let
+         val () = Flag.guard Flags.flag_trace
+                     (fn () => print ("Calling builtin "^Symbol.name fun_name^
+                                      "\n")) ()
+         val () = State.push_fun (state, fun_name, (fun_name, pos))
+         val old_pos = !current_pos
+         val () = current_pos := SOME ((0,0),(0,0),"< in builtin code >")
+         val res = f (state, actual_args)
+      in
        ( Flag.guard Flags.flag_trace
             (fn () => print ("Done with native "^Symbol.name fun_name^"\n"))
             ()

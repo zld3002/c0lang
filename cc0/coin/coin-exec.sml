@@ -86,6 +86,7 @@ let
        | SOME (CodeTab.Native _) => ()
        | SOME (CodeTab.AbsentNative _) => die LINK_ERROR
        | SOME (CodeTab.Interpreted _) => ()
+       | SOME (CodeTab.Builtin _) => ()
 
    fun raiseSignal sgn = 
     ( Posix.Process.kill (Posix.Process.K_PROC (Posix.ProcEnv.getpid ()), sgn)
