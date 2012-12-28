@@ -263,6 +263,7 @@ struct
 	    native_pool := nil ;
 	    glabel := 0 ;
 	    Funtab.reset() ;
+            Funtab.bind(Symbol.symbol "main", 0) ;
 	    Nativetab.reset() ;
 	    Structsizetab.reset()
 	  )
@@ -675,8 +676,7 @@ struct
       (* is_external = false ? perhaps not for C0 libraries like <rand> *)
       (* function definition *)
       let val findex = ( case Funtab.lookup(g)
-                          of NONE => if Symbol.name(g) = "main" then 0
-                                     else next_findex()
+                          of NONE => next_findex()
                            | SOME(findex) => findex )
           val _ = Funtab.bind(g, findex)
 (*
