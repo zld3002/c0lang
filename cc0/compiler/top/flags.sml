@@ -17,7 +17,6 @@ signature FLAGS = sig
   val flag_exec : Flag.flag
   val flag_bytecode : Flag.flag 
   val flag_static : Flag.flag
-  val opt_level : int ref
   val base_dir : string ref
   val search_path : string list ref
   val libraries : string list ref
@@ -62,7 +61,6 @@ structure Flags :> FLAGS = struct
   val flag_exec = Flag.flag "exec"
   val flag_bytecode = Flag.flag "bytecode"
   val flag_static = Flag.flag "static"
-  val opt_level = ref 0		(* default is opt level 0 *)
 
   val base_dir = ref ""                       (* see reset_flags ()        *)
   val search_path : string list ref = ref []  (* Search path for libraries  *)
@@ -80,11 +78,6 @@ structure Flags :> FLAGS = struct
   val flag_emacs = Flag.flag "emacs"
 
   local
-    fun parse_opt_level (s) =
-        (case Int.fromString(s)
-	  of SOME(opt) => opt
-	   | NONE => raise Domain)  (* Domain ??? *)
-
     fun parse_bytecode_arch s = case Int.fromString s of
            SOME(32) => 32
 	 | SOME(64) => 64
@@ -123,7 +116,7 @@ structure Flags :> FLAGS = struct
           List.app Flag.set [flag_purity_check];
 
           (* Set other defaults *)
-          opt_level := 0; libraries := []; runtime := "c0rt"; a_out := "a.out";
+          libraries := []; runtime := "c0rt"; a_out := "a.out";
           runtime_args := []; gcc_args := [];
 	  bytecode_arch := 64;
           SOME (#2 (GetOpt.getOpt {argOrder = GetOpt.Permute,
@@ -199,27 +192,23 @@ structure Flags :> FLAGS = struct
       help="Pretty print the program's abstract syntax tree"},
      {short = "s", long=["save-files"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_save_files),
-      help="Save the .c and .h files produced by the compiler"},
+      help="Save .c and .h files produced by the compiler"},
      {short = "r", long=["runtime"],
       desc=GetOpt.ReqArg ((fn (s) => (runtime := s)), "<rt>"),
       help="Select a runtime (default \"c0rt\")"},
-     {short = "O", long=["optimize"],
-      desc=GetOpt.ReqArg 
-               ((fn (s) => (opt_level := parse_opt_level(s))), "<opt>"),
-      help="Optimize to level <opt> (default 0, >2 may be unsound)"},
      {short = "b", long=["bytecode"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_bytecode),
       help="Generate bytecode instead of executable"},
      {short = "m", long=["bc-arch"],
       desc=GetOpt.ReqArg ((fn (s) => (bytecode_arch := parse_bytecode_arch s)), "<arch>"),
-      help="Generate bytecode for architecture <arch>, 64 or 32 (default 64)"},
+      help="Set bytecode architecture: 64 (default) or 32"},
      {short = "o", long=["output"],
       desc=GetOpt.ReqArg ((fn (s) => (a_out := s)), "<file>"),
       help="Place the executable output into <file>"},
      {short = "c", long=[],
       desc=GetOpt.ReqArg 
               ((fn (s) => (gcc_args := s :: !gcc_args)), "<arg>"),
-      help="Pass an argument to the c compiler"},
+      help="Pass an argument to the C compiler"},
      {short = "n", long=["no-log"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_no_log),
       help="Disable logging for this compile"},

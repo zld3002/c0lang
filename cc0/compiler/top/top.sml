@@ -437,8 +437,7 @@ let
         val () = SafeIO.withOpenOut
                  (path_concat (out_dir, hname))
                  (fn hstream =>
-                  TextIO.output (hstream, PrintC.pp_program library_headers
-					 [] (!Flags.opt_level)))
+                  TextIO.output (hstream, PrintC.pp_program library_headers []))
 
         val () = Flag.guard Flags.flag_verbose
 		 (fn () => say ("Writing C code to " ^ path_concat (out_dir, cname) ^ " ...")) ()
@@ -448,8 +447,7 @@ let
                   TextIO.output (cstream, PrintC.pp_program program
                                          [cc0_lib ^ ".h",
                                           !Flags.runtime ^ ".h",
-                                          hname]
-			                 (!Flags.opt_level)))
+                                          hname]))
 
         val absBaseDir = abspath (!Flags.base_dir)
         val runtimeDir = OS.Path.concat (absBaseDir, "runtime")
@@ -460,7 +458,6 @@ let
             (* because two's-complement arithmetic is specified *)
             ^ " -fwrapv"
 	    ^ (if Flag.isset Flags.flag_verbose then " -Wall -Wextra" else " -w")
-            ^ " -O" ^ Int.toString (!Flags.opt_level)
             ^ " -o " ^ (!Flags.a_out)
             (* Dec 24, 2012, implements the -c flag *)
             ^ (if null (!Flags.gcc_args) then "" else " ")

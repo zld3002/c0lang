@@ -383,11 +383,10 @@ struct
       | pp_gdecls (gdecl::gdecls) =
           pp_gdecl gdecl ^ pp_gdecls gdecls
 
-    (* pp_program gdecls include_files opt_level = str
+    (* pp_program gdecls include_files = str
      * Convert program consisting of gdecls to a string, including
-     * include_files.  Optimization level opt_level is currently
-     * unused *)
-    fun pp_program gdecls include_files opt_level =
+     * include_files. *)
+    fun pp_program gdecls include_files =
           String.concat 
             (map (fn include_file => "#include \"" ^ include_file ^ "\"\n")
                  include_files)
