@@ -1,0 +1,10 @@
+//test segfault
+struct s;
+typedef struct s s;
+struct s {
+    int[] s;
+};
+int main() {
+    struct s* main = alloc(s);
+    return main->s[0];
+}

@@ -1,0 +1,13 @@
+//test div-by-zero
+// decrements the counter until we get a division overflow error
+int main () {
+    int i = 0x800000FF;
+    int store = 0;
+
+    while (i < 1) {
+        store = i / -1;
+        i--;
+    }
+
+    return store;
+}

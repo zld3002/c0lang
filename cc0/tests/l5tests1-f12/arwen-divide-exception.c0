@@ -1,0 +1,9 @@
+//test div-by-zero
+// division by 0 in unneeded variable
+int main()
+{
+  int i = 0xFFFFFF00;
+  for (;true;i++)
+    i/i;
+  return i;
+}

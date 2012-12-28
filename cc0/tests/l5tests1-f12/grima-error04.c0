@@ -1,0 +1,21 @@
+//test error
+/* defined a library function */ 
+
+#use <conio>
+
+int printchar(int c)
+{
+    return c;
+}
+
+
+int test( int z , int x)
+{
+    printchar(z);
+    return z * x;
+}
+
+int main()
+{
+    return test(3,2);
+}

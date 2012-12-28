@@ -1,0 +1,6 @@
+//test div-by-zero
+// test shift semantics
+
+int main() {
+    return ((1 << 3) + (1 << (3 + 1024)));
+}

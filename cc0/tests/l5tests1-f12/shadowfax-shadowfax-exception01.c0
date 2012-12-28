@@ -1,0 +1,6 @@
+//test div-by-zero
+// tests division by zero in ternary
+int main()
+{
+  return (true ? 7/0 : 1);
+}

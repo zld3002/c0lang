@@ -1,0 +1,9 @@
+//test segfault
+int main ()
+{
+    int [] a = alloc_array(int, 10);
+    for (int i = 9; i < 10; i--) {
+        a[i] = i;
+    }
+    return 0;
+}

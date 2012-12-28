@@ -1,0 +1,11 @@
+//test div-by-zero
+// tests division by zero in for loop
+int main()
+{
+  int x = 0;
+  for (int i = 5; true; i--) {
+    x = 0x80000000/i;
+  }
+
+  return x;
+}

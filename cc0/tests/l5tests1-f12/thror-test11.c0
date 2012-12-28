@@ -1,0 +1,5 @@
+//test div-by-zero
+int main()
+{
+   return 5 / ((3 > -3) ? 1 / 4 : 9);
+}
