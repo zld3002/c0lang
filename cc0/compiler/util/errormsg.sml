@@ -29,7 +29,9 @@ struct
 	      
   fun msg str ext note =
       ( ignore (Option.map (TextIO.print o Mark.show) ext)
-      ; List.app TextIO.print [":", str, ":", note, "\n"] )
+      ; List.app TextIO.print [":", str, ":", note, "\n"]
+      ; ignore (Option.map (TextIO.print o Mark.show_source) ext)
+      )
     
   fun error ext note = (anyErrors := true; msg "error" ext note)
   fun warn ext note = msg "warning" ext note

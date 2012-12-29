@@ -639,6 +639,9 @@ struct
   (* Type checking *)
   (*****************)
 
+  fun syn_ext (A.Marked(marked_exp)) ext = Mark.ext marked_exp
+    | syn_ext e ext = ext       (* default: context location *)
+
   fun var_type env id ext =
       (case Symbol.look env id
 	of NONE => ( ErrorMsg.error ext ("undeclared variable '" ^ Symbol.name id ^ "'") ;
@@ -788,11 +791,12 @@ struct
   (* chk_exp env e tp ext = () if env |- e : tp, raises Error otherwise *)
   and chk_exp env e tp ext =
       let val tp1 = syn_exp env e ext
+          val ext' = syn_ext e ext
       in
 	  if tp_conv tp1 tp then ()
-	  else ( ErrorMsg.error ext ("type mismatch\n"
-				     ^ "expected: " ^ P.pp_tp tp ^ "\n"
-				     ^ "   found: " ^ P.pp_tp tp1)
+	  else ( ErrorMsg.error ext' ("type mismatch\n"
+				      ^ "expected: " ^ P.pp_tp tp ^ "\n"
+				      ^ "   found: " ^ P.pp_tp tp1)
 	       ; raise ErrorMsg.Error )
       end 
 

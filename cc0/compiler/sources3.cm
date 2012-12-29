@@ -4,11 +4,11 @@ Group is
 	$/smlnj-lib.cm
 	$/ml-yacc-lib.cm
 
+        util/safe-io.sml
 	util/mark.sml
 	util/flag.sml
 	util/symbol.sml
 	util/errormsg.sml
-        util/safe-io.sml
         util/word32.sml
         util/char.sml
 
