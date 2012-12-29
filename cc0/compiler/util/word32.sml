@@ -1,4 +1,4 @@
-(* L2 Compiler
+(* C0 Compiler
  * Utilities for signed modular arithmetic
  * Author: Frank Pfenning
  *)

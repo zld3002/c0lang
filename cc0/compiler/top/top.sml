@@ -560,7 +560,7 @@ let
            | e => ( say ("Unexpected exception in cc0:\n" ^ exnMessage e ^ "\n")
                   ; OS.Process.failure
                   (* next line for development mode *)
-                  (* ; raise e *)
+                  ; raise e
                   )
            (* foldr (fn (a,b) => a ^ "\n" ^ b) "" (SMLofNJ.exnHistory e) *)
            (* Above extra bits commented out by Rob, Nov 15 2012. 

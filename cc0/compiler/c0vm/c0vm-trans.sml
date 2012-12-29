@@ -146,7 +146,8 @@ struct
   fun get_offset (A.StructName(s)) f ext =
       let val SOME(size, offsets) =
 	      (case Structsizetab.lookup(s)
-		of NONE => ( ignore(comp_size(Structtab.lookup(s))) ; Structsizetab.lookup(s) )
+		of NONE => ( ignore(comp_size(Structtab.lookup(s)))
+                           ; Structsizetab.lookup(s) )
 		 | so => so)
 	  val offset = get_field_offset offsets f
 	  val _ = if offset >= maxint8
@@ -211,12 +212,15 @@ struct
 	  in
 	      i
 	  end
+
+      val label_map = Array.array(maxint16, 0)
       fun next_glabel(s) =
-	  let val lab = "<" ^ pad2z(Int.toString(!glabel)) ^ ":" ^ s ^ ">"
+	  let val lab = (!glabel, "<" ^ pad2z(Int.toString(!glabel)) ^ ":" ^ s ^ ">")
 	      val _ = ( glabel := !glabel+1 )
 	  in
 	      lab
 	  end
+      fun num_labels() = !glabel
 
       val native_pool = ref (nil:V.native_info list)
       fun new_native(g, num_args, ext) =
@@ -248,8 +252,7 @@ struct
 	      new_native(g, length(params), ext)
             | (NONE, NONE) =>
 	      case Symbol.name(g)
-	       of "pabort" => new_native(g, 1, ext)
-		| "string_join" => new_native(g, 2, ext)
+	       of "string_join" => new_native(g, 2, ext)
 		| _ => ( ErrorMsg.error ext ("undefined function " ^ Symbol.name(g))
 		       ; raise ErrorMsg.Error ))
 
@@ -269,29 +272,43 @@ struct
 	  )
   end
 
-  val nif = V.il(V.if_icmp(V.eq,0))
-  val ngoto = V.il(V.goto(0))
+  fun labToString (n, lab) = lab
 
-  fun resolve_break (V.Inst(V.goto(1),anno,ext)::bcs') acc = (* 1 = Continue *)
-      let val len = V.code_length(acc)
-          val _ = if len >= maxint15
-                  then ( ErrorMsg.error NONE ("break jump too long") ;
-                         raise ErrorMsg.Error )
-                  else ()
+  (* labMap n insts
+   * populates the global label map label_map
+   * with the address in bytes, counting from the
+   * beginning of the function where it occurs *)
+  fun labMap n (nil) = ()
+    | labMap n (V.Label(k, _)::is) =
+      ( Array.update(label_map, k, n)
+      ; labMap n is )
+    | labMap n (V.Comment _ :: is) =
+        labMap n is
+    | labMap n (V.Inst(inst,_,_)::is) =
+        labMap (n + V.il(inst)) is
+
+  (* labToOffsets n insts accum = insts'
+   * replaces the label number in each conditional branch
+   * with the correct offset, based on the global label map *)
+  fun labToOffsets n (nil) accum = List.rev accum
+    | labToOffsets n ((l as V.Label _)::is) accum =
+        labToOffsets n is (l::accum)
+    | labToOffsets n ((c as V.Comment _)::is) accum =
+        labToOffsets n is (c::accum)
+    | labToOffsets n (V.Inst(inst as V.if_icmp(cmp, (k, sym)), anno, ext)::is) accum =
+      let val offset = Array.sub(label_map, k) - n
       in
-        resolve_break bcs' (V.Inst(V.goto(~len),anno,ext)::acc)
-       end
-    | resolve_break (bcs as (V.Inst(V.goto(2),anno,ext)::bcs')) acc = (* 2 = Break *)
-      let val len = V.code_length(bcs)
-          val _ = if len >= maxint15
-                  then ( ErrorMsg.error NONE ("break jump too long") ;
-                         raise ErrorMsg.Error )
-                  else ()
-      in
-        resolve_break bcs' (V.Inst(V.goto(len),anno,ext)::acc)
+          labToOffsets (n + V.il(inst)) is
+          (V.Inst(V.if_icmp(cmp, (offset, sym)), anno, ext)::accum)
       end
-    | resolve_break (inst::bcs') acc = resolve_break bcs' (inst::acc)
-    | resolve_break (nil) acc = List.rev acc
+    | labToOffsets n (V.Inst(inst as V.goto(k,sym), anno, ext)::is) accum =
+      let val offset = Array.sub(label_map, k) - n
+      in
+          labToOffsets (n + V.il(inst)) is
+          (V.Inst(V.goto(offset, sym), anno, ext)::accum)
+      end
+    | labToOffsets n ((i as V.Inst(inst, anno, ext))::is) accum =
+      labToOffsets (n + V.il(inst)) is (i::accum)
 
   val string_join = Symbol.symbol "string_join"
   fun join (e1::nil) = e1
@@ -308,6 +325,14 @@ struct
     | tbinop A.XOR = V.ixor
     | tbinop A.OR = V.ior
 
+  fun isrel A.LESS = true
+    | isrel A.LEQ = true
+    | isrel A.GREATER = true
+    | isrel A.GEQ = true
+    | isrel A.EQ = true
+    | isrel A.NOTEQ = true
+    | isrel _ = false
+
   fun trel A.LESS = V.lt
     | trel A.LEQ = V.le
     | trel A.GREATER = V.gt
@@ -315,29 +340,10 @@ struct
     | trel A.EQ = V.eq
     | trel A.NOTEQ = V.ne
 
-  fun trans_rel binop is1 is2 anno ext =
-      let val isfcase =
-              [V.Inst(V.pop, "", ext),
-               V.Inst(V.bipush(0), "false", ext)]
-          val nfcase = V.code_length(isfcase)
-          val _ = if nif + nfcase >= maxint15
-                  then ( ErrorMsg.error NONE ("Jump too long") ;
-                         raise ErrorMsg.Error )
-                  else ()
-      in [V.Inst(V.bipush(1), "true", ext)]
-         @ is1 @ is2
-         @ [V.Inst(V.if_icmp(trel(binop), nif+nfcase), anno, ext)]
-         @ isfcase
-      end
-
-  fun trans_binop A.LESS is1 is2 anno ext = trans_rel A.LESS is1 is2 anno ext
-    | trans_binop A.LEQ is1 is2 anno ext = trans_rel A.LEQ is1 is2 anno ext
-    | trans_binop A.GREATER is1 is2 anno ext = trans_rel A.GREATER is1 is2 anno ext
-    | trans_binop A.GEQ is1 is2 anno ext = trans_rel A.GEQ is1 is2 anno ext
-    | trans_binop A.EQ is1 is2 anno ext = trans_rel A.EQ is1 is2 anno ext
-    | trans_binop A.NOTEQ is1 is2 anno ext = trans_rel A.NOTEQ is1 is2 anno ext
-    | trans_binop opr is1 is2 anno ext =
-        is1 @ is2 @ [V.Inst(V.binop(tbinop(opr)), anno, ext)]
+  fun get_const (A.IntConst(w)) = SOME(w)
+    | get_const (A.Marked(marked_exp)) =
+        get_const (Mark.data marked_exp)
+    | get_const _ = NONE
 
   fun lookup (A.VarDecl(y, t, e_opt, ext)::vlist) i x =
       case Symbol.compare(x,y)
@@ -353,9 +359,13 @@ struct
           [V.Inst(V.vload(vindex), Symbol.name(x), ext)]
       end
     | trans_exp env vlist (A.IntConst(w)) ext =
+      (* include small integers -128 <= w < 128 directly in 
+       * instruction stream using bipush instruction; slightly
+       * tricky to avoid overflow *)
       if Word32.<(w, Word32.fromInt(maxint7))
-      then [V.Inst(V.bipush(Word32.toInt(w)),
-                   Word32Signed.toString(w), ext)]
+      then [V.Inst(V.bipush(Word32.toInt(w)), Word32Signed.toString(w), ext)]
+      else if Word32.<=(Word32.~(w), Word32.fromInt(maxint7))
+      then [V.Inst(V.bipush(~(Word32.toInt(Word32.~(w)))), Word32Signed.toString(w), ext)]
       else let val i = next_cindex()
                val _ = Array.update(int_pool, i, w)
            in 
@@ -414,41 +424,39 @@ struct
       @ [V.Inst(V.bipush(~1), "", ext)]
       @ [V.Inst(V.binop(V.ixor), A.Print.pp_exp(e), ext)]
     | trans_exp env vlist (e as A.OpExp(A.NEGATIVE, [e1])) ext =
-      [V.Inst(V.bipush(0), "", ext)]
-      @ trans_exp env vlist e1 ext
-      @ [V.Inst(V.binop(V.isub), A.Print.pp_exp(e), ext)]
+      (* try constant folding for -<n> in order to include small
+       * negative integer constants in the instruction stream *)
+      (case get_const(e1)
+        of SOME(w) => trans_exp env vlist (A.IntConst(Word32.~(w))) ext
+         | NONE => [V.Inst(V.bipush(0), "", ext)]
+                   @ trans_exp env vlist e1 ext
+                   @ [V.Inst(V.binop(V.isub), A.Print.pp_exp(e), ext)])
     | trans_exp env vlist (A.OpExp(A.LOGAND, [e1, e2])) ext =
-        trans_exp env vlist (A.OpExp(A.COND, [e1, e2, A.False])) ext
+        trans_exp env vlist (A.OpExp(A.COND, [e1, e2, A.False])) ext (* fix? *)
     | trans_exp env vlist (A.OpExp(A.LOGOR, [e1, e2])) ext =
-        trans_exp env vlist (A.OpExp(A.COND, [e1, A.True, e2])) ext
+        trans_exp env vlist (A.OpExp(A.COND, [e1, A.True, e2])) ext (* fix? *)
     | trans_exp env vlist (A.OpExp(A.COND, [e1, e2, e3])) ext =
-      let val is1 = trans_exp env vlist e1 ext
+      let val true_lab = next_glabel("cond_true")
+          val false_lab = next_glabel("cond_false")
+          val end_lab = next_glabel("cond_end")
+          val is1 = trans_cond env vlist e1 true_lab false_lab ext
           val is2 = trans_exp env vlist e2 ext
-          val n2 = V.code_length is2
-          val else_lab = next_glabel("else")
           val is3 = trans_exp env vlist e3 ext
-          val n3 = V.code_length is3
-          val endif_lab = next_glabel("endif")
-          val _ = if nif + n2 + ngoto >= maxint15 orelse n3+ngoto >= maxint15
-                  then ( ErrorMsg.error NONE ("jump too big") ;
-                         raise ErrorMsg.Error )
-                  else ()
       in
           is1
-          @ [V.Inst(V.bipush(0), "", ext),
-             V.Inst(V.if_icmp(V.eq, nif+n2+ngoto),
-                    "if " ^ A.Print.pp_exp(e1) ^ " goto " ^ else_lab, ext)]
-          @ is2 @ [V.Inst(V.goto(n3+ngoto), "goto " ^ endif_lab, ext)]
-          @ [V.Comment(else_lab)] @ is3
-          @ [V.Comment(endif_lab)]
+          @ [V.Label(true_lab)] @ is2
+          @ [V.Inst(V.goto(end_lab), "goto " ^ labToString end_lab, ext)]
+          @ [V.Label(false_lab)] @ is3 (* @ V.goto(end_lab) is unecessary *)
+          @ [V.Label(end_lab)]
       end
     | trans_exp env vlist (e as A.OpExp(opr, [e1, e2])) ext =
-      let val is1 = trans_exp env vlist e1 ext
-          val is2 = trans_exp env vlist e2 ext
-          val anno = A.Print.pp_exp e
-      in
-          trans_binop opr is1 is2 anno ext
-      end 
+      if isrel opr              (* hopefully this will not lead to an inf. loop *)
+      then trans_exp env vlist (A.OpExp(A.COND, [e, A.True, A.False])) ext
+      else let val is1 = trans_exp env vlist e1 ext
+               val is2 = trans_exp env vlist e2 ext
+           in
+               is1 @ is2 @ [V.Inst(V.binop(tbinop(opr)), A.Print.pp_exp e, ext)]
+           end
     | trans_exp env vlist (e as A.Select(lv1, f)) ext =
       let val is1 = trans_lv env vlist lv1 ext (* computes address *)
           val t1 = Syn.syn_exp_expd env lv1
@@ -489,14 +497,11 @@ struct
       in [V.Inst(V.new(size), A.Print.pp_exp(e), ext)]
       end
     | trans_exp env vlist (e as A.AllocArray(t, e1)) ext =
-      let val size = sizeof(t)
-              (* Overflow should be impossible here, since it would have been caught earlier *)
-              (* handle Overflow => ( ErrorMsg.error ext ("newarray: array elements way too big")
-                                                  ; raise ErrorMsg.Error ) *)
+      let val size = sizeof(t)  (* size check necessary? *)
           val _  = (if size < 0 orelse size >= maxint8
-                   then ( ErrorMsg.error NONE ("newarray: array elements too big") ;
-                          raise ErrorMsg.Error )
-                   else ())
+                    then ( ErrorMsg.error NONE ("newarray: array elements too big") ;
+                           raise ErrorMsg.Error )
+                    else ())
       in trans_exp env vlist e1 ext
          @ [V.Inst(V.newarray(size), A.Print.pp_exp(e), ext)]
       end
@@ -533,70 +538,115 @@ struct
     | trans_lv env vlist (A.Marked(marked_exp)) ext =
         trans_lv env vlist (Mark.data marked_exp) (Mark.ext marked_exp)
 
-  fun trans_stm env vlist (A.Assign(oper_opt, l1, e2)) ext =
+  (* trans_cond env vlist e then_lab else_lab ext = is
+   * Executing 'is' evaluates e : bool.
+   * If true, it jumps to then_lab.
+   * If false, it jumps to else_lab.
+   *)
+  and trans_cond env vlist (A.Marked(marked_exp)) then_lab else_lab ext =
+        trans_cond env vlist (Mark.data marked_exp) then_lab else_lab (Mark.ext marked_exp)
+    | trans_cond env vlist (e as A.OpExp(opr, [e1, e2])) then_lab else_lab ext =
+      if isrel opr
+      then let val is1 = trans_exp env vlist e1 ext
+               val is2 = trans_exp env vlist e2 ext
+               val anno = A.Print.pp_exp e
+           in
+               is1 @ is2
+               @ [V.Inst(V.if_icmp(trel(opr), then_lab),
+                         "if " ^ anno ^ " goto " ^ labToString(then_lab), ext),
+                  V.Inst(V.goto(else_lab),
+                         "goto " ^ labToString(else_lab), ext)]
+           end
+      else trans_cond' env vlist e then_lab else_lab ext
+    | trans_cond env vlist e then_lab else_lab ext =
+        trans_cond' env vlist e then_lab else_lab ext
+  and trans_cond' env vlist (A.OpExp(A.LOGNOT, [e1])) then_lab else_lab ext =
+        trans_cond env vlist e1 else_lab then_lab ext
+    | trans_cond' env vlist (A.OpExp(A.LOGAND, [e1, e2])) then_lab else_lab ext =
+      let val newlabel = next_glabel("and")
+      in
+          trans_cond env vlist e1 newlabel else_lab ext
+          @ [V.Label(newlabel)]
+          @ trans_cond env vlist e2 then_lab else_lab ext
+      end
+    | trans_cond' env vlist (e as A.OpExp(A.LOGOR, [e1, e2])) then_lab else_lab ext =
+      let val newlabel = next_glabel("or")
+      in
+          trans_cond env vlist e1 then_lab newlabel ext
+          @ [V.Label(newlabel)]
+          @ trans_cond env vlist e2 then_lab else_lab ext
+      end
+    | trans_cond' env vlist (e as A.OpExp(A.COND, [e1, e2, e3])) then_lab else_lab ext =
+      let val newlabel2 = next_glabel("cond_true")
+          val newlabel3 = next_glabel("cond_false")
+      in
+          trans_cond env vlist e1 newlabel2 newlabel3 ext
+          @ [V.Label(newlabel2)] @ trans_cond env vlist e2 then_lab else_lab ext
+          @ [V.Label(newlabel3)] @ trans_cond env vlist e3 then_lab else_lab ext
+      end
+    | trans_cond' env vlist (A.True) then_lab else_lab ext =
+      [V.Inst(V.goto(then_lab), "goto " ^ labToString(then_lab), ext)]
+    | trans_cond' env vlist (A.False) then_lab else_lab ext =
+      [V.Inst(V.goto(else_lab), "goto " ^ labToString(else_lab), ext)]
+    | trans_cond' env vlist e then_lab else_lab ext =
+      (* all other case: translate as expressions and compare result to 'true' *)
+      let val is = trans_exp env vlist e ext
+      in is @ [V.Inst(V.bipush(1), "true", ext),
+               V.Inst(V.if_icmp(V.eq, then_lab),
+                      "if (" ^ A.Print.pp_exp e ^ " == true) goto " ^ labToString(then_lab), ext),
+               V.Inst(V.goto(else_lab),
+                      "goto " ^ labToString(else_lab), ext)]
+      end
+
+  fun trans_stm env vlist (A.Assign(oper_opt, l1, e2)) conts breaks ext =
         trans_assign env vlist oper_opt l1 e2 ext
-    | trans_stm env vlist (A.Exp(e)) ext =
+    | trans_stm env vlist (A.Exp(e)) conts breaks ext =
         trans_exp env vlist e ext
         @ [V.Inst(V.pop, "(ignore result)", ext)]
-    | trans_stm env vlist (A.Seq(ds, ss)) ext = trans_seq env vlist ds ss ext
-    | trans_stm env vlist (A.StmDecl(d)) ext = (* empty scope *)
-        trans_seq env vlist [d] [] ext
-    | trans_stm env vlist (A.If(e1, s2, s3)) ext =
-      let val is1 = trans_exp env vlist e1 ext
-          val is2 = trans_stm env vlist s2 ext
-          val n2 = V.code_length is2
+    | trans_stm env vlist (A.Seq(ds, ss)) conts breaks ext = 
+        trans_seq env vlist ds ss conts breaks ext
+    | trans_stm env vlist (A.StmDecl(d)) conts breaks ext = (* empty scope *)
+        trans_seq env vlist [d] [] conts breaks ext
+    | trans_stm env vlist (A.If(e1, s2, s3)) conts breaks ext =
+      let val then_lab = next_glabel("then")
           val else_lab = next_glabel("else")
-          val is3 = trans_stm env vlist s3 ext
-          val n3 = V.code_length is3
           val endif_lab = next_glabel("endif")
-          val _ = if nif+n2+ngoto >= maxint15 orelse n3+ngoto >= maxint15
-                  then ( ErrorMsg.error NONE ("jump too big") ;
-                         raise ErrorMsg.Error )
-                  else ()
+          val is1 = trans_cond env vlist e1 then_lab else_lab ext
+          val is2 = trans_stm env vlist s2 conts breaks ext
+          val is3 = trans_stm env vlist s3 conts breaks ext
       in
           is1
-          @ [V.Inst(V.bipush(0), "", ext),
-             V.Inst(V.if_icmp(V.eq, nif+n2+ngoto),
-                    "if " ^ A.Print.pp_exp(e1) ^ " goto " ^ else_lab, ext)]
-          @ is2 @ [V.Inst(V.goto(n3+ngoto), "goto " ^ endif_lab, ext)]
-          @ [V.Comment(else_lab)] @ is3
-          @ [V.Comment(endif_lab)]
+          @ [V.Label(then_lab)] @ is2
+          @ [V.Inst(V.goto(endif_lab), "goto " ^ labToString endif_lab, ext)]
+          @ [V.Label(else_lab)] @ is3 (* @ V.goto(endif_lab) is unnecessary *)
+          @ [V.Label(endif_lab)]
       end
-    | trans_stm env vlist (A.While(e1, _, s2)) ext = (* ignore invariants *)
+    | trans_stm env vlist (A.While(e1, _, s2)) conts breaks ext = (* ignore invariants *)
       let val loop_lab = next_glabel("loop")
-          val is1 = trans_exp env vlist e1 ext
-          val n1 = V.code_length is1
-          val is2 = trans_stm env vlist s2 ext
-          val n2 = V.code_length is2
-          val endloop_lab = next_glabel("endloop")
-          val _ = if nif + n2 + ngoto >= maxint15 orelse n1+ V.il(V.bipush(0)) +nif+n2 >= maxint15
-                  then ( ErrorMsg.error NONE ("jump too big") ;
-                         raise ErrorMsg.Error )
-                  else ()
-          val is0 = [V.Comment(loop_lab)]
-                    @ is1
-                    @ [V.Inst(V.bipush(0), "", ext),
-                       V.Inst(V.if_icmp(V.eq, nif+n2+ngoto),
-                              "if " ^ A.Print.pp_exp(e1) ^ " goto " ^ endloop_lab, ext)]
-                    @ is2
-                    @ [V.Inst(V.goto(~(n1+V.il(V.bipush(0))+nif+n2)),
-                              "goto " ^ loop_lab, ext)]
-                    @ [V.Comment(endloop_lab)]
+          val body_lab = next_glabel("body")
+          val exit_lab = next_glabel("exit")
+          val is1 = trans_cond env vlist e1 body_lab exit_lab ext
+          val is2 = trans_stm env vlist s2 (loop_lab::conts) (exit_lab::breaks) ext
       in
-          resolve_break is0 nil
+          [V.Label(loop_lab)]
+          @ is1
+          @ [V.Label(body_lab)]
+          @ is2
+          @ [V.Inst(V.goto(loop_lab), "goto " ^ labToString(loop_lab), ext)]
+          @ [V.Label(exit_lab)]
       end 
     (* no A.For *)
-    | trans_stm env vlist (A.Continue) ext =
-        [V.Inst(V.goto(1), "continue", ext)] (* continue = goto(1) *)
-    | trans_stm env vlist (A.Break) ext =
-        [V.Inst(V.goto(2), "break", ext)] (* break = goto(2) *)
-    | trans_stm env vlist (A.Return(NONE)) ext =
+    | trans_stm env vlist (A.Continue) (loop_lab::conts) breaks ext =
+        [V.Inst(V.goto(loop_lab), "continue", ext)]
+    | trans_stm env vlist (A.Break) conts (exit_lab::breaks) ext =
+        [V.Inst(V.goto(exit_lab), "break", ext)]
+    | trans_stm env vlist (A.Return(NONE)) conts breaks ext =
         [V.Inst(V.bipush(0),"dummy return value", ext),
          V.Inst(V.return, "", ext)]
-    | trans_stm env vlist (A.Return(SOME(e))) ext =
+    | trans_stm env vlist (A.Return(SOME(e))) conts breaks ext =
         trans_exp env vlist e ext
         @ [V.Inst(V.return, "", ext)]
-    | trans_stm env vlist (A.Assert(e1, e2s)) ext =
+    | trans_stm env vlist (A.Assert(e1, e2s)) conts breaks ext =
       let val e2 = case e2s
                     of [] => A.StringConst(location ext ^ ": assertion failed")
                      | e2s => join e2s
@@ -604,24 +654,24 @@ struct
         trans_exp env vlist e1 ext
         @ trans_exp env vlist e2 ext
         @ [V.Inst(V.assert, 
-                  "assert " ^ A.Print.pp_exp(e1) 
-                  ^ " with failure message " ^ A.Print.pp_exp(e2), 
+                  "assert" ^ A.Print.pp_exp(e1) 
+                  ^ " [failure message on stack]", (* ^ A.Print.pp_exp(e2) *)
                   ext)]
       end
-    | trans_stm env vlist (A.Error(e)) ext = 
+    | trans_stm env vlist (A.Error(e)) conts breaks ext = 
         trans_exp env vlist e ext
         @ [V.Inst(V.athrow, "error " ^ A.Print.pp_exp(e), ext)]
-    | trans_stm env vlist (A.Anno(specs)) ext =
+    | trans_stm env vlist (A.Anno(specs)) conts breaks ext =
       (* ignore annotations; handled in ../type/dyn-check.sml *)
       []
-    | trans_stm env vlist (A.Markeds(marked_stm)) ext =
-        trans_stm env vlist (Mark.data marked_stm) (Mark.ext marked_stm)
-  and trans_seq env vlist nil ss ext =
+    | trans_stm env vlist (A.Markeds(marked_stm)) conts breaks ext =
+        trans_stm env vlist (Mark.data marked_stm) conts breaks (Mark.ext marked_stm)
+  and trans_seq env vlist nil ss conts breaks ext =
       ( track_num_vars(vlist) ;
-        trans_stms env vlist ss ext )
-    | trans_seq env vlist ((d as A.VarDecl(x,t,NONE,_))::ds) ss ext =
-        trans_seq (Symbol.bind env (x,t)) (vlist @ [d]) ds ss ext
-    | trans_seq env vlist ((d as A.VarDecl(x,t,SOME(e),ext'))::ds) ss ext =
+        trans_stms env vlist ss conts breaks ext )
+    | trans_seq env vlist ((d as A.VarDecl(x,t,NONE,_))::ds) ss conts breaks ext =
+        trans_seq (Symbol.bind env (x,t)) (vlist @ [d]) ds ss conts breaks ext
+    | trans_seq env vlist ((d as A.VarDecl(x,t,SOME(e),ext'))::ds) ss conts breaks ext =
       let val vlist' = vlist @ [d]
           val env' = Symbol.bind env (x, t)
       in
@@ -629,11 +679,13 @@ struct
           @ [V.Inst(V.vstore (lookup vlist' 0 x),
                     A.Print.pp_stm(A.Assign(NONE, A.Var(x), e)),
                     ext')]
-          @ trans_seq env' vlist' ds ss ext
+          @ trans_seq env' vlist' ds ss conts breaks ext
       end
-  and trans_stms env vlist nil ext = []
-    | trans_stms env vlist (s::ss) ext =
-        trans_stm env vlist s ext @ trans_stms env vlist ss ext
+  and trans_stms env vlist nil conts breaks ext = []
+    | trans_stms env vlist (s::ss) conts breaks ext =
+        trans_stm env vlist s conts breaks ext
+        @ trans_stms env vlist ss conts breaks ext
+
   and trans_assign env vlist NONE (A.Var(x)) e ext = 
         trans_exp env vlist e ext
         @ [V.Inst(V.vstore(lookup vlist 0 x),
@@ -694,20 +746,22 @@ struct
                        of A.Void => A.Seq([], [body, A.Return(NONE)])
                           | _ => body)
           val env0 = Syn.syn_decls Symbol.empty params
-          val is = trans_stm env0 params body' ext
+          val is = trans_stm env0 params body' nil nil ext
           val num_vars = get_num_vars()
           val _  = (if num_vars < 0 orelse num_vars >= maxint16
                    then ( ErrorMsg.error NONE ("too many variables in function: " ^ (Symbol.name g)) ;
                           raise ErrorMsg.Error )
                    else ())
-          val code_length = V.code_length(is)
+          val _ = labMap 0 is   (* compute mapping from labels to addresses *)
+          val is' = labToOffsets 0 is nil (* replace labels by offsets *)
+          val code_length = V.code_length(is')
           val _  = (if code_length < 0 orelse code_length >= maxint16
                    then ( ErrorMsg.error NONE ("body of function: " ^ (Symbol.name g) ^ "too long") ;
                           raise ErrorMsg.Error )
                    else ())
           val fi = V.FI {name = Symbol.name(g),
                          num_args = num_args, num_vars = num_vars,
-                         code_length = code_length, code = is}
+                         code_length = code_length, code = is'}
           val _ = Array.update(function_pool, findex, SOME(fi))
       in
           ()
@@ -719,9 +773,7 @@ struct
       ( case (Funtab.lookup(g), Symtab.lookup(g))
                of (NONE, SOME(A.Function(g', rtp', params', bodyOpt', specs', false, ext')))
             (* is_external = true allowed in spring'11 revision *)
-            => let val findex = if Symbol.name(g) = "main" then 0
-                                else next_findex()
-                                     
+            => let val findex = next_findex() (* "main" not possible since seeded in Funtab *)
                    (* val _ = print("Internal Decl:" ^ Symbol.name(g) ^ "\n") *)
                    val _ = Funtab.bind(g, findex)
                    val _ = Array.update(function_pool, findex, NONE)
@@ -761,15 +813,6 @@ struct
   and trans_gdecls nil = ()
     | trans_gdecls (gdecl::gdecls) =
         ( trans_gdecl gdecl ; trans_gdecls gdecls )
-
-(*
-  fun prepone_main (fi as (V.FI {name = "main", ...}::function_pool)) = fi
-    | prepone_main (fi::function_pool) =
-      let val fi_main::function_pool' = prepone_main function_pool
-      in fi_main::fi::function_pool' end
-    | prepone_main nil = ( ErrorMsg.error NONE ("no main function") ;
-			   raise ErrorMsg.Error )
-*)
 
   fun trans arch_wsize gdecls =
       let val () = reset()  (* reset pools, struct size tab *)

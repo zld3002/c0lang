@@ -1,12 +1,14 @@
 signature C0VM =
 sig
 
+  type label = int * string
+
   type var_index = int
   type byte = int (* 8 bits signed *)
   type size = int (* 16 bits unsigned *)
   type field_offset = int (* 8 bits signed *)
   type pool_index = int (* 16 bits unsigned *)
-  type branch_offset = int (* 16 bits unsiged *)
+  type branch_offset = label (* 16 bits unsiged *)
 
   datatype comparison =
     eq | ne | lt | ge | gt | le
@@ -54,6 +56,7 @@ sig
 
   datatype bcline =
      Inst of inst * string * Mark.ext option
+   | Label of label
    | Comment of string
 
   datatype function_info =
@@ -78,17 +81,18 @@ sig
   val il : inst -> int
   val code_length : bcline list -> int
 
-end; (* signature C0VM *)
+end (* signature C0VM *)
 
 structure C0VM :> C0VM =
 struct
 
+  type label = int * string
   type var_index = int
   type byte = int
   type size = int
   type field_offset = int
   type pool_index = int
-  type branch_offset = int
+  type branch_offset = int * string
 
   datatype comparison =
     eq | ne | lt | ge | gt | le
@@ -136,6 +140,7 @@ struct
 
   datatype bcline =
      Inst of inst * string * Mark.ext option
+   | Label of label
    | Comment of string
 
   datatype function_info =
@@ -193,9 +198,10 @@ struct
     | il (cmstore) = 1
 
   fun num_bytes (Comment(s)::bcs) i = num_bytes bcs i
+    | num_bytes (Label(lab)::bcs) i = num_bytes bcs i
     | num_bytes (Inst(inst,_,_)::bcs) i = num_bytes bcs (i+il(inst))
     | num_bytes (nil) i = i
 
   fun code_length bcs = num_bytes bcs 0
 
-end;
+end

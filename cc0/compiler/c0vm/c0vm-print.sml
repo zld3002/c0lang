@@ -29,15 +29,21 @@ struct
   fun s16(c) = (* -2^15 <= c < 2^15-1 *)
       if c < ~32768 orelse c >= 32768 then raise Fail ("Invalid bytecode: s16: " ^ (Int.toString c))
       else u16(if c < 0 then c+65536 else c)
-  fun s16dec(c) = if c < 0
-		  then "-" ^ Int.toString(~c)
-		  else Int.toString(c)
+  fun s16dec(c) = (* for jump offsets *)
+      if c < 0
+      then "-" ^ Int.toString(~c)
+      else "+" ^ Int.toString(c)
+  fun s8dec(b) = (* for bipush immediate operands *)
+      if b < 0
+      then "-" ^ Int.toString(~b)
+      else Int.toString(b)
   fun pad(s,n) = if String.size(s) < n
 		 then pad(s ^ " ",n)
 		 else s
   fun pad9(s) = pad(s,9)
   fun pad18(s) = pad(s,18)
   fun pad27(s) = pad(s,27)
+
 
   fun pp_inst2 (V.dup) = ("59","dup")
     | pp_inst2 (V.pop) = ("57","pop")
@@ -55,17 +61,17 @@ struct
     | pp_inst2 (V.vload(i)) = ("15 " ^ u8(i), "vload " ^ Int.toString(i))
     | pp_inst2 (V.vstore(i)) = ("36 " ^ u8(i), "vstore " ^ Int.toString(i))
     | pp_inst2 (V.aconst_null) = ("01", "aconst_null")
-    | pp_inst2 (V.bipush(b)) = ("10 " ^ s8(b), "bipush " ^ Int.toString(b))
+    | pp_inst2 (V.bipush(b)) = ("10 " ^ s8(b), "bipush " ^ s8dec(b))
     | pp_inst2 (V.ildc(c)) = ("13 " ^ u16(c), "ildc " ^ Int.toString(c))
     | pp_inst2 (V.aldc(c)) = ("14 " ^ u16(c), "aldc " ^ Int.toString(c))
     | pp_inst2 (V.nop) = ("00", "nop")
-    | pp_inst2 (V.if_icmp(V.eq, offset)) = ("9F " ^ s16(offset), "if_cmpeq " ^ s16dec(offset))
-    | pp_inst2 (V.if_icmp(V.ne, offset)) = ("A0 " ^ s16(offset), "if_cmpne " ^ s16dec(offset))
-    | pp_inst2 (V.if_icmp(V.lt, offset)) = ("A1 " ^ s16(offset), "if_icmplt " ^ s16dec(offset))
-    | pp_inst2 (V.if_icmp(V.ge, offset)) = ("A2 " ^ s16(offset), "if_icmpge " ^ s16dec(offset))
-    | pp_inst2 (V.if_icmp(V.gt, offset)) = ("A3 " ^ s16(offset), "if_icmpgt " ^ s16dec(offset))
-    | pp_inst2 (V.if_icmp(V.le, offset)) = ("A4 " ^ s16(offset), "if_icmple " ^ s16dec(offset))
-    | pp_inst2 (V.goto(offset)) = ("A7 " ^ s16(offset), "goto " ^ s16dec(offset))
+    | pp_inst2 (V.if_icmp(V.eq, (offset, _))) = ("9F " ^ s16(offset), "if_cmpeq " ^ s16dec(offset))
+    | pp_inst2 (V.if_icmp(V.ne, (offset, _))) = ("A0 " ^ s16(offset), "if_cmpne " ^ s16dec(offset))
+    | pp_inst2 (V.if_icmp(V.lt, (offset, _))) = ("A1 " ^ s16(offset), "if_icmplt " ^ s16dec(offset))
+    | pp_inst2 (V.if_icmp(V.ge, (offset, _))) = ("A2 " ^ s16(offset), "if_icmpge " ^ s16dec(offset))
+    | pp_inst2 (V.if_icmp(V.gt, (offset, _))) = ("A3 " ^ s16(offset), "if_icmpgt " ^ s16dec(offset))
+    | pp_inst2 (V.if_icmp(V.le, (offset, _))) = ("A4 " ^ s16(offset), "if_icmple " ^ s16dec(offset))
+    | pp_inst2 (V.goto(offset, _)) = ("A7 " ^ s16(offset), "goto " ^ s16dec(offset))
     | pp_inst2 (V.athrow) = ("BF", "athrow")
     | pp_inst2 (V.assert) = ("CF", "assert")
     | pp_inst2 (V.invokestatic(c)) = ("B8 " ^ u16(c), "invokestatic " ^ Int.toString(c))
@@ -88,6 +94,7 @@ struct
       in pad9(code) ^ "# " ^ mnemonic end
 
   fun pp_bclines n (V.Comment(s)::bcs) = "# " ^ s ^ "\n" ^ pp_bclines n bcs
+    | pp_bclines n (V.Label(k, s)::bcs) = "# " ^ s ^ "\n" ^ pp_bclines n bcs
     | pp_bclines n (V.Inst(inst, anno, ext)::bcs) =
       (* "/" ^ pad(Int.toString(n),3) ^ "/ " ^ *)
         pad27(pp_inst inst) ^ "# " ^ anno ^ "\n"

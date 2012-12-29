@@ -60,9 +60,9 @@ Control Flow
 0xA3 if_icmpgt <o1,o2> S, x:w32, y:w32 -> S   (pc = pc+(o1<<8|o2) if x > y)
 0xA4 if_icmple <o1,o2> S, x:w32, y:w32 -> S   (pc = pc+(o1<<8|o2) if x <= y)
 0xA7 goto <o1,o2>      S -> S                 (pc = pc + (o1<<8|o2))
-0xBF athrow            S, a:char* -> S        (print string, exit w/failure)
-0xCF assert            S, x:w32, a:char* -> S (x != 0)
-0xCF assert            S, x:w32, a:char* -> S (x == 0, raise SIGABRT)
+0xBF athrow            S, a:* -> S            (print (char*)a, exit w/failure)
+0xCF assert            S, x:w32, a:* -> S     (x != 0)
+0xCF assert            S, x:w32, a:* -> S     (x == 0, print (char*)a, raise SIGABRT)
 
 Functions
 
