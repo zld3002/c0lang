@@ -489,6 +489,8 @@ fun lexer (pos, charstream, state) =
     ; M.Cons ((tok, (left_pos, right_pos)), fn () => lexer (right_pos, new_stream, new_state))
   end
 
+(* The starting value is 2 because of a miracle [Issue #42] - rjs 12/29/2012 
+ * See also coin/coin.sml *)
 fun makeLexer source = fn () => lexer (2, buffered_stream source, CODE NORMAL)
 
 fun lineLexer (cs, pos, lex_state) =

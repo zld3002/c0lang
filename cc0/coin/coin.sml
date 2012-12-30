@@ -147,6 +147,8 @@ end
 
 (* Storing the lex state *)
 val remember_lex_state = ref C0Lex.normal
+(* The starting value is 2 because of a miracle [Issue #42] - rjs 12/29/2012 
+ * See also restart() and makeLexer in compiler/parse3/lex.sml *)
 val remember_pos = ref 2
 val remember_input: C0Lex.lexresult Stream.front ref = ref Stream.Nil
 
