@@ -1,7 +1,7 @@
 Group is 
       $/basis.cm
       $/smlnj-lib.cm
-      ../compiler/sources3.cm
+      ../compiler/sources.cm
 
       growarray-sig.sml
       growarray.sml

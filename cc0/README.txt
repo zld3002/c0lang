@@ -76,6 +76,13 @@ are installed as $(PREFIX)/lib/* and $(PREFIX)/runtime/*, respectively.
 Include files in include/* are installed as $(PREFIX)/include/*.
 
 ----------------------------------------------------------------------
+Issue tracking
+----------------------------------------------------------------------
+While the sorce remains in a CMU-hosted subversion repositiory, issue
+tracking is done through GitHub at
+https://github.com/frankpfenning/C0/issues
+
+----------------------------------------------------------------------
 Known problems
 ----------------------------------------------------------------------
 There are some issues with configuring zlib and libpng so they work
@@ -158,6 +165,24 @@ Older versions:
 
 tar -cvzf c0-src-v2760.tgz --exclude .svn --exclude vm 15-122/externals/gc 15-122/c0
 
+----------------------------------------------------------------------
+History
+----------------------------------------------------------------------
+The original version of the compiler was in a different repository
+that shared 15-122 specific files; in early 2012 this was moved to a
+C0-specific subversion repository. There were still a lot of C++
+dependencies in this version inhereted from the use of Qt in the old
+library, these were eliminated in the early 200-revisions (December
+2012).
+
+Around revision 260, some housekeeping was done:
+
+cc0/debugger-r10 eliminated (Jakob and Rob's early debugger infrastructure) 
+cc0/debugger-r12 --> cc0/code
+cc0/compiler/parse1 eliminated (Original LEX/YACC parser)
+cc0/compiler/parse2 eliminated (Prototype by-hand shift-reduce parser)
+cc0/compiler/parse3 -> cc0/compiler/parse
+
 --------------------------------------------------
 To set svn properties:
 
@@ -181,3 +206,4 @@ Environment variables:
         - if the result file has all 5 bytes, the C0 program finished
           successfully
 ----------------------------------------------------------------------
+

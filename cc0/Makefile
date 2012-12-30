@@ -107,7 +107,7 @@ unsafe/$(call dllname,unsafe): gc
 ## cc0 - the C0 compiler
 
 .PHONY: cc0
-cc0 parse3: bin bare
+cc0: bin bare
 	$(MAKE) -C compiler clean
 	$(MAKE) -C compiler buildid
 	$(MAKE) -C compiler cc0
@@ -116,28 +116,8 @@ cc0 parse3: bin bare
 	$(COPY) compiler/bin/cpfiles bin
 	chmod +x bin/cc0 bin/cpfiles
 
-
-
-parse2: bin bare
-	$(MAKE) -C compiler clean
-	$(MAKE) -C compiler buildid
-	$(MAKE) -C compiler parse2
-	$(COPY) compiler/bin/cc0-sml bin/cc0
-	$(COPY) compiler/bin/cc0.heap.* bin
-	$(COPY) compiler/bin/cpfiles bin
-	chmod +x bin/cc0 bin/cpfiles
-
-parse1: bin bare
-	$(MAKE) -C compiler clean
-	$(MAKE) -C compiler buildid
-	$(MAKE) -C compiler parse1
-	$(COPY) compiler/bin/cc0-sml bin/cc0
-	$(COPY) compiler/bin/cc0.heap.* bin
-	$(COPY) compiler/bin/cpfiles bin
-	chmod +x bin/cc0 bin/cpfiles
-
 csharp: bin bare
-	# $(MAKE) -C compiler clean
+#	$(MAKE) -C compiler clean
 	$(MAKE) -C compiler buildid
 	$(MAKE) -C compiler csharp
 	$(COPY) compiler/bin/cc0-sml bin/cc0
@@ -231,12 +211,13 @@ coin-exec: bin
 .PHONY: code
 code: bin
 	$(MAKE) -C compiler buildid
-	$(MLTON_NATIVE) bin/code debugger-s12/debug.mlb $(NATIVE_COIN)
+	$(MLTON_NATIVE) bin/code code/debug.mlb $(NATIVE_COIN)
 
 code-smlnj: bin
-	$(MAKE) -C debugger-s12 code
-	$(COPY) debugger-s12/code.heap.* bin
-	$(COPY) debugger-s12/code-smlnj bin/code
+	$(MAKE) -C compiler buildid
+	$(MAKE) -C code
+	$(COPY) code/code.heap.* bin
+	$(COPY) code/code-smlnj bin/code
 	chmod +x bin/code
 
 ## Testing harnesses

@@ -2,7 +2,7 @@ Group is
    $/smlnj-lib.cm
    $/basis.cm
 
-   ../compiler/sources3.cm
+   ../compiler/sources.cm
 
    c0ffi.list.sml 
    load_h0.sml

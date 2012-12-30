@@ -1,6 +1,0 @@
-.PHONY: debugger
-
-debugger:
-	mllex debugger/parser/c0.lex
-	mlyacc debugger/parser/c0.grm
-	mlton -const "Exn.keepHistory true" -output bin/c0de debugger/server/sources.mlb

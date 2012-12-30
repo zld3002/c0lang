@@ -2,5 +2,5 @@
  * Helper for compilation
  *)
 
-CM.make "sources1.cm";
+CM.make "sources.cm";
 SMLofNJ.exportFn ("bin/cc0.heap", Top.main);
