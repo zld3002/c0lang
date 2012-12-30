@@ -1,4 +1,4 @@
-//test segfault
+//test !safe => runs; safe => segfault
 
 int main() {
   return (alloc_array(int, 3 + (alloc_array(int, 1000))[0]))[3];

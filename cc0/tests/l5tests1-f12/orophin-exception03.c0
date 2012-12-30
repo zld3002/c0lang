@@ -1,4 +1,4 @@
-//test segfault
+//test !safe => runs; safe => segfault
 //  array access beyond bounds 
 int main() {
   int a = 42;

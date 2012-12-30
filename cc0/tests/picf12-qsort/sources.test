@@ -1,4 +1,4 @@
-return 0        ~ -d qsort.c0 sort-test.c0
-return 0        ~ -d qsort-alt.c0 sort-test.c0
-return 0        ~ qsort.c0 sort-time.c0
-return 0        ~ qsort-alt.c0 sort-time.c0
+safe => return 0        ~ -d qsort.c0 sort-test.c0
+safe => return 0        ~ -d qsort-alt.c0 sort-test.c0
+return 0                ~ qsort.c0 sort-time.c0
+return 0                ~ qsort-alt.c0 sort-time.c0

@@ -1,4 +1,4 @@
-//test segfault
+//test !safe => runs; safe => segfault
 int main() {
     int[] A = alloc_array(int, 0);
     int[] B = alloc_array(int, 1);

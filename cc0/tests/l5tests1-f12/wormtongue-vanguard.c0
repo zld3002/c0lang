@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 // in which we hop off an array
 
 int main() {

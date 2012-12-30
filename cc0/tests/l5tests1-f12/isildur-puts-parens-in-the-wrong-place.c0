@@ -1,4 +1,4 @@
-//test segfault
+//test !safe => runs; safe => segfault
 
 // neg(f - 1) is 1001 - too big for the array
 int write(int[] a, int index, int val) {

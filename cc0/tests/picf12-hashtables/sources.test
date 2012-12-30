@@ -1,2 +1,2 @@
-return 0        ~ -d ht.c0 ht-test.c0
-return 0        ~ ht-resize.c0 ht-test.c0
+safe => return 0        ~ -d ht.c0 ht-test.c0
+return 0                ~ ht-resize.c0 ht-test.c0

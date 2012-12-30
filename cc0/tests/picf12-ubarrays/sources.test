@@ -1,2 +1,2 @@
-return 0        ~ -d ubarrays.c0 ubarrays-test.c0
-return 0        ~ ubarrays.c0 ubarrays-time.c0
+safe => return 0        ~ -d ubarrays.c0 ubarrays-test.c0
+return 0                ~ ubarrays.c0 ubarrays-time.c0

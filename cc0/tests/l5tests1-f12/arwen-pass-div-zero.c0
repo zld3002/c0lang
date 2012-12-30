@@ -1,4 +1,4 @@
-//test div-by-zero
+//test !safe => runs; safe => div-by-zero
 //Tests that when a function is called, it evaluates all of its parameters
 // before running its body
 

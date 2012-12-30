@@ -1,4 +1,4 @@
-//test segfault
+//test !safe => runs; safe => segfault
 
 typedef struct _ _;
 

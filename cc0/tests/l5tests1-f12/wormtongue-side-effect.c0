@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 // Don't optimize me bro.
 
 int main() {

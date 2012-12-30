@@ -1,4 +1,4 @@
-//test segfault
+//test !safe => runs; safe => segfault
 
 //probably shouldn't allocate heaps of size 0
 

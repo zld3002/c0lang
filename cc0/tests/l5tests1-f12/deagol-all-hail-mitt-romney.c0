@@ -1,4 +1,4 @@
-//test segfault
+//test !safe => runs; safe => segfault
 /*
 
 #define MITT_ROMNEYS_CHANCE_OF_WINNING 0

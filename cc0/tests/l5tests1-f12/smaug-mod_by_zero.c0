@@ -1,4 +1,4 @@
-//test div-by-zero
+//test !safe => runs; safe => div-by-zero
 // Attempts to mod a number by 0
 
 int main()

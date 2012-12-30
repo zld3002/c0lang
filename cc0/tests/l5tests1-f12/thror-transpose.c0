@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 
 int[][] matrix(int n, int m) {
   int[][] mat = alloc_array(int[], n);

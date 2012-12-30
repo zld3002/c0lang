@@ -1,1 +1,1 @@
-return 0        ~ -d queues.c0 queues-test.c0
+safe => return 0        ~ -d queues.c0 queues-test.c0

@@ -1,4 +1,4 @@
-//test segfault
+//test !safe => runs; safe => segfault
 //  access array before bounds
 struct a {
   int b;

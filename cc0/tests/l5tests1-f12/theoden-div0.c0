@@ -1,4 +1,4 @@
-//test div-by-zero
+//test !safe => runs; safe => div-by-zero
 
 // divide by zero in an expression that's a statement
 int main()

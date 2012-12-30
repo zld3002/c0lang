@@ -1,2 +1,2 @@
-return 0        ~ -d readfile.c0 tst.c0 tst-test.c0
-return 0        ~ readfile.c0 tst.c0 tst-time.c0
+safe => return 0        ~ -d readfile.c0 tst.c0 tst-test.c0
+return 0                ~ readfile.c0 tst.c0 tst-time.c0

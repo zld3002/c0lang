@@ -1,4 +1,4 @@
-//test segfault
+//test !safe => runs; safe => segfault
 // should notice out-of-bound error and raise SIGSEGV
 int main ()
 {

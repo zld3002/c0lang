@@ -1,4 +1,4 @@
-//test segfault
+//test safe => segfault
 
 int f (int* p) {
   int v = *p;

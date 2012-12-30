@@ -1,4 +1,4 @@
-//test div-by-zero 
+//test !safe => runs; safe => div-by-zero 
 
 int main() {
   return 3 / (true ? 0 : 3);

@@ -1,4 +1,4 @@
-//test div-by-zero
+//test safe => div-by-zero
 // tests short circuiting
 
 int main() {

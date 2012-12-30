@@ -1,4 +1,4 @@
-//test segfault
+//test !safe => runs; safe => segfault
 
 // negative allocation size
 int f(int n) {

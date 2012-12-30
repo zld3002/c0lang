@@ -1,4 +1,4 @@
-return 0        ~ -d selectsort.c0 sort-test.c0
-return 0        ~ -d insertsort.c0 sort-test.c0
-return 0        ~ selectsort.c0 sort-time.c0
-return 0        ~ insertsort.c0 sort-time.c0
+safe => return 0        ~ -d selectsort.c0 sort-test.c0
+safe => return 0        ~ -d insertsort.c0 sort-test.c0
+return 0                ~ selectsort.c0 sort-time.c0
+return 0                ~ insertsort.c0 sort-time.c0

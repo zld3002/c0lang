@@ -1,4 +1,4 @@
-//test segfault
+//test !safe => runs; safe => segfault
 
 int myfunc(int[] arr) {
    return arr[-1];

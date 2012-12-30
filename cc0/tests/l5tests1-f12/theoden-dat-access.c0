@@ -1,4 +1,4 @@
-//test segfault
+//test !safe => runs; safe => segfault
 
 int get_i(int* p)
 {
