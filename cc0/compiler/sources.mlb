@@ -41,7 +41,7 @@ local
       c0vm/c0vm-print.sml
    end
 
-   top/buildid.sml
+   ../buildid.sml
    top/flags.sml
    top/top.sml
 in

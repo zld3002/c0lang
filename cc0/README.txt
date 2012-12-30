@@ -39,36 +39,39 @@ Building from source
 
     $ ./configure
 
-    $ make            # build the cc0 compiler, gc, runtimes, and libraries
-  [ $ make libs       # build the libraries separately (libpng required for libimg) ]
-  [ $ make cc0-mlton  # build cc0 with mlton, for standalone binary export ]
-    $ make check      # run the regression suite
+   $ make [ MLTON=true ]  # build the cc0 compiler, coin, code, gc, runtimes,
+                          # and libraries
+                          # optional MLTON=true argument uses MLton instead of
+                          # SML/NJ as a compiler (required to use libraries
+                          # with coin and code)
 
-    $ make coin       # build the interactive toplevel
-    $ make code       # build the debugger
-  [ $ make coin-exec  # build the interpreter ]
-  [ $ make checkcoin  # run the regression suite on the interpreter ]
+ [ $ make libs            # build the libraries separately ] 
+ [                        # (libpng required for libimg) ]
 
-  [ $ cd vm; make     # build c0vm, must run make libs first ]
-  [ $ make checkvm    # test cc0 -b together with c0vm ]
+   $ make check           # run the regression suite (currently requires MLton)
+ [ $ make checkc0rt ]     # run the regression suite on the c0rt runtime
+ [ $ make checkbare ]     # run the regression suite on the bare runtime
+ [ $ make checkunsafe ]   # run the regression suite on the unsafe runtime
+
+ [ $ cd vm; make          # build c0vm, must run make libs first ]
+ [ $ make checkvm         # test cc0 -b together with c0vm ]
+
+ [ $ make coin-exec MLTON=true # build the interpreter ]
+ [ $ make checkcoin            # run the regression suite on the interpreter ]
 
 If all tests succeed, you can roll out the current build with:
 
-    $ make install    # install binaries, libs, runtimes, and include files
+   $ make install    # install binaries, libs, runtimes, and include files
 
 Alternatively, to only roll out the current libraries, you can run:
 
-    $ make install-libs
+   $ make install-libs
 
 NB: to run make check, you may need to put MLton on your PATH, e.g., by
 adding /afs/andrew/usr/wlovas/public/mlton/usr/bin to it on Andrew.
 
-NB: "make check" tests the default runtime.  You can also run "make checkbare"
-to test the bare runtime, "make checkc0rt" to test the c0rt runtime, or "make
-checkunsafe" to check the unsafe runtime.  "make checkall" tests them all.
-The regression testing for the unsafe runtime has falled behind: some test
-cases should be disabled for this.  We recommend only c0rt (the default)
-and bare (omitting the garbage collector).
+NB: "make check" tests the default runtime (currently c0rt, so "make
+check" and "make checkc0rt" do the same thing). 
 
 The compiler is built as bin/cc0, installed as $(PREFIX)/bin/cc0.
 Libraries and runtimes are placed in lib/* and runtime/*, and

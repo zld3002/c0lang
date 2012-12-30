@@ -1,9 +1,11 @@
 SHELL   = /bin/sh
 RM      = rm
 COPY    = cp -p
+CPP     = cpp
+DEPTH = .
 SML     = sml
 MLTON_VERB = 0
-MLTON   = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -verbose $(MLTON_VERB) -output
+MLTON_BASIC = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -verbose $(MLTON_VERB) -output
 
 ifdef STATIC
 ifdef LIBSPLUS
@@ -15,11 +17,6 @@ else
 MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -rdynamic" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output 
 endif
 
-CPP     = cpp
-
-
-DEPTH = .
-
 # $EXTERNALS is set by ./configure in config.mk
 # currently libpng for mac os x, empty for linux
 
@@ -28,7 +25,7 @@ include config.mk
 
 include util.mk
 
-all: cc0 externals libs
+all: cc0 coin code externals libs
 
 .PHONY: externals
 externals: $(EXTERNALS)
@@ -38,6 +35,9 @@ bin:
 
 runtime:
 	mkdir -p runtime
+
+
+### External libraries
 
 # If you change this, you will have to change lib.mk
 GCDIR = ../externals/gc
@@ -80,6 +80,9 @@ libpng: zlib lib $(LIBPNGDIR)/Makefile
 	$(COPY) $(LIBPNGDIR)/installdir/include/*.h include
 #	-$(COPY) -a $(LIBPNGDIR)/installdir/lib/*.so* lib
 
+
+### Runtimes
+
 RUNTIMES = bare c0rt unsafe
 all: $(RUNTIMES)
 
@@ -104,17 +107,27 @@ c0rt/$(call dllname,c0rt): gc
 
 unsafe/$(call dllname,unsafe): gc
 
-## cc0 - the C0 compiler
+
+### cc0 - the C0 compiler
+
+CC0_DEPS = compiler/sources.cm compiler/*.mlb compiler/*.sml compiler/*/*.sml
 
 .PHONY: cc0
-cc0: bin bare
+cc0: bin/cc0
+bin/cc0: bin $(CC0_DEPS)
 	$(MAKE) -C compiler clean
 	$(MAKE) -C compiler buildid
+ifdef MLTON
+	$(MLTON_BASIC) bin/cc0.exe compiler/sources-go.mlb 
+	$(COPY) compiler/bin/cc0-mlton bin/cc0
+else
 	$(MAKE) -C compiler cc0
 	$(COPY) compiler/bin/cc0-sml bin/cc0
 	$(COPY) compiler/bin/cc0.heap.* bin
+endif
 	$(COPY) compiler/bin/cpfiles bin
 	chmod +x bin/cc0 bin/cpfiles
+	touch bin/cc0
 
 csharp: bin bare
 #	$(MAKE) -C compiler clean
@@ -125,17 +138,21 @@ csharp: bin bare
 	$(COPY) compiler/bin/cpfiles bin
 	chmod +x bin/cc0 bin/cpfiles
 
-cc0-mlton : bin bare
-	$(MAKE) -C compiler buildid
-	$(MLTON) bin/cc0.exe compiler/sources-go.mlb 
-	$(COPY) compiler/bin/cc0-mlton bin/cc0
-	$(COPY) compiler/bin/cpfiles bin
-	chmod +x bin/cc0 bin/cpfiles
 
-bin/wrappergen: makelibs/* bin 
+### C0 Libraries
+
+.PHONY: wrappergen
+wrappergen: bin/wrappergen
+bin/wrappergen: makelibs/* bin $(CC0_DEPS)
 	$(MAKE) -C compiler buildid
+ifdef MLTON
+	$(MLTON_BASIC) bin/wrappergen.exe makelibs/wrappergen.mlb
+	$(COPY) compiler/bin/run-mlton bin/wrappergen
+else
 	echo 'use "makelibs/wrappergen.sml";' | ${SML}
-	$(COPY) makelibs/wrappergen.sh bin/wrappergen
+	$(COPY) compiler/bin/run-smlnj bin/wrappergen
+endif
+	chmod +x bin/wrappergen
 	touch bin/wrappergen
 
 .PHONY: libs/*
@@ -171,12 +188,75 @@ ifdef LIBSPLUS
 	for l in libsplus/*; do $(MAKE) -C $$l clean; done
 endif
 
+
+### Coin - The C0 Interpreter
+
+NATIVE_CYMBOL  = bare/bare.c bare/cstr.c cymbol/sizeof.c
+NATIVE_CALLING = cymbol/extern-lib.c cymbol/extern-call.c
+NATIVE_COIN    = $(NATIVE_CYMBOL) $(NATIVE_CALLING)
+COIN_DEPS = $(CC0_DEPS) $(NATIVE_COIN) cymbol/cymbol*.cm cymbol/*.sml cymbol/*.mlb coin/coin*.cm coin/*.sml coin/*.sml 
+
+.PHONY: coin 
+coin: bin/coin
+bin/coin: bin $(COIN_DEPS)
+	$(MAKE) -C compiler buildid
+ifdef MLTON
+	$(MLTON_NATIVE) bin/coin.exe coin/coin.mlb $(NATIVE_COIN)
+	$(COPY) compiler/bin/run-mlton bin/coin
+else
+	$(MAKE) -C coin 
+	$(COPY) coin/coin.heap.* bin
+	$(COPY) compiler/bin/run-smlnj bin/coin
+endif
+	chmod +x bin/coin
+	touch bin/coin
+
+.PHONY: coin-exec
+coin-exec: bin/coin-exec
+bin/coin-exec: bin $(COIN_DEPS)
+	$(MAKE) -C compiler buildid
+ifdef MLTON
+	$(MLTON_NATIVE) bin/coin-exec.exe coin/coin-exec.mlb $(NATIVE_COIN)
+	$(COPY) compiler/bin/run-mlton bin/coin-exec
+else
+	$(MAKE) -C coin coin-exec
+	$(COPY) coin/coin-exec.heap.* bin
+	$(COPY) compiler/bin/run-smlnj bin/coin-exec
+endif
+	chmod +x bin/coin-exec
+	touch bin/coin-exec
+
+
+### code - The C0 Debugger
+
+CODE_DEPS = $(CC0_DEPS) $(COIN_DEPS) code/debug.cm code/*.mlb code/*.sml
+
+.PHONY: code
+code: bin/code 
+bin/code: bin $(CODE_DEPS)
+	$(MAKE) -C compiler buildid
+ifdef MLTON
+	$(MLTON_NATIVE) bin/code.exe code/debug.mlb $(NATIVE_COIN)
+	$(COPY) compiler/bin/run-mlton bin/code
+else
+	$(MAKE) -C code
+	$(COPY) code/code.heap.* bin
+	$(COPY) compiler/bin/run-smlnj bin/code
+endif
+	chmod +x bin/code
+	touch bin/code
+
+
+### Cleanup
+
 .PHONY: clean
 clean: libsclean
 	$(MAKE) -C bare clean
 	$(MAKE) -C c0rt clean
 	$(MAKE) -C unsafe clean
 	$(MAKE) -C compiler clean
+	$(MAKE) -C coin clean
+	$(MAKE) -C code clean
 	$(RM) -f lib/*$(DLLSUFFIX) lib/*.a lib/*.h0
 	$(RM) -rf bin runtime
 
@@ -186,70 +266,31 @@ reallyclean: clean
 	$(MAKE) -C $(ZLIBDIR) distclean
 	$(MAKE) -C $(LIBPNGDIR) distclean
 
-## Coin - The C0 Interpreter
 
-NATIVE_CYMBOL  = bare/bare.c bare/cstr.c cymbol/sizeof.c
-NATIVE_CALLING = cymbol/extern-lib.c cymbol/extern-call.c
-NATIVE_COIN    = $(NATIVE_CYMBOL) $(NATIVE_CALLING)
+### Testing harnesses
 
-.PHONY: coin 
-coin: bin
-	$(MAKE) -C compiler buildid
-	$(MLTON_NATIVE) bin/coin.exe coin/coin.mlb $(NATIVE_COIN)
-	$(COPY) coin/coin-mlton.sh bin/coin
-	chmod +x bin/coin
-
-.PHONY: coin-exec
-coin-exec: bin
-	$(MAKE) -C compiler buildid
-	$(MLTON_NATIVE) bin/coin-exec.exe coin/coin-exec.mlb $(NATIVE_COIN)
-	$(COPY) coin/coin-mlton.sh bin/coin-exec
-	chmod +x bin/coin-exec
-
-## code - The C0 Debugger
-
-.PHONY: code
-code: bin
-	$(MAKE) -C compiler buildid
-	$(MLTON_NATIVE) bin/code code/debug.mlb $(NATIVE_COIN)
-
-code-smlnj: bin
-	$(MAKE) -C compiler buildid
-	$(MAKE) -C code
-	$(COPY) code/code.heap.* bin
-	$(COPY) code/code-smlnj bin/code
-	chmod +x bin/code
-
-## Testing harnesses
-
-cymbol-native-test: cymbol-mlton-parser bin
-	$(MLTON) bin/$@ -link-opt "-lpthread -ldl -rdynamic" -cc-opt -Iinclude -default-ann "allowFFI true" tests/drivers/$@.mlb $(CODE_NATIVE_FILES)
-
-cymbol-test: cymbol-mlton-parser bin
-	$(MLTON) bin/$@ tests/drivers/$@.mlb
-
-.PHONY: cc0-test bin/cc0-test
+.PHONY: cc0-test 
 cc0-test: bin/cc0-test
 bin/cc0-test: bin tests/drivers/*
-	$(MLTON) $@ tests/drivers/$(notdir $@).mlb
+	$(MLTON_BASIC) $@ tests/drivers/$(notdir $@).mlb
 
 vm/c0vm: vm/*.h vm/*.c vm/include/*.h0
 	$(MAKE) -C vm
 
-.PHONY: c0vm-test bin/c0vm-test
+.PHONY: c0vm-test 
 c0vm-test: vm/c0vm bin/c0vm-test
 bin/c0vm-test: bin tests/drivers/*
-	$(MLTON) $@ tests/drivers/$(notdir $@).mlb
+	$(MLTON_BASIC) $@ tests/drivers/$(notdir $@).mlb
 
-.PHONY: coin-test bin/coin-test
+.PHONY: coin-test 
 coin-test: bin/coin-test
 bin/coin-test: bin tests/drivers/*
-	$(MLTON) $@ tests/drivers/$(notdir $@).mlb
+	$(MLTON_BASIC) $@ tests/drivers/$(notdir $@).mlb
 
 # The Csharp test driver is different from the normal one in a few ways
 csharp-test: bin/csharp-test
 bin/csharp-test: bin tests/drivers/*
-	$(MLTON) $@ tests/drivers/$(notdir $@).mlb
+	$(MLTON_BASIC) $@ tests/drivers/$(notdir $@).mlb
 
 # If I add the explicit dependency, it always builds cc0-test which is probably
 # not the desired behavior most of the time
@@ -274,6 +315,9 @@ checkcsharp: bin/csharp-test
 
 checkcoin: bin/coin-test
 	bin/coin-test $(TESTFILES)
+
+
+### Distribution
 
 # Install target -- copy contents of bin, lib, runtime, and include
 # TODO: make PREFIX configure-able

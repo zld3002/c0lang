@@ -13,8 +13,8 @@ csharp: buildid parsefiles FORCE
 # always build buildid.sml
 .PHONY: buildid
 buildid:
-	rm -f top/buildid.sml
-	bin/buildid >top/buildid.sml
+	rm -f ../buildid.sml
+	bin/buildid > ../buildid.sml
 
 clean:
 	find . -type d -name .cm | xargs rm -rf

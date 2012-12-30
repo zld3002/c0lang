@@ -4,6 +4,8 @@ Group is
 	$/smlnj-lib.cm
 	$/ml-yacc-lib.cm
 
+        ../buildid.sml
+
         util/safe-io.sml
 	util/mark.sml
 	util/flag.sml
@@ -45,6 +47,5 @@ Group is
         c0vm/c0vm-trans.sml
 	c0vm/c0vm-print.sml
 
-        top/buildid.sml
         top/flags.sml
 	top/top.sml
