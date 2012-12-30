@@ -558,10 +558,9 @@ let
 	   | EXIT => OS.Process.failure
 	   | FINISHED => OS.Process.success
            | e => ( say ("Unexpected exception in cc0:\n" ^ exnMessage e ^ "\n")
-                  ; OS.Process.failure
-                  (* next line for development mode *)
-                  ; raise e
-                  )
+                  ; if false (* true: development mode, false: production *)
+                    then raise e
+                    else OS.Process.failure)
            (* foldr (fn (a,b) => a ^ "\n" ^ b) "" (SMLofNJ.exnHistory e) *)
            (* Above extra bits commented out by Rob, Nov 15 2012. 
             * The compiler needs to compile with MLton! - Rob *)
