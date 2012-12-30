@@ -175,13 +175,14 @@ dependencies in this version inhereted from the use of Qt in the old
 library, these were eliminated in the early 200-revisions (December
 2012).
 
-Around revision 260, some housekeeping was done:
+Around revision 238, some housekeeping was done:
 
 cc0/debugger-r10 eliminated (Jakob and Rob's early debugger infrastructure) 
 cc0/debugger-r12 --> cc0/code
 cc0/compiler/parse1 eliminated (Original LEX/YACC parser)
 cc0/compiler/parse2 eliminated (Prototype by-hand shift-reduce parser)
 cc0/compiler/parse3 -> cc0/compiler/parse
+cc0/qt -> some versions/parts of files used to compile C0 with Qt
 
 --------------------------------------------------
 To set svn properties:
