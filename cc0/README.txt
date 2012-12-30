@@ -37,7 +37,7 @@ Minimal check of binary distribution
 Building from source
 ----------------------------------------------------------------------
 
-    $ ./configure
+   $ ./configure
 
    $ make [ MLTON=true ]  # build the cc0 compiler, coin, code, gc, runtimes,
                           # and libraries
