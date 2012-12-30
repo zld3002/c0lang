@@ -26,7 +26,7 @@ signature TEST_IMPL = sig
 
   val args_desc : string
   val name : unit -> string
-  datatype pred = LIB | TYPECHECK | GC | SAFE
+  datatype pred = LIB | TYPECHECK | GC | SAFE 
   val matches_pred : pred -> bool
 
   (* HACKS *)
@@ -156,6 +156,7 @@ end
         | (T ("typecheck", [])) => Impl.matches_pred Impl.TYPECHECK
         | (T ("gc", []))        => Impl.matches_pred Impl.GC
         | (T ("safe", []))      => Impl.matches_pred Impl.SAFE
+        | (T ("false", []))     => false
         | (T (s, []))           => Impl.name () = s
         | (T (s, _))            => 
           raise Error ("Unexpected arguments to \"" ^ s ^ "\" in predicate")

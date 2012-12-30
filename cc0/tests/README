@@ -35,6 +35,10 @@ typecheck       - Describes implementations that only compile *precisely*
                   those programs that conform to cc0's static semantics
 gc              - Describes garbage-collected implementations
 safe            - Describes safe implemenations (array-bounds checking)
+false           - Describes no implemenations; this is used to signal
+                  certain reasonable but quarantined "wontfix" bugs,
+                  such as ones that regularly cause the VM compiler to
+                  time out
 <string>        - Every implementation has a name ("cc0_bare" or "cymbol",
                   and that precise name can be used as a predicate
 !<phi>          - Inverts a predicate; binds as tightly as possible
