@@ -108,7 +108,7 @@ fun call_step (fun_name, actual_args, pos) : call_info =
          val () = State.push_fun (state, fun_name, (fun_name, pos))
          val old_pos = !current_pos
          val () = current_pos := SOME ((0,0),(0,0),"< in native code >")
-         val () = precon actual_args
+         val () = precon (state, actual_args)
          val args = ListPair.zip (map #1 arg_tys, actual_args)
          val res = Calling.call state (fptr, return_ty, args)
       in 

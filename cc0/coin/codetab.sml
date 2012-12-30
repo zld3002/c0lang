@@ -1,8 +1,7 @@
 structure CodeTab :> sig
    type fun_ty = Ast.tp * (Ast.tp * Symbol.symbol) list 
-   type precon = ConcreteState.value list -> unit
    datatype function = 
-      Native of fun_ty * precon * NativeCall.function 
+      Native of fun_ty * Builtins.precon * NativeCall.function 
     | AbsentNative of fun_ty * string
     | Interpreted of fun_ty * C0Internal.program
     | Builtin of fun_ty * Builtins.impl
@@ -15,9 +14,8 @@ end =
 struct
 
 type fun_ty = Ast.tp * (Ast.tp * Symbol.symbol) list 
-type precon = ConcreteState.value list -> unit
 datatype function = 
-   Native of fun_ty * precon * NativeCall.function 
+   Native of fun_ty * Builtins.precon * NativeCall.function 
  | AbsentNative of fun_ty * string
  | Interpreted of fun_ty * C0Internal.program
  | Builtin of fun_ty * Builtins.impl
