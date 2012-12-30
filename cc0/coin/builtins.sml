@@ -28,6 +28,7 @@ datatype builtin =
  | Impl of impl
 
 fun abort s = raise Error.AssertionFailed ("Assertion failed: "^s)
+fun signed_leq (x, y) = not (Word32Signed.signed_less (y, x))
 
 structure ArgsLib =
 struct
@@ -121,12 +122,10 @@ struct
       val () = argloop 0 args
    in res
    end handle _ => State.null
-
 end
 
 structure FileLib =
 struct
-
    (* We need to know how to inspect the internal state of a file_t *)
    (* This is a bit dangerous; we're extending the library nefariously... *)
    val struct_file_loaded = ref false
@@ -185,7 +184,107 @@ struct
          else abort "!file_closed(f) [file_readline]"
     ; if not (file_eof (state, f)) then ()
          else abort "!file_eof(f) [file_readline]")
+end
 
+structure ImageLib = 
+struct
+   fun image_create (state, width, height) = 
+    ( if Word32Signed.signed_less (Word32Signed.ZERO, State.to_int width)
+         then () 
+         else abort "0 < width [image_create]" 
+    ; if Word32Signed.signed_less (Word32Signed.ZERO, State.to_int height) 
+         then () 
+         else abort "0 < height [image_create]" )
+ 
+   fun image_clone (state, src) =
+      if isSome (State.to_pointer src) then ()
+         else abort "src != NULL [image_clone]"
+ 
+   fun image_width (state, src) =
+      if isSome (State.to_pointer src) then ()
+         else abort "src != NULL [image_width]"
+ 
+   fun image_height (state, src) =
+      if isSome (State.to_pointer src) then ()
+         else abort "src != NULL [image_height]"
+ 
+   fun image_data (state, src) =
+      if isSome (State.to_pointer src) then ()
+         else abort "src != NULL [image_data]"
+ 
+   fun image_subimage (state, src, x, y, width, height) =
+      if isSome (State.to_pointer src) then ()
+         else abort "src != NULL [image_data]"
+
+   fun image_save (state, src, path) =
+      if isSome (State.to_pointer src) then ()
+         else abort "src != NULL [image_data]"
+end
+
+structure ParseLib =
+struct
+   fun parse_int (state, s, base) = 
+   let val base = State.to_int base
+   in
+    ( if signed_leq (Word32.fromInt 2, base) then () 
+         else abort "2 <= base [parse_int]" 
+    ; if signed_leq (base, Word32.fromInt 36) then () 
+         else abort "base <= 36 [parse_int]")
+   end
+end
+
+structure StringLib =
+struct
+
+   fun string_charat (state, s, idx) = 
+   let val strlen = Word32.fromInt (size (State.to_string s))
+   in
+    ( if signed_leq (Word32.fromInt 0, State.to_int idx) then ()
+         else abort "0 <= idx [string_charat]"
+    ; if Word32Signed.signed_less (State.to_int idx, strlen) then ()
+         else abort "idx < string_length(s) [string_charat]")
+   end
+
+   fun string_sub (state, s, idx_start, idx_end) = 
+   let val strlen = size (State.to_string s)
+   in
+    ( if signed_leq (Word32.fromInt 0, State.to_int idx_start) then ()
+         else abort "0 <= start [string_sub]"
+    ; if signed_leq (State.to_int idx_start, State.to_int idx_end) then ()
+         else abort "start <= end [string_sub]"
+    ; if signed_leq (State.to_int idx_end, Word32.fromInt strlen) then ()
+         else abort "end <= string_length(a) [string_sub]")
+   end
+
+   fun string_terminated (state, A) = 
+   let
+      val (ty_char, addr, len) = State.to_array A 
+      fun read n = 
+         State.to_char 
+            (State.get_addr (state, (ty_char, State.offset_index 
+                                                 (state, addr, n))))
+      fun loop n = 
+         if n = len then false
+         else if #"\^@" = read n then true 
+         else loop (n+1)
+   in
+      loop 0
+   end 
+
+   fun from_chararray (state, A) =
+   let val (_, _, len) = State.to_array A
+   in
+      (* Gotta match the library's behavior and segfault, though
+       * that's a bit asinine - rjs 12/29/2012*)
+      if string_terminated (state, A) then ()
+         else raise Error.ArrayOutOfBounds (len, len)
+   end
+
+   fun char_chr (state, n) = 
+    ( if signed_leq (Word32.fromInt 0, State.to_int n) then () 
+         else abort "0 <= n [char_chr]" 
+    ; if signed_leq (State.to_int n, Word32.fromInt 127) then () 
+         else abort "n <= 127 [char_chr]")
 end
 
 fun impl0 f = 
@@ -212,8 +311,17 @@ fun precon2 f =
    Precon (fn (state, [x, y]) => f (state, x, y)
             | _ => raise Error.Dynamic "Wrong number of arguments [precon2]")
 
+fun precon3 f = 
+   Precon (fn (state, [x, y, z]) => f (state, x, y, z)
+            | _ => raise Error.Dynamic "Wrong number of arguments [precon3]")
+
+fun precon5 f = 
+   Precon (fn (state, [x1, x2, x3, x4, x5]) => f (state, x1, x2, x3, x4, x5)
+            | _ => raise Error.Dynamic "Wrong number of arguments [precon5]")
+
 val table = Symbol.digest
-   [(Symbol.symbol "args_flag", impl2 ArgsLib.args_flag),
+   [
+    (Symbol.symbol "args_flag", impl2 ArgsLib.args_flag),
     (Symbol.symbol "args_int", impl2 ArgsLib.args_int),
     (Symbol.symbol "args_string", impl2 ArgsLib.args_string),
     (Symbol.symbol "args_parse", impl0 ArgsLib.args_parse),
@@ -221,7 +329,23 @@ val table = Symbol.digest
     (Symbol.symbol "file_closed", impl1 (State.bool o FileLib.file_closed)),
     (Symbol.symbol "file_close", precon1 FileLib.file_close_precon),
     (Symbol.symbol "file_eof", impl1 (State.bool o FileLib.file_eof)),
-    (Symbol.symbol "file_readline", precon1 FileLib.file_readline_precon)]
+    (Symbol.symbol "file_readline", precon1 FileLib.file_readline_precon),
+
+    (Symbol.symbol "image_create", precon2 ImageLib.image_create),
+    (Symbol.symbol "image_clone", precon1 ImageLib.image_clone),
+    (Symbol.symbol "image_width", precon1 ImageLib.image_width),
+    (Symbol.symbol "image_height", precon1 ImageLib.image_height),
+    (Symbol.symbol "image_data", precon1 ImageLib.image_data),
+    (Symbol.symbol "image_subimage", precon5 ImageLib.image_subimage),
+    (Symbol.symbol "image_save", precon2 ImageLib.image_save),
+
+    (Symbol.symbol "parse_int", precon2 ParseLib.parse_int),
+
+    (Symbol.symbol "string_charat", precon2 StringLib.string_charat),
+    (Symbol.symbol "string_sub", precon3 StringLib.string_sub),
+    (Symbol.symbol "string_from_chararray", precon1 StringLib.from_chararray),
+    (Symbol.symbol "char_chr", precon1 StringLib.char_chr)
+    ]
 
 fun reset {argv} = (ArgsLib.argv := argv; ArgsLib.args_list := [])
 
