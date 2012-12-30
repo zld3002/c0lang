@@ -16,12 +16,12 @@ local
       type/iso.sml
       type/print-c-compact.sml
 
-      parse3/stream.sml
-      parse3/parsestate.sml
-      parse3/terminal.sml
-      parse3/lex.sml
-      parse3/parse-pragma.sml
-      parse3/parse.sml
+      parse/stream.sml
+      parse/parsestate.sml
+      parse/terminal.sml
+      parse/lex.sml
+      parse/parse-pragma.sml
+      parse/parse.sml
    
       analysis/error.sml
       analysis/analysisast.sml
