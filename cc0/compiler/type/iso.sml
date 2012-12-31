@@ -1,3 +1,13 @@
+(* C0 Compiler
+ * Isolation phase for effects
+ *
+ * This rewrites the source code so that all effects
+ * are properly sequenced, even if functions calls
+ * have no defined order of evaluation.
+ *
+ * Author: Frank Pfenning (mainly)
+ *)
+
 signature ISOLATE = 
 sig
   val iso_exp : Ast.tp Symbol.table -> Ast.exp -> (Ast.stm list * Ast.exp)
@@ -18,6 +28,19 @@ struct
    val MINUSONE = Word32.fromInt(~1);
    val THIRTYTWO = Word32.fromInt(32);
 
+   fun is_safe_divmod (A.IntConst(w)) =
+       w <> Word32Signed.ZERO andalso w <> MINUSONE
+     | is_safe_divmod _ = false
+
+   fun is_safe_shift (A.IntConst(w)) = Word32.<(w, THIRTYTWO)
+     | is_safe_shift _ = false
+
+   fun is_safe_binop (A.DIVIDEDBY, [p1,p2]) = is_safe_divmod p2
+     | is_safe_binop (A.MODULO, [p1,p2]) = is_safe_divmod p2
+     | is_safe_binop (A.SHIFTLEFT, [p1,p2]) = is_safe_shift p2
+     | is_safe_binop (A.SHIFTRIGHT, [p1,p2]) = is_safe_shift p2
+     | is_safe_binop _ = true
+
    (* is_safe_div p = true if n / p and n % p are known to be defined, for all n.
     * We assume p is a pure expression, without marks. *)
    fun is_safe_div (A.IntConst(w)) =
@@ -28,6 +51,17 @@ struct
     * assumes n >> k for negative n is arithmetic right shift, not logical *)
    fun is_safe_shift (A.IntConst(w)) = Word32.<(w, THIRTYTWO)
      | is_safe_shift _ = false
+
+   fun maybe_unsafe_opr (SOME(A.DIVIDEDBY)) = true
+     | maybe_unsafe_opr (SOME(A.MODULO)) = true
+     | maybe_unsafe_opr (SOME(A.SHIFTLEFT)) = true
+     | maybe_unsafe_opr (SOME(A.SHIFTRIGHT)) = true
+     | maybe_unsafe_opr (NONE) = true (* because the lhs could have an effect not covered by the rhs *)
+     | maybe_unsafe_opr _ = false
+
+   fun maybe_unsafe_lv (A.OpExp(A.SUB, _)) = true
+     | maybe_unsafe_lv (A.Select _) = true
+     | maybe_unsafe_lv _ = false (* A.OpExp(A.DEREF, _) safe as lhs *)
    
    (* iso_exp env e ext = (ss, p)
     * iso_exps env es ext = (ss, ps)
@@ -64,61 +98,6 @@ struct
        in
 	   (ss1 @ [sd], t)
        end
-     | iso_exp env (e as A.OpExp(A.DIVIDEDBY, [e1,e2])) ext =
-       let val (ss1, p1) = iso_exp env e1 ext
-	   val (ss2, p2) = iso_exp env e2 ext
-       in
-	   if is_safe_div p2
-	   then (ss1 @ ss2, A.OpExp(A.DIVIDEDBY, [p1, p2]))
-	   else let
-		   val tp = Syn.syn_exp env e
-		   val (sd, t) = new_tmp_init (tp, A.OpExp(A.DIVIDEDBY, [p1, p2])) ext
-	       in
-		   (ss1 @ ss2 @ [sd], t)
-	       end 
-       end
-     | iso_exp env (e as A.OpExp(A.MODULO, [e1,e2])) ext =
-       let val (ss1, p1) = iso_exp env e1 ext
-	   val (ss2, p2) = iso_exp env e2 ext
-       in
-	   if is_safe_div p2
-	   then (ss1 @ ss2, A.OpExp(A.MODULO, [p1, p2]))
-	   else let
-		   val tp = Syn.syn_exp env e
-		   val (sd, t) = new_tmp_init (tp, A.OpExp(A.MODULO, [p1, p2])) ext
-	       in
-		   (ss1 @ ss2 @ [sd], t)
-	       end 
-       end
-     (* A.SHIFTLEFT and A.SHIFTRIGHT may translate to function calls *)
-     (* These calls are no longer pure, due to range restriction on e2 *)
-     (* Dec 24, 2012 -fp *)
-     | iso_exp env (e as A.OpExp(A.SHIFTLEFT, [e1,e2])) ext =
-       let val (ss1, p1) = iso_exp env e1 ext
-	   val (ss2, p2) = iso_exp env e2 ext
-       in
-	   if is_safe_shift p2
-	   then (ss1 @ ss2, A.OpExp(A.SHIFTLEFT, [p1, p2]))
-	   else let
-		   val tp = Syn.syn_exp env e
-		   val (sd, t) = new_tmp_init (tp, A.OpExp(A.SHIFTLEFT, [p1, p2])) ext
-	       in
-		   (ss1 @ ss2 @ [sd], t)
-	       end
-       end
-     | iso_exp env (e as A.OpExp(A.SHIFTRIGHT, [e1,e2])) ext =
-       let val (ss1, p1) = iso_exp env e1 ext
-	   val (ss2, p2) = iso_exp env e2 ext
-       in
-	   if is_safe_shift p2
-	   then (ss1 @ ss2, A.OpExp(A.SHIFTRIGHT, [p1, p2]))
-	   else let
-		   val tp = Syn.syn_exp env e
-		   val (sd, t) = new_tmp_init (tp, A.OpExp(A.SHIFTRIGHT, [p1, p2])) ext
-	       in
-		   (ss1 @ ss2 @ [sd], t)
-	       end 
-       end
      | iso_exp env (A.OpExp(A.LOGAND, [e1, e2])) ext =
          iso_exp env (A.OpExp(A.COND, [e1, e2, A.False])) ext
      | iso_exp env (A.OpExp(A.LOGOR, [e1, e2])) ext =
@@ -146,10 +125,19 @@ struct
      | iso_exp env (A.OpExp(oper, [e1])) ext =
        let val (ss1, p1) = iso_exp env e1 ext
        in (ss1, A.OpExp(oper, [p1])) end
-     | iso_exp env (A.OpExp(oper, [e1,e2])) ext =
+     | iso_exp env (e as A.OpExp(binop, [e1, e2])) ext =
        let val (ss1, p1) = iso_exp env e1 ext
-	   val (ss2, p2) = iso_exp env e2 ext
-       in (ss1 @ ss2, A.OpExp(oper, [p1, p2])) end
+           val (ss2, p2) = iso_exp env e2 ext
+       in
+           if is_safe_binop (binop, [p1, p2])
+           then (ss1 @ ss2, A.OpExp(binop, [p1, p2]))
+           else let
+                   val tp = Syn.syn_exp env e
+                   val (sd, t) = new_tmp_init (tp, A.OpExp(binop, [p1, p2])) ext
+               in
+                   (ss1 @ ss2 @ [sd], t)
+               end
+       end
      | iso_exp env (e as A.Select(e1, f)) ext =
        (* e1 could have large type; isolate as lval *)
        (* iso_select env (A.Select(e1, f)) *)
@@ -339,53 +327,32 @@ struct
      *
      * ext1 is the extent of lv1, ext the extend of the assignment itself
      *)
-    and iso_assign env (oper_opt as (SOME _)) (ss1, lv1) tp1 e2 ext1 ext =
-	(* compound assignment lv1 <op>= e2 ok, since lv1 pure *)
-	let
-	    val (ss2, p2) = iso_exp env e2 ext
-	in
-	    (ss1 @ ss2 @ [marks (A.Assign(oper_opt, lv1, p2)) ext])
-	end
-      | iso_assign env (NONE) (ss1, lv1 as A.Var _) tp1 e2 ext1 ext =
-	(* x = e2 ok, since x has no effect *)
-	let
-	    val (ss2, p2) = iso_exp env e2 ext
-	in
-	    (ss1 @ ss2 @ [marks (A.Assign(NONE, lv1, p2)) ext])
-	end
-      | iso_assign env (NONE) (ss1, lv1 as A.OpExp(A.DEREF, _)) tp1 e2 ext1 ext =
-	(* *lv1' = e2 ok, since lv1' has no effect, and *lv1 is not computed
-         * as a lvalue *)
-        let
-	    val (ss2, p2) = iso_exp env e2 ext
-	in
-	    (ss1 @ ss2 @ [marks (A.Assign(NONE, lv1, p2)) ext])
-	end
-      | iso_assign env (NONE) (ss1, lv1) tp1 e2 ext1 ext =
-	 (* lv1 = A[p1] or lv1 = lv1'.f requires transformation to guarantee
-          * left-to-right.  Complication is that lv1' may have large type.
-	  *)
-	let
-            (* use tp1, because type of e1 may be void* if NULL *)
-	    val (d, t) = Syn.new_tmp (A.Pointer(tp1)) ext
-	    val (ss2, p2) = iso_exp env e2 ext
-	in
-	    (ss1 @ [A.StmDecl(d)]		 (* ss1 ; tp1* t; *)
-	     @ [marks (A.Assign(SOME(A.DEREF), t, lv1)) ext1] (* t <*>= lv1; meaning t = &lv1; *)
-	     @ ss2 @ [marks (A.Assign(NONE, A.OpExp(A.DEREF, [t]), p2)) ext]) (* ss2 ; *t = p2; *)
-	end
-
-(*  fun iso_top env (A.StmDecl(d)::ss) =
-	let val (ss1, env') = iso_decls env [d]
-	    val ss2 = iso_top env' ss
-	in ss1 @ ss2 end
-      | iso_top env (A.Markeds(marked_stm)::ss) =
-	  iso_top env ((Mark.data marked_stm)::ss)
-      | iso_top env (s::ss) =
-	let val ss1 = iso_stm env s NONE (* currently, no ext available *)
-	    val ss2 = iso_top env ss
-	in ss1 @ ss2 end
-      | iso_top env nil = nil *)
+    and iso_assign env (opr_opt) (ss1, lv1) tp1 e2 ext1 ext =
+        if maybe_unsafe_opr opr_opt    (* /, %, <<, >>, or NONE *)
+           andalso maybe_unsafe_lv lv1 (* lv1 = A[p1] or lv = lv1'.f *)
+        (* /=, %=, <<=, and >>= require transformation so that lv effect
+         * precedes the potential division or shift effect, that is, the
+         * arithmetic exception
+         *
+         * A[_] and _.f require transformation to guarantee left-to-right
+         * evaluation.  The complication is that in lv1' may have large type
+         * *lv1 is okay, since it is not actually evaluated if used as an lhs
+         * and lv1 is already pure (effect-free).
+         *)
+        then let
+                (* use tp1, because type of e1 may be void* if e1 is NULL *)
+                val (d, t) = Syn.new_tmp (A.Pointer(tp1)) ext
+                val (ss2, p2) = iso_exp env e2 ext
+            in
+                (ss1 @ [A.StmDecl(d)] (* ss1 ; tp1* t *)
+                 @ [marks (A.Assign(SOME(A.DEREF), t, lv1)) ext1] (* t <*>= lv1, meaning t = &lv1; *)
+                 @ ss2 @ [marks (A.Assign(opr_opt, A.OpExp(A.DEREF, [t]), p2)) ext]) (* ss2 ; *t <op>= p2 *)
+            end
+        else (* keep as lv1 <op>= e2, since lv1 is pure and <op> effect-free *)
+            let val (ss2, p2) = iso_exp env e2 ext
+            in
+                (ss1 @ ss2 @ [marks (A.Assign(opr_opt, lv1, p2)) ext])
+            end
 
     val iso_exp = fn env => fn e => iso_exp env e NONE (* no ext available *)
     val iso_stm = fn env => fn s => iso_stm env s NONE (* no ext available *)

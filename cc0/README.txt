@@ -186,6 +186,7 @@ cc0/compiler/parse1 eliminated (Original LEX/YACC parser)
 cc0/compiler/parse2 eliminated (Prototype by-hand shift-reduce parser)
 cc0/compiler/parse3 -> cc0/compiler/parse
 cc0/qt -> some versions/parts of files used to compile C0 with Qt
+cc0/type/print-c.sml eliminated (out-of-date less compact printer to C)
 
 --------------------------------------------------
 To set svn properties:

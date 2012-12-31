@@ -34,8 +34,8 @@ end
  * - assertions are handled with macro cc0_assert(e, msg1, msg2, ...)
  * - e1/e2 is compiled as c0_idiv(e1,e2) to check for overflow
  * - e1%e2 is compiled as c0_imod(e1,e2) to check for overflow
- * - e1<<e2 is compiled as c0_sal(e1,e2) to mask e2 to 32 bits
- * - e1>>e2 is compiled as c0_sar(e1,e2) to mask e2 to 32 bits
+ * - e1<<e2 is compiled as c0_sal(e1,e2) to check range on e2
+ * - e1>>e2 is compiled as c0_sar(e1,e2) to check range on e2
  * - evaluation order is undefined, which is handled by isolating
  *   expressions which may have an effect.  For example,
  *   f(g(x),h(3)) might be translated as
@@ -217,32 +217,21 @@ struct
       | pp_stringlist env (e::es) =
 	"c0_string_join(" ^ pp_exp env e ^ ", " ^ pp_stringlist env es ^ ")"
 
-    (* for unsigned version, for oper = A.LESS, A.LEQ, A.GREATER, A.GEQ:
-     and pp_comparison env (A.OpExp(oper, [e1, e2])) =
-	 "(((int)" ^ pp_exp env e1 ^ ")" ^ pp_oper oper ^ "((int)"
-	 ^ pp_exp env e2 ^ "))"
-     *)
-
-    fun pp_assign_effect_op env (cname, A.Var(id), e) =
-	  pp_var id ^ " = " ^ cname ^ "(" ^ pp_var id ^ "," ^ pp_exp env e ^ ");"
-      | pp_assign_effect_op env (cname, A.Marked(marked_exp), e) =
-	  pp_assign_effect_op env (cname, Mark.data marked_exp, e)
-      | pp_assign_effect_op env (cname, lv, e) = (* lv != x *)
-	  cname ^ "_asn(&" ^ pp_exp env lv ^ "," ^ pp_exp env e ^ ");"
-
     fun pp_assign env (A.Assign(NONE, lv, e)) =
 	  pp_exp env lv ^ " = " ^ pp_exp env e ^ ";"
       | pp_assign env (A.Assign(SOME(A.DEREF), lv, e)) =
           (* hack: x <*>= e means x = &e *)
 	  pp_exp env lv ^ " = " ^ "&(" ^ pp_exp env e ^ ")" ^ ";"
+      (* next four are effectful: call runtime function *)
       | pp_assign env (A.Assign(SOME(A.DIVIDEDBY), lv, e)) =
-	  pp_assign_effect_op env ("c0_idiv", lv, e)
+          pp_exp env lv ^ " = " ^ "c0_idiv(" ^ pp_exp env lv ^ "," ^ pp_exp env e ^ ");"
       | pp_assign env (A.Assign(SOME(A.MODULO), lv, e)) =
-	  pp_assign_effect_op env ("c0_imod", lv, e)
+          pp_exp env lv ^ " = " ^ "c0_imod(" ^ pp_exp env lv ^ "," ^ pp_exp env e ^ ");"
       | pp_assign env (A.Assign(SOME(A.SHIFTLEFT), lv, e)) =
-	  pp_assign_effect_op env ("c0_sal", lv, e)
+          pp_exp env lv ^ " = " ^ "c0_sal(" ^ pp_exp env lv ^ "," ^ pp_exp env e ^ ");"
       | pp_assign env (A.Assign(SOME(A.SHIFTRIGHT), lv, e)) =
-	  pp_assign_effect_op env ("c0_sar", lv, e)
+          pp_exp env lv ^ " = " ^ "c0_sar(" ^ pp_exp env lv ^ "," ^ pp_exp env e ^ ");"
+      (* remaining ones are pure: map to corresponding C construct *)
       | pp_assign env (A.Assign(SOME(oper), lv, e)) =
 	  pp_exp env lv ^ " " ^ pp_oper oper ^ "= " ^ pp_exp env e ^ ";"
 
