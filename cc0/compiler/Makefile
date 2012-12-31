@@ -25,6 +25,6 @@ clean:
 
 TAGS: clean
 	${RM} TAGS
-	bin/create-tags *.cm *.sml */*.lex */*.grm */*.sml
+	bin/create-tags *.cm *.sml */*.sml
 
 FORCE: 

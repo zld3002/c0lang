@@ -1,25 +1,11 @@
 
 csharp_sources.cm,0
 
-sources1.cm,0
-
-sources2.cm,0
-
-sources3.cm,0
+sources.cm,0
 
 compile-cc0-csharp.sml,0
 
-compile-cc0-parse1.sml,0
-
-compile-cc0-parse2.sml,0
-
-compile-cc0-parse3.sml,0
-
-parse1/c0.lex,0
-
-parse2/c0.lex,0
-
-parse1/c0.grm,0
+compile-cc0.sml,0
 
 analysis/analysis.sml,0
 
@@ -53,33 +39,17 @@ c0vm/c0vm-trans.sml,0
 
 c0vm/c0vm.sml,0
 
-parse1/parse-pragma.sml,0
+parse/lex.sml,0
 
-parse1/parse.sml,0
+parse/parse-pragma.sml,0
 
-parse1/parsestate.sml,0
+parse/parse.sml,0
 
-parse2/c0.lex.sml,0
+parse/parsestate.sml,0
 
-parse2/newlex.sml,0
+parse/stream.sml,0
 
-parse2/newlex_terminal.sml,0
-
-parse2/newtokens.sml,0
-
-parse2/parse.sml,0
-
-parse3/lex.sml,0
-
-parse3/parse-pragma.sml,0
-
-parse3/parse.sml,0
-
-parse3/parsestate.sml,0
-
-parse3/stream.sml,0
-
-parse3/terminal.sml,0
+parse/terminal.sml,0
 
 top/buildid.sml,0
 
@@ -89,19 +59,13 @@ top/flags.sml,0
 
 top/go.sml,0
 
-top/top-fp.sml,0
-
 top/top.sml,0
 
 type/dyn-check.sml,0
 
-type/iso-noext.sml,0
-
 type/iso.sml,0
 
 type/print-c-compact.sml,0
-
-type/print-c.sml,0
 
 type/print-csharp.sml,0
 
