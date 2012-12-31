@@ -6,14 +6,7 @@
  * This header file uses c0runtime.h functions, but does not include
  * the c0runtime.h header because it does not know whether the runtime
  * has defined C0_RUNTIME_IMPELEMENTS_LENGTH or not.
- *
- * Implementation: cc0/lib/cc0lib.c
  */
-
-void c0_idiv_asn(int *px, int y); // *x /= y, x not null
-void c0_imod_asn(int *px, int y); // *x %= y, x not null
-void c0_sal_asn(int *px, int y);  // *x <<= y, x not null
-void c0_sar_asn(int *px, int y);  // *x >>= y, x not null
 
 /* avoiding imprecise semantics */
 #define CC0 1

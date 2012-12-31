@@ -6,8 +6,6 @@ September 7, 2010
 include/cc0lib.h declares the functions avoiding C's imprecise
 semantics and provides macros to prettify code-generation.
 TODO: rename functions to be consistent
--------------
-include/cc0lib.h is implemented in lib/cc0lib.c
 
 Each $rt (bare, c0rt, unsafe)
 defines a file $rt/$rt.h (which eventually will be in runtime/$rt.h)

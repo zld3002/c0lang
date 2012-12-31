@@ -68,7 +68,7 @@ fi
 
 if [ -e $cfilename ]; then
     vecho "Compiling $cfilename -> a.out"
-    gcc -O2 -I. -I$c0root/include -lgc -lQtCore -lQtGui $c0root/lib/cc0lib.c $cfilename $c0root/lib/cc0main.c $c0root/lib/libstdc0.a $c0root/lib/libc0rt.a
+    gcc -O2 -I. -I$c0root/include -lgc -lQtCore -lQtGui $cfilename $c0root/lib/cc0main.c $c0root/lib/libstdc0.a $c0root/lib/libc0rt.a
     if [ $? -ne 0 ]; then
         vecho "Compilation $cfilename -> a.out  failed"
         exit $?

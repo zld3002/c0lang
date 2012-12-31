@@ -114,7 +114,7 @@ struct
     | extract_wrappers nil = nil
 
   val lib_file = "stdc0.h0"
-  val cc0_lib = "cc0lib"	(* using .h and .c *)
+  val cc0_lib = "cc0lib.h"	(* using .h *)
   val cc0_main = "cc0main.c"	(* using .c *)       
 
   (* Reset all the internal tables of the compiler and all flags *)
@@ -445,7 +445,7 @@ let
                  (path_concat (out_dir, cname))
                  (fn cstream =>
                   TextIO.output (cstream, PrintC.pp_program program
-                                         [cc0_lib ^ ".h",
+                                         [cc0_lib,
                                           !Flags.runtime ^ ".h",
                                           hname]))
 
@@ -475,9 +475,6 @@ let
             (* add lib and runtime directories to search path *)
             ^ " " ^ String.concatWith " " (map (fn p => "-L" ^ (abspath p)) (!Flags.search_path))
             ^ " -L" ^ (!Flags.base_dir ^ "/runtime")
-
-            (* Use the cc0lib *)
-            ^ " " ^ path_concat3 (!Flags.base_dir, "lib", cc0_lib ^ ".c")
 
             (* Finally, use the cc0main.c file *)
             ^ " " ^ path_concat3 (!Flags.base_dir, "lib", cc0_main)
@@ -515,7 +512,6 @@ let
             ^ " " ^ String.concatWith " " (map (abspath o get_library_archive) (!Flags.libraries))
 
             (* Use the runtime and cc0lib *)
-            ^ " " ^ path_concat3 (!Flags.base_dir, "lib", cc0_lib ^ ".c")
             ^ " -L" ^ (!Flags.base_dir ^ "/runtime")
             ^ " -Wl,-rpath " ^ runtimeDir
             ^ " " ^ (abspath (path_concat (runtimeDir, native_lib_name (!Flags.runtime))))

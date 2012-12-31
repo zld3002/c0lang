@@ -7,9 +7,9 @@ if ($?) then
   exit 1
 else
 if (-e $filename:r.c) then
-# gcc -m64 -I. bin/cc0lib.c $filename:r.c bin/cc0main.c >&! $filename:r.txt
+# gcc -m64 -I. $filename:r.c bin/cc0main.c >&! $filename:r.txt
     echo "Compiling $filename:r.c -> a.out"
-    gcc -O2 -I. -Iinclude lib/cc0lib.c $filename:r.c lib/cc0main.c
+    gcc -O2 -I. -Iinclude $filename:r.c lib/cc0main.c
     if ($?) then
 	echo "Compilation $filename:r.c -> a.out failed"
         exit 1
