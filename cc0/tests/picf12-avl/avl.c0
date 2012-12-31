@@ -88,8 +88,6 @@ bool is_ordered(tree* T, elem lower, elem upper) {
 
 bool is_ordtree(tree* T) {
   /* initially, we have no bounds - pass in NULL */
-  // next is purity checking bug workaround
-  // //@assert true || is_ordered(T, NULL, NULL);
   return is_ordered(T, NULL, NULL);
 }
 

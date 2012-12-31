@@ -44,8 +44,6 @@ struct queue_header {
 bool is_queue(queue Q) {
   if (Q == NULL) return false;
   if (Q->front == NULL || Q->back == NULL) return false;
-  // following line is bug workaround in purity checking
-  // //@assert true || is_segment(Q->front, Q->back);
   return is_segment(Q->front, Q->back);
 }
 

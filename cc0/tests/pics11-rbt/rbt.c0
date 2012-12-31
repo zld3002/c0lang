@@ -40,8 +40,6 @@ bool is_ordered(tree T, elem min, elem max) {
 }
 
 bool is_ordtree(tree T) {
-  // purity check bug workaround
-  // //@assert true || is_ordered(T, NULL, NULL);
   return is_ordered(T, NULL, NULL);
 }
 
@@ -71,17 +69,11 @@ int black_height(tree T) {
 }
 
 bool is_baltree(tree T) {
-  // bug workaround for purity checking
-  // //@assert true || black_height(T) >= 0;
   int h = black_height(T);
-  // bug workaround for purity checking
-  // //@assert true || sat_colorinv(T, false);
   return h >= 0 && sat_colorinv(T, false);
 }
 
 bool is_rbtree(tree T) {
-  // bug workaround for purity checking
-  // //@assert true || is_ordtree(T) && is_baltree(T);
   return is_ordtree(T) && is_baltree(T);
 }
 

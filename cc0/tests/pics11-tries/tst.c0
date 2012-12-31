@@ -58,14 +58,10 @@ bool is_trie(trie T, char lower, char upper) {
 }
 
 bool is_trie_root(trie T) {
-  // bug workaround for purity checking
-  // //@assert true || is_trie(T, ' ', '~');
   return is_trie(T, ' ', '~');
 }
 
 bool is_tst(tst TST) {
-  // bug workaround for purity checking
-  // //@assert true || is_trie_root(TST->root);
   return TST != NULL && is_trie_root(TST->root);
 }
 

@@ -6,7 +6,7 @@ ANAYLSIS: Various useful analyzes on C0 source
 Files
   preprocess.sml: expands types, re-assigns parallel definitions, etc. to make
                   analysis more uniform.
-  ananysisast.sml: an AST in SSA form.
+  analysisast.sml: an AST in SSA form.
   error.sml: Representation of verification errors
   analysis.sml: Converts from a regular AST to an AAST, by performing SSA.
   env.sml: SSA calculation helper environment.
