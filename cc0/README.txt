@@ -39,22 +39,23 @@ Building from source
 
    $ ./configure
 
-   $ make [ MLTON=true ]  # build the cc0 compiler, coin, code, gc, runtimes,
-                          # and libraries
-                          # optional MLTON=true argument uses MLton instead of
-                          # SML/NJ as a compiler (required to use libraries
-                          # with coin and code)
+   $ make [ NJ=true ]   # build the cc0 compiler, coin, code, gc, runtimes,
+                        # and libraries
+                        # Optional NJ=true argument uses SML/NJ
+                        # instead of MLton as a compiler. (Libraries
+                        # for coin and code will not work fully if
+                        # compiled with SML/NJ.)
 
- [ $ make libs            # build the libraries separately ] 
- [                        # (libpng required for libimg) ]
+ [ $ make libs          # build the libraries separately ] 
+ [                      # (libpng required for libimg) ]
 
-   $ make check           # run the regression suite (currently requires MLton)
- [ $ make checkc0rt ]     # run the regression suite on the c0rt runtime
- [ $ make checkbare ]     # run the regression suite on the bare runtime
- [ $ make checkunsafe ]   # run the regression suite on the unsafe runtime
+   $ make check         # run the regression suite (currently requires MLton)
+ [ $ make checkc0rt ]   # run the regression suite on the c0rt runtime
+ [ $ make checkbare ]   # run the regression suite on the bare runtime
+ [ $ make checkunsafe ] # run the regression suite on the unsafe runtime
 
- [ $ cd vm; make          # build c0vm, must run make libs first ]
- [ $ make checkvm         # test cc0 -b together with c0vm ]
+ [ $ cd vm; make        # build c0vm, must run make libs first ]
+ [ $ make checkvm       # test cc0 -b together with c0vm ]
 
  [ $ make coin-exec MLTON=true # build the interpreter ]
  [ $ make checkcoin            # run the regression suite on the interpreter ]

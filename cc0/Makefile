@@ -117,13 +117,13 @@ cc0: bin/cc0
 bin/cc0: bin $(CC0_DEPS)
 	$(MAKE) -C compiler clean
 	$(MAKE) -C compiler buildid
-ifdef MLTON
-	$(MLTON_BASIC) bin/cc0.exe compiler/sources-go.mlb 
-	$(COPY) compiler/bin/cc0-mlton bin/cc0
-else
+ifdef NJ
 	$(MAKE) -C compiler cc0
 	$(COPY) compiler/bin/cc0-sml bin/cc0
 	$(COPY) compiler/bin/cc0.heap.* bin
+else
+	$(MLTON_BASIC) bin/cc0.exe compiler/sources-go.mlb 
+	$(COPY) compiler/bin/cc0-mlton bin/cc0
 endif
 	$(COPY) compiler/bin/cpfiles bin
 	chmod +x bin/cc0 bin/cpfiles
@@ -145,12 +145,12 @@ csharp: bin bare
 wrappergen: bin/wrappergen
 bin/wrappergen: makelibs/* bin $(CC0_DEPS)
 	$(MAKE) -C compiler buildid
-ifdef MLTON
-	$(MLTON_BASIC) bin/wrappergen.exe makelibs/wrappergen.mlb
-	$(COPY) compiler/bin/run-mlton bin/wrappergen
-else
+ifdef NJ
 	echo 'use "makelibs/wrappergen.sml";' | ${SML}
 	$(COPY) compiler/bin/run-smlnj bin/wrappergen
+else
+	$(MLTON_BASIC) bin/wrappergen.exe makelibs/wrappergen.mlb
+	$(COPY) compiler/bin/run-mlton bin/wrappergen
 endif
 	chmod +x bin/wrappergen
 	touch bin/wrappergen
@@ -200,13 +200,13 @@ COIN_DEPS = $(CC0_DEPS) $(NATIVE_COIN) cymbol/cymbol*.cm cymbol/*.sml cymbol/*.m
 coin: bin/coin
 bin/coin: bin $(COIN_DEPS)
 	$(MAKE) -C compiler buildid
-ifdef MLTON
-	$(MLTON_NATIVE) bin/coin.exe coin/coin.mlb $(NATIVE_COIN)
-	$(COPY) compiler/bin/run-mlton bin/coin
-else
+ifdef NJ
 	$(MAKE) -C coin 
 	$(COPY) coin/coin.heap.* bin
 	$(COPY) compiler/bin/run-smlnj bin/coin
+else
+	$(MLTON_NATIVE) bin/coin.exe coin/coin.mlb $(NATIVE_COIN)
+	$(COPY) compiler/bin/run-mlton bin/coin
 endif
 	chmod +x bin/coin
 	touch bin/coin
@@ -215,13 +215,13 @@ endif
 coin-exec: bin/coin-exec
 bin/coin-exec: bin $(COIN_DEPS)
 	$(MAKE) -C compiler buildid
-ifdef MLTON
-	$(MLTON_NATIVE) bin/coin-exec.exe coin/coin-exec.mlb $(NATIVE_COIN)
-	$(COPY) compiler/bin/run-mlton bin/coin-exec
-else
+ifdef NJ
 	$(MAKE) -C coin coin-exec
 	$(COPY) coin/coin-exec.heap.* bin
 	$(COPY) compiler/bin/run-smlnj bin/coin-exec
+else
+	$(MLTON_NATIVE) bin/coin-exec.exe coin/coin-exec.mlb $(NATIVE_COIN)
+	$(COPY) compiler/bin/run-mlton bin/coin-exec
 endif
 	chmod +x bin/coin-exec
 	touch bin/coin-exec
@@ -235,13 +235,13 @@ CODE_DEPS = $(CC0_DEPS) $(COIN_DEPS) code/debug.cm code/*.mlb code/*.sml
 code: bin/code 
 bin/code: bin $(CODE_DEPS)
 	$(MAKE) -C compiler buildid
-ifdef MLTON
-	$(MLTON_NATIVE) bin/code.exe code/debug.mlb $(NATIVE_COIN)
-	$(COPY) compiler/bin/run-mlton bin/code
-else
+ifdef NJ
 	$(MAKE) -C code
 	$(COPY) code/code.heap.* bin
 	$(COPY) compiler/bin/run-smlnj bin/code
+else
+	$(MLTON_NATIVE) bin/code.exe code/debug.mlb $(NATIVE_COIN)
+	$(COPY) compiler/bin/run-mlton bin/code
 endif
 	chmod +x bin/code
 	touch bin/code
