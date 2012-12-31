@@ -139,22 +139,19 @@ structure Flags :> FLAGS = struct
      {short = "d", long=["dyn-check"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_dyn_check),
       help="Check contracts dynamically"},
+(* Disabled temporarily to create Spring 2012 binaries *)
+(* December 30, 2012 -rjs *)
+(*
      {short = "S", long=["static-check"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_static_check),
       help="Check contracts and safety statically"},
      {short = "", long=["verif-check"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_verif_check),
       help="Enable verification condition checking"},
+*)
      {short = "", long=["no-purity-check"],
       desc=GetOpt.NoArg (fn () => Flag.unset flag_purity_check),
       help="Disable checking contract functions for purity"},
-(* disabled; purity checking on by default *)
-(* Wed Dec 26 21:17:18 2012 -fp *)
-(*
-     {short = "", long=["purity-check"],
-      desc=GetOpt.NoArg (fn () => Flag.set flag_purity_check),
-      help="Enable checking contract functions for purity (default)"},
-*)
      {short = "l", long=["library"],
       desc=GetOpt.ReqArg ((fn (s) => (libraries := s :: !libraries)), "<lib>"),
       help="Include the library <lib>"},
