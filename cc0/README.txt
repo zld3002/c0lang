@@ -39,11 +39,11 @@ Building from source
 
    $ ./configure
 
-   $ make [ NJ=true ]   # build the cc0 compiler, coin, code, gc, runtimes,
+   $ make [ NJ=true ]   # build the cc0 compiler, coin, codex, gc, runtimes,
                         # and libraries
                         # Optional NJ=true argument uses SML/NJ
                         # instead of MLton as a compiler. (Libraries
-                        # for coin and code will not work fully if
+                        # for coin and codex will not work fully if
                         # compiled with SML/NJ.)
 
  [ $ make libs          # build the libraries separately ] 
@@ -131,7 +131,7 @@ revision 4 with
   make cc0-mlton
   [ make check ]
   make coin
-  make code
+  make codex
   make coin-exec
   [ make checkcoin ] 
   cd ..
@@ -181,8 +181,9 @@ library, these were eliminated in the early 200-revisions (December
 
 Around revision 238-241, some housekeeping was done:
 
+cc0/debugger eliminated (not sure how related to debugger-r10, as of r252)
 cc0/debugger-r10 eliminated (Jakob and Rob's early debugger infrastructure) 
-cc0/debugger-r12 --> cc0/code
+cc0/debugger-r12 --> cc0/code --> cc0/codex
 cc0/compiler/parse1 eliminated (Original LEX/YACC parser)
 cc0/compiler/parse2 eliminated (Prototype by-hand shift-reduce parser)
 cc0/compiler/parse3 -> cc0/compiler/parse
