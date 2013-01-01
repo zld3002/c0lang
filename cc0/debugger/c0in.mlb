@@ -1,6 +1,0 @@
-$(SML_LIB)/basis/basis.mlb
-core/sources.mlb
-cfg/sources.mlb
-frontends/testing.sml
-cymbol-test.sml
-frontends/mlton-go.sml

@@ -25,13 +25,13 @@ It's not perfect, but very helpful
 ----------------------------------------------------------------------
 Debugging
 ----------------------------------------------------------------------
-In C0 mode, you can also invoke the debugger called 'code' (derived
-from 'C0 DEbugger').  To use 'code', visit the file with the 'main'
+In C0 mode, you can also invoke the debugger called 'codex' (derived
+from 'C0 DEbugger').  To use 'codex', visit the file with the 'main'
 function and type C-c C-d (CTRL-c CTRL-d).  Add the '-d' option at the
-prompt to the arguments of 'code' to enable dynamic checking of
+prompt to the arguments of 'codex' to enable dynamic checking of
 contracts.
 
-A second buffer *code-locals* will be created with the current values
+A second buffer *codex-locals* will be created with the current values
 for all local variables (initiall empty), or error messages.  Also
 keep an eye on the mini-buffer at the bottom of your frame for
 messages.
@@ -50,12 +50,12 @@ through it with simple keystrokes.  They are:
   q             - quit the execution
   ? or h        - display a short help message
 
-While stepping through your program, code will continuously display
-the values of all local variables in the buffer *code-locals*.
+While stepping through your program, codex will continuously display
+the values of all local variables in the buffer *codex-locals*.
 
 EXCEPTIONS.  If an exception is raised or the program is aborted due
-to a failed contract, an error message is displayed and the code
+to a failed contract, an error message is displayed and the codex
 process is terminated.  In case of a contract violation, the
 particular contract is highlighted in pink.  You can get rid of the
-highlight with C-c C-g, if you need to.  You can always restart the
-code by going to the file with the 'main' function and typing C-c C-d.
+highlight with C-c C-g, if you need to.  You can always restart
+codex by going to the file with the 'main' function and typing C-c C-d.

@@ -120,8 +120,8 @@ struct
       let
         val _ = println (s^" in function "^fname)
         val _ = if Flag.isset Flags.flag_emacs
-		then print "(code)\n"
-		else print "(code) "
+		then print "(codex)\n"
+		else print "(codex) "
         val input = valOf (TextIO.inputLine TextIO.stdIn)
         val inputs = String.tokens Char.isSpace input
         val action = case inputs of 

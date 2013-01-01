@@ -1,4 +1,4 @@
-;;; c0-code.el --- Interaction with 'code', the C0 debugger
+;;; c0-codex.el --- Interaction with 'codex', the C0 debugger
 
 ;; Author:     2010 Jakob Max Uecker
 ;; Maintainer: 
@@ -24,8 +24,8 @@
 
 ;;; Commentary:
 ;;
-;;    This code interacts with the 'code' debugger. It expects
-;;    the variable 'code-path' to be set to the 'code' executable
+;;    This code interacts with the 'codex' debugger. It expects
+;;    the variable 'codex-path' to be set to the 'codex' executable
 
 ;;; Known Bugs:
 ;;    
@@ -37,11 +37,11 @@
 ;;    0.1 - Initial release
 
 ;; User options
-(defvar code-path nil
-  "*Path pointing to the code executable")
+(defvar codex-path nil
+  "*Path pointing to the codex executable")
 
-;; Faces for highlighting the active portion of code
-(defface code-normal-face
+;; Faces for highlighting the active portion of codex
+(defface codex-normal-face
   '((((class color)
       (background dark))
      (:background "Yellow" :bold t :foreground "Black"))
@@ -51,9 +51,9 @@
     (t
      ()))
   "*Face used for the next expression to be evaluated."
-  :group 'code)
+  :group 'codex)
 
-(defface code-error-face
+(defface codex-error-face
   '((((class color)
       (background dark))
      (:background "Pink" :bold t :foreground "Black"))
@@ -63,51 +63,51 @@
     (t
      ()))
   "*Face used for highlighting erroneous expressions."
-  :group 'code)
+  :group 'codex)
 
 ;; The keymap used for debugging
-(defvar code-map
+(defvar codex-map
   (let ((map (make-sparse-keymap)))
-    (define-key map "s" 'code-step)
-    (define-key map (kbd "RET") 'code-step)
-    (define-key map "n" 'code-next)
-    (define-key map "v" 'code-locals)
-    (define-key map "e" 'code-eval-exp)
-    (define-key map "q" 'code-exit-debug)
-    (define-key map "i" 'code-interrupt)
-    (define-key map "?" 'code-help)
-    (define-key map "h" 'code-help-long)
+    (define-key map "s" 'codex-step)
+    (define-key map (kbd "RET") 'codex-step)
+    (define-key map "n" 'codex-next)
+    (define-key map "v" 'codex-locals)
+    (define-key map "e" 'codex-eval-exp)
+    (define-key map "q" 'codex-exit-debug)
+    (define-key map "i" 'codex-interrupt)
+    (define-key map "?" 'codex-help)
+    (define-key map "h" 'codex-help-long)
     map))
 
 ;;; Local variables follows
 ;;; These should not be set by the user
 
-(defvar code-locals-buffer nil
+(defvar codex-locals-buffer nil
   "Buffer which will display values of local variables")
 
-(defvar code-locals-accum nil
+(defvar codex-locals-accum nil
   "Accumulator for local variable values for 'v' command")
 
-(defvar code-output-accum nil
+(defvar codex-output-accum nil
   "Accumulator for output, shown when prompt is encountered")
 
-(defvar code-highlight-overlay nil
+(defvar codex-highlight-overlay nil
   "Overlay to highlight currently evaluated region")
 
-(defvar code-point-old nil
-  "Old point in current code buffer")
+(defvar codex-point-old nil
+  "Old point in current codex buffer")
 
-(defvar code-local-map-old nil
-  "Old local keymap in current code buffer")
+(defvar codex-local-map-old nil
+  "Old local keymap in current codex buffer")
 
-(defvar code-proc nil
-  "Process running code")
+(defvar codex-proc nil
+  "Process running codex")
 
-(defvar code-main-directory nil
+(defvar codex-main-directory nil
   "Directory of the C0 file with main function")
 
 ;; Column positions between cc0 and emacs are off by 1
-(defun code-get-pos (line column)
+(defun codex-get-pos (line column)
   "Get buffer position from line.column position"
   (+
    (line-beginning-position (- (+ line 1) (line-number-at-pos)))
@@ -115,137 +115,137 @@
 
 ;;; Functions for highlighting
 
-(defun code-highlight
+(defun codex-highlight
   (line-begin column-begin line-end column-end)
   "Move highlight overlay to specified region, point to beginning of region"
-  (let ((pos-begin (code-get-pos line-begin column-begin))
-	(pos-end (code-get-pos line-end column-end)))
-    (if (not (null code-highlight-overlay))
-	(move-overlay code-highlight-overlay pos-begin pos-end)
-      (setq code-highlight-overlay (make-overlay pos-begin pos-end)))
+  (let ((pos-begin (codex-get-pos line-begin column-begin))
+	(pos-end (codex-get-pos line-end column-end)))
+    (if (not (null codex-highlight-overlay))
+	(move-overlay codex-highlight-overlay pos-begin pos-end)
+      (setq codex-highlight-overlay (make-overlay pos-begin pos-end)))
     (goto-char pos-begin)))
 
-(defun code-highlight-normal (line-begin column-begin line-end column-end)
+(defun codex-highlight-normal (line-begin column-begin line-end column-end)
   "Set normal highlight"
-  (code-highlight line-begin column-begin line-end column-end)
-  (overlay-put code-highlight-overlay 'face 'code-normal-face))
+  (codex-highlight line-begin column-begin line-end column-end)
+  (overlay-put codex-highlight-overlay 'face 'codex-normal-face))
 
-(defun code-highlight-error (line-begin column-begin line-end column-end)
+(defun codex-highlight-error (line-begin column-begin line-end column-end)
   "Set highlight to indicate error"
-  (code-highlight line-begin column-begin line-end column-end)
-  (overlay-put code-highlight-overlay 'face 'code-error-face))
+  (codex-highlight line-begin column-begin line-end column-end)
+  (overlay-put codex-highlight-overlay 'face 'codex-error-face))
 
-(defun code-delete-highlight ()
+(defun codex-delete-highlight ()
   "*Remove highlight overlay"
-  (if (not (null code-highlight-overlay))
+  (if (not (null codex-highlight-overlay))
       (progn
-	(delete-overlay code-highlight-overlay)
-	(setq code-highlight-overlay nil))))
+	(delete-overlay codex-highlight-overlay)
+	(setq codex-highlight-overlay nil))))
 
-(defun code-enter-buffer ()
-  "Set current buffer to code mode"
+(defun codex-enter-buffer ()
+  "Set current buffer to codex mode"
   (setq buffer-read-only t)
-  (setq code-local-map-old (current-local-map))
-  (use-local-map code-map)
-  (setq code-point-old (point)))
+  (setq codex-local-map-old (current-local-map))
+  (use-local-map codex-map)
+  (setq codex-point-old (point)))
 
-(defun code-leave-buffer ()
+(defun codex-leave-buffer ()
   "Restore current buffer to normal mode"
-  (code-delete-highlight)
-  (use-local-map code-local-map-old)
-  (goto-char code-point-old)
+  (codex-delete-highlight)
+  (use-local-map codex-local-map-old)
+  (goto-char codex-point-old)
   (setq buffer-read-only nil))
 
-(defun code-switch-to-file (filename)
+(defun codex-switch-to-file (filename)
   "Switch to stepping in filename"
-  (code-leave-buffer)			; leave current buffer
+  (codex-leave-buffer)			; leave current buffer
   (find-file-existing filename)		; visit other file
-  (code-enter-buffer)			; enter into debug mode
+  (codex-enter-buffer)			; enter into debug mode
   )
 
-(defun code-display-output-accum ()
+(defun codex-display-output-accum ()
   "Display accumulated output, if not empty"
-  (if (not (null code-output-accum))
+  (if (not (null codex-output-accum))
       (progn
-	(with-current-buffer code-locals-buffer
+	(with-current-buffer codex-locals-buffer
 	  (goto-char (point-max))
-	  (insert code-output-accum))
-	(setq code-output-accum nil))))
+	  (insert codex-output-accum))
+	(setq codex-output-accum nil))))
 
 ;;; Functions for parsing of debugger output
 
-(defun code-canon-filename (filename)
-  "Canonicalize the given filename, relative to code main directory"
+(defun codex-canon-filename (filename)
+  "Canonicalize the given filename, relative to codex main directory"
   (if (file-name-absolute-p filename)
       filename
-    (expand-file-name (concat code-main-directory filename))))
+    (expand-file-name (concat codex-main-directory filename))))
 
-(defun code-parse (string)
+(defun codex-parse (string)
   (let ((newline-pos (string-match "\n" string)))
     (if (null newline-pos)
 	;; no trailing newline
-	(code-parse-line string string)
+	(codex-parse-line string string)
       ;; trailing newline
-      (if (not (code-parse-line (substring string 0 newline-pos) string))
-	  (code-parse (substring string (+ 1 newline-pos)))))))
+      (if (not (codex-parse-line (substring string 0 newline-pos) string))
+	  (codex-parse (substring string (+ 1 newline-pos)))))))
 
-(defconst code-position-regexp
+(defconst codex-position-regexp
   "\\([0-9]*\\)[.]\\([0-9]*\\)-\\([0-9]*\\)[.]\\([0-9]*\\)"
-  "Regular expression matched against code position.  Must define 4 numbers.")
+  "Regular expression matched against codex position.  Must define 4 numbers.")
 
-(defconst code-location-regexp
-  (concat "^\\([^:]*\\):" code-position-regexp)
+(defconst codex-location-regexp
+  (concat "^\\([^:]*\\):" codex-position-regexp)
   "Regular expression matched against debugger output")
 
-(defconst code-interactive-regexp
-  (concat "^\\(<debugger>\\):" code-position-regexp)
+(defconst codex-interactive-regexp
+  (concat "^\\(<debugger>\\):" codex-position-regexp)
   "Regular expression matched against error in interactive parsing")
 
 (defconst error-msg-regexp
   "\\(:error:.*\\|: @.*\\|: assert failed\\)"
   "Regular expression matched against error output")
 
-(defun code-parse-line (string whole-string)
-  "Parse one line of output from code program, returns non-NIL to abort rest"
-  (cond ((string-match "^(code)" string)
+(defun codex-parse-line (string whole-string)
+  "Parse one line of output from codex program, returns non-NIL to abort rest"
+  (cond ((string-match "^(codex)" string)
 	 ;; prompt - display values of local variables
          ;; and accumulated output since last prompt
-	 (if (not (null code-locals-accum))
+	 (if (not (null codex-locals-accum))
 	     (progn
-	       ;; (message "%d" (length code-locals-accum))
-	       (with-current-buffer code-locals-buffer
+	       ;; (message "%d" (length codex-locals-accum))
+	       (with-current-buffer codex-locals-buffer
 		 (delete-region (point-min) (point-max))
-		 (insert code-locals-accum)
+		 (insert codex-locals-accum)
 		 (goto-char (point-max)))
-	       (setq code-locals-accum nil))
+	       (setq codex-locals-accum nil))
              ;; Bugfix - entering a new function doesn't clear locals
              ;; - rjs 8/24/2012
              (progn
-	       (with-current-buffer code-locals-buffer
+	       (with-current-buffer codex-locals-buffer
 		 (delete-region (point-min) (point-max))
 		 (insert "(no local variables)")
 		 (goto-char (point-max)))))
-	 (if (not (null code-output-accum))
+	 (if (not (null codex-output-accum))
 	     (progn
-	       (message "%s" code-output-accum)
-	       (setq code-output-accum nil)))
+	       (message "%s" codex-output-accum)
+	       (setq codex-output-accum nil)))
 	 ())
 	((string-match "^main function" string)
 	 ;; main function returned
-	 (code-exit-debug)
+	 (codex-exit-debug)
 	 (message "%s" string)
 	 ())
 	((string-match (concat "^" error-msg-regexp) string)
 	 ;; :error:<errormsg>
 	 (let ((errormsg (match-string 1 string)))
-	   (code-exit-debug)
-	   (with-current-buffer code-locals-buffer
+	   (codex-exit-debug)
+	   (with-current-buffer codex-locals-buffer
 	     (delete-region (point-min) (point-max))
 	     (insert whole-string))
 	   (message "%s" errormsg)
 	   ;; abort more parsing (return t)
 	   t))
-	((string-match (concat code-interactive-regexp error-msg-regexp) string)
+	((string-match (concat codex-interactive-regexp error-msg-regexp) string)
 	 ;; error message during interactive parsing or type-checking
 	 ;; applies during "e <exp>" evaluation
 	 ;; ignore error location, just show error mess
@@ -261,39 +261,39 @@
 	   (message "%s" errormsg)
 	   ;; continue parsing
 	   ()))
-	((string-match (concat code-location-regexp error-msg-regexp) string)
+	((string-match (concat codex-location-regexp error-msg-regexp) string)
 	 ;; error message during parsing or type-checking
 	 ;; must come before the next clause
-	 (let* ((canon-filename (code-canon-filename (match-string 1 string)))
+	 (let* ((canon-filename (codex-canon-filename (match-string 1 string)))
 		(line0 (string-to-number (match-string 2 string)))
 		(col0 (string-to-number (match-string 3 string)))
 		(line1 (string-to-number (match-string 4 string)))
 		(col1 (string-to-number (match-string 5 string)))
 		(errormsg (match-string 6 string)))
 	   (if (not (string-equal canon-filename (buffer-file-name)))
-	       (code-switch-to-file canon-filename))
-	   (code-exit-debug)
-	   (code-highlight-error line0 col0 line1 col1)
-	   (with-current-buffer code-locals-buffer
+	       (codex-switch-to-file canon-filename))
+	   (codex-exit-debug)
+	   (codex-highlight-error line0 col0 line1 col1)
+	   (with-current-buffer codex-locals-buffer
 	     (delete-region (point-min) (point-max))
 	     (insert whole-string))
 	   (message "%s" errormsg)
 	   ;; abort more parsing (return t)
 	   t))
-	((string-match code-location-regexp string)
-	 ;; location of code currently executed
-	 (let* ((canon-filename (code-canon-filename (match-string 1 string)))
+	((string-match codex-location-regexp string)
+	 ;; location of codex currently executed
+	 (let* ((canon-filename (codex-canon-filename (match-string 1 string)))
 		(line0 (string-to-number (match-string 2 string)))
 		(col0 (string-to-number (match-string 3 string)))
 		(line1 (string-to-number (match-string 4 string)))
 		(col1 (string-to-number (match-string 5 string))))
 	   (if (not (string-equal canon-filename (buffer-file-name)))
-	       (code-switch-to-file canon-filename))
-	   (code-highlight-normal line0 col0 line1 col1)
+	       (codex-switch-to-file canon-filename))
+	   (codex-highlight-normal line0 col0 line1 col1)
 	   ()))
 	((string-match "^Exception: \\(.*\\)" string)
-	 (code-exit-debug)
-	 (with-current-buffer code-locals-buffer
+	 (codex-exit-debug)
+	 (with-current-buffer codex-locals-buffer
 	   (delete-region (point-min) (point-max))
 	   (insert whole-string))
 	 (message "%s" whole-string)
@@ -306,7 +306,7 @@
 	((string-match "^[a-zA-Z0-9_]*: " string)
 	 ;; varname: value, accumulate to be shown upon next prompt
 	 ;; might be better solved with \\w*, but above is more specific
-	 (setq code-locals-accum (concat code-locals-accum string "\n"))
+	 (setq codex-locals-accum (concat codex-locals-accum string "\n"))
 	 ())
 	;; suppress blank lines
 	((string-equal "\n" string) ())
@@ -314,7 +314,7 @@
 	(t
 	 ;; collect other output, usually from print statements
 	 ;; in program being executed, or from "e <exp>" commands
-	 (setq code-output-accum (concat code-output-accum string "\n"))
+	 (setq codex-output-accum (concat codex-output-accum string "\n"))
 	 ())
 	))
 
@@ -323,8 +323,8 @@
 ;; Receives output from the debugger. Logs all output in
 ;; the debugger's associated buffer before passing it on
 ;; to the parsing function
-(defun code-filter (proc string)
-  "Filter function for code interaction"
+(defun codex-filter (proc string)
+  "Filter function for codex interaction"
   (with-current-buffer (process-buffer proc)
     (let ((moving (= (point) (process-mark proc))))
       (save-excursion
@@ -332,70 +332,70 @@
 	(insert string)
 	(set-marker (process-mark proc) (point)))
       (if moving (goto-char (process-mark proc)))))
-  (code-parse string))
+  (codex-parse string))
 	 
 ;; Is called if the debugger process receives a signal
 ;; or exits
-(defun code-sentinel (proc string)
-  "Sentinel for code process"
+(defun codex-sentinel (proc string)
+  "Sentinel for codex process"
   (cond
    ((string-match "^exited abnormally" string)
-    (code-exit-debug)
-    (code-display-output-accum)
+    (codex-exit-debug)
+    (codex-display-output-accum)
     (message "%s" "program aborted"))
-   (t (code-exit-debug)
-      (code-display-output-accum)
-      (message "%s" "unexpected termination of code"))))
+   (t (codex-exit-debug)
+      (codex-display-output-accum)
+      (message "%s" "unexpected termination of codex"))))
 
 ;;; Functions for sending input to the debugger
 
-(defun code-send-string (string)
-  "Send STRING to code process"
-  (process-send-string code-proc string))
+(defun codex-send-string (string)
+  "Send STRING to codex process"
+  (process-send-string codex-proc string))
 
-(defun code-step ()
+(defun codex-step ()
   "Step to next statement, potentially entering a function"
   (interactive)
-  (code-send-string "s\n")
-  (code-send-string "v\n"))
+  (codex-send-string "s\n")
+  (codex-send-string "v\n"))
 
-(defun code-next ()
+(defun codex-next ()
   "Step to next statement, passing over functions unless they
 include a breakpoint"
   (interactive)
-  (code-send-string "n\n")
-  (code-send-string "v\n"))
+  (codex-send-string "n\n")
+  (codex-send-string "v\n"))
 
-(defun code-eval-exp (exp)
+(defun codex-eval-exp (exp)
   "Evaluate an expression in the current state"
   (interactive "sEvaluate expression: ")
-  (code-send-string (concat "e " exp "\n"))
-  (code-send-string "v\n"))
+  (codex-send-string (concat "e " exp "\n"))
+  (codex-send-string "v\n"))
 
-(defun code-locals ()
+(defun codex-locals ()
   "Show the value of local variables"
   (interactive)
-  (code-send-string "v\n"))
+  (codex-send-string "v\n"))
 
-(defun code-interrupt ()
+(defun codex-interrupt ()
   "Interrupt the debugger"
   (interactive)
-  (interrupt-process "code"))
+  (interrupt-process "codex"))
 
-(defun code-help ()
-  "Show the Emacs help for code"
+(defun codex-help ()
+  "Show the Emacs help for codex"
   (interactive)
   (message "%s\n%s\n%s\n%s\n%s\n%s\n%s"
 	   "return or s - step"
 	   "n - next (skip function calls)"
 	   "e <exp> - evaluate <exp>"
 	   "q - quit"
-	   "i - interrupt code"
+	   "i - interrupt codex"
 	   "? - this short help"
 	   "h - detailed help"))
 
-(defun code-help-long ()
-  "Show the longish help for code"
+(defun codex-help-long ()
+  "Show the longish help for codex"
   (interactive)
   (find-file-other-frame (concat c0-root "c0-mode/README")))
 
@@ -409,66 +409,66 @@ include a breakpoint"
 ;; -adds a hook that quits the debugger if the buffer is killed
 ;; -runs the debugger
 
-(defun code ()
+(defun codex ()
   "Enter debugging mode in current buffer."
   (interactive)
-  (code-enter-debug))
+  (codex-enter-debug))
 
-(defun code-enter-debug ()
+(defun codex-enter-debug ()
   "Enter debugging mode."
   (interactive)
-  (if (get-process "code")
+  (if (get-process "codex")
       (message "%s" "debugger already running")
-    (if (null code-path)
+    (if (null codex-path)
 	(message "%s" "debugger path not set")
       (if (and (buffer-modified-p) (yes-or-no-p "save buffer? "))
 	  (save-buffer))
-      (setq args (read-string "Call debugger with: code" 
+      (setq args (read-string "Call debugger with: codex" 
 			      (concat " -e " (file-relative-name (buffer-file-name)))))
-      ;; start code process
-      (setq code-proc
+      ;; start codex process
+      (setq codex-proc
 	    (start-process-shell-command
-	     "code"
-	     "*code*"
-	     code-path
+	     "codex"
+	     "*codex*"
+	     codex-path
 	     args))
       ;; kill-buffer-hook activated when switching to another file
       ;; the first time; disabled
-      ;; (add-hook 'kill-buffer-hook 'code-kill-process)
-      (setq code-output-accum nil)	; in case we are in a strange state
-      (setq code-locals-accum nil)	; in case we are in a strange state
-      (set-process-filter code-proc 'code-filter)
-      (set-process-sentinel code-proc 'code-sentinel)
+      ;; (add-hook 'kill-buffer-hook 'codex-kill-process)
+      (setq codex-output-accum nil)	; in case we are in a strange state
+      (setq codex-locals-accum nil)	; in case we are in a strange state
+      (set-process-filter codex-proc 'codex-filter)
+      (set-process-sentinel codex-proc 'codex-sentinel)
       ;; switch current buffer to debugging mode
-      (code-enter-buffer)
-      (setq code-main-directory (file-name-directory (buffer-file-name)))
+      (codex-enter-buffer)
+      (setq codex-main-directory (file-name-directory (buffer-file-name)))
       ;; create and display buffer for local variables
-      (setq code-locals-buffer (get-buffer-create "*code-locals*"))
-      (display-buffer code-locals-buffer) ; do not switch
+      (setq codex-locals-buffer (get-buffer-create "*codex-locals*"))
+      (display-buffer codex-locals-buffer) ; do not switch
       (save-window-excursion
-	(switch-to-buffer-other-window code-locals-buffer)
+	(switch-to-buffer-other-window codex-locals-buffer)
 	(delete-region (point-min) (point-max)))
       (message "Type '?' for help")
       )))
 
 ;; Hook to be run if the buffer is killed while debugging
 ;; Kills the debugger
-(defun code-kill-process ()
-  (if (get-process "code")
-      (delete-process "code")))
+(defun codex-kill-process ()
+  (if (get-process "codex")
+      (delete-process "codex")))
 
 ;; Quit the debugger. Restores the buffers keymap and point
-(defun code-exit-debug ()
+(defun codex-exit-debug ()
   "Exit debugging mode"
   (interactive)
-  (code-kill-process)
+  (codex-kill-process)
   ;; for now, keep buffers
-  ;; (kill-buffer "*code*")
-  ;; (kill-buffer code-locals-buffer)
-  ;; (remove-hook 'kill-buffer-hook 'code-kill-process)
-  (code-leave-buffer)
-  (message "%s" "code exited"))
+  ;; (kill-buffer "*codex*")
+  ;; (kill-buffer codex-locals-buffer)
+  ;; (remove-hook 'kill-buffer-hook 'codex-kill-process)
+  (codex-leave-buffer)
+  (message "%s" "codex exited"))
 
-(provide 'c0-code)
+(provide 'c0-codex)
 
-;;; c0-code.el ends here
+;;; c0-codex.el ends here

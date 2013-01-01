@@ -25,7 +25,7 @@ include config.mk
 
 include util.mk
 
-all: cc0 coin code externals libs
+all: cc0 coin codex externals libs
 
 .PHONY: externals
 externals: $(EXTERNALS)
@@ -227,24 +227,24 @@ endif
 	touch bin/coin-exec
 
 
-### code - The C0 Debugger
+### codex - The C0 Debugger
 
-CODE_DEPS = $(CC0_DEPS) $(COIN_DEPS) code/debug.cm code/*.mlb code/*.sml
+CODEX_DEPS = $(CC0_DEPS) $(COIN_DEPS) codex/debug.cm codex/*.mlb codex/*.sml
 
-.PHONY: code
-code: bin/code 
-bin/code: bin $(CODE_DEPS)
+.PHONY: codex
+codex: bin/codex 
+bin/codex: bin $(CODEX_DEPS)
 	$(MAKE) -C compiler buildid
 ifdef NJ
-	$(MAKE) -C code
-	$(COPY) code/code.heap.* bin
-	$(COPY) compiler/bin/run-smlnj bin/code
+	$(MAKE) -C codex
+	$(COPY) codex/codex.heap.* bin
+	$(COPY) compiler/bin/run-smlnj bin/codex
 else
-	$(MLTON_NATIVE) bin/code.exe code/debug.mlb $(NATIVE_COIN)
-	$(COPY) compiler/bin/run-mlton bin/code
+	$(MLTON_NATIVE) bin/codex.exe codex/debug.mlb $(NATIVE_COIN)
+	$(COPY) compiler/bin/run-mlton bin/codex
 endif
-	chmod +x bin/code
-	touch bin/code
+	chmod +x bin/codex
+	touch bin/codex
 
 
 ### Cleanup
@@ -256,7 +256,7 @@ clean: libsclean
 	$(MAKE) -C unsafe clean
 	$(MAKE) -C compiler clean
 	$(MAKE) -C coin clean
-	$(MAKE) -C code clean
+	$(MAKE) -C codex clean
 	$(RM) -f lib/*$(DLLSUFFIX) lib/*.a lib/*.h0
 	$(RM) -rf bin runtime
 
