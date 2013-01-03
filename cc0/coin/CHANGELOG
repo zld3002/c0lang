@@ -114,3 +114,10 @@ Aug 29, 2012: Fix bug - isolation at coin's toplevel did not use
 Aug 29, 2012: Isolation means the default location actually shows up
               sometimes; make this less hideous and
               bug-report-inducing.
+
+0.3.1 --> 0.3.2
+Dec 26, 2012: Get static analysis working in Coin
+Dec 26, 2012: Fix depth-tracking bug
+Dec 28, 2012: Add arguments with -a, args library
+Dec 29, 2012: Fix most of the problems causing library aborts to abort Coin at
+              runtime.

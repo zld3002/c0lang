@@ -420,12 +420,11 @@ struct
         {options = Flags.core_options @ Flags.coin_options @ Flags.codex_options,
          errfn = fn msg => println msg,
          versioninfo = 
-            "code " ^ Version.version 
+            "C0 debugger (codex) " ^ Version.version 
             ^ " (r" ^ BuildId.revision ^ ", " ^ BuildId.date ^ ")",
          usageinfo = 
          GetOpt.usageInfo 
-           {header = "Usage: " ^ name
-                     ^ " codex [OPTIONS_AND_SOURCEFILES...]",
+           {header = "Usage: codex [OPTIONS_AND_SOURCEFILES...]",
             options = Flags.core_options @ Flags.coin_options @ Flags.codex_options},
          args = args}
       handle _ => raise COMPILER_ERROR 

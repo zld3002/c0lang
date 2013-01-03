@@ -3,23 +3,23 @@ structure Coin :> RUNLINE =
 struct
 
 val help_message =
-"Coin - the C0 interpreter.                                                  \n\
-\                                                                            \n\
-\Being in the Coin interpreter is like being inside of a C0 function. You can\n\
-\declare and assign to variables (for instance, by typing `int x = 5;' and   \n\
-\then `x++;' or `x /= 2;') and you can see the value of variables and        \n\
-\expressions (for instance, by typing `true || false;').                     \n\
-\                                                                            \n\
-\Remember: every statement or expression must end with a semicolon `;'.      \n\
-\                                                                            \n\
-\The following special \"pragmas\" allow you to pass commands to Coin.       \n\
-\  #functions       - List all available functions                           \n\
-\  #help            - Display this message                                   \n\
-\  #locals          - Display the contents of all declared local variables   \n\
-\  #structs         - List the fields of all available structs               \n\
-\  #quit            - Exit the interpreter                                   \n\
-\  #reload          - Reload libraries and files; clear local variables      \n\
-\                                                                            \n"
+"Coin - the C0 interpreter.                                                 \n\
+\                                                                           \n\
+\Being in the Coin interpreter is like being inside of a C0 function. You   \n\
+\can declare and assign to variables (for instance, by typing `int x = 5;'  \n\
+\and then `x++;' or `x /= 2;') and you can see the value of variables and   \n\
+\expressions (for instance, by typing `true || false;').                    \n\
+\                                                                           \n\
+\Remember: every statement or expression must end with a semicolon `;'.     \n\
+\                                                                           \n\
+\The following special \"pragmas\" allow you to pass commands to Coin.      \n\
+\  #functions       - List all available functions                          \n\
+\  #help            - Display this message                                  \n\
+\  #locals          - Display the contents of all declared local variables  \n\
+\  #structs         - List the fields of all available structs              \n\
+\  #quit            - Exit the interpreter                                  \n\
+\  #reload          - Reload libraries and files; clear local variables     \n\
+\                                                                           \n"
 
 structure State = ConcreteState
 structure C0 = C0Internal
@@ -31,7 +31,7 @@ val name = ref "coin"
 val args = ref [ "--verbose" ]
 val options = Flags.core_options @ Flags.coin_options
 val versioninfo = 
-   ("Coin "^Version.version^" (r"^BuildId.revision^", "^BuildId.date^")")
+   ("C0 interpreter (coin) "^Version.version^" (r"^BuildId.revision^", "^BuildId.date^")")
 val errfn = fn msg => (print (msg ^ "\n"); ignore (raise Top.EXIT))
 
 (* Completely resets the interpreter's state; goes so far as to reload files. *)
@@ -264,7 +264,7 @@ let
    (* XXX: this won't work if it's actually the parsing of args that breaks *)
    fun compilerDied () = Posix.Process.exit 0wx2 
 in
- ( name := initial_name
+ ( () (* name := initial_name *) (* don't want full path - rjs Jan 3, 2013*)
  ; args := initial_args
  ; reload ()
  ; print (versioninfo ^ "\n")

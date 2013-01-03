@@ -180,13 +180,13 @@ structure Flags :> FLAGS = struct
   val codex_options : unit GetOpt.opt_descr list = 
     [{short = "i",long=["interactive"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_interactive),
-      help="Run codex in interactive mode for command line use"},
+      help="Run codex in interactive (command-line) mode"},
      {short = "e",long=["emacs"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_emacs),
       help="Run in mode compatible with emacs plugin"},
      {short = "r",long=["run"],
       desc=GetOpt.ReqArg ((fn (s) => (run_call := SOME(s))), "<call>"),
-      help="Function all to execute in codex (default: 'main()')"}]
+      help="Function call to start with (default: 'main()')"}]
     
   val compiler_options : unit GetOpt.opt_descr list = 
     [{short = "", long=["dump-ast"],
