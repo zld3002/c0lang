@@ -14,7 +14,7 @@ structure Debug =
 struct
 
   val help_message = 
-  "Code - the C0 debugger.                                            \n\
+  "Codex - the C0 debugger.                                           \n\
   \                                                                   \n\
   \The code shown is the internal representation of your C0 program.  \n\
   \The debugger will display the NEXT command to be executed. To      \n\
@@ -23,11 +23,13 @@ struct
   \calls.                                                             \n\
   \                                                                   \n\
   \The following inputs allow you to control the debugger.            \n\
-  \ v           - Display local variables                             \n\
-  \ h           - Display this help message                           \n\
-  \ n           - Execute command, skipping over function calls       \n\
+  \ v           - Variables are displayed                             \n\
+  \ h           - Help with this message                              \n\
+  \ n           - Next, skipping over function calls                  \n\
   \ s           - Step, entering into function calls                  \n\
   \ <return>    - Same as s (step)                                    \n\
+  \ e exp       - Evaluate exp in current context                     \n\
+  \ r exp       - Run exp in step mode in current context             \n\
   \ q           - Exit the debugger                                   \n\
   \                                                                   \n"
 
@@ -47,6 +49,7 @@ struct
    | QUIT 
    | HELP
    | EVAL_EXP of string
+   | RUN_EXP of string
    | IGNORE of string
 
   fun loop (f: unit -> unit) n =
@@ -55,7 +58,7 @@ struct
 (*-------------- Printing ----------------*)
   fun print s = TextIO.print s
   
-  fun println s = TextIO.print (s^"\n")
+  fun println s = ( TextIO.print s; TextIO.print "\n" )
   
   fun print_exception exn = 
      case exn of 
@@ -64,13 +67,13 @@ struct
       | Error.NullPointer => 
            print "attempt to dereference null pointer\n"
       | Error.ArrayOutOfBounds _ => 
-           print "Out of bounds array access\n"
+           print "out of bounds array access\n"
       | Overflow => 
-           print "Integer overflow\n"
+           print "integer overflow\n"
       | Div => 
-           print "Division by zero\n"
+           print "division by zero\n"
       | Error.ArraySizeNegative _ => 
-           print "Negative array size requested in allocation\n"
+           print "negative array size requested in allocation\n"
       | Error.Dynamic s => 
            print ("(ERROR IN DYNAMIC SEMANTICS, PLEASE REPORT): "^s)
       | Error.Internal s => 
@@ -82,7 +85,7 @@ struct
 
   fun get_pos_string c =
   case c of (C0.Exp(e,pos)) =>
-    (check_pos pos, Mark.show pos)
+        (check_pos pos, Mark.show pos)
     | (cmd as (C0.Assign(binop,e1,e2,pos))) =>
         (check_pos pos,Mark.show pos)
     | (cmd as (C0.CCall(target,f,args,pos))) => 
@@ -146,6 +149,8 @@ struct
                 | SOME i => (if i > 0 then STEP i else IGNORE input))
           | "e" :: toks => EVAL_EXP (String.concatWith " " toks)
           | "eval" :: toks => EVAL_EXP (String.concatWith " " toks)
+          | "r" :: toks => RUN_EXP (String.concatWith " " toks)
+          | "run" :: toks => RUN_EXP (String.concatWith " " toks)
           | _ => IGNORE input
       in 
         action 
@@ -155,26 +160,30 @@ struct
 
 (*------------- Expression evaluation -------------------*)
 
-  fun eval_exp string = 
+  fun reset_parser () =
+      ( ParseState.reset()
+      ; ErrorMsg.reset() )
+
+  fun read_exp string =
    let 
       val () = ParseState.reset ()
-      val () = ParseState.pushfile "<debugger>"
+      val () = ParseState.pushfile "<codex>"
       val () = ErrorMsg.reset ()
 
       (* Lex the string, append a semicolon so we can parse as a statement. *)
-      exception Lexer
+
       (* Why is the second argument, lexpos, 2? I'm cribbing off of 
        * what coin does here, nothing more. - rjs 8/24/2012 *)
       val (tokstream, _, lex_state) =
-         C0Lex.lineLexer
-            (Stream.fromList (explode string @ [#";"]), 2, C0Lex.normal)
-      val () = if !ErrorMsg.anyErrors then raise Lexer else ()
+          C0Lex.lineLexer
+              (Stream.fromList (explode string @ [#";"]), 2, C0Lex.normal)
+      val () = if !ErrorMsg.anyErrors then raise ErrorMsg.Error else ()
       val () = if lex_state = C0Lex.normal 
                   then ()
-               else (print "Error: incomplete syntax\n"; raise Lexer) 
+               else ( print "<codex>:error: incomplete expression\n"
+                    ; raise ErrorMsg.Error)
 
-      (* Parse the tokens, enforce that we only accept expressions *)
-      exception Parser
+      (* Parse the tokens, enforce that we only accept expressions and assignments *)
 
       (* It could be easy to handle other statements! We're actually
        * artifically stopping this from happening with this function, which 
@@ -183,12 +192,12 @@ struct
        * - rjs 8/24/2012 *)
       fun assert_exp stm = 
       let fun not_expected s =
-           ( print ("<debugger>:expected an expression, got "^s^"\n")
-           ; raise Parser)
+           ( print ("<codex>:error: expected an expression or assignment, found " ^ s ^ "\n")
+           ; raise ErrorMsg.Error)
       in
          case stm of 
             Ast.Markeds stm => assert_exp (Mark.data stm)
-          | Ast.Assign _ => not_expected "an assignment"
+          | Ast.Assign _ => ()
           | Ast.Exp exp => ()
           | Ast.Seq _ => not_expected "a block statement"
           | Ast.StmDecl _ => not_expected "a variable declaration"
@@ -207,130 +216,156 @@ struct
          case Parse.parse_stm (Stream.force tokstream) of
             (* I think this can't happen... the parser fails earlier. *)
             NONE => 
-             ( print "<debugger>:incomplete syntax\n"
-             ; raise Parser) 
+            ( print "<codex>:error: incomplete expression\n"
+            ; raise ErrorMsg.Error ) 
   
             (* Handles 'e 12' 'e 14 + 14' 'e return' 'e x = 12' *)
           | SOME (stm, Stream.Cons ((Terminal.EOL, _), _)) => 
-             ( assert_exp stm
-             ; stm)
+            ( assert_exp stm
+            ; stm )
 
             (* Handles 'e 12;' 'e x = 12;' *)
           | SOME (stm, Stream.Cons ((Terminal.SEMI, _), _)) =>
              ( assert_exp stm (* Prioritize this error message *)
-             ; print ("<debugger>:expression should not be followed by \
+             ; print ("<codex>:error: expression should not be followed by \
                       \semicolon\n")
-             ; raise Parser)
+             ; raise ErrorMsg.Error )
 
             (* Handles 'e {}' 'e 16; {}' 'e 12; 12; 12' *)
           | SOME (stm, Stream.Cons ((_, _), _)) =>
              ( assert_exp stm (* Prioritize this error message *)
-             ; print ("<debugger>:expected an expression, \
-                      \got multiple statements\n")
-             ; raise Parser)
+             ; print ("<codex>:error: expected an expression or assignment, \
+                      \found multiple statements\n")
+             ; raise ErrorMsg.Error )
 
-          | SOME (_, Stream.Nil) => 
-             ( print ("<debugger>:Invariant failed! No semicolon. (BUG!)\n")
-             ; raise Parser)
+          | SOME (stm, Stream.Nil) => (* should be impossible *)
+            ( println ("<codex>:error: unexpected end of input")
+            ; raise ErrorMsg.Error )
 
-      val () = if !ErrorMsg.anyErrors then raise Parser else ()
+      val () = if !ErrorMsg.anyErrors then raise ErrorMsg.Error else ()
 
       (* Typecheck, isolate, compile *)
       val env = State.local_tys Exec.state
-      val processed_stm = TypeChecker.typecheck_interpreter env stm
+      val processed_stm = TypeChecker.typecheck_interpreter env stm (* might raise ErrorMsg.Error *)
       val isolated_stms = Isolate.iso_stm env stm
       val (cmds, labs) = Compile.cStms isolated_stms ((~1,~1),(~1,~1),"<BUG>") 
       val cmds = Vector.concat [ cmds, Vector.fromList [ C0.Return NONE ] ]
-     
-      (* Run *)
-      exception Run
-      val _ = Exec.exec (cmds, labs)
-               handle Error.AssertionFailed s => 
-                       ( print ("<debugger>:"^s^"\n")
-                       ; raise Run)
-                    | exn => 
-                       ( print "<debugger>:"
-                       ; print_exception exn
-                       ; raise Run) 
    in
-    ( print (State.value_string (Exec.last ())^"\n")
-    ; ParseState.reset ()
-    ; ErrorMsg.reset ())
-   end handle _ => (ParseState.reset (); ErrorMsg.reset ())
+       (cmds, labs)
+   end
 
+  fun eval_exp string = 
+      (* lex, parse, type-check, elaborate *)
+      let val (cmds, labs) = read_exp string
+          (* Run *)
+          val _ = Exec.exec (cmds, labs)
+                  handle Error.AssertionFailed s => 
+                         ( print ("<codex>:" ^ s ^"\n")
+                         ; raise ErrorMsg.Error )
+                       | exn => 
+                         ( print "<codex>:"
+                         ; print_exception exn
+                         ; raise ErrorMsg.Error ) 
+      in
+          ( print (State.value_string (Exec.last ())^"\n")
+          ; ParseState.reset ()
+          ; ErrorMsg.reset () )
+      end handle ErrorMsg.Error =>
+                 (ParseState.reset () ; ErrorMsg.reset ())
+
+(*------------- Running expressions -----------------------*)
 (*------------- Core I/O and evaluation -------------------*)
   
-  fun init_fun(f,actual_args,formal_args,pos) = 
-        (
-        State.push_fun (Exec.state, f, (f, pos));
-        app (fn ((tp, x), v) => 
-          (State.declare (Exec.state, x, tp);
-        State.put_id (Exec.state, x, v)))
-        (ListPair.zip (formal_args, actual_args)))
+  fun init_fun(f, actual_args, formal_args, pos) = 
+      ( State.push_fun (Exec.state, f, (f, pos))
+      ; app (fn ((tp, x), v) => 
+                ( State.declare (Exec.state, x, tp)
+                ; State.put_id (Exec.state, x, v)))
+            (ListPair.zip (formal_args, actual_args)))
 
-  fun dstep (cmds,labs) fname = 
-  let
-    fun dstep' pc = 
-    let
-      val next_cmd = Vector.sub (cmds,pc) 
-      val action = io next_cmd fname
-        
-      fun next (cmds,labs,pc) =
-        (case Exec.step ((cmds,labs),pc) of
-        Exec.ReturnNone => NONE
-      | Exec.ReturnSome(res) => SOME(res)
-      | Exec.PC(i) => dstep' i)
-    in
-      case action
-       of LOCAL_VARS => (Exec.print_locals(); dstep' pc)
-        | HELP => (println help_message; dstep' pc) 
-        | QUIT => (println "Goodbye!"; OS.Process.exit(OS.Process.success))
-        | IGNORE s => (println ("Ignored command "^s); dstep' pc)
-        | EVAL_EXP "" => (println "Need an argument (try 'eval 4')"; dstep' pc)
-        | EVAL_EXP e => (eval_exp e; dstep' pc) 
-        | NEXT i => next(cmds,labs,pc)
-        | STEP i => 
-        (case next_cmd of C0.CCall(NONE,f,args,pos) =>
-          let
-            val actual_args = List.map (Eval.eval_exp Exec.state) args
-          in
-          (case Exec.call_step(f,actual_args,pos) of 
-            Exec.Interp((_,formal_args),code) => 
-                   (init_fun(f,actual_args,formal_args,pos);
-                    let
-                      val _ = dstep code (Symbol.name f) in () end;
-                    let val _ = State.pop_fun (Exec.state) in () end;
-                    dstep' (pc+1))
-          | Exec.Native(res) => dstep' (pc+1))
-          end
-            | C0.CCall(SOME(x),f,args,pos) => 
-              let
-                val loc = Eval.eval_lval Exec.state (C0.Var x)
-                val actual_args = List.map (Eval.eval_exp Exec.state) args
+  fun sim_fun_call dest f (Exec.Interp((_, formal_args), code)) actual_args pos = 
+      let
+          val _ = init_fun(f, actual_args, formal_args, pos)
+          val ret_val = dstep code (Symbol.name f) 0
+          val _ = State.pop_fun (Exec.state)
+      in
+          case (dest, ret_val)
+           of (SOME(loc), SOME(v)) => Eval.put (Exec.state, loc, v)
+            | (_, _) => ()
+      end 
+    | sim_fun_call (SOME(loc)) f (Exec.Native(res)) actual_args pos =
+        Eval.put (Exec.state, loc, res)
+    | sim_fun_call (NONE) f (Exec.Native(res)) actual_args pos = ()
 
-                fun sim_fun_call (Exec.Native(res)) = 
-                    ( Eval.put (Exec.state,loc,res);
-                      dstep' (pc+1))
-                  | sim_fun_call (Exec.Interp((_,formal_args),code)) = 
-                  let
-                    val _ = init_fun(f,actual_args,formal_args,pos)
-                    val ret_val = dstep code (Symbol.name f)
-                    val _ = State.pop_fun (Exec.state)
-                    val _ = case ret_val of SOME(v) => 
-                        Eval.put (Exec.state,loc,v)
-                                          | NONE => ()
-                  in
-                    dstep' (pc+1)
-                  end
-              in
-                sim_fun_call (Exec.call_step(f,actual_args,pos))
-              end
-            | _ => next(cmds,labs,pc))
-    end
-  in
-    (dstep' 0)
-    handle Error.Dynamic(s) => (println (":error: "^s); NONE)
-  end
+  and run_exp string =
+      let
+          val (cmds, labs) = read_exp string
+          val _ = dstep (cmds, labs) "_run_" 0 (* ignore return value *)
+      in
+          print ("Finished run of '" ^ string ^ "' with value " 
+                 ^ State.value_string (Exec.last ()) ^ "\n")
+      end
+      handle Error.Dynamic s => println ("<codex>:error: " ^ s)
+           | Error.AssertionFailed s => println ("<codex>:" ^ s)
+           | ErrorMsg.Error => ()
+           | Option => println "<codex>: quit run" (* should be impossible *)
+           | exn => ( print "exception: " ; print_exception exn )
+
+  and dstep (cmds,labs) fname pc = 
+      let 
+          val next_cmd = Vector.sub (cmds, pc) 
+          val action = io next_cmd fname
+      in
+          case action
+            of LOCAL_VARS => ( Exec.print_locals()
+                             ; dstep (cmds, labs) fname pc )
+             | HELP =>       ( println help_message
+                             ; dstep (cmds, labs) fname pc ) 
+             | QUIT =>       ( println "Goodbye!"
+                             ; OS.Process.exit(OS.Process.success) )
+             | IGNORE s =>   ( println ("Ignored command " ^ s)
+                             ; dstep (cmds, labs) fname pc )
+             | EVAL_EXP "" => ( println "Need an expressing or assignment to evaluate"
+                              ; dstep (cmds, labs) fname pc )
+             | EVAL_EXP e => ( eval_exp e
+                             ; reset_parser()
+                             ; dstep (cmds, labs) fname pc ) 
+             | RUN_EXP "" => ( println "Need an expression or assignment to run"
+                             ; dstep (cmds, labs) fname pc)
+             | RUN_EXP e =>  ( run_exp e
+                             ; reset_parser()
+                             ; dstep (cmds, labs) fname pc )
+             | NEXT i =>     next (cmds, labs) fname pc
+             | STEP i =>     step_into next_cmd (cmds, labs) fname pc
+      end
+
+  and next (cmds, labs) fname pc =
+      (case Exec.step ((cmds, labs), pc)
+        of Exec.ReturnNone => NONE
+         | Exec.ReturnSome(res) => SOME(res)
+         | Exec.PC(pc') => dstep (cmds, labs) fname pc')
+
+  and step_into next_cmd (cmds, labs) fname pc = case next_cmd of
+      C0.CCall(NONE, f, args, pos) =>
+      let
+          val actual_args = List.map (Eval.eval_exp Exec.state) args
+          val _ = sim_fun_call NONE f (Exec.call_step(f, actual_args, pos)) actual_args pos
+      in
+          dstep (cmds, labs) fname (pc+1)
+      end
+    | C0.CCall(SOME(x), f, args, pos) => 
+      let
+          val loc = Eval.eval_lval Exec.state (C0.Var x)
+          val actual_args = List.map (Eval.eval_exp Exec.state) args
+          val _ = sim_fun_call (SOME(loc)) f (Exec.call_step(f, actual_args, pos)) actual_args pos
+      in
+          dstep (cmds, labs) fname (pc+1)
+      end
+    | _ => next (cmds, labs) fname pc
+
+  fun dstep_top (cmds, labs) fname =
+      dstep (cmds, labs) fname 0
+      handle Error.Dynamic(s) => ( println (":error: " ^ s) ; NONE )
 
 (*--------- Load libraries and call main -------------*)
    fun raiseSignal sgn = 
@@ -345,26 +380,34 @@ struct
        | SOME (CodeTab.Interpreted _) => ()
        | SOME (CodeTab.Builtin _) => ()
 
+  fun init_state (library_headers, program) =
+      ( ConcreteState.clear_locals Exec.state
+      ; CodeTab.reload_libs (!Flags.libraries)
+      ; CodeTab.reload (library_headers @ program)
+      ; app assertLibrariesLoaded (CodeTab.list ()) )
 
-  fun call_main (library_headers, program) =
+  fun call_main (library_headers, program) NONE =
       let
-        val _ = (ConcreteState.clear_locals Exec.state
-        ; CodeTab.reload_libs (!Flags.libraries)
-        ; CodeTab.reload (library_headers @ program)
-        ; app assertLibrariesLoaded (CodeTab.list ()))
-   
-        val init_call = Exec.call_step (Symbol.symbol "main", [], ((0, 0), (0, 0), "_init_"))
-	val code = case init_call
-		    of Exec.Interp(_,code) => code
-		     | _ => raise Internal("Main function was tagged as native\n")
+          val _ = init_state (library_headers, program)
+          val init_call = Exec.call_step (Symbol.symbol "main", [], ((0, 0), (0, 0), "_init_"))
+	  val code = case init_call
+		      of Exec.Interp(_,code) => code
+		       | _ => raise Internal("Main function was tagged as native\n")
       in
-	  (dstep code "main")
-	  handle Error.AssertionFailed s => (print (s^"\n"); NONE)
+	  (dstep_top code "main")
+	  handle Error.AssertionFailed s => ( println s ; NONE )
                | Option => (print "Goodbye\n"; NONE)
                | exn => 
-                  ( print "Exception: "
-                  ; print_exception exn
-                  ; NONE)
+                 ( print "Exception: "
+                 ; print_exception exn
+                 ; NONE)
+      end
+    | call_main (library_headers, program) (SOME(run_call)) =
+      let
+          val _ = init_state (library_headers, program)
+      in
+          ( run_exp run_call    (* handles its own exceptions?? *)
+          ; NONE )
       end
 
 (* ----------- Top level function ------------*)
@@ -374,7 +417,7 @@ struct
    val () = Top.reset ()
    val sources = 
       Top.get_sources_set_flags
-        {options = Flags.core_options @ Flags.coin_options @ Flags.code_options,
+        {options = Flags.core_options @ Flags.coin_options @ Flags.codex_options,
          errfn = fn msg => println msg,
          versioninfo = 
             "code " ^ Version.version 
@@ -382,35 +425,42 @@ struct
          usageinfo = 
          GetOpt.usageInfo 
            {header = "Usage: " ^ name
-                     ^ " code [OPTIONS_AND_SOURCEFILES...]",
-            options = Flags.core_options @ Flags.coin_options @ Flags.code_options},
+                     ^ " codex [OPTIONS_AND_SOURCEFILES...]",
+            options = Flags.core_options @ Flags.coin_options @ Flags.codex_options},
          args = args}
       handle _ => raise COMPILER_ERROR 
   
   (* Typecheck, enforcing the presence of a correctly-defined main function *)
+   val main = Symbol.symbol "main" 
 
    val {library_headers, program, oprogram} = 
    let 
-      val main = Symbol.symbol "main" 
       val maindecl = Ast.Function (main, Ast.Int, [], NONE, nil, false, NONE)
    in
-      Symtab.bind (main, maindecl)
-    ; Symset.add main
-    ; Top.typecheck_and_load sources
+       ( Symtab.bind (main, maindecl)
+       (* ; Symset.add main *) (* do not force 'main' to be defined. Jan 1, 2013 -fp  *)
+       ; Top.typecheck_and_load sources )
    end handle _ => raise COMPILER_ERROR
 
    val {library_wrappers} = 
-      Top.finalize {library_headers = library_headers}
+       Top.finalize {library_headers = library_headers}
        handle _ => raise COMPILER_ERROR
  
    val () =
-      Top.static_analysis oprogram 
+       Top.static_analysis oprogram 
        handle _ => raise COMPILER_ERROR      
 
    val () = Builtins.reset {argv = rev (!Flags.runtime_args)}
 
+   val () = case (!Flags.run_call, Symtab.lookup main)
+             of (NONE, SOME(Ast.Function(_, _, _, NONE, _, _, _))) =>
+                ( println ("<codex>:error: " ^ "function 'main' not defined\n"
+                           ^ "use -r '<call>' to specify another function call to debug")
+                ; raise COMPILER_ERROR )
+              | (_, _) => ()
+
   in
-      (case call_main (library_headers, program)
+      (case call_main (library_headers, program) (!Flags.run_call)
 	of SOME(retval) =>
 	   ( println ("main function returned "
 		      ^ ConcreteState.value_string retval) ;

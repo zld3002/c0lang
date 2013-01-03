@@ -5,7 +5,7 @@
 ;; Created:    August 2010
 ;; Modified:   August 2010
 ;; Version:    0.1
-;; Keywords:   c0 debugger
+;; Keywords:   c0 codex debugger
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -73,6 +73,7 @@
     (define-key map "n" 'codex-next)
     (define-key map "v" 'codex-locals)
     (define-key map "e" 'codex-eval-exp)
+    (define-key map "r" 'codex-run-exp)
     (define-key map "q" 'codex-exit-debug)
     (define-key map "i" 'codex-interrupt)
     (define-key map "?" 'codex-help)
@@ -84,6 +85,9 @@
 
 (defvar codex-locals-buffer nil
   "Buffer which will display values of local variables")
+
+(defvar codex-temp-buffer nil
+  "Buffer which will display temporary code")
 
 (defvar codex-locals-accum nil
   "Accumulator for local variable values for 'v' command")
@@ -163,6 +167,15 @@
   (codex-enter-buffer)			; enter into debug mode
   )
 
+(defun codex-switch-to-buffer (buffer)
+  "Switch to stepping in buffer"
+  (if (null buffer)
+      ()                          ; no action if buffer does not exist
+    (codex-leave-buffer)          ; otherwise, leave current buffer
+    (switch-to-buffer buffer)     ; switch to new buffer
+    (codex-enter-buffer)          ; enter into debug mode
+  ))
+
 (defun codex-display-output-accum ()
   "Display accumulated output, if not empty"
   (if (not (null codex-output-accum))
@@ -172,7 +185,7 @@
 	  (insert codex-output-accum))
 	(setq codex-output-accum nil))))
 
-;;; Functions for parsing of debugger output
+;;; Functions for parsing of codex output
 
 (defun codex-canon-filename (filename)
   "Canonicalize the given filename, relative to codex main directory"
@@ -195,10 +208,10 @@
 
 (defconst codex-location-regexp
   (concat "^\\([^:]*\\):" codex-position-regexp)
-  "Regular expression matched against debugger output")
+  "Regular expression matched against codex output")
 
 (defconst codex-interactive-regexp
-  (concat "^\\(<debugger>\\):" codex-position-regexp)
+  (concat "^\\(<codex>\\):" codex-position-regexp)
   "Regular expression matched against error in interactive parsing")
 
 (defconst error-msg-regexp
@@ -248,13 +261,24 @@
 	((string-match (concat codex-interactive-regexp error-msg-regexp) string)
 	 ;; error message during interactive parsing or type-checking
 	 ;; applies during "e <exp>" evaluation
-	 ;; ignore error location, just show error mess
+	 ;; ignore error location, just show error message
 	 (let* ((errormsg (match-string 6 string)))
 	   (message "%s" errormsg)
 	   ;; continue parsing
 	   ()))
-	((string-match "^<debugger>:\\(.*\\)" string)
-	 ;; remaining runtime messages from debugger during "e <exp" evaluation
+        ((string-match codex-interactive-regexp string)
+         ;; location message during interactive evaluation "e <exp>" or
+         ;; run "r <exp>".  Display in *codex-temp* buffer.
+         (let* ((line0 (string-to-number (match-string 2 string)))
+                (col0 (string-to-number (match-string 3 string)))
+                (line1 (string-to-number (match-string 4 string)))
+                (col1 (string-to-number (match-string 5 string))))
+           (if (not (equal (current-buffer) codex-temp-buffer))
+               (codex-switch-to-buffer codex-temp-buffer))
+           (codex-highlight-normal line0 col0 line1 col1)
+           ()))
+	((string-match "^<codex>:\\(.*\\)" string)
+	 ;; remaining runtime messages from codex during "e <exp>" evaluation
 	 ;; must come after the located error message above and before
 	 ;; the general runtime error below
 	 (let* ((errormsg (match-string 1 string)))
@@ -320,8 +344,8 @@
 
 ;;; Filter and Sentinel functions
 
-;; Receives output from the debugger. Logs all output in
-;; the debugger's associated buffer before passing it on
+;; Receives output from the codex. Logs all output in
+;; the codex's associated buffer before passing it on
 ;; to the parsing function
 (defun codex-filter (proc string)
   "Filter function for codex interaction"
@@ -334,7 +358,7 @@
       (if moving (goto-char (process-mark proc)))))
   (codex-parse string))
 	 
-;; Is called if the debugger process receives a signal
+;; Is called if the codex process receives a signal
 ;; or exits
 (defun codex-sentinel (proc string)
   "Sentinel for codex process"
@@ -347,7 +371,7 @@
       (codex-display-output-accum)
       (message "%s" "unexpected termination of codex"))))
 
-;;; Functions for sending input to the debugger
+;;; Functions for sending input to codex
 
 (defun codex-send-string (string)
   "Send STRING to codex process"
@@ -372,13 +396,29 @@ include a breakpoint"
   (codex-send-string (concat "e " exp "\n"))
   (codex-send-string "v\n"))
 
+(defun codex-temp-insert (exp)
+  "Insert 'exp' into *codex-temp* buffer"
+  (if (null codex-temp-buffer)
+      (setq codex-temp-buffer (generate-new-buffer "*codex-temp*")))
+  (save-excursion
+    (set-buffer codex-temp-buffer)
+    (delete-region (point-min) (point-max))
+    (insert exp)))  
+
+(defun codex-run-exp (exp)
+  "Run an expression in stepping mode in the current state"
+  (interactive "sRun expression: ")
+  (codex-temp-insert exp)
+  (codex-send-string (concat "r " exp "\n"))
+  (codex-send-string "v\n"))
+
 (defun codex-locals ()
   "Show the value of local variables"
   (interactive)
   (codex-send-string "v\n"))
 
 (defun codex-interrupt ()
-  "Interrupt the debugger"
+  "Interrupt the codex"
   (interactive)
   (interrupt-process "codex"))
 
@@ -401,13 +441,13 @@ include a breakpoint"
 
 ;;; Enter and Exit functions
 
-;; Start the debugger on the current buffer. The buffer must
+;; Start codex on the current buffer. The buffer must
 ;; be associated with ('visiting') a file.
 ;; After initial checks, the function
 ;; -makes the buffer read only
 ;; -saves the current keymap and point
-;; -adds a hook that quits the debugger if the buffer is killed
-;; -runs the debugger
+;; -adds a hook that quits codex if the buffer is killed
+;; -runs codex
 
 (defun codex ()
   "Enter debugging mode in current buffer."
@@ -418,12 +458,12 @@ include a breakpoint"
   "Enter debugging mode."
   (interactive)
   (if (get-process "codex")
-      (message "%s" "debugger already running")
+      (message "%s" "codex already running")
     (if (null codex-path)
-	(message "%s" "debugger path not set")
+	(message "%s" "codex path not set")
       (if (and (buffer-modified-p) (yes-or-no-p "save buffer? "))
 	  (save-buffer))
-      (setq args (read-string "Call debugger with: codex" 
+      (setq args (read-string "Call with: codex" 
 			      (concat " -e " (file-relative-name (buffer-file-name)))))
       ;; start codex process
       (setq codex-proc
@@ -448,16 +488,19 @@ include a breakpoint"
       (save-window-excursion
 	(switch-to-buffer-other-window codex-locals-buffer)
 	(delete-region (point-min) (point-max)))
+      (if (string-match "\\(-r[ \t]*\\|-run[ \t]*\\)['\"]\\([^ '\"]*\\)['\"]" args)
+          (let ((exp (match-string 2 args)))
+            (codex-temp-insert exp)))
       (message "Type '?' for help")
       )))
 
 ;; Hook to be run if the buffer is killed while debugging
-;; Kills the debugger
+;; Kills codex
 (defun codex-kill-process ()
   (if (get-process "codex")
       (delete-process "codex")))
 
-;; Quit the debugger. Restores the buffers keymap and point
+;; Quit codex. Restores the buffers keymap and point
 (defun codex-exit-debug ()
   "Exit debugging mode"
   (interactive)

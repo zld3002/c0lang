@@ -30,14 +30,15 @@ signature FLAGS = sig
   val flag_trace : Flag.flag 
   val flag_print_codes : Flag.flag
 
-  (* Only for the code debugger *)
+  (* Only for the codex debugger *)
   val flag_interactive : Flag.flag
-  val flag_emacs: Flag.flag
+  val flag_emacs : Flag.flag
+  val run_call : string option ref
 
   val core_options : unit GetOpt.opt_descr list
   val coin_options : unit GetOpt.opt_descr list
   val compiler_options : unit GetOpt.opt_descr list
-  val code_options : unit GetOpt.opt_descr list
+  val codex_options : unit GetOpt.opt_descr list
 
   val reset_flags : unit GetOpt.opt_descr list (* Options *)
                     -> (string -> unit)        (* Error function *)
@@ -76,6 +77,7 @@ structure Flags :> FLAGS = struct
 
   val flag_interactive = Flag.flag "interactive"
   val flag_emacs = Flag.flag "emacs"
+  val run_call = ref NONE (* function call to make; internal default is main() *)
 
   local
     fun parse_bytecode_arch s = case Int.fromString s of
@@ -175,13 +177,16 @@ structure Flags :> FLAGS = struct
       desc=GetOpt.NoArg (fn () => Flag.set flag_print_codes),
       help="Print out the internal language's representation"}]
 
-  val code_options : unit GetOpt.opt_descr list = 
+  val codex_options : unit GetOpt.opt_descr list = 
     [{short = "i",long=["interactive"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_interactive),
-      help="Run code in interactive mode for command line use"},
-     {short = "e",long=["emacs_mode"],
+      help="Run codex in interactive mode for command line use"},
+     {short = "e",long=["emacs"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_emacs),
-      help="Run in mode compatible with emacs plugin"}]
+      help="Run in mode compatible with emacs plugin"},
+     {short = "r",long=["run"],
+      desc=GetOpt.ReqArg ((fn (s) => (run_call := SOME(s))), "<call>"),
+      help="Function all to execute in codex (default: 'main()')"}]
     
   val compiler_options : unit GetOpt.opt_descr list = 
     [{short = "", long=["dump-ast"],
