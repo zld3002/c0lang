@@ -107,6 +107,9 @@
 (defvar codex-proc nil
   "Process running codex")
 
+(defvar codex-args-history nil
+  "History of arguments in calls to 'codex'")
+
 (defvar codex-main-directory nil
   "Directory of the C0 file with main function")
 
@@ -184,6 +187,18 @@
 	  (goto-char (point-max))
 	  (insert codex-output-accum))
 	(setq codex-output-accum nil))))
+
+(defun codex-find-matching-input (file-name-quoted args-history index)
+  (if (null args-history)
+      0                                 ; no matching input
+    (if (string-match file-name-quoted (car args-history))
+        index
+      (codex-find-matching-input file-name-quoted (cdr args-history) (1+ index)))))
+
+(defun codex-history-index (file-name)
+  "Index of most recent arguments to 'codex' matching FILE-NAME.
+0 if there is no matching input"
+  (codex-find-matching-input (regexp-quote file-name) codex-args-history 1))
 
 ;;; Functions for parsing of codex output
 
@@ -463,36 +478,49 @@ include a breakpoint"
 	(message "%s" "codex path not set")
       (if (and (buffer-modified-p) (yes-or-no-p "save buffer? "))
 	  (save-buffer))
-      (setq args (read-string "Call with: codex" 
-			      (concat " -e " (file-relative-name (buffer-file-name)))))
-      ;; start codex process
-      (setq codex-proc
-	    (start-process-shell-command
-	     "codex"
-	     "*codex*"
-	     codex-path
-	     args))
-      ;; kill-buffer-hook activated when switching to another file
-      ;; the first time; disabled
-      ;; (add-hook 'kill-buffer-hook 'codex-kill-process)
-      (setq codex-output-accum nil)	; in case we are in a strange state
-      (setq codex-locals-accum nil)	; in case we are in a strange state
-      (set-process-filter codex-proc 'codex-filter)
-      (set-process-sentinel codex-proc 'codex-sentinel)
-      ;; switch current buffer to debugging mode
-      (codex-enter-buffer)
-      (setq codex-main-directory (file-name-directory (buffer-file-name)))
-      ;; create and display buffer for local variables
-      (setq codex-locals-buffer (get-buffer-create "*codex-locals*"))
-      (display-buffer codex-locals-buffer) ; do not switch
-      (save-window-excursion
-	(switch-to-buffer-other-window codex-locals-buffer)
-	(delete-region (point-min) (point-max)))
-      (if (string-match "\\(-r[ \t]*\\|-run[ \t]*\\)['\"]\\([^ '\"]*\\)['\"]" args)
-          (let ((exp (match-string 2 args)))
-            (codex-temp-insert exp)))
-      (message "Type '?' for help")
-      )))
+      (let* ((current-file-name (file-relative-name (buffer-file-name)))
+             (history-index (codex-history-index current-file-name))
+             (codex-args (read-from-minibuffer
+                          "Call with: codex " ; prompt
+                          (if (= history-index 0)
+                              (concat "-e " current-file-name) ; initial-contents
+                            (nth (1- history-index) codex-args-history))
+                          nil ; keymap, use default
+                          nil ; do not interpret result as Lisp object
+                          (if (= history-index 0)
+                              'codex-args-history ; history of inputs
+                            (cons 'codex-args-history history-index))
+                          (concat "-e " current-file-name) ; default-value
+                          )))
+        ;;(setq codex-args (read-string "Call with: codex" 
+        ;;(concat " -e " (file-relative-name (buffer-file-name)))))
+        ;; start codex process
+        (setq codex-proc
+              (start-process-shell-command
+               "codex"
+               "*codex*"
+               codex-path
+               codex-args))
+        ;; kill-buffer-hook activated when switching to another file
+        ;; the first time; disabled
+        ;; (add-hook 'kill-buffer-hook 'codex-kill-process)
+        (setq codex-output-accum nil)	; in case we are in a strange state
+        (setq codex-locals-accum nil)	; in case we are in a strange state
+        (set-process-filter codex-proc 'codex-filter)
+        (set-process-sentinel codex-proc 'codex-sentinel)
+        ;; switch current buffer to debugging mode
+        (codex-enter-buffer)
+        (setq codex-main-directory (file-name-directory (buffer-file-name)))
+        ;; create and display buffer for local variables
+        (setq codex-locals-buffer (get-buffer-create "*codex-locals*"))
+        (display-buffer codex-locals-buffer) ; do not switch
+        (save-window-excursion
+          (switch-to-buffer-other-window codex-locals-buffer)
+          (delete-region (point-min) (point-max)))
+        (if (string-match "\\(-r[ \t]*\\|-run[ \t]*\\)['\"]\\([^ '\"]*\\)['\"]" codex-args)
+            (let ((exp (match-string 2 codex-args)))
+              (codex-temp-insert exp)))
+        (message "Type '?' for help")))))
 
 ;; Hook to be run if the buffer is killed while debugging
 ;; Kills codex
