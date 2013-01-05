@@ -24,6 +24,10 @@ struct
        in (A.StmDecl(d), t) end
 
    fun marks s ext = A.Markeds (Mark.mark'(s,ext))
+   fun mark e ext = A.Marked (Mark.mark'(e,ext))
+
+   fun get_ext (A.Marked(marked_exp)) ext = Mark.ext marked_exp
+     | get_ext exp ext = ext
 
    val MINUSONE = Word32.fromInt(~1);
    val THIRTYTWO = Word32.fromInt(32);
@@ -235,23 +239,25 @@ struct
           iso_stm env (A.Seq([d], [])) ext
       | iso_stm env (A.If(e, s1, s2)) ext =
 	let val (ss, p) = iso_exp env e ext
+            val ext1 = get_ext e ext
 	    val ss1 = iso_stm env s1 ext
 	    val ss2 = iso_stm env s2 ext
 	in
-	    (ss @ [A.If(p, A.Seq([],ss1), A.Seq([],ss2))])
+	    (ss @ [A.If(mark p ext1, A.Seq([],ss1), A.Seq([],ss2))])
 	end
       | iso_stm env (A.While(e1, invs, s2)) ext = (* ignore invariants here *)
 	let val (ss1, p1) = iso_exp env e1 ext
+            val ext1 = get_ext e1 ext
 	    val ss2 = iso_stm env s2 ext
             (* ss1 must be executed every time before testing the
 	     * exit condition. We simplify the case where e1 has
              * no effects (ss1 = []) *)
 	in
 	    case ss1
-	     of [] => [A.While(p1, invs, A.Seq([], ss2))]
+	     of [] => [A.While(mark p1 ext1, invs, A.Seq([], ss2))]
 	      | _ => [A.While(A.True, invs,
 			      A.Seq([], ss1
-					@ [A.If(p1, A.Seq([],[]),
+					@ [A.If(mark p1 ext1, A.Seq([],[]),
 						A.Seq([],[A.Break]))]
 					@ ss2))]
 	end

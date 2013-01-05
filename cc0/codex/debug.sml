@@ -7,7 +7,7 @@
 signature DEBUG =
 sig
   (* Takes a the file name of a .c0 file to debug *)
-  val debug : (string*string list) -> ConcreteState.value option
+  val debug : string *string list -> OS.Process.status
 end
 
 structure Debug = 
@@ -22,7 +22,7 @@ struct
   \inputs listed below. Default behavior is to step into function     \n\
   \calls.                                                             \n\
   \                                                                   \n\
-  \The following inputs allow you to control the debugger.            \n\
+  \The following inputs allow you to control the codex.               \n\
   \ v           - Variables are displayed                             \n\
   \ h           - Help with this message                              \n\
   \ n           - Next, skipping over function calls                  \n\
@@ -30,7 +30,7 @@ struct
   \ <return>    - Same as s (step)                                    \n\
   \ e exp       - Evaluate exp in current context                     \n\
   \ r exp       - Run exp in step mode in current context             \n\
-  \ q           - Exit the debugger                                   \n\
+  \ q           - Exit codex                                          \n\
   \                                                                   \n"
 
 
@@ -78,85 +78,86 @@ struct
            print ("(ERROR IN DYNAMIC SEMANTICS, PLEASE REPORT): "^s)
       | Error.Internal s => 
            print ("(INTERNAL ERROR, PLEASE REPORT): "^s)
-      | e => print "Exception: Unexpected exception\n"
+      | e => print "exception: unexpected exception\n"
 
-  fun check_pos ((0,0),(0,0),_) = false
-    | check_pos pos = true 
+  fun get_pos_string cmd = case cmd of
+       C0.Exp(e, pos) => Mark.show pos
+     | C0.Declare(t, x, SOME(e, pos)) => Mark.show pos
+     | C0.Assign(opr_opt, e1, e2, pos) => Mark.show pos
+     | C0.CCall(lv, f, args, pos) => Mark.show pos
+     | C0.Assert(e, msg, pos) => Mark.show pos
+     | C0.Error(e, pos) => Mark.show pos
+     | C0.CondJump(e, pos, label) => Mark.show pos
+     | C0.Return(SOME(e,pos)) => Mark.show pos
+     (* C0.Label, C0.Declare(_,_,NONE), C0.Return(NONE), C0.PushScope, C0.PopScope _ *)
+     | _ => ""
 
-  fun get_pos_string c =
-  case c of (C0.Exp(e,pos)) =>
-        (check_pos pos, Mark.show pos)
-    | (cmd as (C0.Assign(binop,e1,e2,pos))) =>
-        (check_pos pos,Mark.show pos)
-    | (cmd as (C0.CCall(target,f,args,pos))) => 
-        (check_pos pos,Mark.show pos)
-    | (cmd as (C0.Assert(e,s,pos))) =>
-        (check_pos pos,Mark.show pos)
-    | (cmd as (C0.Return(SOME(e,pos)))) =>
-        (check_pos pos,Mark.show pos)
-    | (cmd as (C0.Declare(tau,x,SOME(e,pos)))) =>
-        (check_pos pos,Mark.show pos)
-    | cmd => (false,"")
+  fun is_invisible ((0,0),(0,0),_) = true
+    | is_invisible pos = false
 
-  fun get_comm_string c =
-  case c of (C0.Exp(e,pos)) => 
-        (check_pos pos,C0.cmdToString c)
-    | (cmd as (C0.Assign(binop,e1,e2,pos))) =>
-        (check_pos pos,C0.cmdToString c)
-    | (cmd as (C0.CCall(target,f,args,pos))) => 
-        (check_pos pos,C0.cmdToString c)
-    | (cmd as (C0.Assert(e,s,pos))) =>
-        (check_pos pos,C0.cmdToString c)
-    | (cmd as (C0.Return(SOME(e,pos)))) =>
-        (check_pos pos,C0.cmdToString c)
-    | (cmd as (C0.Declare(tau,x,SOME(e,pos)))) =>
-        (check_pos pos,C0.cmdToString c)
-    | cmd => (false,"")
+  fun is_silent cmd = case cmd of
+       C0.Label(label, name) => true
+     | C0.Exp(e, pos) => is_invisible pos
+     | C0.Declare(tp, x, SOME(e, pos)) => is_invisible pos
+     | C0.Declare(tp, x, NONE) => true (* decl w/o init always silent *)
+     | C0.Assign(opr_opt, e1, e2, pos) => is_invisible pos
+     | C0.CCall(lv_opt, f, args, pos) => is_invisible pos (* function call never silent? *)
+     | C0.Assert(e, msg, pos) => is_invisible pos
+     | C0.Error(e, pos) => is_invisible pos
+     | C0.CondJump(e, pos, label) => is_invisible pos (* !!this pos is calculated incorrectly!! *)
+     | C0.Jump(label) => true
+     | C0.Return(SOME(e, pos)) => is_invisible pos
+     | C0.Return(NONE) => true  (* return of void always silent *)
+     | C0.PushScope => true
+     | C0.PopScope(n) => true
 
-  fun io next_cmd fname = 
-  let
-    val (to_print,s) = if Flag.isset Flags.flag_emacs then
-                          get_pos_string next_cmd
-                       else get_comm_string next_cmd
-  in
-    if to_print then
+  fun input_action next_cmd fname = 
       let
-        val _ = println (s^" in function "^fname)
-        val _ = if Flag.isset Flags.flag_emacs
-		then print "(codex)\n"
-		else print "(codex) "
-        val input = valOf (TextIO.inputLine TextIO.stdIn)
-        val inputs = String.tokens Char.isSpace input
-        val action = case inputs of 
-            ["v"] => LOCAL_VARS
-          | ["vars"] => LOCAL_VARS
-          | ["n"] => NEXT 1
-          | ["next"] => NEXT 1
-          | ["next", tok] => 
-              (case Int.fromString tok of 
-                  NONE => IGNORE input
-                | SOME i => (if i > 0 then NEXT i else IGNORE input))
-          | ["q"] => QUIT
-          | ["quit"] => QUIT
-          | ["h"] => HELP
-          | ["help"] => HELP
-          | [] => STEP 1
-          | ["s"] => STEP 1
-	  | ["step"] => STEP 1
-          | ["step", tok] =>
-              (case Int.fromString tok of 
-                  NONE => IGNORE input
-                | SOME i => (if i > 0 then STEP i else IGNORE input))
-          | "e" :: toks => EVAL_EXP (String.concatWith " " toks)
-          | "eval" :: toks => EVAL_EXP (String.concatWith " " toks)
-          | "r" :: toks => RUN_EXP (String.concatWith " " toks)
-          | "run" :: toks => RUN_EXP (String.concatWith " " toks)
-          | _ => IGNORE input
-      in 
-        action 
+          val _ = if Flag.isset Flags.flag_emacs
+                  then
+                      println (get_pos_string next_cmd)
+                  else
+                      println (C0.cmdToString next_cmd ^ " in function " ^ fname)
+          val _ = if Flag.isset Flags.flag_emacs
+		  then print "(codex)\n"
+		  else print "(codex) "
+          val input = valOf (TextIO.inputLine TextIO.stdIn)
+          val inputs = String.tokens Char.isSpace input
+      in
+          case inputs
+           of ["v"] => LOCAL_VARS
+            | ["vars"] => LOCAL_VARS
+            | ["n"] => NEXT 1
+            | ["n", tok] =>
+              (case Int.fromString tok
+                of NONE => IGNORE input
+                 | SOME(i) => (if i > 0 then NEXT i else IGNORE input))
+            | ["next"] => NEXT 1
+            | ["next", tok] => 
+              (case Int.fromString tok
+                of NONE => IGNORE input
+                 | SOME i => (if i > 0 then NEXT i else IGNORE input))
+            | ["q"] => QUIT
+            | ["quit"] => QUIT
+            | ["h"] => HELP
+            | ["help"] => HELP
+            | [] => STEP 1
+            | ["s"] => STEP 1
+            | ["s", tok] =>
+              (case Int.fromString tok
+                of NONE => IGNORE input
+                 | SOME i => (if i > 0 then STEP i else IGNORE input))
+	    | ["step"] => STEP 1
+            | ["step", tok] =>
+              (case Int.fromString tok
+                of NONE => IGNORE input
+                 | SOME i => (if i > 0 then STEP i else IGNORE input))
+            | "e" :: toks => EVAL_EXP (String.concatWith " " toks)
+            | "eval" :: toks => EVAL_EXP (String.concatWith " " toks)
+            | "r" :: toks => RUN_EXP (String.concatWith " " toks)
+            | "run" :: toks => RUN_EXP (String.concatWith " " toks)
+            | _ => IGNORE input
       end
-    else NEXT 1
-  end 
 
 (*------------- Expression evaluation -------------------*)
 
@@ -166,9 +167,8 @@ struct
 
   fun read_exp string =
    let 
-      val () = ParseState.reset ()
+      val () = reset_parser ()
       val () = ParseState.pushfile "<codex>"
-      val () = ErrorMsg.reset ()
 
       (* Lex the string, append a semicolon so we can parse as a statement. *)
 
@@ -268,104 +268,120 @@ struct
                          ; raise ErrorMsg.Error ) 
       in
           ( print (State.value_string (Exec.last ())^"\n")
-          ; ParseState.reset ()
+          ; ParseState.reset () (* will remove pushed pseudofile "<codex>" *)
           ; ErrorMsg.reset () )
       end handle ErrorMsg.Error =>
-                 (ParseState.reset () ; ErrorMsg.reset ())
+                 ( ParseState.reset ()
+                 ; ErrorMsg.reset () )
 
 (*------------- Running expressions -----------------------*)
 (*------------- Core I/O and evaluation -------------------*)
   
-  fun init_fun(f, actual_args, formal_args, pos) = 
+  fun init_fun (f, actual_args, formal_args, pos) = 
       ( State.push_fun (Exec.state, f, (f, pos))
       ; app (fn ((tp, x), v) => 
                 ( State.declare (Exec.state, x, tp)
                 ; State.put_id (Exec.state, x, v)))
             (ListPair.zip (formal_args, actual_args)))
 
-  fun sim_fun_call dest f (Exec.Interp((_, formal_args), code)) actual_args pos = 
-      let
-          val _ = init_fun(f, actual_args, formal_args, pos)
-          val ret_val = dstep code (Symbol.name f) 0
-          val _ = State.pop_fun (Exec.state)
-      in
-          case (dest, ret_val)
-           of (SOME(loc), SOME(v)) => Eval.put (Exec.state, loc, v)
-            | (_, _) => ()
-      end 
-    | sim_fun_call (SOME(loc)) f (Exec.Native(res)) actual_args pos =
-        Eval.put (Exec.state, loc, res)
-    | sim_fun_call (NONE) f (Exec.Native(res)) actual_args pos = ()
-
-  and run_exp string =
-      let
-          val (cmds, labs) = read_exp string
-          val _ = dstep (cmds, labs) "_run_" 0 (* ignore return value *)
-      in
-          print ("Finished run of '" ^ string ^ "' with value " 
-                 ^ State.value_string (Exec.last ()) ^ "\n")
-      end
-      handle Error.Dynamic s => println ("<codex>:error: " ^ s)
-           | Error.AssertionFailed s => println ("<codex>:" ^ s)
-           | ErrorMsg.Error => ()
-           | Option => println "<codex>: quit run" (* should be impossible *)
-           | exn => ( print "exception: " ; print_exception exn )
-
-  and dstep (cmds,labs) fname pc = 
+  fun interact i j (cmds, labs) fname pc =
       let 
           val next_cmd = Vector.sub (cmds, pc) 
-          val action = io next_cmd fname
+          val action = input_action next_cmd fname
       in
           case action
-            of LOCAL_VARS => ( Exec.print_locals()
-                             ; dstep (cmds, labs) fname pc )
-             | HELP =>       ( println help_message
-                             ; dstep (cmds, labs) fname pc ) 
-             | QUIT =>       ( println "Goodbye!"
-                             ; OS.Process.exit(OS.Process.success) )
-             | IGNORE s =>   ( println ("Ignored command " ^ s)
-                             ; dstep (cmds, labs) fname pc )
-             | EVAL_EXP "" => ( println "Need an expressing or assignment to evaluate"
-                              ; dstep (cmds, labs) fname pc )
-             | EVAL_EXP e => ( eval_exp e
-                             ; reset_parser()
-                             ; dstep (cmds, labs) fname pc ) 
-             | RUN_EXP "" => ( println "Need an expression or assignment to run"
-                             ; dstep (cmds, labs) fname pc)
-             | RUN_EXP e =>  ( run_exp e
-                             ; reset_parser()
-                             ; dstep (cmds, labs) fname pc )
-             | NEXT i =>     next (cmds, labs) fname pc
-             | STEP i =>     step_into next_cmd (cmds, labs) fname pc
+           of LOCAL_VARS => ( Exec.print_locals()
+                            ; interact i j (cmds, labs) fname pc )
+            | HELP =>       ( println help_message
+                            ; interact i j (cmds, labs) fname pc ) 
+            | QUIT =>       ( println "Goodbye!"
+                            ; OS.Process.exit(OS.Process.success) )
+            | IGNORE s =>   ( println ("Ignored command " ^ s)
+                            ; interact i j (cmds, labs) fname pc )
+            | EVAL_EXP "" => ( println "Need an expressing or assignment to evaluate"
+                             ; interact i j (cmds, labs) fname pc )
+            | EVAL_EXP e => ( eval_exp e
+                            ; reset_parser()
+                            ; interact i j (cmds, labs) fname pc ) 
+            | RUN_EXP "" => ( println "Need an expression or assignment to run"
+                            ; interact i j (cmds, labs) fname pc )
+            | RUN_EXP e =>  ( run_exp e
+                            ; reset_parser()
+                            ; interact i j (cmds, labs) fname pc )
+            | NEXT m =>     next_step (i,~1) (j,j+m) (cmds, labs) fname pc
+            | STEP n =>     next_step (i,i+n) (j,~1) (cmds, labs) fname pc
+          end
+
+  and next_step (i,n) (j,m) (cmds, labs) fname pc =
+      let
+          val cmd = Vector.sub(cmds, pc)
+      (*
+          val _ = if is_silent cmd then print "$" else print "*"
+          val _ = print (Int.toString i)
+          val _ = println(":" ^ Int.toString(n) ^ ":" ^ C0.cmdToString (Vector.sub(cmds, pc)))
+      *)
+      in
+          if is_silent cmd orelse (i <> n andalso j <> m)
+          then one_step (i,n) (j,m) cmd (cmds, labs) fname pc
+          else interact i j (cmds, labs) fname pc
       end
 
-  and next (cmds, labs) fname pc =
-      (case Exec.step ((cmds, labs), pc)
-        of Exec.ReturnNone => NONE
-         | Exec.ReturnSome(res) => SOME(res)
-         | Exec.PC(pc') => dstep (cmds, labs) fname pc')
-
-  and step_into next_cmd (cmds, labs) fname pc = case next_cmd of
+  and one_step (i,n) (j,m) cmd (cmds, labs) fname pc = case cmd of
       C0.CCall(NONE, f, args, pos) =>
       let
           val actual_args = List.map (Eval.eval_exp Exec.state) args
-          val _ = sim_fun_call NONE f (Exec.call_step(f, actual_args, pos)) actual_args pos
+          val step_result = Exec.call_step(f, actual_args, pos) (* function call never silent? *)
+          val (i',n') = fun_call (i+1,n) NONE f step_result actual_args pos
       in
-          dstep (cmds, labs) fname (pc+1)
+          next_step (i',n') (j+1,m) (cmds, labs) fname (pc+1)
       end
     | C0.CCall(SOME(x), f, args, pos) => 
       let
           val loc = Eval.eval_lval Exec.state (C0.Var x)
           val actual_args = List.map (Eval.eval_exp Exec.state) args
-          val _ = sim_fun_call (SOME(loc)) f (Exec.call_step(f, actual_args, pos)) actual_args pos
+          val step_result = Exec.call_step(f, actual_args, pos) (* function call never silent? *)
+          val (i',n') = fun_call (i+1,n) (SOME(loc)) f step_result actual_args pos
       in
-          dstep (cmds, labs) fname (pc+1)
+          next_step (i',n') (j+1,m) (cmds, labs) fname (pc+1)
       end
-    | _ => next (cmds, labs) fname pc
+    | cmd =>
+      case Exec.step ((cmds, labs), pc)
+       of Exec.ReturnNone => (NONE, (i,if j <= m then i else n)) (* stop at caller if doing big-step *)
+        | Exec.ReturnSome(res) => (SOME(res), (i,if j <= m then i else n))
+        | Exec.PC(pc') => next_step (if is_silent cmd then i else i+1,n)
+                                    (if is_silent cmd then j else j+1,m)
+                                    (cmds, labs) fname pc'
 
-  fun dstep_top (cmds, labs) fname =
-      dstep (cmds, labs) fname 0
-      handle Error.Dynamic(s) => ( println (":error: " ^ s) ; NONE )
+  (* i has already been increased to account for the call itself *)
+  and fun_call (i,n) dest f (Exec.Interp((_, formal_args), code)) actual_args pos = 
+      let
+          val _ = init_fun (f, actual_args, formal_args, pos)
+          val (ret_val, (i',n')) = next_step (i,n) (0,~1) code (Symbol.name f) 0 (* exec function body *)
+          val _ = State.pop_fun (Exec.state)
+      in
+          case (dest, ret_val)
+           of (SOME(loc), SOME(v)) => ( Eval.put (Exec.state, loc, v) ; (i',n') )
+            | (_, _) => (i',n')
+      end
+    | fun_call (i,n) (SOME(loc)) f (Exec.Native(res)) actual_args pos =
+      ( Eval.put (Exec.state, loc, res) ; (i,n) )
+    | fun_call (i,n) (NONE) f (Exec.Native(res)) actual_args pos = (i,n)
+
+  and run_exp string =
+      let
+          val (cmds, labs) = read_exp string
+          val (retval, (i',n')) = next_step (0,1) (0,~1) (cmds, labs) "_run_" 0 (* ignore return value *)
+      in
+          case retval
+           of NONE => print ("finished run of '" ^ string ^ "'")
+                      (* ^ "with last value " ^ State.value_string (Exec.last()) ^ "\n") *)
+            | SOME(result) => print("finished run of '" ^ string ^ "' with value " 
+                                    ^ ConcreteState.value_string result ^ "\n")
+      end
+      handle Error.Dynamic s => println ("<codex>:error: " ^ s)
+           | Error.AssertionFailed s => println ("<codex>:" ^ s)
+           | ErrorMsg.Error => ()
+           | exn => ( print "exception: " ; print_exception exn )
 
 (*--------- Load libraries and call main -------------*)
    fun raiseSignal sgn = 
@@ -386,28 +402,13 @@ struct
       ; CodeTab.reload (library_headers @ program)
       ; app assertLibrariesLoaded (CodeTab.list ()) )
 
-  fun call_main (library_headers, program) NONE =
-      let
-          val _ = init_state (library_headers, program)
-          val init_call = Exec.call_step (Symbol.symbol "main", [], ((0, 0), (0, 0), "_init_"))
-	  val code = case init_call
-		      of Exec.Interp(_,code) => code
-		       | _ => raise Internal("Main function was tagged as native\n")
-      in
-	  (dstep_top code "main")
-	  handle Error.AssertionFailed s => ( println s ; NONE )
-               | Option => (print "Goodbye\n"; NONE)
-               | exn => 
-                 ( print "Exception: "
-                 ; print_exception exn
-                 ; NONE)
-      end
-    | call_main (library_headers, program) (SOME(run_call)) =
+  fun call_main (library_headers, program) run_arg =
       let
           val _ = init_state (library_headers, program)
       in
-          ( run_exp run_call    (* handles its own exceptions?? *)
-          ; NONE )
+          run_exp (case run_arg
+                    of NONE => "main()"
+                     | SOME(exp_string) => exp_string)
       end
 
 (* ----------- Top level function ------------*)
@@ -459,18 +460,14 @@ struct
               | (_, _) => ()
 
   in
-      (case call_main (library_headers, program) (!Flags.run_call)
-	of SOME(retval) =>
-	   ( println ("main function returned "
-		      ^ ConcreteState.value_string retval) ;
-	     SOME(retval))
-	 | NONE => NONE) (* error: message already printed *)
+      ( call_main (library_headers, program) (!Flags.run_call)
+      ; OS.Process.success )
   end
-  handle COMPILER_ERROR => NONE (* message already printed *)
+  handle COMPILER_ERROR => OS.Process.failure (* message already printed *)
        | LINK_ERROR => (* some message printed, but not in error format *)
 	 ( println (":error:could not link library")
-	 ; NONE )
+	 ; OS.Process.failure )
        | _ => ( println (":error:unexpected exception")
-	      ; NONE )
+	      ; OS.Process.failure )
 
 end

@@ -78,6 +78,16 @@
     (define-key map "i" 'codex-interrupt)
     (define-key map "?" 'codex-help)
     (define-key map "h" 'codex-help-long)
+    (define-key map "0" 'digit-argument)
+    (define-key map "1" 'digit-argument)
+    (define-key map "2" 'digit-argument)
+    (define-key map "3" 'digit-argument)
+    (define-key map "4" 'digit-argument)
+    (define-key map "5" 'digit-argument)
+    (define-key map "6" 'digit-argument)
+    (define-key map "7" 'digit-argument)
+    (define-key map "8" 'digit-argument)
+    (define-key map "9" 'digit-argument)
     map))
 
 ;;; Local variables follows
@@ -384,7 +394,7 @@
     (message "%s" "program aborted"))
    (t (codex-exit-debug)
       (codex-display-output-accum)
-      (message "%s" "unexpected termination of codex"))))
+      (message "%s" "codex terminated"))))
 
 ;;; Functions for sending input to codex
 
@@ -392,17 +402,18 @@
   "Send STRING to codex process"
   (process-send-string codex-proc string))
 
-(defun codex-step ()
-  "Step to next statement, potentially entering a function"
-  (interactive)
-  (codex-send-string "s\n")
+(defun codex-step (p)
+  "Step to next statement, potentially entering a function.
+Prefix argument is the number of (small) steps to take."
+  (interactive "p")
+  (codex-send-string (concat "s " (int-to-string p) "\n"))
   (codex-send-string "v\n"))
 
-(defun codex-next ()
-  "Step to next statement, passing over functions unless they
-include a breakpoint"
-  (interactive)
-  (codex-send-string "n\n")
+(defun codex-next (p)
+  "Step to next statement, passing over functions.
+Prefix argument is the number of steps to take."
+  (interactive "p")
+  (codex-send-string (concat "n " (int-to-string p) "\n"))
   (codex-send-string "v\n"))
 
 (defun codex-eval-exp (exp)
@@ -440,10 +451,11 @@ include a breakpoint"
 (defun codex-help ()
   "Show the Emacs help for codex"
   (interactive)
-  (message "%s\n%s\n%s\n%s\n%s\n%s\n%s"
+  (message "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s"
 	   "return or s - step"
 	   "n - next (skip function calls)"
 	   "e <exp> - evaluate <exp>"
+           "r <exp> - run (step through) <exp>"
 	   "q - quit"
 	   "i - interrupt codex"
 	   "? - this short help"
