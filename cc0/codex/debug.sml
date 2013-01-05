@@ -373,7 +373,7 @@ struct
           val (retval, (i',n')) = next_step (0,1) (0,~1) (cmds, labs) "_run_" 0 (* ignore return value *)
       in
           case retval
-           of NONE => print ("finished run of '" ^ string ^ "'")
+           of NONE => print ("finished run of '" ^ string ^ "'\n")
                       (* ^ "with last value " ^ State.value_string (Exec.last()) ^ "\n") *)
             | SOME(result) => print("finished run of '" ^ string ^ "' with value " 
                                     ^ ConcreteState.value_string result ^ "\n")
