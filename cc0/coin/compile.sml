@@ -154,8 +154,10 @@ fun cStms stms pos =
           | Ast.Break => 
             if d = 0 then [ Jump (valOf b "No loop to break") ] 
             else [ PopScope d, Jump (valOf b "No loop to break") ]
-          | Ast.Return e1 => 
-            [ Return (Option.map (fn x => (cExp pos x, mExp pos x)) e1) ]
+          | Ast.Return (SOME(e1)) => 
+            [ Return (SOME(cExp pos e1), mExp pos e1)]
+          | Ast.Return (NONE) =>
+            [ Return (NONE, valOf pos "No mark for return") ]
           | Ast.Assert (e1, (Ast.StringConst s)::_) => 
 	    (* fix: allow other strings.  5/16/11 -fp *)
             [ Assert (cExp pos e1, s, mExp pos e1) ]

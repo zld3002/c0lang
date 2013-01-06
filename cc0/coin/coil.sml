@@ -61,7 +61,7 @@ datatype cmd =
  | Error of exp * Mark.ext
  | CondJump of exp * Mark.ext * label
  | Jump of label
- | Return of (exp * Mark.ext) option
+ | Return of exp option * Mark.ext
 
  (* Manipulating the scope *)
  | PushScope
@@ -141,9 +141,9 @@ fun cmdToString (cmd: cmd): string =
       "Go to L" ^ Int.toString l ^ " if not " ^ expToString false e1
     | Jump l => 
       "Go to L" ^ Int.toString l ^ ""
-    | Return NONE =>  (*Mark.show pos ^ "\n" ^ *)
+    | Return (NONE, pos) =>  (*Mark.show pos ^ "\n" ^ *)
       "Return"
-    | Return (SOME (e1, pos)) =>  (*Mark.show pos ^ "\n" ^  *)
+    | Return (SOME (e1), pos) =>  (*Mark.show pos ^ "\n" ^  *)
       "Return " ^ expToString false e1
     | PushScope => "{"
     | PopScope n => String.concat (List.tabulate (n, (fn _ => "}")))

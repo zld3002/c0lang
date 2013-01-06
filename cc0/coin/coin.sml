@@ -118,7 +118,7 @@ let
       Compile.cStms isolated_stms ((0,0),(0,0),"<coin toplevel>") 
 
    (* Make sure that the program doesn't run off the end of the vector *)
-   val cmds = Vector.concat [ cmds, Vector.fromList [ C0.Return NONE ] ]
+   val cmds = Vector.concat [ cmds, Vector.fromList [ C0.Return (NONE, ((0,0),(0,0),"<coin toplevel">)) ] ]
 
    fun print_codes () = 
    let

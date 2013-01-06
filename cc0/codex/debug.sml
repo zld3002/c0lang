@@ -30,10 +30,14 @@ struct
   \ <return>    - Same as s (step)                                    \n\
   \ e exp       - Evaluate exp in current context                     \n\
   \ r exp       - Run exp in step mode in current context             \n\
+  \ c           - Complete run to the end (or breakpoint)             \n\
+  \ b f1 ...    - Break at functions f1 ...                           \n\
+  \ b           - Breakpoints are shown                               \n\
+  \ u f1 ...    - Unbreak functions f1 ...,                           \n\
+  \ u           - Unbreak all functions                               \n\
+  \ i           - Interrupt codex                                     \n\
   \ q           - Exit codex                                          \n\
   \                                                                   \n"
-
-
 
   structure C0 = C0Internal
   structure State = ConcreteState
@@ -45,11 +49,14 @@ struct
   datatype debug_action = 
      STEP of int
    | NEXT of int
-   | LOCAL_VARS 
+   | LOCAL_VARS of int 
    | QUIT 
    | HELP
    | EVAL_EXP of string
    | RUN_EXP of string
+   | COMPLETE
+   | BREAK of string list
+   | UNBREAK of string list
    | IGNORE of string
 
   fun loop (f: unit -> unit) n =
@@ -88,8 +95,8 @@ struct
      | C0.Assert(e, msg, pos) => SOME(pos)
      | C0.Error(e, pos) => SOME(pos)
      | C0.CondJump(e, pos, label) => SOME(pos)
-     | C0.Return(SOME(e,pos)) => SOME(pos)
-     (* C0.Label, C0.Declare(_,_,NONE), C0.Return(NONE), C0.PushScope, C0.PopScope _ *)
+     | C0.Return(e_opt, pos) => SOME(pos)
+     (* C0.Label, C0.Declare(_,_,NONE), C0.PushScope, C0.PopScope _ *)
      | _ => NONE
 
   fun get_pos_source cmd = case get_pos cmd
@@ -114,10 +121,29 @@ struct
      | C0.Error(e, pos) => is_invisible pos
      | C0.CondJump(e, pos, label) => is_invisible pos
      | C0.Jump(label) => true
-     | C0.Return(SOME(e, pos)) => is_invisible pos
-     | C0.Return(NONE) => true  (* return of void always silent *)
+     | C0.Return(e_opt, pos) => is_invisible pos
      | C0.PushScope => true
      | C0.PopScope(n) => true
+
+  local
+      val break_points = ref Symbol.null
+  in
+      fun add_breakpoints nil =
+          ( List.app (fn f => print (Symbol.name f ^ " "))
+                     (Symbol.listmems (!break_points))
+          ; print ("\n") )
+        | add_breakpoints fun_names = 
+          ( break_points := List.foldl (fn (f, s) => Symbol.add s (Symbol.symbol f))
+                                       (!break_points) fun_names )
+
+      fun remove_breakpoints nil =
+          ( break_points := Symbol.null )
+        | remove_breakpoints fun_names =
+          ( break_points := List.foldl (fn (f, s) => Symbol.remove s (Symbol.symbol f))
+                                       (!break_points) fun_names )
+          
+      fun is_breakpoint f = Symbol.member (!break_points) f
+  end
 
   fun input_action next_cmd fname = 
       let
@@ -134,8 +160,16 @@ struct
           val inputs = String.tokens Char.isSpace input
       in
           case inputs
-           of ["v"] => LOCAL_VARS
-            | ["vars"] => LOCAL_VARS
+           of ["v"] => LOCAL_VARS 1
+            | ["v", tok] =>
+              (case Int.fromString tok
+                of NONE => IGNORE input
+                 | SOME(i) => (if i > 0 then LOCAL_VARS i else IGNORE input))
+            | ["vars"] => LOCAL_VARS 1
+            | ["vars", tok] =>
+              (case Int.fromString tok
+                of NONE => IGNORE input
+                 | SOME(i) => (if i > 0 then LOCAL_VARS i else IGNORE input))
             | ["n"] => NEXT 1
             | ["n", tok] =>
               (case Int.fromString tok
@@ -165,6 +199,12 @@ struct
             | "eval" :: toks => EVAL_EXP (String.concatWith " " toks)
             | "r" :: toks => RUN_EXP (String.concatWith " " toks)
             | "run" :: toks => RUN_EXP (String.concatWith " " toks)
+            | ["complete"] => COMPLETE
+            | ["c"] => COMPLETE
+            | "b" :: toks => BREAK toks
+            | "break" :: toks => BREAK toks
+            | "u" :: toks => UNBREAK toks
+            | "unbreak" :: toks => UNBREAK toks
             | _ => IGNORE input
       end
 
@@ -258,7 +298,7 @@ struct
       val processed_stm = TypeChecker.typecheck_interpreter env stm (* might raise ErrorMsg.Error *)
       val isolated_stms = Isolate.iso_stm env stm
       val (cmds, labs) = Compile.cStms isolated_stms ((~1,~1),(~1,~1),"<BUG>") 
-      val cmds = Vector.concat [ cmds, Vector.fromList [ C0.Return NONE ] ]
+      val cmds = Vector.concat [ cmds, Vector.fromList [ C0.Return (NONE, ((0,0),(0,0),"<codex>")) ] ]
    in
        (cmds, labs)
    end
@@ -285,6 +325,9 @@ struct
 
 (*------------- Running expressions -----------------------*)
 (*------------- Core I/O and evaluation -------------------*)
+
+  fun nobreak (C0.CCall(_, f, _, _)) = not (is_breakpoint f)
+    | nobreak _ = true
   
   fun init_fun (f, actual_args, formal_args, pos) = 
       ( State.push_fun (Exec.state, f, (f, pos))
@@ -299,8 +342,10 @@ struct
           val action = input_action next_cmd fname
       in
           case action
-           of LOCAL_VARS => ( Exec.print_locals()
-                            ; interact i j (cmds, labs) fname pc )
+           of LOCAL_VARS n => ( println ("step " ^ Int.toString i)
+                              ; Exec.print_locals()
+                              (* print_locals(n) should print n stack frames *)
+                              ; interact i j (cmds, labs) fname pc )
             | HELP =>       ( println help_message
                             ; interact i j (cmds, labs) fname pc ) 
             | QUIT =>       ( println "Goodbye!"
@@ -317,20 +362,25 @@ struct
             | RUN_EXP e =>  ( run_exp e
                             ; reset_parser()
                             ; interact i j (cmds, labs) fname pc )
-            | NEXT m =>     next_step (i,~1) (j,j+m) (cmds, labs) fname pc
-            | STEP n =>     next_step (i,i+n) (j,~1) (cmds, labs) fname pc
+            | NEXT m =>     next_step (i,~1) (j,j+m) (cmds, labs) fname pc true
+            | STEP n =>     next_step (i,i+n) (j,~1) (cmds, labs) fname pc true
+            | COMPLETE =>   next_step (i,~1) (j,~1) (cmds, labs) fname pc true
+            | BREAK fs =>   ( add_breakpoints fs
+                            ; interact i j (cmds, labs) fname pc )
+            | UNBREAK fs => ( remove_breakpoints fs
+                            ; interact i j (cmds, labs) fname pc )
           end
 
-  and next_step (i,n) (j,m) (cmds, labs) fname pc =
+  and next_step (i,n) (j,m) (cmds, labs) fname pc skip_break =
       let
           val cmd = Vector.sub(cmds, pc)
-      (*
+          (*
           val _ = if is_silent cmd then print "$" else print "*"
           val _ = print (Int.toString i)
           val _ = println(":" ^ Int.toString(n) ^ ":" ^ C0.cmdToString (Vector.sub(cmds, pc)))
-      *)
+          *)
       in
-          if is_silent cmd orelse (i <> n andalso j <> m)
+          if is_silent cmd orelse (i <> n andalso j <> m andalso (skip_break orelse nobreak cmd))
           then one_step (i,n) (j,m) cmd (cmds, labs) fname pc
           else interact i j (cmds, labs) fname pc
       end
@@ -342,7 +392,7 @@ struct
           val step_result = Exec.call_step(f, actual_args, pos) (* function call never silent? *)
           val (i',n') = fun_call (i+1,n) NONE f step_result actual_args pos
       in
-          next_step (i',n') (j+1,m) (cmds, labs) fname (pc+1)
+          next_step (i',n') (j+1,m) (cmds, labs) fname (pc+1) false
       end
     | C0.CCall(SOME(x), f, args, pos) => 
       let
@@ -351,21 +401,21 @@ struct
           val step_result = Exec.call_step(f, actual_args, pos) (* function call never silent? *)
           val (i',n') = fun_call (i+1,n) (SOME(loc)) f step_result actual_args pos
       in
-          next_step (i',n') (j+1,m) (cmds, labs) fname (pc+1)
+          next_step (i',n') (j+1,m) (cmds, labs) fname (pc+1) false
       end
     | cmd =>
       case Exec.step ((cmds, labs), pc)
-       of Exec.ReturnNone => (NONE, (i,if j <= m then i else n)) (* stop at caller if doing big-step *)
-        | Exec.ReturnSome(res) => (SOME(res), (i,if j <= m then i else n))
+       of Exec.ReturnNone => (NONE, (i+1,if j <= m then i+1 else n)) (* stop at caller if doing big-step *)
+        | Exec.ReturnSome(res) => (SOME(res), (i+1,if j <= m then i+1 else n))
         | Exec.PC(pc') => next_step (if is_silent cmd then i else i+1,n)
                                     (if is_silent cmd then j else j+1,m)
-                                    (cmds, labs) fname pc'
+                                    (cmds, labs) fname pc' false
 
   (* i has already been increased to account for the call itself *)
   and fun_call (i,n) dest f (Exec.Interp((_, formal_args), code)) actual_args pos = 
       let
           val _ = init_fun (f, actual_args, formal_args, pos)
-          val (ret_val, (i',n')) = next_step (i,n) (0,~1) code (Symbol.name f) 0 (* exec function body *)
+          val (ret_val, (i',n')) = next_step (i,n) (0,~1) code (Symbol.name f) 0 false (* exec function body *)
           val _ = State.pop_fun (Exec.state)
       in
           case (dest, ret_val)
@@ -379,11 +429,11 @@ struct
   and run_exp string =
       let
           val (cmds, labs) = read_exp string
-          val (retval, (i',n')) = next_step (0,1) (0,~1) (cmds, labs) "_run_" 0 (* ignore return value *)
+          val (retval, (i',n')) = next_step (0,1) (0,~1) (cmds, labs) "_run_" 0 true
       in
           case retval
            of NONE => print ("finished run of '" ^ string ^ "'\n")
-                      (* ^ "with last value " ^ State.value_string (Exec.last()) ^ "\n") *)
+                      (* ^ "with last value " ^ State.value_string (Exec.last()) ^ "\n" *)
             | SOME(result) => print("finished run of '" ^ string ^ "' with value " 
                                     ^ ConcreteState.value_string result ^ "\n")
       end

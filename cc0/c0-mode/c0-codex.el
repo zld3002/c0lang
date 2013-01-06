@@ -74,6 +74,9 @@
     (define-key map "v" 'codex-locals)
     (define-key map "e" 'codex-eval-exp)
     (define-key map "r" 'codex-run-exp)
+    (define-key map "c" 'codex-complete)
+    (define-key map "b" 'codex-break)
+    (define-key map "u" 'codex-unbreak)
     (define-key map "q" 'codex-exit-debug)
     (define-key map "i" 'codex-interrupt)
     (define-key map "?" 'codex-help)
@@ -258,12 +261,13 @@
 	       (setq codex-locals-accum nil))
              ;; Bugfix - entering a new function doesn't clear locals
              ;; - rjs 8/24/2012
-             (progn
-	       (with-current-buffer codex-locals-buffer
-		 (delete-region (point-min) (point-max))
-		 (insert "(no local variables)")
-		 (goto-char (point-max)))))
-	 (if (not (null codex-output-accum))
+           ;; should always produce something now..
+           (progn
+             (with-current-buffer codex-locals-buffer
+               (delete-region (point-min) (point-max))
+               ;; (insert "(no local variables)")
+               (goto-char (point-max)))))
+         (if (not (null codex-output-accum))
 	     (progn
 	       (message "%s" codex-output-accum)
 	       (setq codex-output-accum nil)))
@@ -340,7 +344,7 @@
 	       (codex-switch-to-file canon-filename))
 	   (codex-highlight-normal line0 col0 line1 col1)
 	   ()))
-	((string-match "^Exception: \\(.*\\)" string)
+	((string-match "^exception: \\(.*\\)" string)
 	 (codex-exit-debug)
 	 (with-current-buffer codex-locals-buffer
 	   (delete-region (point-min) (point-max))
@@ -348,15 +352,19 @@
 	 (message "%s" whole-string)
 	 ;; abort more parsing (return t)
 	 t)
-	((string-match "^\\(_tmp_[0-9]*\\|_caller\\): " string)
-	 ;; _tmp_n: value or _caller: value
-	 ;; do not display values of temporary variables
-	 ())
+	;; ((string-match "^\\(_tmp_[0-9]*\\|_caller\\): " string)
+        ;; _tmp_n: value or _caller: value
+        ;; do not display values of temporary variables
+	;; ())
 	((string-match "^[a-zA-Z0-9_]*: " string)
 	 ;; varname: value, accumulate to be shown upon next prompt
 	 ;; might be better solved with \\w*, but above is more specific
 	 (setq codex-locals-accum (concat codex-locals-accum string "\n"))
 	 ())
+        ((string-match "^step " string)
+         ;; display of step count; add to locals buffer
+         (setq codex-locals-accum (concat codex-locals-accum string "\n"))
+         ())
 	;; suppress blank lines
 	((string-equal "\n" string) ())
 	((string-equal "" string) ())
@@ -438,10 +446,26 @@ Prefix argument is the number of steps to take."
   (codex-send-string (concat "r " exp "\n"))
   (codex-send-string "v\n"))
 
-(defun codex-locals ()
-  "Show the value of local variables"
+(defun codex-complete ()
+  "Complete current run until end (or breakpoint)"
   (interactive)
+  (codex-send-string "c\n")
   (codex-send-string "v\n"))
+
+(defun codex-break (funs)
+  "Set a breakpoint on given functions"
+  (interactive "sBreak at functions: ")
+  (codex-send-string (concat "b " funs "\n")))
+
+(defun codex-unbreak (funs)
+  "Set a breakpoint on given functions"
+  (interactive "sUnbreak functions (default: all): ")
+  (codex-send-string (concat "u " funs "\n")))
+
+(defun codex-locals (p)
+  "Show the value of local variables"
+  (interactive "p")
+  (codex-send-string (concat "v " (int-to-string p) "\n")))
 
 (defun codex-interrupt ()
   "Interrupt the codex"
@@ -451,11 +475,18 @@ Prefix argument is the number of steps to take."
 (defun codex-help ()
   "Show the Emacs help for codex"
   (interactive)
-  (message "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s"
-	   "return or s - step"
-	   "n - next (skip function calls)"
+  (message "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s"
+           "(0-9)+ - set prefix argument N"
+	   "return or s - step N (stepping into functions)"
+	   "n - next N (stepping over function)"
 	   "e <exp> - evaluate <exp>"
            "r <exp> - run (step through) <exp>"
+           "c - complete run (until breakpoint)"
+           "b <f1> ... - break <f1> ..."
+           "b - show breakpoints"
+           "u <f1> ... - unbreak <f1> ..."
+           "u - unbreak all"
+           "v - show N frames of call stack"
 	   "q - quit"
 	   "i - interrupt codex"
 	   "? - this short help"
@@ -532,6 +563,7 @@ Prefix argument is the number of steps to take."
         (if (string-match "\\(-r[ \t]*\\|-run[ \t]*\\)['\"]\\([^ '\"]*\\)['\"]" codex-args)
             (let ((exp (match-string 2 codex-args)))
               (codex-temp-insert exp)))
+        (codex-locals 1)                ; display step number 1 and local variables
         (message "Type '?' for help")))))
 
 ;; Hook to be run if the buffer is killed while debugging

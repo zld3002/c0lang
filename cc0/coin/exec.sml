@@ -302,9 +302,11 @@ in
 
     | C0.Jump labl => PC(Vector.sub (labs, labl))
 
-    | C0.Return NONE => ReturnNone
+    | C0.Return (NONE, pos) =>
+       ( current_pos := SOME pos
+       ; ReturnNone )
 
-    | C0.Return (SOME (e, pos)) =>
+    | C0.Return (SOME (e), pos) =>
        ( current_pos := SOME pos
        ; ReturnSome(Eval.eval_exp state e))
 

@@ -1,17 +1,10 @@
 Requirements for distribution are as for coin, and can be found in
 '../README.txt'.
 
-At the moment, the interactive shell debugger (code -i) is lagging
-behind the debugger as an inferior process to Emacs (code -e).  It
-offers the rudimentary functionality explained below.  Other features
-are always under developments.  Coming soon: evaluating arbitrary
-expressions in the current environment, examining memory (store and
-call-stack).
-
 ----------------------------------------------------------------------
 Emacs
 ----------------------------------------------------------------------
-In your .emacs file (for Emacs or Carbon Emacs) you need something
+In your .emacs file (for Emacs, Carbon Emacs, or Aquamacs) you need something
 like:
 
 ;; Setup for c0-mode
@@ -38,6 +31,13 @@ through it with simple keystrokes.  They are:
 n             - next command, skipping over function calls
 <return> or s - step to the next command or into the next function call
 q             - quit the execution
+e EXP         - evaluate EXP in current context
+r EXP         - run EXP in current context, in stepping mode
+c             - complete execution to the end, or until breakpoint
+b F1 ...      - break at F1 ...
+b             - breakpoints are shown
+u F1 ...      - unbreak F1 ...
+u             - unbreak all functions
 ? or h        - display a short help message
 
 While stepping through your program, code will continuously display
@@ -64,9 +64,11 @@ Usage: bin/code code [OPTIONS_AND_SOURCEFILES...]
   --print-codes    Print out the internal language's representation
   -i        --interactive    Run code in interactive mode for command line use
   -e        --emacs_mode     Run in mode compatible with emacs plugin
+  -r '<call>' --run='<call>' Run <call> instead of 'main()'
+                             <call> must be quoted and may not contain whitespace
 
-  NOTE: the --print-codes and -V options currently are meaningless to
-  the debugger.
+ NOTE: the --print-codes and -V options currently are meaningless to
+ the debugger.
 
 ----------------------------------------------------------------------
 Debugger commands
@@ -82,33 +84,31 @@ calls.
 The following inputs allow you to control the debugger.            
  v           - Display local variables                             
  h           - Display this help message                           
- n           - Execute command, skipping over function calls       
+ i           - Interrupt the debugger (if in infinite loop)
  q           - Exit the debugger
 
 
 ----------------------------------------------------------------------
 Minimal check of binary distribution
 ----------------------------------------------------------------------
+The below is obsolete
 
-From the cc0 folder,
-  
-  $ bin/code -i doc/src/exp.c0 doc/src/exp-test.c0
-  Assert _tmp_2 == 1 "doc/src/exp-test.c0:6.3-6.25: assert failed" in function main
-  (c0de) Assert _tmp_3 == 0 "doc/src/exp-test.c0:7.3-7.25: assert failed" in function main
-  (c0de) Assert _tmp_4 == 1 "doc/src/exp-test.c0:8.3-8.25: assert failed" in function main
-  (c0de) Assert _tmp_5 == 1 "doc/src/exp-test.c0:9.3-9.26: assert failed" in function main
-  (c0de) Assert _tmp_6 == 128 "doc/src/exp-test.c0:10.3-10.27: assert failed" in function main
-  (c0de) Assert _tmp_7 == (-128) "doc/src/exp-test.c0:11.3-11.29: assert failed" in function main
-  (c0de) Assert _tmp_8 == 81 "doc/src/exp-test.c0:12.3-12.26: assert failed" in function main
-  (c0de) Assert _tmp_9 == 81 "doc/src/exp-test.c0:13.3-13.27: assert failed" in function main
-  (c0de) Assert _tmp_10 == (1 << 30) "doc/src/exp-test.c0:14.3-14.32: assert failed" in function main
-  (c0de) print("All tests passed!\n") in function main
-  (c0de) Return 0 in function main
-  (c0de) All tests passed!
+From the cc0 directory,
+   $ bin/codex -i doc/src/exp.c0 -r 'exp(2,3)'
+   doc/src/exp.c0:4.7-4.13 in function exp
+     if (e == 0)
+         ~~~~~~ 
+   (codex) 
+   doc/src/exp.c0:7.16-7.27 in function exp
+       return b * exp(b, e-1);
+                  ~~~~~~~~~~~ 
+   (codex) c
+   finished run of 'exp(2,3)'
+   $
 
 In emacs mode, the output takes this format:
   
-  *file name*:*location information* in function *current function name*
+  *file name*:*location information*
 
 Where location information is the standard format used throughout cc0.
 
@@ -127,11 +127,5 @@ Building from source
 Notes on source code
 ----------------------------------------------------------------------
 
-  All source for the debugger is in debug.sml, with most
-  debugger-specific logic found in the dstep function. It simulates compilation
-  using similar code as found in coin/coin-exec.sml. It then enters the
-  repl and makes use of coin/exec.sml's "step" and "call_step"
-  functions. When the user asks for a list of local variables, the
-  function "print_locals" in coin/exec.sml is called. The logic for that
-  function is found in cymbol/state.sml. 
-  
+  All source for the debugger is in debug.sml.
+
