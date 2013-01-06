@@ -1,7 +1,7 @@
 (* 
  * Simple symbolic debugger for the C0 Language
  *
- * Authors: Ian Gillis, Robert Simmons
+ * Authors: Ian Gillis, Robert Simmons, Frank Pfenning
  *)
 
 signature DEBUG =
@@ -80,17 +80,25 @@ struct
            print ("(INTERNAL ERROR, PLEASE REPORT): "^s)
       | e => print "exception: unexpected exception\n"
 
-  fun get_pos_string cmd = case cmd of
-       C0.Exp(e, pos) => Mark.show pos
-     | C0.Declare(t, x, SOME(e, pos)) => Mark.show pos
-     | C0.Assign(opr_opt, e1, e2, pos) => Mark.show pos
-     | C0.CCall(lv, f, args, pos) => Mark.show pos
-     | C0.Assert(e, msg, pos) => Mark.show pos
-     | C0.Error(e, pos) => Mark.show pos
-     | C0.CondJump(e, pos, label) => Mark.show pos
-     | C0.Return(SOME(e,pos)) => Mark.show pos
+  fun get_pos cmd = case cmd of
+       C0.Exp(e, pos) => SOME(pos)
+     | C0.Declare(t, x, SOME(e, pos)) => SOME(pos)
+     | C0.Assign(opr_opt, e1, e2, pos) => SOME(pos)
+     | C0.CCall(lv, f, args, pos) => SOME(pos)
+     | C0.Assert(e, msg, pos) => SOME(pos)
+     | C0.Error(e, pos) => SOME(pos)
+     | C0.CondJump(e, pos, label) => SOME(pos)
+     | C0.Return(SOME(e,pos)) => SOME(pos)
      (* C0.Label, C0.Declare(_,_,NONE), C0.Return(NONE), C0.PushScope, C0.PopScope _ *)
-     | _ => ""
+     | _ => NONE
+
+  fun get_pos_source cmd = case get_pos cmd
+   of SOME(pos) => Mark.show_source pos
+    | NONE => C0.cmdToString cmd
+
+  fun get_pos_string cmd = case get_pos cmd
+   of SOME(pos) => Mark.show(pos)
+    | NONE => ""
 
   fun is_invisible ((0,0),(0,0),_) = true
     | is_invisible pos = false
@@ -104,7 +112,7 @@ struct
      | C0.CCall(lv_opt, f, args, pos) => is_invisible pos (* function call never silent? *)
      | C0.Assert(e, msg, pos) => is_invisible pos
      | C0.Error(e, pos) => is_invisible pos
-     | C0.CondJump(e, pos, label) => is_invisible pos (* !!this pos is calculated incorrectly!! *)
+     | C0.CondJump(e, pos, label) => is_invisible pos
      | C0.Jump(label) => true
      | C0.Return(SOME(e, pos)) => is_invisible pos
      | C0.Return(NONE) => true  (* return of void always silent *)
@@ -115,9 +123,10 @@ struct
       let
           val _ = if Flag.isset Flags.flag_emacs
                   then
-                      println (get_pos_string next_cmd)
+                      println (get_pos_string next_cmd ^ " in function " ^ fname)
                   else
-                      println (C0.cmdToString next_cmd ^ " in function " ^ fname)
+                      ( println (get_pos_string next_cmd ^ " in function " ^ fname)
+                      ; print (get_pos_source next_cmd) )
           val _ = if Flag.isset Flags.flag_emacs
 		  then print "(codex)\n"
 		  else print "(codex) "
