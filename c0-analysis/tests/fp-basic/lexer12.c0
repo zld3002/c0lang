@@ -1,6 +1,0 @@
-//test error
-int main () {
-  string s = "
-";
-  return 0;
-}

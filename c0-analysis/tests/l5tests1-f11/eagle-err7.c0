@@ -1,9 +1,0 @@
-//test segfault
-struct bar {
-  int[] a;
-};
-
-int main() {
-  struct bar* foo = alloc(struct bar);
-  return (foo->a)[0];
-}

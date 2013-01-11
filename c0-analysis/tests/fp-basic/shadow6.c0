@@ -1,8 +1,0 @@
-//test error
-
-int foo (int y, int x);
-int foo (int x, int y) {return x;}
-int main () {
-   int foo;
-   return foo (0, 0);
-}

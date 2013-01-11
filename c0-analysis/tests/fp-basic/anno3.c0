@@ -1,9 +1,0 @@
-//test return 0
-
-
-
-
-// /*@ // a comment in an annotation
-
-int main() { return 0; }
-//

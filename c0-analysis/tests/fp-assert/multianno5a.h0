@@ -1,9 +1,0 @@
-struct point;
-typedef struct point* point;
-
-bool is_pos(point p);
-
-void mirror (point p)
-//@requires is_pos(p);
-//@ensures is_pos(p);
-  ;

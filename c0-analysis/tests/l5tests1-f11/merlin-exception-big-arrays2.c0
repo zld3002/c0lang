@@ -1,9 +1,0 @@
-//test segfault
-
-int main()
-{
-  int*[] a = alloc_array(int*, 100000);
-  int*[] b = alloc_array(int*, 100000);
-  a[100000];
-  return 0;
-}

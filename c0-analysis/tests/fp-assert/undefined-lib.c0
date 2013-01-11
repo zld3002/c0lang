@@ -1,4 +1,0 @@
-int mein () {
-  print("mein is defined but not main");
-  return 0;
-}

@@ -1,9 +1,0 @@
-//test return 0
-// declaration in body
-// allowed as of Jan 2011
-int main() {
-  int x;
-  x = 4;
-  int y;
-  return 0;
-}

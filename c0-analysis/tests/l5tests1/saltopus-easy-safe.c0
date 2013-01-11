@@ -1,7 +1,0 @@
-//test segfault
-/* you can alloc any time you like, but you can never read. */
-int main() {
-	int[] a = alloc_array(int, 0);
-
-	return a[0];
-}

@@ -1,8 +1,0 @@
-typedef int //lala
-a;
-
-int main() {
-    //works?
-    a x = 4 + 7;
-    return x;
-}

@@ -1,7 +1,0 @@
-//test segfault
-
-int main() {
-  int* foo = NULL;
-  return *foo;
-}
-

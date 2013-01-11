@@ -1,5 +1,0 @@
-//test !cymbol => error; cymbol => segfault
-
-int main() {
-  return *NULL;
-}

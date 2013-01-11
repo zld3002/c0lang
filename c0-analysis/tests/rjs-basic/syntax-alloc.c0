@@ -1,4 +1,0 @@
-int main() {
-  int *i = array_alloc(int,3);
-  return 1;  
-}

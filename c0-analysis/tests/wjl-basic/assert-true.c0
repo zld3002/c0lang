@@ -1,4 +1,0 @@
-int main() {
-  assert(true); // "Everything's okay!"
-  return 0;
-}

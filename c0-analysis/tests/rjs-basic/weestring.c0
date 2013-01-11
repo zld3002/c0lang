@@ -1,3 +1,0 @@
-int main() {
-  return char_ord('"') + char_ord('\"');
-}

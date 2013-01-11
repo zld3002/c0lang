@@ -1,8 +1,0 @@
-/* 42 */
-int main () {
-  int n = 6;
-  int[] A = alloc_array(int, n);
-  A[0] = 42;
-  A[5] -= 2;
-  return A[0]+A[3]+A[5];
-}

@@ -1,9 +1,0 @@
-int main() {
-  file_t f = file_read("file_basic.c0");
-  string line;
-  assert (!file_eof(f)); // "This file should exist and be non-empty"
-
-  file_close(f);
-  file_close(f);
-  return 0;
-}

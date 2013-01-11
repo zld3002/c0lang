@@ -1,8 +1,0 @@
-//test return 4
-
-void foo(int *x) { return; }
-
-int main() {
-  foo(NULL);
-  return 4;
-}

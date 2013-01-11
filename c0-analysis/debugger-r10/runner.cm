@@ -1,9 +1,0 @@
-Library
-  structure Runner
-is
-  $/basis.cm
-  lang/sources.cm
-  parser/sources.cm
-  cfg/sources.cm
-  concrete/sources.cm
-  runner.sml

@@ -1,6 +1,0 @@
-
-int main() {
-  assert(4 == string_length("asdf")); // "String length mismatch"
-  assert(0 == string_length("")); // "Empty string length mismatch"
-  return 0;
-}

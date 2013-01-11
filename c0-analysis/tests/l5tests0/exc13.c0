@@ -1,9 +1,0 @@
-//test safe => div-by-zero
-// courtesy of brachiosaurus
-int main()
-{
-	int n = 0;
-	int * foo = NULL;
-	*foo = 15410/n;
-	return 1337;
-}

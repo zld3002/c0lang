@@ -1,8 +1,0 @@
-//test div-by-zero
-// division error due to 0 mod 0
-int main()
-{
-  int x;
-  x = 42;
-  return 42%x%0;
-}

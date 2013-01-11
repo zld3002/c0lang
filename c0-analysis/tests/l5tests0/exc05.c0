@@ -1,7 +1,0 @@
-//test safe => segfault
-
-int main () {
-  int * p;
-  p = NULL;
-  return *p == *p ? 1 : 0;
-}

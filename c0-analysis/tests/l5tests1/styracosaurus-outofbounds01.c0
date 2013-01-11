@@ -1,8 +1,0 @@
-//test segfault
-
-int main()
-{
-	int[] A;
-	A = alloc_array(int, 0);
-	return A[0];
-}

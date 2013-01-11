@@ -1,3 +1,0 @@
-//test !gcc => error; gcc => return 0
-
-int main { return true; }

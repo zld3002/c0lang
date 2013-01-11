@@ -1,8 +1,0 @@
-void foo() {
-  int i = 17;
-}
-
-int main() {
-  foo();
-  return 1;
-}

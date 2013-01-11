@@ -1,2 +1,0 @@
-NB: unionfind-fail, blur-fail, and mergesort-fail are all predicated on "safe",
-since they depend on the runtime providing an implementation of c0_array_length.

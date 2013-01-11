@@ -1,6 +1,0 @@
-/* Null pointer */
-
-int main() {
-  int* i = NULL;
-  return *i;
-}

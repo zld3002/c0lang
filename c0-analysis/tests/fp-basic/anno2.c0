@@ -1,5 +1,0 @@
-//test error
-
-/*@ // a comment in an annotation
-
-int main() { return 0 };

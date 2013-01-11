@@ -1,8 +1,0 @@
-//test div-by-zero
-//Tests mod by 0
-
-int main()
-{
-    int x = 5%0;
-    return x;
-}

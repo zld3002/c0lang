@@ -1,7 +1,0 @@
-//test div-by-zero
-// division exception due to overflow of mod
-
-int main()
-{
-	return -2147483648 % -1;
-}

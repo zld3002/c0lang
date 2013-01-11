@@ -1,4 +1,0 @@
-int main() {
-  image_create(0, -1);
-  return 0;
-}

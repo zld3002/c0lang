@@ -1,8 +1,0 @@
-//test segfault
-//"convieniently" access a vaild address by accident
-
-int main()
-{
-    int[] *a = alloc(int[]);
-    return (*a)[0x100000];
-}

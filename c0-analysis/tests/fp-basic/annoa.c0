@@ -1,9 +1,0 @@
-//test error
-
-int f (int x) {
-  return (\old(x));
-}
-
-int main () {
-  return f(3);
-}
