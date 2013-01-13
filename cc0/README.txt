@@ -57,8 +57,8 @@ Building from source
  [ $ cd vm; make        # build c0vm, must run make libs first ]
  [ $ make checkvm       # test cc0 -b together with c0vm ]
 
- [ $ make coin-exec MLTON=true # build the interpreter ]
- [ $ make checkcoin            # run the regression suite on the interpreter ]
+ [ $ make coin-exec     # build the interpreter ]
+ [ $ make checkcoin     # run the regression suite on the interpreter ]
 
 If all tests succeed, you can roll out the current build with:
 
@@ -111,12 +111,37 @@ them.
 ----------------------------------------------------------------------
 Creating a binary distribution
 ----------------------------------------------------------------------
-cc0 version 4, on Jan 2, 2012 on Mac OS X 10.6.8 (Snow Leopard) svn
-revision 4 with
-  cd cc0/doc/reference ; pdflatex c0-reference.tex ; pdflatex c0-reference.tex
-  pdflatex c0-libraries.tex pdflatex c0-libraries.tex
-  [rm -f *.aux *.log *.out]
+Binary distro (pristine Ubuntu distro):
+
+  # Prerequisites
+  apt-get update
+  apt-get install subversion make g++ libpng-dev libncurses-dev texlive-latex-base texlive-fonts-recommended mlton
+  svn co https://svn.concert.cs.cmu.edu/c0
+
+  # Configuration
+  cd c0/cc0
+  ./configure
+  make
+  [ make check ]
+  make coin-exec
+  [ make checkcoin ]
+
+  # Make docs
+  cd doc/reference ; pdflatex c0-reference.tex ; pdflatex c0-reference.tex
+  pdflatex c0-libraries.tex ; pdflatex c0-libraries.tex
   cd ../../..
+
+  # Package
+  tar --exclude .svn -p -T cc0/dist-bin.txt -cvzf cc0-v${REV}-${VERS}-bin.tgz
+  scp cc0-v${REV}-${VERS}-bin.tgz c0.typesafety.net:/home/www/c0/dist/
+  
+  ** ${REV} is the four-digit revision number (0214, for instance)
+  ** ${VERS} explains the build setup:
+     - osx10.5.8 (Leapord)
+     - osx10.6.8 (Snow Leapord)
+     - osx10.8.2 (Mountain Lion)
+     - linux3.6.5-32bit (32 bit Ubuntu Precise on Linode)
+     - linux3.6.5-64bit (64 bit Ubuntu Precise on Linode)
 
   ** If distributing a source distribution for compilation, at this
   ** point the file compiler/bin/buildid can be edited to hard-code
@@ -126,38 +151,23 @@ revision 4 with
   ** Find version ???? with
   ** svn info https://svn.concert.cs.cmu.edu/c0
 
-  ./configure
-  make
-  make cc0-mlton
-  [ make check ]
-  make coin
-  make codex
-  make coin-exec
-  [ make checkcoin ] 
-  cd ..
-  tar --exclude .svn -p -T cc0/dist-bin.txt -cvzf cc0-v????-osx10.6.8-bin.tgz
-  scp cc0-v????-osx10.6.8-bin.tgz c0.typesafety.net:/home/www/c0/dist/
+Ubuntu notes: 
+ - Clients need gcc and libgmp3-dev installed 
 
+OSX notes: 
+ - It's hard to coax MLton into linking statically, but it's important
+   to do so
+     1. Download and install MacPorts, then do 
+        "sudo /opt/local/bin/port install gmp"
+     2. Get the *statically linked* version of MLton from mlton.org.
+     3. Delete all *libgmp* files in /opt/local/lib *except* libgmp.a.
+ - Clients presumably need, at minimum, xcode command line tools to
+   use the cc0 compiler.
 
 Older versions:
 
 http://www.cs.cmu.edu/~fp/misc/c0-v2379-osx10.5.8-bin.tgz
 http://www.cs.cmu.edu/~fp/misc/c0-v2403-osx10.6.8-bin.tgz
-
-Requirements for building a binary distribution
-- cc0 : you need Xcode.  Get it from your MacOS X install disk
-  or download from the Apple Developers website / the Mac App Store.
-- coin : you need gmp.  First download and install
-  MacPorts, then do "sudo /opt/local/bin/port install gmp"
-- c0-mode : for editing C0 code with Acquamacs or Emacs
-
-Step 1. Get and install the *statically linked* version of
-MLton from mlton.org
-
-Step 2. Delete all *libgmp* files in /opt/local/lib *except* libgmp.a
-(on OS X).
-
-Step 3. make cc0-mlton
 
 ----------------------------------------------------------------------
 Source distribution
