@@ -146,6 +146,11 @@ structure Test = Testing (struct
           if      s = Posix.Signal.fpe  then SIGFPE
           else if s = Posix.Signal.alrm then SIGALRM
           else if s = Posix.Signal.segv then SIGSEGV
+          else if s = Posix.Signal.kill then SIGSEGV
+            (* This is a lie, but on Ubuntu 12.04 stack overflow
+             * raises SIGKILL not SIGSEGV, which will trip up
+             * the testing harness if we don't treat it like SEGV.
+             *  - Rob Simmons Jan 13, 2013 *)
           else if s = Posix.Signal.bus then SIGSEGV
           else if s = Posix.Signal.abrt then SIGABRT
           else (print ("OH NOES!\nSig: ");
