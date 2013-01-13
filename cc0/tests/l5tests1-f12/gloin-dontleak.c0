@@ -1,4 +1,4 @@
-//test return 100
+//test gc => return 100
 int main(){
     int []arr;
     int i;
