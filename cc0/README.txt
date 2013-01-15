@@ -164,6 +164,11 @@ OSX notes:
  - Clients presumably need, at minimum, xcode command line tools to
    use the cc0 compiler.
 
+Windows notes:
+ - replace all instances of "make" with "make STATIC=true"
+ - Clients need the "libgmp3" and probably "libgmp-devel" Cygwin
+   packages, as well as "libpng-dev" "libncurses-dev"
+
 Older versions:
 
 http://www.cs.cmu.edu/~fp/misc/c0-v2379-osx10.5.8-bin.tgz
