@@ -256,7 +256,8 @@ Key bindings:
   (setq major-mode 'c0-mode
 	mode-name "C0"
 	local-abbrev-table c0-mode-abbrev-table
-	abbrev-mode t)
+	abbrev-mode t
+        indent-tabs-mode nil)
   ;; Add the "C0" menu options (defined above in c0-mode-map)
   (use-local-map c0-mode-map)
   ;; `c-init-language-vars' is a macro that is expanded at compile
