@@ -168,6 +168,14 @@ Windows notes:
  - replace all instances of "make" with "make STATIC=true"
  - Clients need the "libgmp3" and probably "libgmp-devel" Cygwin
    packages, as well as "libpng-dev" "libncurses-dev"
+ - run "make libs STATIC=true" before "make STATIC=true" on Windows,
+   as there's an extra dependency (coin and codex require libs to
+   already exist) that is not present in the non-static compiles. This
+   should eventually be fixed in the makefile.
+ - in cymbol/cymbol-native.sml, extern-lib-native.sml needs to be
+   replaced by extern-lib-static.sml, and extern-lib-static needs to
+   have the args library commented out. (This should probably be
+   standardized.)
 
 Older versions:
 
