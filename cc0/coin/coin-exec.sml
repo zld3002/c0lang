@@ -101,6 +101,7 @@ let
     ; CodeTab.reload_libs (!Flags.libraries)
     ; CodeTab.reload (library_headers @ program)
     ; app assertLibrariesLoaded (CodeTab.list ())
+    ; Builtins.reset {argv = rev (!Flags.runtime_args)}
     ; Exec.call (Symbol.symbol "main", [], ((0, 0), (0, 0), "_init_")))
    end handle Error.NullPointer => 
               (print "attempt to dereference null pointer\n"
