@@ -311,7 +311,7 @@ char char_chr(int n)
 
 \subsection{\tt img}
 
-The \verb'img' library defines a type for two-dimentional images
+The \verb'img' library defines a type for two-dimensional images
 represented with 4-channel color---alpha, red, green and blue---
 packed into one \verb'int'  It defines and image type \verb'image_t'.
 Like file handles, images must be explicitly destroyed when they
@@ -387,7 +387,7 @@ int[] image_data(image_t image)
 \end{verbatim}
 \end{small}
 
-\section{C0 libraries}
+\section{C0-implemented libraries}
 
 A few libraries are included as part of the default C0 distribution
 but are implemented in C0, not in C. Both the interface (\verb'.h0')
@@ -452,7 +452,7 @@ string int2hex(int x);
 \item[Rev. C0.0167, Dec 8, 2012.]  Conio Library.
   Function \verb'error' has been removed from the conio library, since
   it now exists as a language primitive.
-\item[Rev. C0.0273, Feb 1, 2013.]  Add \verb'util' and \verb'rand' libararies.
+\item[Rev. C0.0273, Feb 1, 2013.]  Add \verb'util' and \verb'rand' libraries.
 \end{description}
 
 \end{document}
