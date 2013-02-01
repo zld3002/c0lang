@@ -387,6 +387,53 @@ int[] image_data(image_t image)
 \end{verbatim}
 \end{small}
 
+\section{C0 libraries}
+
+A few libraries are included as part of the default C0 distribution
+but are implemented in C0, not in C. Both the interface (\verb'.h0')
+and the implementation (\verb'.c0') of these libraries is provided in
+the \verb'lib' directory.
+
+\subsection{\tt rand}
+
+\begin{small}
+\begin{verbatim}
+typedef struct rand* rand_t;
+rand_t init_rand (int seed)
+//@requires seed != 0;
+  ;
+int rand(rand_t gen);
+\end{verbatim}
+\end{small}
+
+\subsection{\tt util}
+
+\begin{small}
+\begin{verbatim}
+/* C0 constants */
+int int_size()
+//@ensures \result == 4;
+  ;
+int int_max()
+//@ensures \result == 2147483647;
+  ;
+int int_min()
+//@ensures \result == -2147483648;
+  ;
+
+/* Absolute value */
+int abs(int x)
+//@requires x > int_min();
+//@ensures \result >= 0;
+//@ensures \result == (x < 0 ? -x : x);
+  ;
+
+/* Returns the hexidecimal representation of the given integer as a
+ * string (without the leading 0x) */ 
+string int2hex(int x);
+\end{verbatim}
+\end{small}
+
 \section{Updates}
 \label{sec:updates}
 \hypertarget{sec:updates}{}
@@ -405,6 +452,7 @@ int[] image_data(image_t image)
 \item[Rev. C0.0167, Dec 8, 2012.]  Conio Library.
   Function \verb'error' has been removed from the conio library, since
   it now exists as a language primitive.
+\item[Rev. C0.0272, Feb 1, 2013.]  Add \verb'util' and \verb'rand' libararies.
 \end{description}
 
 \end{document}
