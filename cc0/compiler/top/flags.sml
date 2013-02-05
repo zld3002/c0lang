@@ -77,7 +77,7 @@ structure Flags :> FLAGS = struct
 
   val flag_interactive = Flag.flag "interactive"
   val flag_emacs = Flag.flag "emacs"
-  val run_call = ref NONE (* function call to make; internal default is main() *)
+  val run_call : string option ref = ref NONE (* function call to make; internal default is main() *)
 
   local
     fun parse_bytecode_arch s = case Int.fromString s of
