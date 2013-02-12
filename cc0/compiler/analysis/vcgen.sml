@@ -20,7 +20,7 @@ struct
   exception CriticalError of VError.error list
 
   (* Add ternary conditionals to z3 so we can assert about them *)
-  (* Use VError for warnings/errors? *)
+  (* Use VNote to indicate ifs/whiles and other noteworthy info *)
   (* Change statements to take in list of errors as argument so 
    * it can use cons and reverse the list at the end? *)
 
@@ -130,9 +130,13 @@ struct
         AAst.Nop => process_stms ext funs cont_stms
       | AAst.Seq(s1,s2) =>
           process_stms ext funs (s1::s2::cont_stms)
-      | AAst.Assert e => (process_exp ext check e) @ (check ext e)
+      | AAst.Assert e =>
+          (process_exp ext check e) @ (check ext e) @
+            (process_stms ext funs cont_stms)
       | AAst.Error e => raise Unimplemented
-      | AAst.Annotation e => (process_exp ext check e) @ (check ext e)
+      | AAst.Annotation e =>
+          (process_exp ext check e) @ (check ext e) @
+            (process_stms ext funs cont_stms)
       | AAst.Def((v,i),e) =>
           let
               val _ =
@@ -143,7 +147,7 @@ struct
                 | _ => ()
               val _ = assert (opeq (AAst.Local(v,i)) e)
           in
-            process_exp ext check e
+            (process_exp ext check e) @ (process_stms ext funs cont_stms)
           end
       | AAst.Assign(e1,NONE,e2) =>
           let
@@ -157,7 +161,7 @@ struct
             val errs2 = process_exp ext check e2
             val _ = assert (opeq e1 e2)
           in
-            errs1 @ errs2
+            errs1 @ errs2 @ (process_stms ext funs cont_stms)
           end
       | AAst.Assign(e1,SOME oper,e2) =>
           let
@@ -165,14 +169,62 @@ struct
             val errs2 = process_exp ext check e2
             val _ = assert (opeq e1 (AAst.Op(oper,[e1,e2])))
           in
-            errs1 @ errs2
+            errs1 @ errs2 @ (process_stms ext funs cont_stms)
           end
-      | AAst.Expr e => process_exp ext check e
+      | AAst.Expr e => (process_exp ext check e) @ (process_stms ext funs cont_stms)
       | AAst.Break => raise Unimplemented
       | AAst.Continue => raise Unimplemented
       | AAst.Return NONE => []
-      | AAst.Return (SOME e) => process_exp ext check e
-      | AAst.If(e,s1,s2,phis) => raise Unimplemented
+      | AAst.Return (SOME e) =>
+          (process_exp ext check e) @ (process_stms ext funs cont_stms)
+      | AAst.If(e,s1,s2,phis) =>
+          let
+            (* Makes assertions for phi statements *)
+            fun assert_phis indices =
+              let
+                fun assert_phi (AAst.PhiDef(s,i,is)) =
+                  assert (List.foldr (fn (j,e) =>
+                                        AAst.Op(Ast.LOGOR,[e,opeq (AAst.Local(s,i))
+                                     (AAst.Local(s,List.nth(is,j)))]))
+                                     (AAst.BoolConst false)
+                                     indices)
+
+              in List.map assert_phi phis
+              end
+
+            (* Save the current state for when we do the else case *)
+            val _ = C.push()
+            (* Assert the condition is true, then check if it is satisfiable
+             * (meaning that the then branch could potentially be taken). *)
+            val _ = assert e
+            val cond_sat = C.check()
+            (* Generate errors for the then statements given that the conditional is true. *)
+            val _ = if cond_sat then print "Entering then case\n" else ()
+            val thenerrs = if cond_sat then process_stms ext funs [s1] else []
+            (* Revert to before assertions for then, and resave for doing later statements. *)
+            val _ = C.pop()
+            val _ = C.push()
+            (* Assert the condition is false, then check if it is satisfiable
+             * (meaning that the else branch could potentially be taken). *)
+            val _ = assert (negate_exp e)
+            val negcond_sat = C.check()
+            (* Generate errors for the else statements given that the conditional is false. *)
+            val _ = if negcond_sat then print "Entering else case\n" else ()
+            val elseerrs = if negcond_sat then process_stms ext funs [s2] else []
+            (* Revert to before assertions for else. *)
+            val _ = C.pop()
+            (* Only process statements of branches that could potentially be taken. *)
+            val _ = if cond_sat then process_stms ext funs [s1] else []
+            val _ = if negcond_sat then process_stms ext funs [s2] else []
+            (* Use phi functions to make assertions about values after the if *)
+            val indices = if negcond_sat then [1] else []
+            val indices = if cond_sat then 0::indices else indices
+            val _ = assert_phis indices
+            (* Generate errors for the rest of the statements in the program. *)
+            val _ = print " Exiting if statement\n"
+            val resterrs = process_stms ext funs cont_stms
+          in thenerrs @ elseerrs @ resterrs
+          end
       | AAst.While(cntphis,e,es,s,brkphis) => raise Unimplemented
       | AAst.MarkedS m =>
           process_stms (Mark.ext m) funs ((Mark.data m)::cont_stms))
@@ -185,8 +237,9 @@ struct
     let
       val _ =
         case (!debug,ext) of
-          (true,SOME ext) =>  print ("Assertion at " ^ (Mark.show ext) ^
+          (true,SOME ext) => print ("Checking at " ^ (Mark.show ext) ^
                  ": " ^ AAst.Print.pp_aexpr e ^ "\n")
+        | (true,NONE) => print ("Checking: " ^ AAst.Print.pp_aexpr e ^ "\n")
         | _ => ()
 
         (* Assert the error case, and if satisfiable, potential values
@@ -197,7 +250,7 @@ struct
         val nege = negate_exp e
         val _ = assert_fun nege
         val sat_error =
-          VError.VerificationNote(ext,"Error case " ^ 
+          VError.VerificationError(ext,"Error case " ^ 
             (AAst.Print.pp_aexpr nege) ^ " is satisfiable")
         val errs = if C.check() then [sat_error] else []
         (* Now return the stack to as it was so we can make the actual
@@ -220,18 +273,22 @@ struct
       end
 
   (* Generates the vc errors for a given function. *)
-  fun generate_vc (AAst.Function(_,_,types,_,requires,stm,ensures)) dbg =
+  fun generate_vc (f as AAst.Function(_,_,types,args,requires,stm,ensures)) dbg =
     (let
       val assert_fun =
         fn e => C.assert types e
-          handle Conditions.Unimplemented => ()
+          handle Conditions.Unimplemented => 
+            if !debug
+              then print ("Unimplemented assertion for " ^ AAst.Print.pp_aexpr e ^ "\n")
+              else ()
       val _ = typemap := types
       val _ = debug := dbg
       val check = check_assert assert_fun
+      fun assert e = (print ("Assertion: " ^ AAst.Print.pp_aexpr e ^ "\n");assert_fun e)
       (* Assert what we know from the \requires contracts. *)
       val _ = List.map (check NONE) requires
       (* Process the actual function code. *)
-      val errs = process_stms NONE (assert_fun,check) [stm]
+      val errs = process_stms NONE (assert,check) [stm]
       (* Get the list of return values, check that they work in ensures
        * when replacing \result *)
       val retvals = get_returns stm

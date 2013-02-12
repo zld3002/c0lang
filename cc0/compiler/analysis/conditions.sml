@@ -166,7 +166,7 @@ fun assert(map : Ast.tp SymMap.map)(e) =
 		      | AAst.Old(AAst.Local(sym, gen)) => raise Unimplemented
 		      | AAst.AllocArray(_, expr) => getLocalList([expr])
 		      | AAst.Select(expr, _) => getLocalList([expr])
-		      | AAst.MarkedE(mk) => [Mark.data(mk)]
+		      | AAst.MarkedE(mk) => getLocalList([Mark.data(mk)])
                       | _ => []
 		    )@getLocalList(xs)
 
