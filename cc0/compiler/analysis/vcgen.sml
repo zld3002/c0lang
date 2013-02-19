@@ -23,10 +23,14 @@ struct
   (* Use VNote to indicate ifs/whiles and other noteworthy info *)
   (* Change statements to take in list of errors as argument so 
    * it can use cons and reverse the list at the end? *)
+  (* Process exp's in if and while statements for internal errors *)
 
   val ZERO = AAst.IntConst(Word32Signed.ZERO)
   val typemap : AAst.tp SymMap.map ref = ref (SymMap.empty)
   val debug = ref false
+  val cnt_index = ref 0
+  val brk_index = ref 0
+
   fun opeq e1 e2 = AAst.Op(Ast.EQ, [e1,e2])
 
 
@@ -122,21 +126,21 @@ struct
     | _ => []
 
   (* Makes assertions for a given statement *)
-  fun process_stms ext (funs as (assert,check)) stms = 
+  fun process_stms ext (funs as (assert,check)) invs (phis as (cnt_phis,brk_phis)) stms = 
     case stms of
       [] => []
     | stm::cont_stms =>
       (case stm of
-        AAst.Nop => process_stms ext funs cont_stms
+        AAst.Nop => process_stms ext funs invs phis cont_stms
       | AAst.Seq(s1,s2) =>
-          process_stms ext funs (s1::s2::cont_stms)
+          process_stms ext funs invs phis (s1::s2::cont_stms)
       | AAst.Assert e =>
           (process_exp ext check e) @ (check ext e) @
-            (process_stms ext funs cont_stms)
+            (process_stms ext funs invs phis cont_stms)
       | AAst.Error e => raise Unimplemented
       | AAst.Annotation e =>
           (process_exp ext check e) @ (check ext e) @
-            (process_stms ext funs cont_stms)
+            (process_stms ext funs invs phis cont_stms)
       | AAst.Def((v,i),e) =>
           let
               val _ =
@@ -147,7 +151,7 @@ struct
                 | _ => ()
               val _ = assert (opeq (AAst.Local(v,i)) e)
           in
-            (process_exp ext check e) @ (process_stms ext funs cont_stms)
+            (process_exp ext check e) @ (process_stms ext funs invs phis cont_stms)
           end
       | AAst.Assign(e1,NONE,e2) =>
           let
@@ -161,7 +165,7 @@ struct
             val errs2 = process_exp ext check e2
             val _ = assert (opeq e1 e2)
           in
-            errs1 @ errs2 @ (process_stms ext funs cont_stms)
+            errs1 @ errs2 @ (process_stms ext funs invs phis cont_stms)
           end
       | AAst.Assign(e1,SOME oper,e2) =>
           let
@@ -169,27 +173,27 @@ struct
             val errs2 = process_exp ext check e2
             val _ = assert (opeq e1 (AAst.Op(oper,[e1,e2])))
           in
-            errs1 @ errs2 @ (process_stms ext funs cont_stms)
+            errs1 @ errs2 @ (process_stms ext funs invs phis cont_stms)
           end
-      | AAst.Expr e => (process_exp ext check e) @ (process_stms ext funs cont_stms)
-      | AAst.Break => raise Unimplemented
-      | AAst.Continue => raise Unimplemented
+      | AAst.Expr e => (process_exp ext check e) @ (process_stms ext funs invs phis cont_stms)
       | AAst.Return NONE => []
       | AAst.Return (SOME e) =>
-          (process_exp ext check e) @ (process_stms ext funs cont_stms)
-      | AAst.If(e,s1,s2,phis) =>
+          (process_exp ext check e) @ (process_stms ext funs invs phis cont_stms)
+      | AAst.If(e,s1,s2,if_phis) =>
           let
             (* Makes assertions for phi statements *)
             fun assert_phis indices =
               let
                 fun assert_phi (AAst.PhiDef(s,i,is)) =
-                  assert (List.foldr (fn (j,e) =>
-                                        AAst.Op(Ast.LOGOR,[e,opeq (AAst.Local(s,i))
-                                     (AAst.Local(s,List.nth(is,j)))]))
-                                     (AAst.BoolConst false)
-                                     indices)
+                  assert (List.foldr (fn ((j,e),res) =>
+                             AAst.Op(Ast.LOGOR,[res,
+                             AAst.Op(Ast.LOGAND,[e,
+                                opeq (AAst.Local(s,i))
+                                     (AAst.Local(s,List.nth(is,j)))])]))
+                           (AAst.BoolConst false)
+                           indices)
 
-              in List.map assert_phi phis
+              in List.map assert_phi if_phis
               end
 
             (* Save the current state for when we do the else case *)
@@ -198,36 +202,115 @@ struct
              * (meaning that the then branch could potentially be taken). *)
             val _ = assert e
             val cond_sat = C.check()
+            val old_cnt_index = !cnt_index
+            val old_brk_index = !brk_index
             (* Generate errors for the then statements given that the conditional is true. *)
             val _ = if cond_sat then print "Entering then case\n" else ()
-            val thenerrs = if cond_sat then process_stms ext funs [s1] else []
+            val errs = process_stms ext funs invs phis [s1]
+            val thenerrs = if cond_sat then errs else []
             (* Revert to before assertions for then, and resave for doing later statements. *)
             val _ = C.pop()
             val _ = C.push()
             (* Assert the condition is false, then check if it is satisfiable
              * (meaning that the else branch could potentially be taken). *)
-            val _ = assert (negate_exp e)
+            val neg_e = negate_exp e
+            val _ = assert neg_e
             val negcond_sat = C.check()
             (* Generate errors for the else statements given that the conditional is false. *)
             val _ = if negcond_sat then print "Entering else case\n" else ()
-            val elseerrs = if negcond_sat then process_stms ext funs [s2] else []
+            val errs = process_stms ext funs invs phis [s2]
+            val elseerrs = if negcond_sat then errs else []
             (* Revert to before assertions for else. *)
             val _ = C.pop()
-            (* Only process statements of branches that could potentially be taken. *)
-            val _ = if cond_sat then process_stms ext funs [s1] else []
-            val _ = if negcond_sat then process_stms ext funs [s2] else []
-            (* Use phi functions to make assertions about values after the if *)
-            val indices = if negcond_sat then [1] else []
-            val indices = if cond_sat then 0::indices else indices
+            val _ = cnt_index := old_cnt_index
+            val _ = brk_index := old_brk_index
+            (* Reprocess statements for assertion knowledge. *)
+            val _ = process_stms ext funs invs phis [s1]
+            val _ = process_stms ext funs invs phis [s2]
+            (* Use phi functions to make assertions about values after the if. *)
+            val indices = if negcond_sat then [(1,neg_e)] else []
+            val indices = if cond_sat then (0,e)::indices else indices
             val _ = assert_phis indices
             (* Generate errors for the rest of the statements in the program. *)
             val _ = print " Exiting if statement\n"
-            val resterrs = process_stms ext funs cont_stms
+            val resterrs = process_stms ext funs invs phis cont_stms
           in thenerrs @ elseerrs @ resterrs
           end
-      | AAst.While(cntphis,e,es,s,brkphis) => raise Unimplemented
+      | AAst.Break =>
+          let
+            (* Loop invariants hold after a break? *)
+            fun assert_phi (AAst.PhiDef(s,i,is)) =
+              assert (AAst.Op(Ast.LOGAND,
+            (* For breaks need to assert 0th break as well to make variables align?
+             * Otherwise the invariants wouldn't have the relevant values *)
+                       [opeq (AAst.Local(s,List.nth(is,0))) (AAst.Local(s,i)),
+                        opeq (AAst.Local(s,List.nth(is,!brk_index))) (AAst.Local(s,i))]))
+            val _ = C.push()
+            val _ = List.map assert_phi brk_phis 
+            val errs = List.concat(List.map (check ext) invs)
+            val _ = C.pop()
+            val _ = brk_index := !brk_index + 1
+          in errs @ (process_stms ext funs invs phis cont_stms)
+          end
+      | AAst.Continue =>
+          let
+            fun assert_phi (AAst.PhiDef(s,i,is)) =
+              assert (opeq (AAst.Local(s,List.nth(is,!cnt_index))) (AAst.Local(s,i)))
+            val _ = C.push()
+            val _ = List.map assert_phi cnt_phis 
+            val errs = List.concat(List.map (check ext) invs)
+            val _ = C.pop()
+            val _ = cnt_index := !cnt_index + 1
+          in errs @ (process_stms ext funs invs phis cont_stms)
+          end
+      | AAst.While(cntphis,e,new_invs,s,brkphis) =>
+          let
+            (* Thanks to SSA, everything defined before we enter the loop is a
+             * constant inside of and after the loop *)
+            val _ = C.push()
+            val old_cnt_index = !cnt_index
+            val old_brk_index = !brk_index
+            val _ = cnt_index := 1
+            val _ = brk_index := 1
+
+            fun assert_phi n (AAst.PhiDef(s,i,is)) =
+              assert (opeq (AAst.Local(s,List.nth(is,n))) (AAst.Local(s,i)))
+
+            fun check_phi n (AAst.PhiDef(s,i,is)) =
+              check ext (opeq (AAst.Local(s,List.nth(is,n))) (AAst.Local(s,i)))
+
+            (* First make sure that invariants hold before entering the loop *)
+            val _ = List.map (assert_phi 0) cntphis
+            val _ = List.map (check ext) new_invs
+            (* Assert the condition while inside the loop *)
+            val _ = assert e
+            val cond_sat = C.check()
+            val errs = process_stms ext funs new_invs (cntphis,brkphis) [s]
+            val while_errs = if cond_sat then errs else []
+            (* Now check the case where the loop continues from the end *)
+            val _ = List.map (check_phi (!cnt_index)) cntphis
+
+            (* Now revert back to outside the loop *)
+            val _ = C.pop()
+
+            (* ------------------------------------------------- *)
+            (* Assert about constants inside of loop (go through loop again to do this) *)
+            (* ------------------------------------------------- *)
+
+            (* Assert the invariants, since we can assume that they
+             * were true upon exiting the loop *)
+            val _ = List.map assert new_invs
+            (* Assert break phis so variables coincide with new versions in rest of code *)
+            val _ = List.map (assert_phi 0) brkphis
+            (* Revert back to old indices of phis *)
+            val _ = cnt_index := old_cnt_index
+            val _ = brk_index := old_brk_index
+            (* Generate errors for the rest of the statements in the program. *)
+            val rest_errs = process_stms ext funs invs phis cont_stms
+          in while_errs @ rest_errs
+          end
       | AAst.MarkedS m =>
-          process_stms (Mark.ext m) funs ((Mark.data m)::cont_stms))
+          process_stms (Mark.ext m) funs invs phis ((Mark.data m)::cont_stms))
 
   (* The primary function used for making and checking assertions. It produces
    * both warnings and errors (as specified in vcrules.tex). It can also just
@@ -284,11 +367,12 @@ struct
       val _ = typemap := types
       val _ = debug := dbg
       val check = check_assert assert_fun
-      fun assert e = (print ("Assertion: " ^ AAst.Print.pp_aexpr e ^ "\n");assert_fun e)
+      fun assert e = (if !debug then print ("Assertion: " ^ AAst.Print.pp_aexpr e ^ "\n")
+                                else ();assert_fun e)
       (* Assert what we know from the \requires contracts. *)
       val _ = List.map (check NONE) requires
       (* Process the actual function code. *)
-      val errs = process_stms NONE (assert,check) [stm]
+      val errs = process_stms NONE (assert,check) [] ([],[]) [stm]
       (* Get the list of return values, check that they work in ensures
        * when replacing \result *)
       val retvals = get_returns stm
