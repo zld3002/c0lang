@@ -25,6 +25,8 @@ struct
    * it can use cons and reverse the list at the end? *)
   (* Process exp's in if and while statements for internal errors *)
 
+  (* Assert conditions with phis disjunctions *)
+
   val ZERO = AAst.IntConst(Word32Signed.ZERO)
   val typemap : AAst.tp SymMap.map ref = ref (SymMap.empty)
   val debug = ref false
@@ -273,6 +275,9 @@ struct
             val _ = cnt_index := 1
             val _ = brk_index := 1
 
+            (* use disjunctions for phis? Need to substitute into
+             * invariants for continues and breaks *)
+
             fun assert_phi n (AAst.PhiDef(s,i,is)) =
               assert (opeq (AAst.Local(s,List.nth(is,n))) (AAst.Local(s,i)))
 
@@ -300,7 +305,8 @@ struct
             (* Assert the invariants, since we can assume that they
              * were true upon exiting the loop *)
             val _ = List.map assert new_invs
-            (* Assert break phis so variables coincide with new versions in rest of code *)
+            (* Assert phis so variables coincide with new versions in rest of code *)
+            val _ = List.map (assert_phi 0) cntphis
             val _ = List.map (assert_phi 0) brkphis
             (* Revert back to old indices of phis *)
             val _ = cnt_index := old_cnt_index
