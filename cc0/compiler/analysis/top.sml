@@ -49,11 +49,15 @@ struct
   fun verifCheck prog =
     let
       val debug = false
+      val print_funcs = false
       val _ = Conditions.StartZ3 ()
       fun checkFunc f =
         (Conditions.reset();VCGen.generate_vc f debug)
       fun check funcs = List.concat (map checkFunc funcs)
       val funcs = Analysis.analyze true prog
+      val _ = if print_funcs
+        then print (List.foldr (fn (f,s) => (AAst.Print.pp_afunc f) ^ "\n" ^ s) "" funcs)
+        else ()
       val errs = check funcs
       val _ = Conditions.EndZ3 ()
     in

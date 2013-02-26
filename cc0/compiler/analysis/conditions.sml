@@ -6,7 +6,7 @@
 
 signature CONDITIONS =
 sig
-    exception Unimplemented
+    exception Unimplemented of string
 
     (* Tries to assert a boolean expression. *)
     val assert : (Ast.tp SymMap.map) -> (AAst.aexpr -> unit)
@@ -52,10 +52,11 @@ val z3proc : ((TextIO.instream * TextIO.outstream) *
 	      (TextIO.instream, TextIO.outstream) Unix.proc) option ref
   = ref NONE
 val z3StackSize : int ref = ref 0
+val declaredVariables : LocalSet.set ref = ref LocalSet.empty
 
 exception Z3NotStarted
 exception Z3InvalidStack
-exception Unimplemented
+exception Unimplemented of string
 
 fun z3Started () : bool =
     case (! z3proc) of
@@ -118,7 +119,7 @@ fun assert(map : Ast.tp SymMap.map)(e) =
 	let
 	    fun localName(AAst.Local(sym, gen)) =
 		    ((Symbol.nameFull(sym)) ^ "_" ^ (Int.toString(gen)))
-              | localName _ = raise Unimplemented
+              | localName _ = raise Unimplemented "localName"
 
 	    fun localType(e as AAst.Local(sym, gen)) =
                 (case SymMap.find(map, sym) of
@@ -126,35 +127,38 @@ fun assert(map : Ast.tp SymMap.map)(e) =
                    case tp of
                      Ast.Int => SOME "(_ BitVec 32)"
                    | Ast.Bool => SOME "Bool"
-                   | Ast.String => raise Unimplemented
-                   | Ast.Char => raise Unimplemented
-                   | Ast.Pointer(_) => raise Unimplemented
-                   | Ast.Array(_) => raise Unimplemented
+                   | Ast.String => raise Unimplemented "localType"
+                   | Ast.Char => raise Unimplemented "localType"
+                   | Ast.Pointer(_) => raise Unimplemented "localType"
+                   | Ast.Array(_) => raise Unimplemented "localType"
                    | Ast.TypeName(_) => NONE
                    | Ast.Void => NONE
                    | Ast.Any => NONE
-                   | _ => raise Unimplemented
+                   | _ => raise Unimplemented "localType"
                    )
                  | _ => (* Default to int32 *)
 		   SOME "(_ BitVec 32)")
-              | localType _ = raise Unimplemented
+              | localType _ = raise Unimplemented "localType"
 
             fun localArrayLengthName(e as AAst.Local(sym, gen)) =
                 (localName(e) ^ "_length")
-              | localArrayLengthName _ = raise Unimplemented
+              | localArrayLengthName _ = raise Unimplemented "localArray"
 
             fun localLenToLocal(AAst.Length(y as AAst.Local(sym, gen))) = 
                 (AAst.Local(Symbol.symbol(localArrayLengthName(y)), gen))
-              | localLenToLocal _ = raise Unimplemented
+              | localLenToLocal _ = raise Unimplemented "localLen"
 
-	    fun getLocalList(e : AAst.aexpr list) : AAst.aexpr list =
+	    fun getNewLocalList(e : AAst.aexpr list) : AAst.aexpr list =
 		case e of
 		    [] => []
 		  | x::xs => (
 		    case x of
-			AAst.Local(_) => [x]
-		      | AAst.Op(_, exprlist) => getLocalList(exprlist)
-		      | AAst.Call(_, exprlist) => getLocalList(exprlist)
+            AAst.Local(s) =>
+              if LocalSet.member(!declaredVariables,s)
+                then []
+                else (declaredVariables := LocalSet.add(!declaredVariables,s);[x])
+		      | AAst.Op(_, exprlist) => getNewLocalList(exprlist)
+		      | AAst.Call(_, exprlist) => getNewLocalList(exprlist)
 		      | AAst.IntConst(_) => []
 		      | AAst.BoolConst(_) => []
 		      | AAst.StringConst(_) => []
@@ -163,19 +167,19 @@ fun assert(map : Ast.tp SymMap.map)(e) =
 		      | AAst.Null => []
 		      | AAst.Result => []
 		      | AAst.Length(AAst.Local(sym, gen)) => [localLenToLocal(x)]
-		      | AAst.Old(AAst.Local(sym, gen)) => raise Unimplemented
-		      | AAst.AllocArray(_, expr) => getLocalList([expr])
-		      | AAst.Select(expr, _) => getLocalList([expr])
-		      | AAst.MarkedE(mk) => getLocalList([Mark.data(mk)])
+		      | AAst.Old(AAst.Local(sym, gen)) => raise Unimplemented "localList"
+		      | AAst.AllocArray(_, expr) => getNewLocalList([expr])
+		      | AAst.Select(expr, _) => getNewLocalList([expr])
+		      | AAst.MarkedE(mk) => getNewLocalList([Mark.data(mk)])
                       | _ => []
-		    )@getLocalList(xs)
+		    )@getNewLocalList(xs)
 
 	    fun assert_expr(e : AAst.aexpr) =
 		case e of
 		    AAst.Local((sym, gen)) => localName(e)
 		  | AAst.Op(oper, exprlist) => (
 		    case oper of
-			Ast.SUB => raise Unimplemented (* Not seen *)
+			Ast.SUB => raise Unimplemented "assert_expr sub" (* Not seen *)
 		      | Ast.LOGNOT => (
 			let
 			    val [x] = exprlist
@@ -195,7 +199,7 @@ fun assert(map : Ast.tp SymMap.map)(e) =
 			    "(bvneg " ^ (assert_expr(x)) ^ ")"
 			end
 			)
-		      | Ast.DEREF => raise Unimplemented
+		      | Ast.DEREF => raise Unimplemented "assert_expr deref"
 		      | Ast.TIMES => (
 			let
 			    val [x,y] = exprlist
@@ -312,23 +316,29 @@ fun assert(map : Ast.tp SymMap.map)(e) =
 			    "(ite " ^ (assert_expr(x)) ^ " " ^ (assert_expr(y)) ^ " " ^ (assert_expr(z)) ^ ")"
 			end)
 		    )
-		  | AAst.Call(sym, exprlist) => raise Unimplemented (* Most likely not seen *)
+		  | AAst.Call(sym, exprlist) => raise Unimplemented "assert_expr call" (* Most likely not seen *)
 		  | AAst.IntConst(word) => (
 		    "(_ bv" ^ Word32.fmt(StringCvt.DEC)(word) ^ " 32)")
 		  | AAst.BoolConst(bool) => (Bool.toString bool)
-		  | AAst.StringConst(str) => raise Unimplemented (* Not arithmetic *)
-		  | AAst.CharConst(ch) => raise Unimplemented (* Not arithmetic *)
-		  | AAst.Alloc(tp) => raise Unimplemented (* No pointers *)
-		  | AAst.Null => raise Unimplemented (* No pointers *)
-		  | AAst.Result => raise Unimplemented (* Not seen *)
+		  | AAst.StringConst(str) => raise Unimplemented "assert_expr string" (* Not arithmetic *)
+		  | AAst.CharConst(ch) => raise Unimplemented "assert_expr char" (* Not arithmetic *)
+		  | AAst.Alloc(tp) => raise Unimplemented "assert_expr alloc" (* No pointers *)
+		  | AAst.Null => raise Unimplemented "assert_expr null" (* No pointers *)
+		  | AAst.Result => raise Unimplemented "assert_expr result" (* Not seen *)
 		  | AAst.Length(AAst.Local(sym, gen)) => assert_expr(localLenToLocal(e)) (* Treat as a _length variable *)
-		  | AAst.Old(AAst.Local(sym, gen)) => raise Unimplemented (* ??? *)
-		  | AAst.AllocArray(tp,expr) => raise Unimplemented (* Not seen *)
-		  | AAst.Select(expr,sym) => raise Unimplemented (* Struct fields, we'll deal with this later *)
+		  | AAst.Length(AAst.MarkedE m) =>
+          (case Mark.data m of
+            AAst.Local(sym,gen) =>
+              assert_expr(localLenToLocal(AAst.Length(Mark.data m))) (* Treat as a _length variable *)
+          | _ => raise Unimplemented "assert_expr length")
+		  | AAst.Old(AAst.Local(sym, gen)) => raise Unimplemented "assert_expr old" (* ??? *)
+		  | AAst.Old(AAst.MarkedE m) => raise Unimplemented "assert_expr old" (* ??? *)
+		  | AAst.AllocArray(tp,expr) => raise Unimplemented "assert_expr allocarray" (* Not seen *)
+		  | AAst.Select(expr,sym) => raise Unimplemented "assert_expr select" (* Struct fields, we'll deal with this later *)
 		  | AAst.MarkedE(mk) => assert_expr(Mark.data(mk))
-		  | _ => raise Unimplemented
+		  | _ => raise Unimplemented "assert_expr base case"
 
-	    val local_list = getLocalList([e])
+	    val local_list = getNewLocalList([e])
 	    fun printList(ls) =
 		case ls of
 		    [] => ()
@@ -400,6 +410,7 @@ fun reset () =
 	else
 	    (printToZ3("(reset)\n");
 	     (z3StackSize := 0);
+       (declaredVariables := LocalSet.empty);
 	     ())
     else
 	raise Z3NotStarted

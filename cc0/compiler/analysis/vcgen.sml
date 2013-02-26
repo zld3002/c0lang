@@ -24,6 +24,10 @@ struct
 
   (* Assert conditions with phis disjunctions *)
 
+  (* Declare all local variables at start of run in Conditions *)
+
+  (* Make it so lengths are known to be positive (or something) *)
+
   val ZERO = AAst.IntConst(Word32Signed.ZERO)
   val typemap : AAst.tp SymMap.map ref = ref (SymMap.empty)
   val debug = ref false
@@ -123,6 +127,8 @@ struct
      | AAst.Op(Ast.LEQ,l) => AAst.Op(Ast.GREATER,l)
      | AAst.Op(Ast.GREATER,l) => AAst.Op(Ast.LEQ,l)
      | AAst.Op(Ast.GEQ,l) => AAst.Op(Ast.LESS,l)
+     | AAst.Op(Ast.LOGAND,[e1,e2]) => AAst.Op(Ast.LOGOR,[negate_exp e1,negate_exp e2])
+     | AAst.Op(Ast.LOGOR,[e1,e2]) => AAst.Op(Ast.LOGAND,[negate_exp e1,negate_exp e2])
      | AAst.MarkedE m => negate_exp (Mark.data m)
      | _ => AAst.Op(Ast.LOGNOT,[exp])
 
@@ -267,10 +273,6 @@ struct
           end
       | AAst.Break =>
           let
-            (* TODO need to do something similar to before to make break variables
-             * line up with the continue ones (run something with replacing invariants
-             * for 0th break phi, then replace on that with brk_index *)
-             (* use bool argument to check_invariants to do this? *)
             val errs = brk_fun ext (!brk_index)
             val _ = brk_index := !brk_index + 1
           in errs @ (process_stms ext funs phi_funs cont_stms)
@@ -339,7 +341,7 @@ struct
             val _ = brk_index := old_brk_index
             (* Generate errors for the rest of the statements in the program. *)
             val rest_errs = process_stms ext funs phi_funs cont_stms
-          in exp_errs @ while_errs @ rest_errs
+          in exp_errs @ inv_errs @ while_errs @ rest_errs
           end
       | AAst.MarkedS m =>
           process_stms (Mark.ext m) funs phi_funs ((Mark.data m)::cont_stms))
@@ -368,6 +370,9 @@ struct
           VError.VerificationError(ext,"Error case " ^ 
             (AAst.Print.pp_aexpr nege) ^ " is satisfiable")
         val errs = if C.check() then [sat_error] else []
+        val _ = if !debug
+          then List.map (fn e => print (VError.pp_error e ^ "\n")) errs
+          else []
         (* Now return the stack to as it was so we can make the actual
          * assumption that we wanted to from the beginning. *)
         val _ = C.pop()
@@ -392,9 +397,10 @@ struct
     (let
       val assert_fun =
         fn e => C.assert types e
-          handle Conditions.Unimplemented => 
+          handle Conditions.Unimplemented s => 
             if !debug
-              then print ("Unimplemented assertion for " ^ AAst.Print.pp_aexpr e ^ "\n")
+              then print ("Unimplemented assertion for " ^ AAst.Print.pp_aexpr e ^
+                          " found in " ^ s ^ "\n")
               else ()
       val _ = typemap := types
       val _ = debug := dbg
@@ -402,7 +408,7 @@ struct
       fun assert e = (if !debug then print ("Assertion: " ^ AAst.Print.pp_aexpr e ^ "\n")
                                 else ();assert_fun e)
       (* Assert what we know from the \requires contracts. *)
-      val _ = List.map (check NONE) requires
+      val _ = List.map assert requires
       (* Process the actual function code. *)
       val default_fun = fn x => fn y => []
       val errs = process_stms NONE (assert,check) (default_fun,default_fun) [stm]
