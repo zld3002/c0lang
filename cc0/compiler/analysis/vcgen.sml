@@ -22,11 +22,13 @@ struct
   (* Add ternary conditionals to z3 so we can assert about them *)
   (* Use VNote to indicate ifs/whiles and other noteworthy info *)
 
-  (* Assert conditions with phis disjunctions *)
+  (* Assert conditions/loops with phis disjunctions *)
 
   (* Declare all local variables at start of run in Conditions *)
 
   (* Make it so lengths are known to be positive (or something) *)
+  (* have errors just drop out *)
+  (* tests with gcd and binary search errori, continue/break/error *)
 
   val ZERO = AAst.IntConst(Word32Signed.ZERO)
   val typemap : AAst.tp SymMap.map ref = ref (SymMap.empty)
