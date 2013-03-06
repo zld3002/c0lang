@@ -36,7 +36,7 @@ struct
   val brk_index = ref 0
   val declaredVars : LocalSet.set ref = ref LocalSet.empty
 
-  fun print s = if !debug then print s else ()
+  fun print_dbg s = if !debug then print s else ()
   fun opeq e1 e2 = AAst.Op(Ast.EQ, [e1,e2])
 
 
@@ -283,7 +283,7 @@ struct
             val old_cnt_index = !cnt_index
             val old_brk_index = !brk_index
             (* Generate errors for the then statements given that the conditional is true. *)
-            val _ = if cond_sat then print "Entering then case\n" else ()
+            val _ = if cond_sat then print_dbg "Entering then case\n" else ()
             val errs = process_stms ext funs phi_funs [s1]
             val thenerrs = if cond_sat then errs else []
             (* Revert to before assertions for then, and resave for doing later statements. *)
@@ -295,7 +295,7 @@ struct
             val _ = assert neg_e
             val negcond_sat = C.check()
             (* Generate errors for the else statements given that the conditional is false. *)
-            val _ = if negcond_sat then print "Entering else case\n" else ()
+            val _ = if negcond_sat then print_dbg "Entering else case\n" else ()
             val errs = process_stms ext funs phi_funs [s2]
             val elseerrs = if negcond_sat then errs else []
             (* Revert to before assertions for else. *)
@@ -310,7 +310,7 @@ struct
             val indices = if cond_sat then (0,e)::indices else indices
             val _ = assert_phis indices
             (* Generate errors for the rest of the statements in the program. *)
-            val _ = print " Exiting if statement\n"
+            val _ = print_dbg " Exiting if statement\n"
             val resterrs = process_stms ext funs phi_funs cont_stms
           in exp_errs @ thenerrs @ elseerrs @ resterrs
           end
@@ -393,11 +393,10 @@ struct
   fun check_assert assert_fun ext e =
     let
       val _ =
-        case (!debug,ext) of
-          (true,SOME ext) => print ("Checking at " ^ (Mark.show ext) ^
+        case ext of
+          SOME ext => print_dbg ("Checking at " ^ (Mark.show ext) ^
                  ": " ^ AAst.Print.pp_aexpr e ^ "\n")
-        | (true,NONE) => print ("Checking: " ^ AAst.Print.pp_aexpr e ^ "\n")
-        | _ => ()
+        | NONE => print_dbg ("Checking: " ^ AAst.Print.pp_aexpr e ^ "\n")
 
         (* Assert the error case, and if satisfiable, potential values
          * could lead to an error, so give a warning *)
@@ -411,7 +410,7 @@ struct
             (AAst.Print.pp_aexpr nege) ^ " is satisfiable")
         val errs = if C.check() then [sat_error] else []
         val _ = if !debug
-          then List.map (fn e => print (VError.pp_error e ^ "\n")) errs
+          then List.map (fn e => print_dbg (VError.pp_error e ^ "\n")) errs
           else []
         (* Now return the stack to as it was so we can make the actual
          * assumption that we wanted to from the beginning. *)
@@ -442,22 +441,17 @@ struct
           if LocalSet.member(!declaredVars,l) then ()
             else (declaredVars := LocalSet.add(!declaredVars,l);declare l
               handle C.Unimplemented s => 
-                if !debug
-                  then print ("Unimplemented declaration for " ^ AAst.Print.pp_loc l ^
-                          " found in " ^ s ^ "\n")
-                else ())
+                print_dbg ("Unimplemented declaration for " ^ AAst.Print.pp_loc l ^
+                           " found in " ^ s ^ "\n"))
       val assert_fun =
         fn e => C.assert e
           handle C.Unimplemented s => 
-            if !debug
-              then print ("Unimplemented assertion for " ^ AAst.Print.pp_aexpr e ^
-                          " found in " ^ s ^ "\n")
-              else ()
+            print_dbg ("Unimplemented assertion for " ^ AAst.Print.pp_aexpr e ^
+                       " found in " ^ s ^ "\n")
       val _ = typemap := types
       val _ = debug := dbg
       val check = check_assert assert_fun
-      fun assert e = (if !debug then print ("Assertion: " ^ AAst.Print.pp_aexpr e ^ "\n")
-                                else ();assert_fun e)
+      fun assert e = (print_dbg ("Assertion: " ^ AAst.Print.pp_aexpr e ^ "\n");assert_fun e)
       (* Declare the arguments *)
       val _ = List.map (fn (_,_,l) => declare_fun l) args 
       val _ = declare_stm declare_fun stm
