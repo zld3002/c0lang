@@ -24,20 +24,55 @@ struct
 
   (* Assert conditions/loops with phis disjunctions *)
 
-  (* Declare all local variables at start of run in Conditions *)
+  (* Test breaks/continues *)
+  (* Fix tests for conditions.sml *)
 
-  (* Make it so lengths are known to be positive (or something) *)
-  (* have errors just drop out *)
-  (* tests with gcd and binary search errori, continue/break/error *)
+  (* tests with gcd and binary search error, continue/break/error *)
 
   val ZERO = AAst.IntConst(Word32Signed.ZERO)
   val typemap : AAst.tp SymMap.map ref = ref (SymMap.empty)
   val debug = ref false
   val cnt_index = ref 0
   val brk_index = ref 0
+  val declaredVars : LocalSet.set ref = ref LocalSet.empty
 
+  fun print s = if !debug then print s else ()
   fun opeq e1 e2 = AAst.Op(Ast.EQ, [e1,e2])
 
+
+  fun declare_exp decl e =
+    case e of
+       AAst.Local l => decl l
+     | AAst.Op(oper,es) => (List.map (declare_exp decl) es;())
+     | AAst.Call(f,es) => (List.map (declare_exp decl) es;())
+     | AAst.Length e => (declare_exp decl e;
+                         C.assert (AAst.Op(Ast.GEQ,[AAst.Length e,ZERO])))
+     | AAst.Old e => declare_exp decl e
+     | AAst.AllocArray(_,e) => declare_exp decl e
+     | AAst.Select(e,s) => declare_exp decl e
+     | AAst.MarkedE m => declare_exp decl (Mark.data m)
+     | _ => ()
+
+  fun declare_stm decl stm = 
+    case stm of
+      AAst.Seq(s1,s2) => (declare_stm decl s1;
+                          declare_stm decl s2)
+    | AAst.Assert e => declare_exp decl e
+    | AAst.Error e => declare_exp decl e
+    | AAst.Annotation e => declare_exp decl e
+    | AAst.Def(l,e) => (decl l;declare_exp decl e)
+    | AAst.Assign(e1,oper,e2) => (declare_exp decl e1;
+                                  declare_exp decl e2)
+    | AAst.Expr e => declare_exp decl e
+    | AAst.Return (SOME e) => declare_exp decl e
+    | AAst.If(e,s1,s2,_) => (declare_exp decl e;
+                             declare_stm decl s1;
+                             declare_stm decl s2)
+    | AAst.While(_,e,lvs,s,_) => (declare_exp decl e;
+                                  List.map (declare_exp decl) lvs;
+                                  declare_stm decl s)
+    | AAst.MarkedS m => declare_stm decl (Mark.data m)
+    | _ => ()
 
   (* Gets all of the expressions that are returned from the function. *)
   fun get_returns stm =
@@ -55,6 +90,7 @@ struct
       AAst.Op(oper,es) => AAst.Op(oper,List.map (replace_result retval) es)
     | AAst.Call(f,es) => AAst.Call(f,List.map (replace_result retval) es)
     | AAst.Result => retval
+    (* Assert length is greater than or equal to 0 here *)
     | AAst.Length e => AAst.Length(replace_result retval e)
     | AAst.Old e => AAst.Old(replace_result retval e)
     | AAst.AllocArray(t,e) => AAst.AllocArray(t,replace_result retval e)
@@ -81,7 +117,7 @@ struct
     | _ => raise Fail "can't assign expression to array type"
 
   (* Goes through loop invariant experssions and replaces local variables
-   * with the new generation number inidcated by the index into phis. *)
+   * with the new generation number inaidcated by the index into phis. *)
   fun replace_inv phis index switch inv =
     case inv of
       AAst.Local(s,i) =>
@@ -122,17 +158,17 @@ struct
   (* Returns an expression that is the logical negation of the argument *)
   fun negate_exp exp =
     case exp of
-       AAst.Op(Ast.LOGNOT,[e]) => e
-     | AAst.Op(Ast.EQ,l) => AAst.Op(Ast.NOTEQ,l)
-     | AAst.Op(Ast.NOTEQ,l) => AAst.Op(Ast.EQ,l)
-     | AAst.Op(Ast.LESS,l) => AAst.Op(Ast.GEQ,l)
-     | AAst.Op(Ast.LEQ,l) => AAst.Op(Ast.GREATER,l)
-     | AAst.Op(Ast.GREATER,l) => AAst.Op(Ast.LEQ,l)
-     | AAst.Op(Ast.GEQ,l) => AAst.Op(Ast.LESS,l)
-     | AAst.Op(Ast.LOGAND,[e1,e2]) => AAst.Op(Ast.LOGOR,[negate_exp e1,negate_exp e2])
-     | AAst.Op(Ast.LOGOR,[e1,e2]) => AAst.Op(Ast.LOGAND,[negate_exp e1,negate_exp e2])
-     | AAst.MarkedE m => negate_exp (Mark.data m)
-     | _ => AAst.Op(Ast.LOGNOT,[exp])
+      AAst.Op(Ast.LOGNOT,[e]) => e
+    | AAst.Op(Ast.EQ,l) => AAst.Op(Ast.NOTEQ,l)
+    | AAst.Op(Ast.NOTEQ,l) => AAst.Op(Ast.EQ,l)
+    | AAst.Op(Ast.LESS,l) => AAst.Op(Ast.GEQ,l)
+    | AAst.Op(Ast.LEQ,l) => AAst.Op(Ast.GREATER,l)
+    | AAst.Op(Ast.GREATER,l) => AAst.Op(Ast.LEQ,l)
+    | AAst.Op(Ast.GEQ,l) => AAst.Op(Ast.LESS,l)
+    | AAst.Op(Ast.LOGAND,[e1,e2]) => AAst.Op(Ast.LOGOR,[negate_exp e1,negate_exp e2])
+    | AAst.Op(Ast.LOGOR,[e1,e2]) => AAst.Op(Ast.LOGAND,[negate_exp e1,negate_exp e2])
+    | AAst.MarkedE m => negate_exp (Mark.data m)
+    | _ => AAst.Op(Ast.LOGNOT,[exp])
 
   (* Generates necessary assertions for divions and mods *)
   fun divmod_check ext check e1 e2 =
@@ -161,7 +197,7 @@ struct
     | _ => []
 
   (* Makes assertions for a given statement *)
-  fun process_stms ext (funs as (assert,check)) (phi_funs as (cnt_fun,brk_fun)) stms = 
+  fun process_stms ext (funs as (declare,assert,check)) (phi_funs as (cnt_fun,brk_fun)) stms = 
     case stms of
       [] => []
     | stm::cont_stms =>
@@ -172,19 +208,22 @@ struct
       | AAst.Assert e =>
           (process_exp ext check e) @ (check ext e) @
             (process_stms ext funs phi_funs cont_stms)
-      | AAst.Error e => raise Unimplemented
+      | AAst.Error e => (process_exp ext check e)
       | AAst.Annotation e =>
           (process_exp ext check e) @ (check ext e) @
             (process_stms ext funs phi_funs cont_stms)
       | AAst.Def((v,i),e) =>
           let
-              val _ =
-                case SymMap.find(!typemap,v) of
-                  SOME(Ast.Array _) =>
-                    assert (array_length
-                      (fn l => opeq (AAst.Length(AAst.Local(v,i))) l) e)
-                | _ => ()
-              val _ = assert (opeq (AAst.Local(v,i)) e)
+            (*val _ = declare (v,i)*)
+            val _ =
+              case SymMap.find(!typemap,v) of
+                SOME(Ast.Array _) =>
+                  (assert (array_length
+                    (fn l => opeq (AAst.Length(AAst.Local(v,i))) l) e);
+                  assert (array_length
+                    (fn l => AAst.Op(Ast.GEQ,[l,ZERO])) e))
+              | _ => ()
+            val _ = assert (opeq (AAst.Local(v,i)) e)
           in
             (process_exp ext check e) @ (process_stms ext funs phi_funs cont_stms)
           end
@@ -193,8 +232,10 @@ struct
             val _ = 
               case get_lvarray e1 of
                 SOME arr => 
+                  (assert (array_length
+                    (fn l => opeq (AAst.Length(arr)) l) e2);
                   assert (array_length
-                    (fn l => opeq (AAst.Length(arr)) l) e2)
+                    (fn l => AAst.Op(Ast.GEQ,[l,ZERO])) e2))
               | NONE => () 
             val errs1 = process_exp ext check e1
             val errs2 = process_exp ext check e2
@@ -277,13 +318,13 @@ struct
           let
             val errs = brk_fun ext (!brk_index)
             val _ = brk_index := !brk_index + 1
-          in errs @ (process_stms ext funs phi_funs cont_stms)
+          in errs
           end
       | AAst.Continue =>
           let
             val errs = cnt_fun ext (!cnt_index)
             val _ = cnt_index := !cnt_index + 1
-          in errs @ (process_stms ext funs phi_funs cont_stms)
+          in errs
           end
       | AAst.While(cntphis,e,invs,s,brkphis) =>
           let
@@ -315,6 +356,9 @@ struct
             val inv_errs = check_invariants cntphis false ext 0
             (* Assert the condition while inside the loop *)
             val _ = assert e
+            (* Assert the loop invariants at the start of the loop *)
+            val _ = List.map assert invs
+            (* Check if the condition is even satisfiable *)
             val cond_sat = C.check()
             val errs = process_stms ext funs
                                     (check_invariants cntphis false,
@@ -322,17 +366,11 @@ struct
             (* Now check the case where the loop continues from the end *)
             val errs = errs @ (check_invariants cntphis false ext (!cnt_index))
 
+            (* Only keep errors if the loop could be entered *)
             val while_errs = if cond_sat then errs else []
 
             (* Now revert back to outside the loop *)
             val _ = C.pop()
-
-            (* ------------------------------------------------- *)
-            (* TODO Assert about constants inside of loop (go through loop again to do this)
-             * can just go through loop and assert normally because of SSA? Do we need to 
-             * forget what we asserted in there? Is there anything we can learn at all, seeing
-             * as we might not even go through the loop? *)
-            (* ------------------------------------------------- *)
 
             (* Assert the invariants, since we can assume that they
              * were true upon exiting the loop *)
@@ -397,9 +435,20 @@ struct
   (* Generates the vc errors for a given function. *)
   fun generate_vc (f as AAst.Function(_,_,types,args,requires,stm,ensures)) dbg =
     (let
+      val _ = declaredVars := LocalSet.empty
+      val declare = C.declare types
+      val declare_fun =
+        fn l => 
+          if LocalSet.member(!declaredVars,l) then ()
+            else (declaredVars := LocalSet.add(!declaredVars,l);declare l
+              handle C.Unimplemented s => 
+                if !debug
+                  then print ("Unimplemented declaration for " ^ AAst.Print.pp_loc l ^
+                          " found in " ^ s ^ "\n")
+                else ())
       val assert_fun =
-        fn e => C.assert types e
-          handle Conditions.Unimplemented s => 
+        fn e => C.assert e
+          handle C.Unimplemented s => 
             if !debug
               then print ("Unimplemented assertion for " ^ AAst.Print.pp_aexpr e ^
                           " found in " ^ s ^ "\n")
@@ -409,11 +458,15 @@ struct
       val check = check_assert assert_fun
       fun assert e = (if !debug then print ("Assertion: " ^ AAst.Print.pp_aexpr e ^ "\n")
                                 else ();assert_fun e)
+      (* Declare the arguments *)
+      val _ = List.map (fn (_,_,l) => declare_fun l) args 
+      val _ = declare_stm declare_fun stm
       (* Assert what we know from the \requires contracts. *)
+      val _ = List.map (declare_exp declare_fun) requires
       val _ = List.map assert requires
       (* Process the actual function code. *)
       val default_fun = fn x => fn y => []
-      val errs = process_stms NONE (assert,check) (default_fun,default_fun) [stm]
+      val errs = process_stms NONE (declare,assert,check) (default_fun,default_fun) [stm]
       (* Get the list of return values, check that they work in ensures
        * when replacing \result *)
       val retvals = get_returns stm
