@@ -133,10 +133,7 @@ fun declare (map : Ast.tp SymMap.map) var =
       | Ast.String => raise Unimplemented "localType"
       | Ast.Char => raise Unimplemented "localType"
       | Ast.Pointer(_) => raise Unimplemented "localType"
-      | Ast.Array(t) =>
-         (case declType t of
-           Type s => Array s
-         | _ => None)
+      | Ast.Array(_) => Array "(_ BitVec 32)"
       | Ast.TypeName(_) => None
       | Ast.Void => None
       | Ast.Any => None
