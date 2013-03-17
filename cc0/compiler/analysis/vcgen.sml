@@ -19,6 +19,7 @@ struct
   exception Unimplemented 
   exception CriticalError of VError.error list
 
+  (* TODO *)
   (* Add ternary conditionals to z3 so we can assert about them *)
   (* Use VNote to indicate ifs/whiles and other noteworthy info *)
 
@@ -26,6 +27,8 @@ struct
 
   (* Test breaks/continues *)
   (* Fix tests for conditions.sml *)
+  (* TODO Print out model when there is an error *)
+  (* Add capability to store knowledge in Z3 on arrays, functions *)
 
   (* tests with gcd and binary search error, continue/break/error *)
 
@@ -214,7 +217,6 @@ struct
             (process_stms ext funs phi_funs cont_stms)
       | AAst.Def((v,i),e) =>
           let
-            (*val _ = declare (v,i)*)
             val _ =
               case SymMap.find(!typemap,v) of
                 SOME(Ast.Array _) =>
@@ -279,7 +281,9 @@ struct
             (* Assert the condition is true, then check if it is satisfiable
              * (meaning that the then branch could potentially be taken). *)
             val _ = assert e
-            val cond_sat = C.check()
+            val cond_sat = case C.check() of
+                             NONE => false
+                           | SOME _ => true
             val old_cnt_index = !cnt_index
             val old_brk_index = !brk_index
             (* Generate errors for the then statements given that the conditional is true. *)
@@ -293,7 +297,9 @@ struct
              * (meaning that the else branch could potentially be taken). *)
             val neg_e = negate_exp e
             val _ = assert neg_e
-            val negcond_sat = C.check()
+            val negcond_sat = case C.check() of
+                                NONE => false
+                              | SOME _ => true
             (* Generate errors for the else statements given that the conditional is false. *)
             val _ = if negcond_sat then print_dbg "Entering else case\n" else ()
             val errs = process_stms ext funs phi_funs [s2]
@@ -359,7 +365,9 @@ struct
             (* Assert the loop invariants at the start of the loop *)
             val _ = List.map assert invs
             (* Check if the condition is even satisfiable *)
-            val cond_sat = C.check()
+            val cond_sat = case C.check() of
+                             NONE => false
+                           | SOME _ => true
             val errs = process_stms ext funs
                                     (check_invariants cntphis false,
                                      check_invariants brkphis true) [s]
@@ -398,38 +406,40 @@ struct
                  ": " ^ AAst.Print.pp_aexpr e ^ "\n")
         | NONE => print_dbg ("Checking: " ^ AAst.Print.pp_aexpr e ^ "\n")
 
-        (* Assert the error case, and if satisfiable, potential values
-         * could lead to an error, so give a warning *)
-        (* Save the current Z3 stack so we can undo this assumption
-         * (since it's explicitly wrong). *)
-        val _ = C.push()
-        val nege = negate_exp e
-        val _ = assert_fun nege
-        val sat_error =
-          VError.VerificationError(ext,"Error case " ^ 
-            (AAst.Print.pp_aexpr nege) ^ " is satisfiable")
-        val errs = if C.check() then [sat_error] else []
-        val _ = if !debug
-          then List.map (fn e => print_dbg (VError.pp_error e ^ "\n")) errs
-          else []
-        (* Now return the stack to as it was so we can make the actual
-         * assumption that we wanted to from the beginning. *)
-        val _ = C.pop()
+      (* Assert the error case, and if satisfiable, potential values
+       * could lead to an error, so give a warning *)
+      (* Save the current Z3 stack so we can undo this assumption
+       * (since it's explicitly wrong). *)
+      val _ = C.push()
+      val nege = negate_exp e
+      val _ = assert_fun nege
+      val sat_error =
+        VError.VerificationError(ext,"Error case " ^ 
+          (AAst.Print.pp_aexpr nege) ^ " is satisfiable")
+      val errs = case C.check() of
+                   SOME _ => [sat_error]
+                 | NONE => []
+      val _ = if !debug
+        then List.map (fn e => print_dbg (VError.pp_error e ^ "\n")) errs
+        else []
+      (* Now return the stack to as it was so we can make the actual
+       * assumption that we wanted to from the beginning. *)
+      val _ = C.pop()
 
-        (* Assert the valid case, and if not satisfiable, then code is
-         * always wrong, so give an error and stop, because things are bad. *)
-        val _ = assert_fun e
-        val crit_error =
-          VError.VerificationError(ext,"It does not hold that " ^
-            (AAst.Print.pp_aexpr e) ^ " when it should")
-      in
-        (* We stop if we know that something is wrong because everything after
-         * that will be wrong, so no useful information can be gained by
-         * processing the rest of the function. *)
-        if C.check()
-          then errs
-          else raise CriticalError (errs @ [crit_error])
-      end
+      (* Assert the valid case, and if not satisfiable, then code is
+       * always wrong, so give an error and stop, because things are bad. *)
+      val _ = assert_fun e
+      val crit_error =
+        VError.VerificationError(ext,"It does not hold that " ^
+          (AAst.Print.pp_aexpr e) ^ " when it should")
+    in
+      (* We stop if we know that something is wrong because everything after
+       * that will be wrong, so no useful information can be gained by
+       * processing the rest of the function. *)
+      case C.check() of
+        SOME _ => errs
+      | NONE => raise CriticalError (errs @ [crit_error])
+    end
 
   (* Generates the vc errors for a given function. *)
   fun generate_vc (f as AAst.Function(_,_,types,args,requires,stm,ensures)) dbg =
