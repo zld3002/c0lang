@@ -20,15 +20,13 @@ struct
   exception CriticalError of VError.error list
 
   (* TODO *)
-  (* Add ternary conditionals to z3 so we can assert about them *)
+  (* Add ternary conditionals, functions, arrays to z3 so we can assert about them *)
   (* Use VNote to indicate ifs/whiles and other noteworthy info *)
 
   (* Assert conditions/loops with phis disjunctions *)
 
   (* Test breaks/continues *)
   (* Fix tests for conditions.sml *)
-  (* TODO Print out model when there is an error *)
-  (* Add capability to store knowledge in Z3 on arrays, functions *)
 
   (* tests with gcd and binary search error, continue/break/error *)
 
@@ -413,11 +411,13 @@ struct
       val _ = C.push()
       val nege = negate_exp e
       val _ = assert_fun nege
-      val sat_error =
+      val sat_error = fn m =>
         VError.VerificationError(ext,"Error case " ^ 
-          (AAst.Print.pp_aexpr nege) ^ " is satisfiable")
+          (AAst.Print.pp_aexpr nege) ^ " is satisfiable with model:" ^ m)
+      fun print_model m =
+        List.foldr (fn (e,s) => "\n" ^ AAst.Print.pp_aexpr e ^ s) "" m
       val errs = case C.check() of
-                   SOME _ => [sat_error]
+                   SOME m => [sat_error (print_model m)]
                  | NONE => []
       val _ = if !debug
         then List.map (fn e => print_dbg (VError.pp_error e ^ "\n")) errs

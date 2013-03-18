@@ -342,21 +342,32 @@ fun getModel toks =
       val b = case String.compare(value,"true)") of
                 EQUAL => AAst.BoolConst true
               | _ => AAst.BoolConst false
-    in (AAst.Op(Ast.EQ,[x,b]))::(getModel ss)
+    in
+      if String.isPrefix "_" name
+        then getModel ss
+        else (AAst.Op(Ast.EQ,[x,b]))::(getModel ss)
     end
   | "(define-fun"::var::"()"::"(_"::"BitVec"::"32)"::value::ss =>
     let
       val [name,ext] = String.tokens (fn c => Char.compare(c,#"$") = EQUAL) var
-      val [num,gen] = String.tokens Char.isPunct ext
+      val num::info = String.tokens Char.isPunct ext
+      val (gen,is_length) = case info of
+                  [g] => (g,false)
+                | [g,l] => (g,true)
+                | _ => raise Unimplemented "extension of var is not valid"
       val gennum = case Int.fromString gen of
                      NONE => raise Unimplemented "gen number of var not valid"
                    | SOME n => n
       val x = AAst.Local (Symbol.symbol name,gennum)
+      val x = if is_length then AAst.Length x else x
       val [vector] = String.tokens (not o Char.isHexDigit) value
       val word = case Word32Signed.fromHexString vector of
                      NONE => raise Unimplemented "value of int var not valid"
                    | SOME w => AAst.IntConst w
-    in (AAst.Op(Ast.EQ,[x,word]))::(getModel ss)
+    in
+      if String.isPrefix "_" name
+        then getModel ss
+        else (AAst.Op(Ast.EQ,[x,word]))::(getModel ss)
     end
   | _ => raise Unimplemented "Model contains unknown type"
 
