@@ -34,6 +34,7 @@ struct
 
   (* Test breaks/continues *)
   (* Fix tests for conditions.sml *)
+  (* Add pointer checking (implement NULL constant in Z3) *)
 
   (* tests with gcd and binary search error, continue/break/error *)
 
