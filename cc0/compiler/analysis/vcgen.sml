@@ -6,6 +6,9 @@
 signature VCGEN =
 sig
 
+  (* Given a function, generates a summary of its ensures and requires. *)
+  val generate_function_summary : AAst.afunc -> Symbol.symbol * (AAst.aexpr list -> unit)
+
   (* Given a function and a debug indicator, generates a list of verification
    * errors for that function. *)
   val generate_vc : AAst.afunc -> bool -> VError.error list
@@ -16,8 +19,12 @@ structure VCGen :> VCGEN =
 struct
   structure C = Conditions
 
+  open AAst
+
   exception Unimplemented 
   exception CriticalError of VError.error list
+
+  (* How do we want to give back the model? *)
 
   (* TODO *)
   (* Add ternary conditionals, functions, arrays to z3 so we can assert about them *)
@@ -30,73 +37,72 @@ struct
 
   (* tests with gcd and binary search error, continue/break/error *)
 
-  val ZERO = AAst.IntConst(Word32Signed.ZERO)
-  val typemap : AAst.tp SymMap.map ref = ref (SymMap.empty)
+  val ZERO = IntConst(Word32Signed.ZERO)
+  val typemap : tp SymMap.map ref = ref (SymMap.empty)
   val debug = ref false
   val cnt_index = ref 0
   val brk_index = ref 0
   val declaredVars : LocalSet.set ref = ref LocalSet.empty
 
   fun print_dbg s = if !debug then print s else ()
-  fun opeq e1 e2 = AAst.Op(Ast.EQ, [e1,e2])
-
+  fun opeq e1 e2 = Op(Ast.EQ, [e1,e2])
 
   fun declare_exp decl e =
     case e of
-       AAst.Local l => decl l
-     | AAst.Op(oper,es) => (List.map (declare_exp decl) es;())
-     | AAst.Call(f,es) => (List.map (declare_exp decl) es;())
-     | AAst.Length e => (declare_exp decl e;
-                         C.assert (AAst.Op(Ast.GEQ,[AAst.Length e,ZERO])))
-     | AAst.Old e => declare_exp decl e
-     | AAst.AllocArray(_,e) => declare_exp decl e
-     | AAst.Select(e,s) => declare_exp decl e
-     | AAst.MarkedE m => declare_exp decl (Mark.data m)
+       Local l => decl l
+     | Op(oper,es) => (List.map (declare_exp decl) es;())
+     | Call(f,es) => (List.map (declare_exp decl) es;())
+     | Length e => (declare_exp decl e;
+                         C.assert (Op(Ast.GEQ,[Length e,ZERO])))
+     | Old e => declare_exp decl e
+     | AllocArray(_,e) => declare_exp decl e
+     | Select(e,s) => declare_exp decl e
+     | MarkedE m => declare_exp decl (Mark.data m)
      | _ => ()
 
   fun declare_stm decl stm = 
     case stm of
-      AAst.Seq(s1,s2) => (declare_stm decl s1;
+      Seq(s1,s2) => (declare_stm decl s1;
                           declare_stm decl s2)
-    | AAst.Assert e => declare_exp decl e
-    | AAst.Error e => declare_exp decl e
-    | AAst.Annotation e => declare_exp decl e
-    | AAst.Def(l,e) => (decl l;declare_exp decl e)
-    | AAst.Assign(e1,oper,e2) => (declare_exp decl e1;
+    | Assert e => declare_exp decl e
+    | Error e => declare_exp decl e
+    | Annotation e => declare_exp decl e
+    | Def(l,e) => (decl l;declare_exp decl e)
+    | Assign(e1,oper,e2) => (declare_exp decl e1;
                                   declare_exp decl e2)
-    | AAst.Expr e => declare_exp decl e
-    | AAst.Return (SOME e) => declare_exp decl e
-    | AAst.If(e,s1,s2,_) => (declare_exp decl e;
+    | Expr e => declare_exp decl e
+    | Return (SOME e) => declare_exp decl e
+    | If(e,s1,s2,_) => (declare_exp decl e;
                              declare_stm decl s1;
                              declare_stm decl s2)
-    | AAst.While(_,e,lvs,s,_) => (declare_exp decl e;
+    | While(_,e,lvs,s,_) => (declare_exp decl e;
                                   List.map (declare_exp decl) lvs;
                                   declare_stm decl s)
-    | AAst.MarkedS m => declare_stm decl (Mark.data m)
+    | MarkedS m => declare_stm decl (Mark.data m)
     | _ => ()
 
   (* Gets all of the expressions that are returned from the function. *)
   fun get_returns stm =
     case stm of
-      AAst.Seq(s1,s2) => (get_returns s1) @ (get_returns s2)
-    | AAst.Return (SOME e) => [e]
-    | AAst.If(e,s1,s2,phis) => (get_returns s1) @ (get_returns s2)
-    | AAst.While(cntphis,e,es,s,brkphis) => get_returns s
-    | AAst.MarkedS m => get_returns (Mark.data m)
+      Seq(s1,s2) => (get_returns s1) @ (get_returns s2)
+    | Return (SOME e) => [e]
+    | If(e,s1,s2,phis) => (get_returns s1) @ (get_returns s2)
+    | While(cntphis,e,es,s,brkphis) => get_returns s
+    | MarkedS m => get_returns (Mark.data m)
     | _ => []
 
   (* Replaces each instance of \result with the provided return expression. *)
   fun replace_result retval exp =
     case exp of
-      AAst.Op(oper,es) => AAst.Op(oper,List.map (replace_result retval) es)
-    | AAst.Call(f,es) => AAst.Call(f,List.map (replace_result retval) es)
-    | AAst.Result => retval
+      Op(oper,es) => Op(oper,List.map (replace_result retval) es)
+    | Call(f,es) => Call(f,List.map (replace_result retval) es)
+    | Result => retval
     (* Assert length is greater than or equal to 0 here *)
-    | AAst.Length e => AAst.Length(replace_result retval e)
-    | AAst.Old e => AAst.Old(replace_result retval e)
-    | AAst.AllocArray(t,e) => AAst.AllocArray(t,replace_result retval e)
-    | AAst.Select(e,s) => AAst.Select(replace_result retval e,s)
-    | AAst.MarkedE m => replace_result retval (Mark.data m)
+    | Length e => Length(replace_result retval e)
+    | Old e => Old(replace_result retval e)
+    | AllocArray(t,e) => AllocArray(t,replace_result retval e)
+    | Select(e,s) => Select(replace_result retval e,s)
+    | MarkedE m => replace_result retval (Mark.data m)
     | _ => exp
 
   (* Converts an expression to be the length of an array as opposed
@@ -104,26 +110,26 @@ struct
    * bounds, as we need to keep information about array lengths. *)
   fun array_length make_exp exp =
     case exp of
-      AAst.Local(v,i) => make_exp (AAst.Length exp)
-    | AAst.Op(oper,es) => 
+      Local(v,i) => make_exp (Length exp)
+    | Op(oper,es) => 
       (case (oper,es) of
-        (Ast.DEREF,[e]) => make_exp (AAst.Length exp)
+        (Ast.DEREF,[e]) => make_exp (Length exp)
       | (Ast.COND,[e1,e2,e3]) => 
         (* Improve this for asserts with conds *)
-        AAst.Op(Ast.LOGOR,[array_length make_exp e2,array_length make_exp e3])
+        Op(Ast.LOGOR,[array_length make_exp e2,array_length make_exp e3])
       | _ => raise Fail "can't assign expression to array type")
-    | AAst.AllocArray(t,len) => make_exp len
-    | AAst.Select _ => make_exp (AAst.Length exp)
-    | AAst.MarkedE m => array_length make_exp (Mark.data m)
+    | AllocArray(t,len) => make_exp len
+    | Select _ => make_exp (Length exp)
+    | MarkedE m => array_length make_exp (Mark.data m)
     | _ => raise Fail "can't assign expression to array type"
 
   (* Goes through loop invariant experssions and replaces local variables
    * with the new generation number inaidcated by the index into phis. *)
   fun replace_inv phis index switch inv =
     case inv of
-      AAst.Local(s,i) =>
+      Local(s,i) =>
         let
-          fun replace_phi (AAst.PhiDef(s',i',is),old_i) =
+          fun replace_phi (PhiDef(s',i',is),old_i) =
             if switch
               then
                 case (Symbol.compare(s,s'),i = List.nth(is,index)) of
@@ -133,68 +139,68 @@ struct
                 case (Symbol.compare(s,s'),i = i') of
                   (EQUAL,true) => List.nth(is,index)
                 | _ => old_i
-        in AAst.Local(s,List.foldr replace_phi i phis)
+        in Local(s,List.foldr replace_phi i phis)
         end
-    | AAst.Op(oper,es) => AAst.Op(oper, List.map (replace_inv phis index switch) es)
-    | AAst.Call(s,es) => AAst.Call(s,List.map (replace_inv phis index switch) es)
-    | AAst.Length e => AAst.Length(replace_inv phis index switch e)
-    | AAst.Old e => AAst.Old(replace_inv phis index switch e)
-    | AAst.AllocArray(t,e) => AAst.AllocArray(t,replace_inv phis index switch e)
-    | AAst.Select(e,s) => AAst.Select(replace_inv phis index switch e,s)
-    | AAst.MarkedE m =>
-        AAst.MarkedE(Mark.mark' (replace_inv phis index switch (Mark.data m),Mark.ext m))
+    | Op(oper,es) => Op(oper, List.map (replace_inv phis index switch) es)
+    | Call(s,es) => Call(s,List.map (replace_inv phis index switch) es)
+    | Length e => Length(replace_inv phis index switch e)
+    | Old e => Old(replace_inv phis index switch e)
+    | AllocArray(t,e) => AllocArray(t,replace_inv phis index switch e)
+    | Select(e,s) => Select(replace_inv phis index switch e,s)
+    | MarkedE m =>
+        MarkedE(Mark.mark' (replace_inv phis index switch (Mark.data m),Mark.ext m))
     | _ => inv
 
   (* Gets the array in an lvalue if there is one for the purpose of
    * keeping track of array lengths. *)
   fun get_lvarray exp =
     case exp of
-      AAst.Local(v,i) =>
+      Local(v,i) =>
         (case SymMap.find(!typemap,v) of
           SOME(Ast.Array _) => SOME exp
         | _ => NONE)
-    | AAst.MarkedE m => get_lvarray (Mark.data m)
+    | MarkedE m => get_lvarray (Mark.data m)
     | _ => NONE
 
   (* Returns an expression that is the logical negation of the argument *)
   fun negate_exp exp =
     case exp of
-      AAst.Op(Ast.LOGNOT,[e]) => e
-    | AAst.Op(Ast.EQ,l) => AAst.Op(Ast.NOTEQ,l)
-    | AAst.Op(Ast.NOTEQ,l) => AAst.Op(Ast.EQ,l)
-    | AAst.Op(Ast.LESS,l) => AAst.Op(Ast.GEQ,l)
-    | AAst.Op(Ast.LEQ,l) => AAst.Op(Ast.GREATER,l)
-    | AAst.Op(Ast.GREATER,l) => AAst.Op(Ast.LEQ,l)
-    | AAst.Op(Ast.GEQ,l) => AAst.Op(Ast.LESS,l)
-    | AAst.Op(Ast.LOGAND,[e1,e2]) => AAst.Op(Ast.LOGOR,[negate_exp e1,negate_exp e2])
-    | AAst.Op(Ast.LOGOR,[e1,e2]) => AAst.Op(Ast.LOGAND,[negate_exp e1,negate_exp e2])
-    | AAst.MarkedE m => negate_exp (Mark.data m)
-    | _ => AAst.Op(Ast.LOGNOT,[exp])
+      Op(Ast.LOGNOT,[e]) => e
+    | Op(Ast.EQ,l) => Op(Ast.NOTEQ,l)
+    | Op(Ast.NOTEQ,l) => Op(Ast.EQ,l)
+    | Op(Ast.LESS,l) => Op(Ast.GEQ,l)
+    | Op(Ast.LEQ,l) => Op(Ast.GREATER,l)
+    | Op(Ast.GREATER,l) => Op(Ast.LEQ,l)
+    | Op(Ast.GEQ,l) => Op(Ast.LESS,l)
+    | Op(Ast.LOGAND,[e1,e2]) => Op(Ast.LOGOR,[negate_exp e1,negate_exp e2])
+    | Op(Ast.LOGOR,[e1,e2]) => Op(Ast.LOGAND,[negate_exp e1,negate_exp e2])
+    | MarkedE m => negate_exp (Mark.data m)
+    | _ => Op(Ast.LOGNOT,[exp])
 
   (* Generates necessary assertions for divions and mods *)
   fun divmod_check ext check e1 e2 =
-    (check ext (AAst.Op(Ast.NOTEQ,[e2,ZERO]))) @
-    (check ext (AAst.Op(Ast.LOGNOT,[AAst.Op(Ast.LOGAND,
-      [opeq e1 (AAst.IntConst(Word32Signed.TMIN)),
-       opeq e2 (AAst.IntConst(Word32.fromInt(~1)))])])))
+    (check ext (Op(Ast.NOTEQ,[e2,ZERO]))) @
+    (check ext (Op(Ast.LOGNOT,[Op(Ast.LOGAND,
+      [opeq e1 (IntConst(Word32Signed.TMIN)),
+       opeq e2 (IntConst(Word32.fromInt(~1)))])])))
 
   (* Makes assertions for a given expression *)
   fun process_exp ext check exp =
     case exp of
-      AAst.Op(oper,es) => 
+      Op(oper,es) => 
           (case (oper,es) of
-            (Ast.DEREF,[e]) => check ext (AAst.Op(Ast.NOTEQ,[e,AAst.Null]))
+            (Ast.DEREF,[e]) => check ext (Op(Ast.NOTEQ,[e,Null]))
           | (Ast.DIVIDEDBY,[e1,e2]) => divmod_check ext check e1 e2
           | (Ast.MODULO,[e1,e2]) => divmod_check ext check e1 e2
           | (Ast.SUB,[e1,e2]) =>
-              (check ext (AAst.Op(Ast.GEQ,[e2,ZERO]))) @ 
-              (check ext (array_length (fn l => AAst.Op(Ast.LESS,[e2,l])) e1))
+              (check ext (Op(Ast.GEQ,[e2,ZERO]))) @ 
+              (check ext (array_length (fn l => Op(Ast.LESS,[e2,l])) e1))
           | _ => [])
-    | AAst.AllocArray(t,e) => check ext (AAst.Op(Ast.GEQ,[e,ZERO]))
-    | AAst.Select(e,field) => process_exp ext check e
-    | AAst.Call(f,es) =>
+    | AllocArray(t,e) => check ext (Op(Ast.GEQ,[e,ZERO]))
+    | Select(e,field) => process_exp ext check e
+    | Call(f,es) =>
         List.foldr (fn (e,l) => (process_exp ext check e) @ l) [] es
-    | AAst.MarkedE m => process_exp (Mark.ext m) check (Mark.data m)
+    | MarkedE m => process_exp (Mark.ext m) check (Mark.data m)
     | _ => []
 
   (* Makes assertions for a given statement *)
@@ -203,39 +209,39 @@ struct
       [] => []
     | stm::cont_stms =>
       (case stm of
-        AAst.Nop => process_stms ext funs phi_funs cont_stms
-      | AAst.Seq(s1,s2) =>
+        Nop => process_stms ext funs phi_funs cont_stms
+      | Seq(s1,s2) =>
           process_stms ext funs phi_funs (s1::s2::cont_stms)
-      | AAst.Assert e =>
+      | Assert e =>
           (process_exp ext check e) @ (check ext e) @
             (process_stms ext funs phi_funs cont_stms)
-      | AAst.Error e => (process_exp ext check e)
-      | AAst.Annotation e =>
+      | Error e => (process_exp ext check e)
+      | Annotation e =>
           (process_exp ext check e) @ (check ext e) @
             (process_stms ext funs phi_funs cont_stms)
-      | AAst.Def((v,i),e) =>
+      | Def((v,i),e) =>
           let
             val _ =
               case SymMap.find(!typemap,v) of
                 SOME(Ast.Array _) =>
                   (assert (array_length
-                    (fn l => opeq (AAst.Length(AAst.Local(v,i))) l) e);
+                    (fn l => opeq (Length(Local(v,i))) l) e);
                   assert (array_length
-                    (fn l => AAst.Op(Ast.GEQ,[l,ZERO])) e))
+                    (fn l => Op(Ast.GEQ,[l,ZERO])) e))
               | _ => ()
-            val _ = assert (opeq (AAst.Local(v,i)) e)
+            val _ = assert (opeq (Local(v,i)) e)
           in
             (process_exp ext check e) @ (process_stms ext funs phi_funs cont_stms)
           end
-      | AAst.Assign(e1,NONE,e2) =>
+      | Assign(e1,NONE,e2) =>
           let
             val _ = 
               case get_lvarray e1 of
                 SOME arr => 
                   (assert (array_length
-                    (fn l => opeq (AAst.Length(arr)) l) e2);
+                    (fn l => opeq (Length(arr)) l) e2);
                   assert (array_length
-                    (fn l => AAst.Op(Ast.GEQ,[l,ZERO])) e2))
+                    (fn l => Op(Ast.GEQ,[l,ZERO])) e2))
               | NONE => () 
             val errs1 = process_exp ext check e1
             val errs2 = process_exp ext check e2
@@ -243,30 +249,30 @@ struct
           in
             errs1 @ errs2 @ (process_stms ext funs phi_funs cont_stms)
           end
-      | AAst.Assign(e1,SOME oper,e2) =>
+      | Assign(e1,SOME oper,e2) =>
           let
             val errs1 = process_exp ext check e1
             val errs2 = process_exp ext check e2
-            val _ = assert (opeq e1 (AAst.Op(oper,[e1,e2])))
+            val _ = assert (opeq e1 (Op(oper,[e1,e2])))
           in
             errs1 @ errs2 @ (process_stms ext funs phi_funs cont_stms)
           end
-      | AAst.Expr e => (process_exp ext check e) @ (process_stms ext funs phi_funs cont_stms)
-      | AAst.Return NONE => []
-      | AAst.Return (SOME e) =>
+      | Expr e => (process_exp ext check e) @ (process_stms ext funs phi_funs cont_stms)
+      | Return NONE => []
+      | Return (SOME e) =>
           (process_exp ext check e) @ (process_stms ext funs phi_funs cont_stms)
-      | AAst.If(e,s1,s2,if_phis) =>
+      | If(e,s1,s2,if_phis) =>
           let
             (* Makes assertions for phi statements *)
             fun assert_phis indices =
               let
-                fun assert_phi (AAst.PhiDef(s,i,is)) =
+                fun assert_phi (PhiDef(s,i,is)) =
                   assert (List.foldr (fn ((j,e),res) =>
-                             AAst.Op(Ast.LOGOR,[res,
-                             AAst.Op(Ast.LOGAND,[e,
-                                opeq (AAst.Local(s,i))
-                                     (AAst.Local(s,List.nth(is,j)))])]))
-                           (AAst.BoolConst false)
+                             Op(Ast.LOGOR,[res,
+                             Op(Ast.LOGAND,[e,
+                                opeq (Local(s,i))
+                                     (Local(s,List.nth(is,j)))])]))
+                           (BoolConst false)
                            indices)
 
               in List.map assert_phi if_phis
@@ -318,19 +324,19 @@ struct
             val resterrs = process_stms ext funs phi_funs cont_stms
           in exp_errs @ thenerrs @ elseerrs @ resterrs
           end
-      | AAst.Break =>
+      | Break =>
           let
             val errs = brk_fun ext (!brk_index)
             val _ = brk_index := !brk_index + 1
           in errs
           end
-      | AAst.Continue =>
+      | Continue =>
           let
             val errs = cnt_fun ext (!cnt_index)
             val _ = cnt_index := !cnt_index + 1
           in errs
           end
-      | AAst.While(cntphis,e,invs,s,brkphis) =>
+      | While(cntphis,e,invs,s,brkphis) =>
           let
             (* Check the invariants hold *)
             fun check_invariants phis switch ext index =
@@ -389,7 +395,7 @@ struct
             val rest_errs = process_stms ext funs phi_funs cont_stms
           in exp_errs @ inv_errs @ while_errs @ rest_errs
           end
-      | AAst.MarkedS m =>
+      | MarkedS m =>
           process_stms (Mark.ext m) funs phi_funs ((Mark.data m)::cont_stms))
 
   (* The primary function used for making and checking assertions. It produces
@@ -401,8 +407,8 @@ struct
       val _ =
         case ext of
           SOME ext => print_dbg ("Checking at " ^ (Mark.show ext) ^
-                 ": " ^ AAst.Print.pp_aexpr e ^ "\n")
-        | NONE => print_dbg ("Checking: " ^ AAst.Print.pp_aexpr e ^ "\n")
+                 ": " ^ Print.pp_aexpr e ^ "\n")
+        | NONE => print_dbg ("Checking: " ^ Print.pp_aexpr e ^ "\n")
 
       (* Assert the error case, and if satisfiable, potential values
        * could lead to an error, so give a warning *)
@@ -413,9 +419,9 @@ struct
       val _ = assert_fun nege
       val sat_error = fn m =>
         VError.VerificationError(ext,"Error case " ^ 
-          (AAst.Print.pp_aexpr nege) ^ " is satisfiable with model:" ^ m)
+          (Print.pp_aexpr nege) ^ " is satisfiable with model:" ^ m)
       fun print_model m =
-        List.foldr (fn (e,s) => "\n" ^ AAst.Print.pp_aexpr e ^ s) "" m
+        List.foldr (fn (e,s) => "\n" ^ Print.pp_aexpr e ^ s) "" m
       val errs = case C.check() of
                    SOME m => [sat_error (print_model m)]
                  | NONE => []
@@ -431,7 +437,7 @@ struct
       val _ = assert_fun e
       val crit_error =
         VError.VerificationError(ext,"It does not hold that " ^
-          (AAst.Print.pp_aexpr e) ^ " when it should")
+          (Print.pp_aexpr e) ^ " when it should")
     in
       (* We stop if we know that something is wrong because everything after
        * that will be wrong, so no useful information can be gained by
@@ -441,8 +447,42 @@ struct
       | NONE => raise CriticalError (errs @ [crit_error])
     end
 
+  (* Generates summary information for a function, for use in verification *)
+  fun generate_function_summary (f as Function(_,sym,_,args,requires,_,ensures)) =
+    let
+      fun replace_local loc_map e =
+        case e of
+          Local(s,g) =>
+            (case SymMap.find(loc_map,s) of
+              NONE => e
+            | SOME(s,g) => Local(s,g))
+        | Op(oper,es) => Op(oper,List.map (replace_local loc_map) es)
+        | Call(s,es) => Call(s,List.map (replace_local loc_map) es)
+        | Length e => Length(replace_local loc_map e)
+        | Select(e,s) => Select(replace_local loc_map e,s)
+        | MarkedE m => replace_local loc_map (Mark.data m)
+        | _ => e
+
+      fun check_requires check_fun new_args =
+        raise Unimplemented
+
+      fun replace_result (l as (sym,gen)) e =
+        case e of
+          Op(oper,es) => Op(oper,List.map (replace_result l) es)
+        | Call(s,es) => Call(s,List.map (replace_result l) es)
+        | Result => Local(sym,gen)
+        | Length e => Length(replace_result l e)
+        | Select(e,s) => Select(replace_result l e,s)
+        | MarkedE m => replace_result l (Mark.data m)
+        | _ => e
+
+      fun assert_ensures l =
+        List.map (C.assert o (replace_result l)) ensures
+    in raise Unimplemented
+    end
+
   (* Generates the vc errors for a given function. *)
-  fun generate_vc (f as AAst.Function(_,_,types,args,requires,stm,ensures)) dbg =
+  fun generate_vc (f as Function(_,_,types,args,requires,stm,ensures)) dbg =
     (let
       val _ = declaredVars := LocalSet.empty
       val declare = C.declare types
@@ -451,17 +491,17 @@ struct
           if LocalSet.member(!declaredVars,l) then ()
             else (declaredVars := LocalSet.add(!declaredVars,l);declare l
               handle C.Unimplemented s => 
-                print_dbg ("Unimplemented declaration for " ^ AAst.Print.pp_loc l ^
+                print_dbg ("Unimplemented declaration for " ^ Print.pp_loc l ^
                            " found in " ^ s ^ "\n"))
       val assert_fun =
         fn e => C.assert e
           handle C.Unimplemented s => 
-            print_dbg ("Unimplemented assertion for " ^ AAst.Print.pp_aexpr e ^
+            print_dbg ("Unimplemented assertion for " ^ Print.pp_aexpr e ^
                        " found in " ^ s ^ "\n")
       val _ = typemap := types
       val _ = debug := dbg
       val check = check_assert assert_fun
-      fun assert e = (print_dbg ("Assertion: " ^ AAst.Print.pp_aexpr e ^ "\n");assert_fun e)
+      fun assert e = (print_dbg ("Assertion: " ^ Print.pp_aexpr e ^ "\n");assert_fun e)
       (* Declare the arguments *)
       val _ = List.map (fn (_,_,l) => declare_fun l) args 
       val _ = declare_stm declare_fun stm
