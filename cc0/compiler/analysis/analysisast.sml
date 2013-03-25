@@ -197,7 +197,8 @@ struct
 		  | pp_astmt (Return (SOME e)) = "return " ^(pp_aexpr e)
 		  | pp_astmt (If (e, s1, s2, phis)) = "if (" ^(pp_aexpr e) ^ ") {\n"
 		                                   ^(pp_astmt s1) ^ "\n} else {\n"
-		                                   ^ (pp_astmt s2) ^ "\n}" 
+		                                   ^ (pp_astmt s2) ^ "\n}"
+		                                   ^ (commas ";\n" (map pp_aphi phis))
 		  | pp_astmt (While (p, e, specs, stm, p2)) = 
 		     "while\n"^
 		      (commas ";\n" (map pp_aphi p))

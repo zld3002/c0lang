@@ -36,7 +36,9 @@ struct
   (* Add arrays to z3 so we can assert about them *)
   (* Use VNote to indicate ifs/whiles and other noteworthy info *)
 
-  (* Assert conditions/loops with phis disjunctions *)
+  (* Use stack size from conditions to push stack whenever entering
+   * a new block, so that if a return is seen, it can be popped
+   * (and it is popped afterwards if the stack size didn't revert) *)
 
   (* Test breaks/continues *)
   (* Fix tests for conditions.sml *)
@@ -131,7 +133,7 @@ struct
     | _ => raise Fail "can't assign expression to array type"
 
   (* Goes through loop invariant experssions and replaces local variables
-   * with the new generation number inaidcated by the index into phis. *)
+   * with the new generation number indicated by the index into phis. *)
   fun replace_inv phis index switch inv =
     case inv of
       Local(s,i) =>
@@ -286,7 +288,7 @@ struct
       | Expr e => (process_exp ext check e) @ (process_stms ext funs phi_funs cont_stms)
       | Return NONE => []
       | Return (SOME e) =>
-          (process_exp ext check e) @ (process_stms ext funs phi_funs cont_stms)
+          (process_exp ext check e)(* @ (process_stms ext funs phi_funs cont_stms)*)
       | If(e,s1,s2,if_phis) =>
           let
             (* Makes assertions for phi statements *)
@@ -391,13 +393,16 @@ struct
             (* First make sure that invariants hold before entering the loop *)
             val inv_errs = check_invariants cntphis false ext 0
             (* Assert the condition while inside the loop *)
-            val _ = assert e
-            (* Assert the loop invariants at the start of the loop *)
-            val _ = List.map assert invs
-            (* Check if the condition is even satisfiable *)
+            val _ = assert (replace_inv cntphis 0 false e)
+            (* Check if the initial condition is even satisfiable *)
             val cond_sat = case C.check() of
                              NONE => false
                            | SOME _ => true
+
+            (* Assert the condition while inside the loop *)
+            val _ = assert e
+            (* Assert the loop invariants at the start of the loop *)
+            val _ = List.map assert invs
             val errs = process_stms ext funs
                                     (check_invariants cntphis false,
                                      check_invariants brkphis true) [s]
