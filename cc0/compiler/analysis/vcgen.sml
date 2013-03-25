@@ -6,12 +6,14 @@
 signature VCGEN =
 sig
 
+  type summary = ((AAst.aexpr -> VError.error list) -> AAst.aexpr list -> VError.error list) * (AAst.loc -> unit)
+
   (* Given a function, generates a summary of its ensures and requires. *)
-  val generate_function_summary : AAst.afunc -> Symbol.symbol * (AAst.aexpr list -> unit)
+  val generate_function_summary : AAst.afunc -> (Symbol.symbol * summary)
 
   (* Given a function and a debug indicator, generates a list of verification
    * errors for that function. *)
-  val generate_vc : AAst.afunc -> bool -> VError.error list
+  val generate_vc : AAst.afunc -> bool -> summary SymMap.map -> VError.error list
 
 end
 
@@ -23,6 +25,8 @@ struct
 
   exception Unimplemented 
   exception CriticalError of VError.error list
+
+  type summary = ((AAst.aexpr -> VError.error list) -> AAst.aexpr list -> VError.error list) * (AAst.loc -> unit)
 
   (* How do we want to give back the model? *)
 
@@ -40,6 +44,7 @@ struct
 
   val ZERO = IntConst(Word32Signed.ZERO)
   val typemap : tp SymMap.map ref = ref (SymMap.empty)
+  val funmap : summary SymMap.map ref = ref (SymMap.empty)
   val debug = ref false
   val cnt_index = ref 0
   val brk_index = ref 0
@@ -163,6 +168,17 @@ struct
     | MarkedE m => get_lvarray (Mark.data m)
     | _ => NONE
 
+  (* Gets the function called in the expression if there is one for
+   * checking contracts. *)
+  fun get_function exp =
+    case exp of
+      Call(s,es) =>
+        (case SymMap.find(!funmap,s) of
+          SOME d => SOME (d,es)
+        | _ => NONE)
+    | MarkedE m => get_function (Mark.data m)
+    | _ => NONE
+
   (* Returns an expression that is the logical negation of the argument *)
   fun negate_exp exp =
     case exp of
@@ -230,9 +246,17 @@ struct
                   assert (array_length
                     (fn l => Op(Ast.GEQ,[l,ZERO])) e))
               | _ => ()
+            val errs = case get_function e of
+                       SOME((rf,ef),es) =>
+                         let
+                           val errs = rf (check ext) es
+                           val _ = ef (v,i)
+                         in errs
+                         end
+                     | NONE => []
             val _ = assert (opeq (Local(v,i)) e)
           in
-            (process_exp ext check e) @ (process_stms ext funs phi_funs cont_stms)
+            (process_exp ext check e) @ errs @ (process_stms ext funs phi_funs cont_stms)
           end
       | Assign(e1,NONE,e2) =>
           let
@@ -456,7 +480,7 @@ struct
           Local(s,g) =>
             (case SymMap.find(loc_map,s) of
               NONE => e
-            | SOME(s,g) => Local(s,g))
+            | SOME e => e)
         | Op(oper,es) => Op(oper,List.map (replace_local loc_map) es)
         | Call(s,es) => Call(s,List.map (replace_local loc_map) es)
         | Length e => Length(replace_local loc_map e)
@@ -464,8 +488,17 @@ struct
         | MarkedE m => replace_local loc_map (Mark.data m)
         | _ => e
 
+      val old_args = List.map (fn (_,_,(s,_)) => s) args
+
       fun check_requires check_fun new_args =
-        raise Unimplemented
+        let
+          val arg_list = List.tabulate(List.length args,
+                                       fn i => (List.nth(old_args,i),
+                                                List.nth(new_args,i)))
+          val map = List.foldr SymMap.insert' SymMap.empty arg_list
+          val errs = List.map (check_fun o (replace_local map)) requires
+        in List.foldr op@ [] errs
+        end
 
       fun replace_result (l as (sym,gen)) e =
         case e of
@@ -478,12 +511,12 @@ struct
         | _ => e
 
       fun assert_ensures l =
-        List.map (C.assert o (replace_result l)) ensures
-    in raise Unimplemented
+        (List.map (C.assert o (replace_result l)) ensures;())
+    in (sym,(check_requires,assert_ensures))
     end
 
   (* Generates the vc errors for a given function. *)
-  fun generate_vc (f as Function(_,_,types,args,requires,stm,ensures)) dbg =
+  fun generate_vc (f as Function(_,_,types,args,requires,stm,ensures)) dbg fun_sum_map =
     (let
       val _ = declaredVars := LocalSet.empty
       val declare = C.declare types
@@ -500,6 +533,7 @@ struct
             print_dbg ("Unimplemented assertion for " ^ Print.pp_aexpr e ^
                        " found in " ^ s ^ "\n")
       val _ = typemap := types
+      val _ = funmap := fun_sum_map
       val _ = debug := dbg
       val check = check_assert assert_fun
       fun assert e = (print_dbg ("Assertion: " ^ Print.pp_aexpr e ^ "\n");assert_fun e)
