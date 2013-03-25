@@ -28,10 +28,11 @@ struct
 
   type summary = ((AAst.aexpr -> VError.error list) -> AAst.aexpr list -> VError.error list) * (AAst.loc -> unit)
 
-  (* How do we want to give back the model? *)
+  (* How do we want to give back the model?
+   * Give values of all arguments, and all current values? *)
 
   (* TODO *)
-  (* Add ternary conditionals, functions, arrays to z3 so we can assert about them *)
+  (* Add arrays to z3 so we can assert about them *)
   (* Use VNote to indicate ifs/whiles and other noteworthy info *)
 
   (* Assert conditions/loops with phis disjunctions *)
