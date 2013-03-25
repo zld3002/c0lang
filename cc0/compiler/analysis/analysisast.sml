@@ -52,6 +52,7 @@ sig
 	   val pp_loc : loc -> string
 		 val pp_aphi : aphi -> string
 		 val pp_aexpr : aexpr -> string
+		 val pp_verif_aexpr : aexpr -> string
 		 val pp_astmt : astmt -> string
 		 val pp_afunc : afunc -> string
 		 val commas : string -> string list -> string
@@ -118,6 +119,7 @@ struct
 		                 ^")"
 		fun pp_loc (sym, i) = 
 		      (Symbol.name sym) ^ "`" ^ (Int.toString i)
+
 		fun pp_aexpr (Local l) = pp_loc l
 		  | pp_aexpr (Op(Ast.SUB, [e1,e2])) =
 			   pp_aexpr e1 ^ "[" ^ pp_aexpr e2 ^ "]"
@@ -147,6 +149,36 @@ struct
 		  | pp_aexpr (Select (e, f)) =
 		       "(" ^ (pp_aexpr e) ^ ")."^(Symbol.name f)
 		  | pp_aexpr (MarkedE me) = pp_aexpr (Mark.data me)
+
+		fun pp_verif_aexpr (Local l) = pp_loc l
+		  | pp_verif_aexpr (Op(Ast.SUB, [e1,e2])) =
+			   pp_verif_aexpr e1 ^ "[" ^ pp_verif_aexpr e2 ^ "]"
+		  | pp_verif_aexpr (Op(Ast.COND, [e1,e2,e3])) =
+		      (pp_verif_aexpr e1 ^ " ? " ^ pp_verif_aexpr e2 ^ " : " ^ pp_verif_aexpr e3)
+		  | pp_verif_aexpr (Op (oper, [e])) = 
+		       (Ast.Print.pp_oper oper) ^"(" ^ pp_verif_aexpr e ^ ")"
+		  | pp_verif_aexpr (Op (oper, [e1, e2])) = 
+		       "(" ^ pp_verif_aexpr e1 ^ " " ^(Ast.Print.pp_oper oper) ^" "^ pp_verif_aexpr e2 ^ ")"
+		  | pp_verif_aexpr (Op (oper, l)) = 
+		       "(" ^ (Ast.Print.pp_oper oper) ^ ")"^
+		           "(" ^ (commas ", " (map pp_verif_aexpr l)) ^ ")"
+		  | pp_verif_aexpr (IntConst w) = LargeInt.toString (Word32.toLargeIntX w)
+		  | pp_verif_aexpr (BoolConst b) = if b then "true" else "false"
+		  | pp_verif_aexpr (StringConst s) = "\"" ^ s ^ "\"" (* TODO: escape properly *)
+		  | pp_verif_aexpr (CharConst c) = "'" ^ Char.toString c ^ "'" (* TODO: escape properly *)
+		  | pp_verif_aexpr (Call (sym, l)) =
+		       (Symbol.name sym) ^ "(" ^ (commas ", " (map pp_verif_aexpr l)) ^ ")"
+		  | pp_verif_aexpr (Null) = "NULL"
+      | pp_verif_aexpr (Result) = "\\result"
+      | pp_verif_aexpr (Length(e)) = "\\length(" ^ pp_verif_aexpr(e) ^ ")"
+      | pp_verif_aexpr (Old(e)) = "\\old(" ^ pp_verif_aexpr(e) ^ ")"
+		  | pp_verif_aexpr (Alloc (tp)) =
+		       "alloc("^(Ast.Print.pp_tp tp)^")"
+		  | pp_verif_aexpr (AllocArray (tp, e)) =
+		       "alloc("^(Ast.Print.pp_tp tp)^","^(pp_verif_aexpr e)^")"
+		  | pp_verif_aexpr (Select (e, f)) =
+		       "(" ^ (pp_verif_aexpr e) ^ ")."^(Symbol.name f)
+		  | pp_verif_aexpr (MarkedE me) = pp_verif_aexpr (Mark.data me)
 
 		fun pp_astmt (Nop) = "(void)"
 		  | pp_astmt (Seq(s, s')) = (pp_astmt s) ^ ";\n" ^ (pp_astmt s')

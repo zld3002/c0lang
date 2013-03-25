@@ -29,7 +29,8 @@ struct
   type summary = ((AAst.aexpr -> VError.error list) -> AAst.aexpr list -> VError.error list) * (AAst.loc -> unit)
 
   (* How do we want to give back the model?
-   * Give values of all arguments, and all current values? *)
+   * Give values of all arguments, and all current values?
+   * Return model as pairs of variable and value *)
 
   (* TODO *)
   (* Add arrays to z3 so we can assert about them *)
@@ -39,7 +40,7 @@ struct
 
   (* Test breaks/continues *)
   (* Fix tests for conditions.sml *)
-  (* Add pointer checking (implement NULL constant in Z3) *)
+  (* Add/fix pointer checking (implement NULL constant in Z3) *)
 
   (* tests with gcd and binary search error, continue/break/error *)
 
@@ -104,7 +105,6 @@ struct
       Op(oper,es) => Op(oper,List.map (replace_result retval) es)
     | Call(f,es) => Call(f,List.map (replace_result retval) es)
     | Result => retval
-    (* Assert length is greater than or equal to 0 here *)
     | Length e => Length(replace_result retval e)
     | Old e => Old(replace_result retval e)
     | AllocArray(t,e) => AllocArray(t,replace_result retval e)
@@ -222,7 +222,7 @@ struct
     | _ => []
 
   (* Makes assertions for a given statement *)
-  fun process_stms ext (funs as (declare,assert,check)) (phi_funs as (cnt_fun,brk_fun)) stms = 
+  fun process_stms ext (funs as (assert,check)) (phi_funs as (cnt_fun,brk_fun)) stms = 
     case stms of
       [] => []
     | stm::cont_stms =>
@@ -447,7 +447,7 @@ struct
         VError.VerificationError(ext,"Error case " ^ 
           (Print.pp_aexpr nege) ^ " is satisfiable with model:" ^ m)
       fun print_model m =
-        List.foldr (fn (e,s) => "\n" ^ Print.pp_aexpr e ^ s) "" m
+        List.foldr (fn (e,s) => "\n" ^ Print.pp_verif_aexpr e ^ s) "" m
       val errs = case C.check() of
                    SOME m => [sat_error (print_model m)]
                  | NONE => []
@@ -516,8 +516,13 @@ struct
     in (sym,(check_requires,assert_ensures))
     end
 
+  fun add_note fun_sym errs =
+    case errs of
+      [] => []
+    | _ => (VError.VerificationNote(NONE,"Errors for function " ^ Symbol.name fun_sym))::errs
+
   (* Generates the vc errors for a given function. *)
-  fun generate_vc (f as Function(_,_,types,args,requires,stm,ensures)) dbg fun_sum_map =
+  fun generate_vc (f as Function(_,fun_sym,types,args,requires,stm,ensures)) dbg fun_sum_map =
     (let
       val _ = declaredVars := LocalSet.empty
       val declare = C.declare types
@@ -546,14 +551,14 @@ struct
       val _ = List.map assert requires
       (* Process the actual function code. *)
       val default_fun = fn x => fn y => []
-      val errs = process_stms NONE (declare,assert,check) (default_fun,default_fun) [stm]
+      val errs = process_stms NONE (assert,check) (default_fun,default_fun) [stm]
       (* Get the list of return values, check that they work in ensures
        * when replacing \result *)
       val retvals = get_returns stm
       val _ = List.map ((List.map (check NONE)) o
                 (fn e => List.map (fn r => replace_result r e) retvals)) ensures
-    in errs
+    in add_note fun_sym errs
     end)
-      handle CriticalError errs => errs 
+      handle CriticalError errs => add_note fun_sym errs
 
 end
