@@ -6,7 +6,8 @@
 signature VCGEN =
 sig
 
-  type summary = ((AAst.aexpr -> VError.error list) -> AAst.aexpr list -> VError.error list) * (AAst.loc -> unit)
+  type summary = ((AAst.aexpr -> VError.error list) -> AAst.aexpr list ->
+                   VError.error list) * (AAst.loc -> unit)
 
   (* Given a function, generates a summary of its ensures and requires. *)
   val generate_function_summary : AAst.afunc -> (Symbol.symbol * summary)
@@ -26,7 +27,8 @@ struct
   exception Unimplemented 
   exception CriticalError of VError.error list
 
-  type summary = ((AAst.aexpr -> VError.error list) -> AAst.aexpr list -> VError.error list) * (AAst.loc -> unit)
+  type summary = ((AAst.aexpr -> VError.error list) -> AAst.aexpr list ->
+                   VError.error list) * (AAst.loc -> unit)
 
   (* How do we want to give back the model?
    * Give values of all arguments, and all current values?
@@ -35,10 +37,6 @@ struct
   (* TODO *)
   (* Add arrays to z3 so we can assert about them *)
   (* Use VNote to indicate ifs/whiles and other noteworthy info *)
-
-  (* Use stack size from conditions to push stack whenever entering
-   * a new block, so that if a return is seen, it can be popped
-   * (and it is popped afterwards if the stack size didn't revert) *)
 
   (* Test breaks/continues *)
   (* Fix tests for conditions.sml *)
@@ -51,7 +49,6 @@ struct
   val funmap : summary SymMap.map ref = ref (SymMap.empty)
   val debug = ref false
   val cnt_index = ref 0
-  val brk_index = ref 0
   val declaredVars : LocalSet.set ref = ref LocalSet.empty
 
   fun print_dbg s = if !debug then print s else ()
@@ -91,16 +88,6 @@ struct
     | MarkedS m => declare_stm decl (Mark.data m)
     | _ => ()
 
-  (* Gets all of the expressions that are returned from the function. *)
-  fun get_returns stm =
-    case stm of
-      Seq(s1,s2) => (get_returns s1) @ (get_returns s2)
-    | Return (SOME e) => [e]
-    | If(e,s1,s2,phis) => (get_returns s1) @ (get_returns s2)
-    | While(cntphis,e,es,s,brkphis) => get_returns s
-    | MarkedS m => get_returns (Mark.data m)
-    | _ => []
-
   (* Replaces each instance of \result with the provided return expression. *)
   fun replace_result retval exp =
     case exp of
@@ -124,7 +111,7 @@ struct
       (case (oper,es) of
         (Ast.DEREF,[e]) => make_exp (Length exp)
       | (Ast.COND,[e1,e2,e3]) => 
-        (* Improve this for asserts with conds *)
+        (* TODO Improve this for asserts with conds *)
         Op(Ast.LOGOR,[array_length make_exp e2,array_length make_exp e3])
       | _ => raise Fail "can't assign expression to array type")
     | AllocArray(t,len) => make_exp len
@@ -224,210 +211,157 @@ struct
     | _ => []
 
   (* Makes assertions for a given statement *)
-  fun process_stms ext (funs as (assert,check)) (phi_funs as (cnt_fun,brk_fun)) stms = 
-    case stms of
-      [] => []
-    | stm::cont_stms =>
-      (case stm of
-        Nop => process_stms ext funs phi_funs cont_stms
-      | Seq(s1,s2) =>
-          process_stms ext funs phi_funs (s1::s2::cont_stms)
-      | Assert e =>
-          (process_exp ext check e) @ (check ext e) @
-            (process_stms ext funs phi_funs cont_stms)
-      | Error e => (process_exp ext check e)
-      | Annotation e =>
-          (process_exp ext check e) @ (check ext e) @
-            (process_stms ext funs phi_funs cont_stms)
-      | Def((v,i),e) =>
-          let
-            val _ =
-              case SymMap.find(!typemap,v) of
-                SOME(Ast.Array _) =>
-                  (assert (array_length
-                    (fn l => opeq (Length(Local(v,i))) l) e);
-                  assert (array_length
-                    (fn l => Op(Ast.GEQ,[l,ZERO])) e))
-              | _ => ()
-            val errs = case get_function e of
-                       SOME((rf,ef),es) =>
-                         let
-                           val errs = rf (check ext) es
-                           val _ = ef (v,i)
-                         in errs
-                         end
-                     | NONE => []
-            val _ = assert (opeq (Local(v,i)) e)
-          in
-            (process_exp ext check e) @ errs @ (process_stms ext funs phi_funs cont_stms)
-          end
-      | Assign(e1,NONE,e2) =>
-          let
-            val _ = 
-              case get_lvarray e1 of
-                SOME arr => 
-                  (assert (array_length
-                    (fn l => opeq (Length(arr)) l) e2);
-                  assert (array_length
-                    (fn l => Op(Ast.GEQ,[l,ZERO])) e2))
-              | NONE => () 
-            val errs1 = process_exp ext check e1
-            val errs2 = process_exp ext check e2
-            val _ = assert (opeq e1 e2)
-          in
-            errs1 @ errs2 @ (process_stms ext funs phi_funs cont_stms)
-          end
-      | Assign(e1,SOME oper,e2) =>
-          let
-            val errs1 = process_exp ext check e1
-            val errs2 = process_exp ext check e2
-            val _ = assert (opeq e1 (Op(oper,[e1,e2])))
-          in
-            errs1 @ errs2 @ (process_stms ext funs phi_funs cont_stms)
-          end
-      | Expr e => (process_exp ext check e) @ (process_stms ext funs phi_funs cont_stms)
-      | Return NONE => []
-      | Return (SOME e) =>
-          (process_exp ext check e)(* @ (process_stms ext funs phi_funs cont_stms)*)
-      | If(e,s1,s2,if_phis) =>
-          let
-            (* Makes assertions for phi statements *)
-            fun assert_phis indices =
-              let
-                fun assert_phi (PhiDef(s,i,is)) =
-                  assert (List.foldr (fn ((j,e),res) =>
-                             Op(Ast.LOGOR,[res,
-                             Op(Ast.LOGAND,[e,
-                                opeq (Local(s,i))
-                                     (Local(s,List.nth(is,j)))])]))
-                           (BoolConst false)
-                           indices)
+  fun process_stms ext (funs as (assert,check,ensure)) cnt_phi_fun [] = []
+    | process_stms ext (funs as (assert,check,ensure)) cnt_phi_fun (stm::cont_stms) =
+    case stm of
+      Nop => process_stms ext funs cnt_phi_fun cont_stms
+    | Seq(s1,s2) =>
+        process_stms ext funs cnt_phi_fun (s1::s2::cont_stms)
+    | Assert e =>
+        (process_exp ext check e) @ (check ext e) @
+          (process_stms ext funs cnt_phi_fun cont_stms)
+    | Error e => (process_exp ext check e)
+    | Annotation e =>
+        (process_exp ext check e) @ (check ext e) @
+          (process_stms ext funs cnt_phi_fun cont_stms)
+    | Def((v,i),e) =>
+        let
+          val _ =
+            case SymMap.find(!typemap,v) of
+              SOME(Ast.Array _) =>
+                (assert (array_length
+                  (fn l => opeq (Length(Local(v,i))) l) e);
+                assert (array_length
+                  (fn l => Op(Ast.GEQ,[l,ZERO])) e))
+            | _ => ()
+          val errs = case get_function e of
+                     SOME((rf,ef),es) =>
+                       let
+                         val errs = rf (check ext) es
+                         val _ = ef (v,i)
+                       in errs
+                       end
+                   | NONE => []
+          val _ = assert (opeq (Local(v,i)) e)
+        in
+          (process_exp ext check e) @ errs @ (process_stms ext funs cnt_phi_fun cont_stms)
+        end
+    | Assign(e1,NONE,e2) =>
+        let
+          val _ = 
+            case get_lvarray e1 of
+              SOME arr => 
+                (assert (array_length
+                  (fn l => opeq (Length(arr)) l) e2);
+                assert (array_length
+                  (fn l => Op(Ast.GEQ,[l,ZERO])) e2))
+            | NONE => () 
+          val errs1 = process_exp ext check e1
+          val errs2 = process_exp ext check e2
+          val _ = assert (opeq e1 e2)
+        in
+          errs1 @ errs2 @ (process_stms ext funs cnt_phi_fun cont_stms)
+        end
+    | Assign(e1,SOME oper,e2) =>
+        let
+          val errs1 = process_exp ext check e1
+          val errs2 = process_exp ext check e2
+          val _ = assert (opeq e1 (Op(oper,[e1,e2])))
+        in
+          errs1 @ errs2 @ (process_stms ext funs cnt_phi_fun cont_stms)
+        end
+    | Expr e => (process_exp ext check e) @ (process_stms ext funs cnt_phi_fun cont_stms)
+    | Return NONE => []
+    | Return (SOME e) => process_exp ext check e @ (ensure e ext)
+    | If(e,s1,s2,if_phis) =>
+        let
+          (* Makes assertions for phi statements *)
+          fun make_assert_exp index e (PhiDef(s,i,is)) =
+            Op(Ast.LOGAND,[e,opeq (Local(s,i)) (Local(s,List.nth(is,index)))])
 
-              in List.map assert_phi if_phis
-              end
+          (* Generate any errors in the condition. *)
+          val exp_errs = process_exp ext check e
 
-            val exp_errs = process_exp ext check e
+          (* Process cases for errors. *)
+          val _ = print_dbg "Entering then case\n"
+          val thenerrs = process_stms ext funs cnt_phi_fun [s1]
+          val _ = print_dbg "Entering else case\n"
+          val elseerrs = process_stms ext funs cnt_phi_fun [s2]
 
-            (* Save the current state for when we do the else case *)
-            val _ = C.push()
-            (* Assert the condition is true, then check if it is satisfiable
-             * (meaning that the then branch could potentially be taken). *)
-            val _ = assert e
-            val cond_sat = case C.check() of
-                             NONE => false
-                           | SOME _ => true
-            val old_cnt_index = !cnt_index
-            val old_brk_index = !brk_index
-            (* Generate errors for the then statements given that the conditional is true. *)
-            val _ = if cond_sat then print_dbg "Entering then case\n" else ()
-            val errs = process_stms ext funs phi_funs [s1]
-            val thenerrs = if cond_sat then errs else []
-            (* Revert to before assertions for then, and resave for doing later statements. *)
-            val _ = C.pop()
-            val _ = C.push()
-            (* Assert the condition is false, then check if it is satisfiable
-             * (meaning that the else branch could potentially be taken). *)
-            val neg_e = negate_exp e
-            val _ = assert neg_e
-            val negcond_sat = case C.check() of
-                                NONE => false
-                              | SOME _ => true
-            (* Generate errors for the else statements given that the conditional is false. *)
-            val _ = if negcond_sat then print_dbg "Entering else case\n" else ()
-            val errs = process_stms ext funs phi_funs [s2]
-            val elseerrs = if negcond_sat then errs else []
-            (* Revert to before assertions for else. *)
-            val _ = C.pop()
-            val _ = cnt_index := old_cnt_index
-            val _ = brk_index := old_brk_index
-            (* Reprocess statements for assertion knowledge. *)
-            val _ = process_stms ext funs phi_funs [s1]
-            val _ = process_stms ext funs phi_funs [s2]
-            (* Use phi functions to make assertions about values after the if. *)
-            val indices = if negcond_sat then [(1,neg_e)] else []
-            val indices = if cond_sat then (0,e)::indices else indices
-            val _ = assert_phis indices
-            (* Generate errors for the rest of the statements in the program. *)
-            val _ = print_dbg " Exiting if statement\n"
-            val resterrs = process_stms ext funs phi_funs cont_stms
-          in exp_errs @ thenerrs @ elseerrs @ resterrs
-          end
-      | Break =>
-          let
-            val errs = brk_fun ext (!brk_index)
-            val _ = brk_index := !brk_index + 1
-          in errs
-          end
-      | Continue =>
-          let
-            val errs = cnt_fun ext (!cnt_index)
-            val _ = cnt_index := !cnt_index + 1
-          in errs
-          end
-      | While(cntphis,e,invs,s,brkphis) =>
-          let
-            (* Check the invariants hold *)
-            fun check_invariants phis switch ext index =
-              let
-                val _ = C.push()
-                val invs = 
-                  if switch
-                    then List.map (replace_inv phis 0 true) invs
-                    else invs
-                val new_invs = List.map (replace_inv phis index false) invs
-                val errs = List.concat(List.map (check ext) new_invs)
-                val _ = C.pop()
-              in errs
-              end
+          (* Use phi functions to make assertions about values after the if. *)
+          val _ = List.map (fn p => assert
+                             (Op(Ast.LOGOR,[make_assert_exp 0 e p,
+                                            make_assert_exp 1 (negate_exp e) p])))
+                           if_phis
 
-            val exp_errs = process_exp ext check e
+          (* Generate errors for the rest of the statements in the program. *)
+          val _ = print_dbg " Exiting if statement\n"
+          val resterrs = process_stms ext funs cnt_phi_fun cont_stms
+        in exp_errs @ thenerrs @ elseerrs @ resterrs
+        end
+    | Break => [VError.VerificationNote(ext,"Warning: loop invariants cannot be verified when using breaks")]
+    | Continue =>
+        let
+          val errs = cnt_phi_fun ext (!cnt_index)
+          val _ = cnt_index := !cnt_index + 1
+        in errs
+        end
+    | While(cntphis,e,invs,s,brkphis) =>
+        let
+          (* Check the invariants hold *)
+          fun check_invariants phis ext index =
+            let
+              val _ = C.push()
+              val new_invs = List.map (replace_inv phis index false) invs
+              val errs = List.concat(List.map (check ext) new_invs)
+              val _ = C.pop()
+            in errs
+            end
 
-            (* Thanks to SSA, everything defined before we enter the loop is a
-             * constant inside of and after the loop *)
-            val _ = C.push()
-            val old_cnt_index = !cnt_index
-            val old_brk_index = !brk_index
-            val _ = cnt_index := 1
-            val _ = brk_index := 1
+          val exp_errs = process_exp ext check e
 
-            (* First make sure that invariants hold before entering the loop *)
-            val inv_errs = check_invariants cntphis false ext 0
-            (* Assert the condition while inside the loop *)
-            val _ = assert (replace_inv cntphis 0 false e)
-            (* Check if the initial condition is even satisfiable *)
-            val cond_sat = case C.check() of
-                             NONE => false
-                           | SOME _ => true
+          (* Thanks to SSA, everything defined before we enter the loop is a
+           * constant inside of and after the loop *)
+          val _ = C.push()
+          val old_cnt_index = !cnt_index
+          val _ = cnt_index := 1
 
-            (* Assert the condition while inside the loop *)
-            val _ = assert e
-            (* Assert the loop invariants at the start of the loop *)
-            val _ = List.map assert invs
-            val errs = process_stms ext funs
-                                    (check_invariants cntphis false,
-                                     check_invariants brkphis true) [s]
-            (* Now check the case where the loop continues from the end *)
-            val errs = errs @ (check_invariants cntphis false ext (!cnt_index))
+          (* First make sure that invariants hold before entering the loop *)
+          val inv_errs = check_invariants cntphis ext 0
+          (* Assert the condition while inside the loop *)
+          val _ = assert (replace_inv cntphis 0 false e)
+          (* Check if the initial condition is even satisfiable *)
+          val cond_sat = case C.check() of
+                           NONE => false
+                         | SOME _ => true
 
-            (* Only keep errors if the loop could be entered *)
-            val while_errs = if cond_sat then errs else []
+          (* Assert the condition while inside the loop *)
+          val _ = assert e
+          (* Assert the loop invariants at the start of the loop *)
+          val _ = List.map assert invs
+          val errs = process_stms ext funs
+                                  (check_invariants cntphis) [s]
+          (* Now check the case where the loop continues from the end *)
+          val errs = errs @ (check_invariants cntphis ext (!cnt_index))
 
-            (* Now revert back to outside the loop *)
-            val _ = C.pop()
+          (* Only keep errors if the loop could be entered *)
+          val while_errs = if cond_sat then errs else []
 
-            (* Assert the invariants, since we can assume that they
-             * were true upon exiting the loop *)
-            val new_invs = List.map (replace_inv brkphis 0 true) invs
-            val _ = List.map assert invs
-            (* Revert back to old indices of phis *)
-            val _ = cnt_index := old_cnt_index
-            val _ = brk_index := old_brk_index
-            (* Generate errors for the rest of the statements in the program. *)
-            val rest_errs = process_stms ext funs phi_funs cont_stms
-          in exp_errs @ inv_errs @ while_errs @ rest_errs
-          end
-      | MarkedS m =>
-          process_stms (Mark.ext m) funs phi_funs ((Mark.data m)::cont_stms))
+          (* Now revert back to outside the loop *)
+          val _ = C.pop()
+
+          (* Assert the invariants, since we can assume that they
+           * were true upon exiting the loop *)
+          val new_invs = List.map (replace_inv brkphis 0 true) invs
+          val _ = List.map assert invs
+          (* Revert back to old indices of phis *)
+          val _ = cnt_index := old_cnt_index
+          (* Generate errors for the rest of the statements in the program. *)
+          val rest_errs = process_stms ext funs cnt_phi_fun cont_stms
+        in exp_errs @ inv_errs @ while_errs @ rest_errs
+        end
+    | MarkedS m =>
+        process_stms (Mark.ext m) funs cnt_phi_fun ((Mark.data m)::cont_stms)
 
   (* The primary function used for making and checking assertions. It produces
    * both warnings and errors (as specified in vcrules.tex). It can also just
@@ -454,8 +388,9 @@ struct
       fun print_model m =
         List.foldr (fn (e,s) => "\n" ^ Print.pp_verif_aexpr e ^ s) "" m
       val errs = case C.check() of
-                   SOME m => [sat_error (print_model m)]
-                 | NONE => []
+                   NONE => []
+                 | SOME [] => []
+                 | SOME m => [sat_error (print_model m)]
       val _ = if !debug
         then List.map (fn e => print_dbg (VError.pp_error e ^ "\n")) errs
         else []
@@ -546,8 +481,13 @@ struct
       val _ = typemap := types
       val _ = funmap := fun_sum_map
       val _ = debug := dbg
+
+      (* Make functions for use in statement processing *)
       val check = check_assert assert_fun
       fun assert e = (print_dbg ("Assertion: " ^ Print.pp_aexpr e ^ "\n");assert_fun e)
+      fun ensure e ext = List.foldr op@ []
+                           (List.map ((check ext) o (replace_result e)) ensures)
+
       (* Declare the arguments *)
       val _ = List.map (fn (_,_,l) => declare_fun l) args 
       val _ = declare_stm declare_fun stm
@@ -556,12 +496,7 @@ struct
       val _ = List.map assert requires
       (* Process the actual function code. *)
       val default_fun = fn x => fn y => []
-      val errs = process_stms NONE (assert,check) (default_fun,default_fun) [stm]
-      (* Get the list of return values, check that they work in ensures
-       * when replacing \result *)
-      val retvals = get_returns stm
-      val _ = List.map ((List.map (check NONE)) o
-                (fn e => List.map (fn r => replace_result r e) retvals)) ensures
+      val errs = process_stms NONE (assert,check,ensure) default_fun [stm]
     in add_note fun_sym errs
     end)
       handle CriticalError errs => add_note fun_sym errs
