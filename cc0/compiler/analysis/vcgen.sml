@@ -36,11 +36,11 @@ struct
 
   (* TODO *)
   (* Add arrays to z3 so we can assert about them *)
-  (* Use VNote to indicate ifs/whiles and other noteworthy info *)
 
   (* Test breaks/continues *)
-  (* Fix tests for conditions.sml *)
-  (* Add/fix pointer checking (implement NULL constant in Z3) *)
+  (* Fix tests for conditions.sml (need to declare variables) *)
+  (* Add/fix pointer checking (implement NULL constant in Z3, need some
+   * way to indicate not-null without it being the same across pointers) *)
 
   (* tests with gcd and binary search error, continue/break/error *)
 
@@ -54,6 +54,7 @@ struct
   fun print_dbg s = if !debug then print s else ()
   fun opeq e1 e2 = Op(Ast.EQ, [e1,e2])
 
+  (* Declares all the variables in the given expression. *)
   fun declare_exp decl e =
     case e of
        Local l => decl l
@@ -67,6 +68,7 @@ struct
      | MarkedE m => declare_exp decl (Mark.data m)
      | _ => ()
 
+  (* Declares all the variables in the given statement. *)
   fun declare_stm decl stm = 
     case stm of
       Seq(s1,s2) => (declare_stm decl s1;
@@ -147,6 +149,20 @@ struct
         MarkedE(Mark.mark' (replace_inv phis index switch (Mark.data m),Mark.ext m))
     | _ => inv
 
+  (* Returns true if the statement breaks, errors, or returns. *)
+  fun breaks_errors_returns stm =
+    case stm of
+      Seq(s1,s2) => (breaks_errors_returns s1) orelse
+                    (breaks_errors_returns s2)
+    | Error _ => true
+    | Break => true
+    | Return _ => true
+    | If(_,s1,s2,_) => (breaks_errors_returns s1) andalso
+                       (breaks_errors_returns s2)
+    | While _ => false
+    | MarkedS m => breaks_errors_returns (Mark.data m)
+    | _ => false
+
   (* Gets the array in an lvalue if there is one for the purpose of
    * keeping track of array lengths. *)
   fun get_lvarray exp =
@@ -169,6 +185,13 @@ struct
     | MarkedE m => get_function (Mark.data m)
     | _ => NONE
 
+  (* Generates necessary assertions for divions and mods *)
+  fun divmod_check ext check e1 e2 =
+    (check ext (Op(Ast.NOTEQ,[e2,ZERO]))) @
+    (check ext (Op(Ast.LOGNOT,[Op(Ast.LOGAND,
+      [opeq e1 (IntConst(Word32Signed.TMIN)),
+       opeq e2 (IntConst(Word32.fromInt(~1)))])])))
+
   (* Returns an expression that is the logical negation of the argument *)
   fun negate_exp exp =
     case exp of
@@ -183,13 +206,6 @@ struct
     | Op(Ast.LOGOR,[e1,e2]) => Op(Ast.LOGAND,[negate_exp e1,negate_exp e2])
     | MarkedE m => negate_exp (Mark.data m)
     | _ => Op(Ast.LOGNOT,[exp])
-
-  (* Generates necessary assertions for divions and mods *)
-  fun divmod_check ext check e1 e2 =
-    (check ext (Op(Ast.NOTEQ,[e2,ZERO]))) @
-    (check ext (Op(Ast.LOGNOT,[Op(Ast.LOGAND,
-      [opeq e1 (IntConst(Word32Signed.TMIN)),
-       opeq e2 (IntConst(Word32.fromInt(~1)))])])))
 
   (* Makes assertions for a given expression *)
   fun process_exp ext check exp =
@@ -282,17 +298,28 @@ struct
           (* Generate any errors in the condition. *)
           val exp_errs = process_exp ext check e
 
-          (* Process cases for errors. *)
+          (* Process cases for errors. Forget assertions made if the control
+           * flow will exit the block of statements. *)
           val _ = print_dbg "Entering then case\n"
+          val forget_then = breaks_errors_returns s1
+          val _ = if forget_then then C.push() else ()
           val thenerrs = process_stms ext funs cnt_phi_fun [s1]
+          val _ = if forget_then then C.pop() else ()
           val _ = print_dbg "Entering else case\n"
+          val forget_else = breaks_errors_returns s2
+          val _ = if forget_else then C.push() else ()
           val elseerrs = process_stms ext funs cnt_phi_fun [s2]
+          val _ = if forget_else then C.pop() else ()
 
           (* Use phi functions to make assertions about values after the if. *)
-          val _ = List.map (fn p => assert
-                             (Op(Ast.LOGOR,[make_assert_exp 0 e p,
-                                            make_assert_exp 1 (negate_exp e) p])))
-                           if_phis
+          fun assert_phi phi =
+            case (forget_then,forget_else) of
+              (true,true) => ()
+            | (true,false) => assert (make_assert_exp 1 (negate_exp e) phi)
+            | (false,true) => assert (make_assert_exp 0 e phi)
+            | (false,false) => assert (Op(Ast.LOGOR,[make_assert_exp 0 e phi,
+                                        make_assert_exp 1 (negate_exp e) phi]))
+          val _ = List.map assert_phi if_phis
 
           (* Generate errors for the rest of the statements in the program. *)
           val _ = print_dbg " Exiting if statement\n"
