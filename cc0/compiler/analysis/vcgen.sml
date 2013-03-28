@@ -113,7 +113,7 @@ struct
       (case (oper,es) of
         (Ast.DEREF,[e]) => make_exp (Length exp)
       | (Ast.COND,[e1,e2,e3]) => 
-        (* TODO Improve this for asserts with conds *)
+        (* TODO Improve this for asserts with conds (leave as ite) *)
         Op(Ast.LOGOR,[array_length make_exp e2,array_length make_exp e3])
       | _ => raise Fail "can't assign expression to array type")
     | AllocArray(t,len) => make_exp len
@@ -159,7 +159,18 @@ struct
     | Return _ => true
     | If(_,s1,s2,_) => (breaks_errors_returns s1) andalso
                        (breaks_errors_returns s2)
-    | While _ => false
+    | MarkedS m => breaks_errors_returns (Mark.data m)
+    | _ => false
+
+  (* Returns true if the statement could potentially break
+   * out of the outermost loop. *)
+  fun could_break stm =
+    case stm of
+      Seq(s1,s2) => (breaks_errors_returns s1) orelse
+                    (breaks_errors_returns s2)
+    | Break => true
+    | If(_,s1,s2,_) => (breaks_errors_returns s1) orelse
+                       (breaks_errors_returns s2)
     | MarkedS m => breaks_errors_returns (Mark.data m)
     | _ => false
 
@@ -305,6 +316,7 @@ struct
           val _ = if forget_then then C.push() else ()
           val thenerrs = process_stms ext funs cnt_phi_fun [s1]
           val _ = if forget_then then C.pop() else ()
+
           val _ = print_dbg "Entering else case\n"
           val forget_else = breaks_errors_returns s2
           val _ = if forget_else then C.push() else ()
@@ -362,14 +374,17 @@ struct
                            NONE => false
                          | SOME _ => true
 
+          val forget = breaks_errors_returns s
           (* Assert the condition while inside the loop *)
           val _ = assert e
           (* Assert the loop invariants at the start of the loop *)
           val _ = List.map assert invs
           val errs = process_stms ext funs
                                   (check_invariants cntphis) [s]
-          (* Now check the case where the loop continues from the end *)
-          val errs = errs @ (check_invariants cntphis ext (!cnt_index))
+          (* Now check the case where the loop continues from the end, but
+           * only if we can actually reach it. *)
+          val errs = if forget then errs
+                       else errs @ (check_invariants cntphis ext (!cnt_index))
 
           (* Only keep errors if the loop could be entered *)
           val while_errs = if cond_sat then errs else []
@@ -378,9 +393,10 @@ struct
           val _ = C.pop()
 
           (* Assert the invariants, since we can assume that they
-           * were true upon exiting the loop *)
+           * were true upon exiting the loop (but only if we didn't
+           * break out of it). *)
           val new_invs = List.map (replace_inv brkphis 0 true) invs
-          val _ = List.map assert invs
+          val _ = if forget orelse could_break s then [] else List.map assert invs
           (* Revert back to old indices of phis *)
           val _ = cnt_index := old_cnt_index
           (* Generate errors for the rest of the statements in the program. *)
