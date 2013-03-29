@@ -164,16 +164,12 @@ struct
   fun lub (A.Pointer(A.Any)) (A.Pointer(A.Any)) = SOME(A.Pointer(A.Any))
     | lub (A.Pointer(tp)) (A.Pointer(A.Any)) = SOME(A.Pointer(tp))
     | lub (A.Pointer(A.Any)) (A.Pointer(tp)) = SOME(A.Pointer(tp))
-    (* type definitions never contain A.Pointer(A.Any), so
-     * these are handled adequately by tp_equal *)
-    (*
     | lub (A.TypeName(aid1)) (A.TypeName(aid2)) =
       (case Symbol.compare(aid1,aid2)
-         of EQUAL => A.TypeName(aid1)
+         of EQUAL => SOME(A.TypeName(aid1))
           | _ => lub (tp_expand aid1) (tp_expand aid2))
     | lub (A.TypeName(aid1)) tp2 = lub (tp_expand aid1) tp2
     | lub tp1 (A.TypeName(aid2)) = lub tp1 (tp_expand aid2)
-    *)
     | lub tp1 tp2 = if tp_equal tp1 tp2
 		    then SOME(tp1)
 		    else NONE
