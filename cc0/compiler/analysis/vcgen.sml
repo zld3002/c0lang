@@ -58,8 +58,8 @@ struct
   fun declare_exp decl e =
     case e of
        Local l => decl l
-     | Op(oper,es) => (List.map (declare_exp decl) es;())
-     | Call(f,es) => (List.map (declare_exp decl) es;())
+     | Op(oper,es) => ignore(List.map (declare_exp decl) es)
+     | Call(f,es) => ignore(List.map (declare_exp decl) es)
      | Length e => (declare_exp decl e;
                          C.assert (Op(Ast.GEQ,[Length e,ZERO])))
      | Old e => declare_exp decl e
@@ -85,7 +85,7 @@ struct
                              declare_stm decl s1;
                              declare_stm decl s2)
     | While(_,e,lvs,s,_) => (declare_exp decl e;
-                                  List.map (declare_exp decl) lvs;
+                                  ignore(List.map (declare_exp decl) lvs);
                                   declare_stm decl s)
     | MarkedS m => declare_stm decl (Mark.data m)
     | _ => ()
@@ -495,7 +495,7 @@ struct
         | _ => e
 
       fun assert_ensures l =
-        (List.map (C.assert o (replace_result l)) ensures;())
+        ignore(List.map (C.assert o (replace_result l)) ensures)
     in (sym,(check_requires,assert_ensures))
     end
 

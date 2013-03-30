@@ -380,7 +380,8 @@ fun check () =
         EQUAL =>
           let
             val _ = (printToZ3("(check-sat)\n");printToZ3("(get-model)\n"))
-            val _ = (readFromZ3();readFromZ3())
+            val _ = readFromZ3()
+            val _ = readFromZ3()
             fun getModelStrings () =
               let
                 val str = readFromZ3()
