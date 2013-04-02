@@ -160,29 +160,46 @@ struct
         MarkedE(Mark.mark' (replace_inv phis index switch (Mark.data m),Mark.ext m))
     | _ => inv
 
+  fun control_flow_changes check_change stm =
+    case stm of
+      Seq(s1,s2) => (control_flow_changes check_change s1) orelse
+                    (control_flow_changes check_change s2)
+    | Error _ => check_change stm
+    | Continue => check_change stm
+    | Break => check_change stm
+    | Return _ => check_change stm
+    | If(_,s1,s2,_) => (control_flow_changes check_change s1) andalso
+                       (control_flow_changes check_change s2)
+    | MarkedS m => control_flow_changes check_change (Mark.data m)
+    | _ => false
+
+  (* Returns true if the statement continues, breaks, errors, or returns. *)
+  fun continues_breaks_errors_returns stm =
+    control_flow_changes (fn Error _ => true
+                           | Continue => true
+                           | Break => true
+                           | Return _ => true
+                           | _ => false)
+                         stm
+
   (* Returns true if the statement breaks, errors, or returns. *)
   fun breaks_errors_returns stm =
-    case stm of
-      Seq(s1,s2) => (breaks_errors_returns s1) orelse
-                    (breaks_errors_returns s2)
-    | Error _ => true
-    | Break => true
-    | Return _ => true
-    | If(_,s1,s2,_) => (breaks_errors_returns s1) andalso
-                       (breaks_errors_returns s2)
-    | MarkedS m => breaks_errors_returns (Mark.data m)
-    | _ => false
+    control_flow_changes (fn Error _ => true
+                           | Break => true
+                           | Return _ => true
+                           | _ => false)
+                         stm
 
   (* Returns true if the statement could potentially break
    * out of the outermost loop. *)
   fun could_break stm =
     case stm of
-      Seq(s1,s2) => (breaks_errors_returns s1) orelse
-                    (breaks_errors_returns s2)
+      Seq(s1,s2) => (could_break s1) orelse
+                    (could_break s2)
     | Break => true
-    | If(_,s1,s2,_) => (breaks_errors_returns s1) orelse
-                       (breaks_errors_returns s2)
-    | MarkedS m => breaks_errors_returns (Mark.data m)
+    | If(_,s1,s2,_) => (could_break s1) orelse
+                       (could_break s2)
+    | MarkedS m => could_break (Mark.data m)
     | _ => false
 
   (* Gets the array in an lvalue if there is one for the purpose of
@@ -323,13 +340,13 @@ struct
           (* Process cases for errors. Forget assertions made if the control
            * flow will exit the block of statements. *)
           val _ = print_dbg "Entering then case\n"
-          val forget_then = breaks_errors_returns s1
+          val forget_then = continues_breaks_errors_returns s1
           val _ = if forget_then then C.push() else ()
           val thenerrs = process_stms ext funs cnt_info [s1]
           val _ = if forget_then then C.pop() else ()
 
           val _ = print_dbg "Entering else case\n"
-          val forget_else = breaks_errors_returns s2
+          val forget_else = continues_breaks_errors_returns s2
           val _ = if forget_else then C.push() else ()
           val elseerrs = process_stms ext funs cnt_info [s2]
           val _ = if forget_else then C.pop() else ()
