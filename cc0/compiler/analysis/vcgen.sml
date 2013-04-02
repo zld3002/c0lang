@@ -81,12 +81,23 @@ struct
                                   declare_exp decl e2)
     | Expr e => declare_exp decl e
     | Return (SOME e) => declare_exp decl e
-    | If(e,s1,s2,_) => (declare_exp decl e;
-                             declare_stm decl s1;
-                             declare_stm decl s2)
-    | While(_,e,lvs,s,_) => (declare_exp decl e;
-                                  ignore(List.map (declare_exp decl) lvs);
-                                  declare_stm decl s)
+    | If(e,s1,s2,phis) => 
+      let
+        val _ = declare_exp decl e
+        val _ = declare_stm decl s1
+        val _ = declare_stm decl s2
+        val _ = List.map (fn PhiDef(s,i,_) => decl (s,i)) phis
+      in ()
+      end
+    | While(cnt_phis,e,lvs,s,brk_phis) =>
+      let
+        val _ = List.map (fn PhiDef(s,i,_) => decl (s,i)) cnt_phis
+        val _ = declare_exp decl e
+        val _ = List.map (declare_exp decl) lvs
+        val _ = declare_stm decl s
+        val _ = List.map (fn PhiDef(s,i,_) => decl (s,i)) brk_phis
+      in ()
+      end
     | MarkedS m => declare_stm decl (Mark.data m)
     | _ => ()
 
