@@ -199,12 +199,12 @@ struct
 		                                   ^(pp_astmt s1) ^ "\n} else {\n"
 		                                   ^ (pp_astmt s2) ^ "\n}"
 		                                   ^ (commas ";\n" (map pp_aphi phis))
-		  | pp_astmt (While (p, e, specs, stm, p2)) = 
+		  | pp_astmt (While (p1, e, specs, stm, p2)) = 
 		     "while\n"^
-		      (commas ";\n" (map pp_aphi p))
+		      (commas ";\n" (map pp_aphi p1))
 		      ^"\n" ^(commas ";\n" (map (fn s => "//@loop_invariant" ^ (pp_aexpr s)) specs))
 		      ^"\n(" ^ (pp_aexpr e) ^") {\n"
-		          ^ (pp_astmt stm) ^ "\n}"
+		          ^ (pp_astmt stm) ^ "\n}" ^ (commas ";\n" (map pp_aphi p2))
 		  | pp_astmt (MarkedS ms) = pp_astmt (Mark.data ms)
 		
 		fun pp_afunc (Function (rtp, name, map, formals, requires, body, ensures))=

@@ -249,19 +249,19 @@ struct
     | _ => []
 
   (* Makes assertions for a given statement *)
-  fun process_stms ext (funs as (assert,check,ensure)) cnt_phi_fun [] = []
-    | process_stms ext (funs as (assert,check,ensure)) cnt_phi_fun (stm::cont_stms) =
+  fun process_stms ext funs cnt_info [] = []
+    | process_stms ext (funs as (assert,check,ensure)) (cnt_info as (cnt_phi_fun,cnt_num)) (stm::cont_stms) =
     case stm of
-      Nop => process_stms ext funs cnt_phi_fun cont_stms
+      Nop => process_stms ext funs cnt_info cont_stms
     | Seq(s1,s2) =>
-        process_stms ext funs cnt_phi_fun (s1::s2::cont_stms)
+        process_stms ext funs cnt_info (s1::s2::cont_stms)
     | Assert e =>
         (process_exp ext check e) @ (check ext e) @
-          (process_stms ext funs cnt_phi_fun cont_stms)
+          (process_stms ext funs cnt_info cont_stms)
     | Error e => (process_exp ext check e)
     | Annotation e =>
         (process_exp ext check e) @ (check ext e) @
-          (process_stms ext funs cnt_phi_fun cont_stms)
+          (process_stms ext funs cnt_info cont_stms)
     | Def((v,i),e) =>
         let
           val _ =
@@ -282,7 +282,7 @@ struct
                    | NONE => []
           val _ = assert (opeq (Local(v,i)) e)
         in
-          (process_exp ext check e) @ errs @ (process_stms ext funs cnt_phi_fun cont_stms)
+          (process_exp ext check e) @ errs @ (process_stms ext funs cnt_info cont_stms)
         end
     | Assign(e1,NONE,e2) =>
         let
@@ -298,7 +298,7 @@ struct
           val errs2 = process_exp ext check e2
           val _ = assert (opeq e1 e2)
         in
-          errs1 @ errs2 @ (process_stms ext funs cnt_phi_fun cont_stms)
+          errs1 @ errs2 @ (process_stms ext funs cnt_info cont_stms)
         end
     | Assign(e1,SOME oper,e2) =>
         let
@@ -306,9 +306,9 @@ struct
           val errs2 = process_exp ext check e2
           val _ = assert (opeq e1 (Op(oper,[e1,e2])))
         in
-          errs1 @ errs2 @ (process_stms ext funs cnt_phi_fun cont_stms)
+          errs1 @ errs2 @ (process_stms ext funs cnt_info cont_stms)
         end
-    | Expr e => (process_exp ext check e) @ (process_stms ext funs cnt_phi_fun cont_stms)
+    | Expr e => (process_exp ext check e) @ (process_stms ext funs cnt_info cont_stms)
     | Return NONE => []
     | Return (SOME e) => process_exp ext check e @ (ensure e ext)
     | If(e,s1,s2,if_phis) =>
@@ -325,13 +325,13 @@ struct
           val _ = print_dbg "Entering then case\n"
           val forget_then = breaks_errors_returns s1
           val _ = if forget_then then C.push() else ()
-          val thenerrs = process_stms ext funs cnt_phi_fun [s1]
+          val thenerrs = process_stms ext funs cnt_info [s1]
           val _ = if forget_then then C.pop() else ()
 
           val _ = print_dbg "Entering else case\n"
           val forget_else = breaks_errors_returns s2
           val _ = if forget_else then C.push() else ()
-          val elseerrs = process_stms ext funs cnt_phi_fun [s2]
+          val elseerrs = process_stms ext funs cnt_info [s2]
           val _ = if forget_else then C.pop() else ()
 
           (* Use phi functions to make assertions about values after the if. *)
@@ -346,16 +346,11 @@ struct
 
           (* Generate errors for the rest of the statements in the program. *)
           val _ = print_dbg " Exiting if statement\n"
-          val resterrs = process_stms ext funs cnt_phi_fun cont_stms
+          val resterrs = process_stms ext funs cnt_info cont_stms
         in exp_errs @ thenerrs @ elseerrs @ resterrs
         end
     | Break => [VError.VerificationNote(ext,"Warning: loop invariants cannot be verified when using breaks")]
-    | Continue =>
-        let
-          val errs = cnt_phi_fun ext (!cnt_index)
-          val _ = cnt_index := !cnt_index + 1
-        in errs
-        end
+    | Continue => cnt_phi_fun ext cnt_num
     | While(cntphis,e,invs,s,brkphis) =>
         let
           (* Check the invariants hold *)
@@ -373,8 +368,6 @@ struct
           (* Thanks to SSA, everything defined before we enter the loop is a
            * constant inside of and after the loop *)
           val _ = C.push()
-          val old_cnt_index = !cnt_index
-          val _ = cnt_index := 1
 
           (* First make sure that invariants hold before entering the loop *)
           val inv_errs = check_invariants cntphis ext 0
@@ -391,11 +384,11 @@ struct
           (* Assert the loop invariants at the start of the loop *)
           val _ = List.map assert invs
           val errs = process_stms ext funs
-                                  (check_invariants cntphis) [s]
+                                  (check_invariants cntphis,2) [s]
           (* Now check the case where the loop continues from the end, but
            * only if we can actually reach it. *)
           val errs = if forget then errs
-                       else errs @ (check_invariants cntphis ext (!cnt_index))
+                       else errs @ (check_invariants cntphis ext 1)
 
           (* Only keep errors if the loop could be entered *)
           val while_errs = if cond_sat then errs else []
@@ -408,14 +401,12 @@ struct
            * break out of it). *)
           val new_invs = List.map (replace_inv brkphis 0 true) invs
           val _ = if forget orelse could_break s then [] else List.map assert invs
-          (* Revert back to old indices of phis *)
-          val _ = cnt_index := old_cnt_index
           (* Generate errors for the rest of the statements in the program. *)
-          val rest_errs = process_stms ext funs cnt_phi_fun cont_stms
+          val rest_errs = process_stms ext funs cnt_info cont_stms
         in exp_errs @ inv_errs @ while_errs @ rest_errs
         end
     | MarkedS m =>
-        process_stms (Mark.ext m) funs cnt_phi_fun ((Mark.data m)::cont_stms)
+        process_stms (Mark.ext m) funs cnt_info ((Mark.data m)::cont_stms)
 
   (* The primary function used for making and checking assertions. It produces
    * both warnings and errors (as specified in vcrules.tex). It can also just
@@ -548,9 +539,9 @@ struct
       (* Assert what we know from the \requires contracts. *)
       val _ = List.map (declare_exp declare_fun) requires
       val _ = List.map assert requires
-      (* Process the actual function code. *)
       val default_fun = fn x => fn y => []
-      val errs = process_stms NONE (assert,check,ensure) default_fun [stm]
+      (* Process the actual function code. *)
+      val errs = process_stms NONE (assert,check,ensure) (default_fun,0) [stm]
     in add_note fun_sym errs
     end)
       handle CriticalError errs => add_note fun_sym errs
