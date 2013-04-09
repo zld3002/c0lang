@@ -44,7 +44,7 @@ struct
 
 (*Debug flags*)
 val print_local_var_list = false
-val print_z3_print = false
+val print_z3_print = true
 val print_z3_errors = false
 val print_z3_read = false
 val print_raw_expr = false
@@ -119,7 +119,7 @@ fun readFromZ3() =
         )
     end
 
-fun declare (map : Ast.tp SymMap.map) var =
+fun declare (map : Ast.tp SymMap.map) =
   let
     fun localName (sym, gen) =
       ((Symbol.nameFull(sym)) ^ "_" ^ (Int.toString(gen)))
@@ -130,7 +130,7 @@ fun declare (map : Ast.tp SymMap.map) var =
       | Ast.Bool => Type "Bool"
       | Ast.String => raise Unimplemented "localType"
       | Ast.Char => raise Unimplemented "localType"
-      | Ast.Pointer(_) => raise Unimplemented "localType"
+      | Ast.Pointer(_) => Type "Int"
       | Ast.Array(_) => Array "(_ BitVec 32)"
       | Ast.TypeName(_) => None
       | Ast.Void => None
@@ -141,7 +141,7 @@ fun declare (map : Ast.tp SymMap.map) var =
       (case SymMap.find(map, sym) of
          SOME tp => declType tp
        | _ => Type "(_ BitVec 32)")
-  in
+  in fn var =>
     case localType(var) of
       Type y => (printToZ3("(declare-const " ^
           (localName(var)) ^ " " ^ y ^ ")\n");())
@@ -311,15 +311,13 @@ fun assert e =
           | AAst.StringConst(str) => raise Unimplemented "assert_expr string" (* Not arithmetic *)
           | AAst.CharConst(ch) => raise Unimplemented "assert_expr char" (* Not arithmetic *)
           | AAst.Alloc(tp) => raise Unimplemented "assert_expr alloc" (* No pointers *)
-          | AAst.Null => raise Unimplemented "assert_expr null" (* No pointers *)
+          | AAst.Null => "0"
           | AAst.Result => raise Unimplemented "assert_expr result" (* Not seen *)
           | AAst.Length e => localArrayLengthName e (* Treat as a _length variable *)
-          | AAst.Old(AAst.Local(sym, gen)) => raise Unimplemented "assert_expr old" (* ??? *)
-          | AAst.Old(AAst.MarkedE m) => raise Unimplemented "assert_expr old" (* ??? *)
+          | AAst.Old _ => raise Unimplemented "assert_expr old" (* ??? *)
           | AAst.AllocArray(tp,expr) => raise Unimplemented "assert_expr allocarray" (* Not seen *)
           | AAst.Select(expr,sym) => raise Unimplemented "assert_expr select" (* Struct fields, we'll deal with this later *)
           | AAst.MarkedE(mk) => assert_expr(Mark.data(mk))
-          | _ => raise Unimplemented "assert_expr base case"
 
         val raw_expr = assert_expr(e)
     in
@@ -368,6 +366,23 @@ fun getModel toks =
       if String.isPrefix "_" name
         then getModel ss
         else (AAst.Op(Ast.EQ,[x,word]))::(getModel ss)
+    end
+  | "(define-fun"::var::"()"::"Int"::value::ss =>
+    let
+      val [name,ext] = String.tokens (fn c => Char.compare(c,#"$") = EQUAL) var
+      val [num,gen] = String.tokens Char.isPunct ext
+      val gennum = case Int.fromString gen of
+                     NONE => raise Unimplemented "gen number of var not valid"
+                   | SOME n => n
+      val x = AAst.Local (Symbol.symbol name,gennum)
+      val [int_str] = String.tokens (not o Char.isDigit) value
+      val exp = case Int.fromString int_str of
+                  SOME 0 => AAst.Op(Ast.EQ,[x,AAst.Null])
+                | _ => AAst.Op(Ast.NOTEQ,[x,AAst.Null])
+    in
+      if String.isPrefix "_" name
+        then getModel ss
+        else exp::(getModel ss)
     end
   | _ => raise Unimplemented "Model contains unknown type"
 

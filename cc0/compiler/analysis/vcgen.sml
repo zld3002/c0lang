@@ -39,16 +39,18 @@ struct
 
   (* Test breaks/continues *)
   (* Fix tests for conditions.sml (need to declare variables) *)
-  (* Add/fix pointer checking (implement NULL constant in Z3, need some
-   * way to indicate not-null without it being the same across pointers) *)
 
   (* tests with gcd and binary search error, continue/break/error *)
+
+  (* What to do about function calls in loop conditions? Adds breaks to code
+   * when isolated, so can't use loop invariants with them (inlining won't help). *)
+
+  (* Need to assert pointers = NULL if they are only declared. *)
 
   val ZERO = IntConst(Word32Signed.ZERO)
   val typemap : tp SymMap.map ref = ref (SymMap.empty)
   val funmap : summary SymMap.map ref = ref (SymMap.empty)
   val debug = ref false
-  val cnt_index = ref 0
   val declaredVars : LocalSet.set ref = ref LocalSet.empty
 
   fun print_dbg s = if !debug then print s else ()
@@ -124,8 +126,7 @@ struct
       (case (oper,es) of
         (Ast.DEREF,[e]) => make_exp (Length exp)
       | (Ast.COND,[e1,e2,e3]) => 
-        (* TODO Improve this for asserts with conds (leave as ite) *)
-        Op(Ast.LOGOR,[array_length make_exp e2,array_length make_exp e3])
+        Op(Ast.COND,[e1,array_length make_exp e2,array_length make_exp e3])
       | _ => raise Fail "can't assign expression to array type")
     | AllocArray(t,len) => make_exp len
     | Select _ => make_exp (Length exp)
@@ -202,27 +203,12 @@ struct
     | MarkedS m => could_break (Mark.data m)
     | _ => false
 
-  (* Gets the array in an lvalue if there is one for the purpose of
-   * keeping track of array lengths. *)
-  fun get_lvarray exp =
+  (* Strips out top-level markings, for use in looking at lvalues and
+   * top-level effectual expressions. *)
+  fun strip_marked exp =
     case exp of
-      Local(v,i) =>
-        (case SymMap.find(!typemap,v) of
-          SOME(Ast.Array _) => SOME exp
-        | _ => NONE)
-    | MarkedE m => get_lvarray (Mark.data m)
-    | _ => NONE
-
-  (* Gets the function called in the expression if there is one for
-   * checking contracts. *)
-  fun get_function exp =
-    case exp of
-      Call(s,es) =>
-        (case SymMap.find(!funmap,s) of
-          SOME d => SOME (d,es)
-        | _ => NONE)
-    | MarkedE m => get_function (Mark.data m)
-    | _ => NONE
+      MarkedE m => strip_marked (Mark.data m)
+    | _ => exp
 
   (* Generates necessary assertions for divions and mods *)
   fun divmod_check ext check e1 e2 =
@@ -281,6 +267,9 @@ struct
           (process_stms ext funs cnt_info cont_stms)
     | Def((v,i),e) =>
         let
+          val errs = process_exp ext check e
+          (* We know all effectual things will be a Def and not an
+           * Assign, thanks to Isolation. *)
           val _ =
             case SymMap.find(!typemap,v) of
               SOME(Ast.Array _) =>
@@ -289,28 +278,39 @@ struct
                 assert (array_length
                   (fn l => Op(Ast.GEQ,[l,ZERO])) e))
             | _ => ()
-          val errs = case get_function e of
-                     SOME((rf,ef),es) =>
+          val _ =
+            case strip_marked e of
+              Alloc(_) => assert (Op(Ast.NOTEQ,[Local(v,i),Null]))
+            | _ => ()
+          val fun_errs =
+            case strip_marked e of
+              Call(s,es) =>
+                (case SymMap.find(!funmap,s) of
+                  SOME (rf,ef) =>
                        let
                          val errs = rf (check ext) es
                          val _ = ef (v,i)
                        in errs
                        end
-                   | NONE => []
+                | _ => [])
+            | _ => []
           val _ = assert (opeq (Local(v,i)) e)
         in
-          (process_exp ext check e) @ errs @ (process_stms ext funs cnt_info cont_stms)
+          errs @ fun_errs @ (process_stms ext funs cnt_info cont_stms)
         end
     | Assign(e1,NONE,e2) =>
         let
           val _ = 
-            case get_lvarray e1 of
-              SOME arr => 
-                (assert (array_length
-                  (fn l => opeq (Length(arr)) l) e2);
-                assert (array_length
-                  (fn l => Op(Ast.GEQ,[l,ZERO])) e2))
-            | NONE => () 
+            case strip_marked e1 of
+              Local(v,i) =>
+                (case SymMap.find(!typemap,v) of
+                  SOME(Ast.Array _) =>
+                    (assert (array_length
+                      (fn l => opeq (Length(Local(v,i))) l) e2);
+                    assert (array_length
+                      (fn l => Op(Ast.GEQ,[l,ZERO])) e2))
+                | _ => ())
+            | _ => ()
           val errs1 = process_exp ext check e1
           val errs2 = process_exp ext check e2
           val _ = assert (opeq e1 e2)
