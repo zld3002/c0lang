@@ -24,7 +24,6 @@ struct
 
   open AAst
 
-  exception Unimplemented 
   exception CriticalError of VError.error list
 
   type summary = ((AAst.aexpr -> VError.error list) -> AAst.aexpr list ->
@@ -37,15 +36,14 @@ struct
   (* TODO *)
   (* Add arrays to z3 so we can assert about them *)
 
-  (* Test breaks/continues *)
+  (* Test continues *)
   (* Fix tests for conditions.sml (need to declare variables) *)
 
-  (* tests with gcd and binary search error, continue/break/error *)
+  (* tests with gcd and binary search error *)
 
   (* What to do about function calls in loop conditions? Adds breaks to code
    * when isolated, so can't use loop invariants with them (inlining won't help). *)
-
-  (* Need to assert pointers = NULL if they are only declared. *)
+  (* Also SSA is broken *)
 
   val ZERO = IntConst(Word32Signed.ZERO)
   val typemap : tp SymMap.map ref = ref (SymMap.empty)
@@ -59,11 +57,15 @@ struct
   (* Declares all the variables in the given expression. *)
   fun declare_exp decl e =
     case e of
-       Local l => decl l
+       Local (s,g) => (decl (s,g);
+       (* Need to make sure that array lengths are non-negative. *)
+        case SymMap.find(!typemap,s) of
+          SOME (Ast.Array _) => 
+            C.assert (Op(Ast.GEQ,[Length e,ZERO]))
+        | _ => ())
      | Op(oper,es) => ignore(List.map (declare_exp decl) es)
      | Call(f,es) => ignore(List.map (declare_exp decl) es)
-     | Length e => (declare_exp decl e;
-                         C.assert (Op(Ast.GEQ,[Length e,ZERO])))
+     | Length e => declare_exp decl e
      | Old e => declare_exp decl e
      | AllocArray(_,e) => declare_exp decl e
      | Select(e,s) => declare_exp decl e
@@ -337,19 +339,56 @@ struct
           (* Generate any errors in the condition. *)
           val exp_errs = process_exp ext check e
 
-          (* Process cases for errors. Forget assertions made if the control
-           * flow will exit the block of statements. *)
-          val _ = print_dbg "Entering then case\n"
-          val forget_then = continues_breaks_errors_returns s1
-          val _ = if forget_then then C.push() else ()
-          val thenerrs = process_stms ext funs cnt_info [s1]
-          val _ = if forget_then then C.pop() else ()
+          (* Process cases for errors. Don't process a case if
+           * it cannot be entered. *)
+          val _ = C.push()
+          val _ = assert e
+          val process_then = case C.check() of NONE => false | _ => true
+          val (forget_then,thenerrs) =
+              if process_then
+                then
+                  let
+                    val _ = print_dbg "Entering then case\n"
+                    (* Forget assertions if the control flow will exit
+                     * the block of statements. *)
+                    val forget_then = continues_breaks_errors_returns s1
+                    val _ = if forget_then then C.push() else ()
+                    val thenerrs = process_stms ext funs cnt_info [s1]
+                    val _ = if forget_then then C.pop() else ()
+                  in (forget_then,thenerrs)
+                  end
+                else (true,[])
+          val _ = C.pop()
 
-          val _ = print_dbg "Entering else case\n"
-          val forget_else = continues_breaks_errors_returns s2
-          val _ = if forget_else then C.push() else ()
-          val elseerrs = process_stms ext funs cnt_info [s2]
-          val _ = if forget_else then C.pop() else ()
+          val _ = C.push()
+          val _ = assert (negate_exp e)
+          val process_else = case C.check() of NONE => false | _ => true
+          val (forget_else,elseerrs) =
+              if process_else 
+                then
+                  let
+                    val _ = print_dbg "Entering else case\n"
+                    (* Forget assertions if the control flow will exit
+                     * the block of statements. *)
+                    val forget_else = continues_breaks_errors_returns s2
+                    val _ = if forget_else then C.push() else ()
+                    val elseerrs = process_stms ext funs cnt_info [s2]
+                    val _ = if forget_else then C.pop() else ()
+                  in (forget_else,elseerrs)
+                  end
+                else (true,[])
+          val _ = C.pop()
+
+          (* Reprocess the conditions for the assertions that they produce,
+           * but ignore the errors, as they were produced above. *)
+          val _ = if process_then
+                    then process_stms ext funs cnt_info [s1]
+                           handle CriticalError _ => []
+                    else []
+          val _ = if process_else
+                    then process_stms ext funs cnt_info [s2]
+                          handle CriticalError _ => []
+                    else []
 
           (* Use phi functions to make assertions about values after the if. *)
           fun assert_phi phi =
@@ -514,7 +553,10 @@ struct
         | _ => e
 
       fun assert_ensures l =
-        ignore(List.map (C.assert o (replace_result l)) ensures)
+        ignore(List.map (fn e => C.assert (replace_result l e )
+                          handle C.Unimplemented s =>
+                            print ("Unimplemented ensures:" ^ s ^ "\n"))
+                        ensures)
     in (sym,(check_requires,assert_ensures))
     end
 
@@ -526,7 +568,11 @@ struct
   (* Generates the vc errors for a given function. *)
   fun generate_vc (f as Function(_,fun_sym,types,args,requires,stm,ensures)) dbg fun_sum_map =
     (let
+      val _ = typemap := types
+      val _ = funmap := fun_sum_map
+      val _ = debug := dbg
       val _ = declaredVars := LocalSet.empty
+
       val declare = C.declare types
       val declare_fun =
         fn l => 
@@ -540,9 +586,6 @@ struct
           handle C.Unimplemented s => 
             print_dbg ("Unimplemented assertion for " ^ Print.pp_aexpr e ^
                        " found in " ^ s ^ "\n")
-      val _ = typemap := types
-      val _ = funmap := fun_sum_map
-      val _ = debug := dbg
 
       (* Make functions for use in statement processing *)
       val check = check_assert assert_fun

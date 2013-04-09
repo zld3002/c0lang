@@ -44,7 +44,7 @@ struct
 
 (*Debug flags*)
 val print_local_var_list = false
-val print_z3_print = true
+val print_z3_print = false
 val print_z3_errors = false
 val print_z3_read = false
 val print_raw_expr = false
@@ -367,6 +367,23 @@ fun getModel toks =
         then getModel ss
         else (AAst.Op(Ast.EQ,[x,word]))::(getModel ss)
     end
+  | "(define-fun"::var::"()"::"Int"::"(-"::value::ss =>
+    let
+      val [name,ext] = String.tokens (fn c => Char.compare(c,#"$") = EQUAL) var
+      val [num,gen] = String.tokens Char.isPunct ext
+      val gennum = case Int.fromString gen of
+                     NONE => raise Unimplemented "gen number of var not valid"
+                   | SOME n => n
+      val x = AAst.Local (Symbol.symbol name,gennum)
+      val [int_str] = String.tokens (not o Char.isDigit) value
+      val exp = case String.compare("0",int_str) of
+                  EQUAL => AAst.Op(Ast.EQ,[x,AAst.Null])
+                | _ => AAst.Op(Ast.NOTEQ,[x,AAst.Null])
+    in
+      if String.isPrefix "_" name
+        then getModel ss
+        else exp::(getModel ss)
+    end
   | "(define-fun"::var::"()"::"Int"::value::ss =>
     let
       val [name,ext] = String.tokens (fn c => Char.compare(c,#"$") = EQUAL) var
@@ -376,8 +393,8 @@ fun getModel toks =
                    | SOME n => n
       val x = AAst.Local (Symbol.symbol name,gennum)
       val [int_str] = String.tokens (not o Char.isDigit) value
-      val exp = case Int.fromString int_str of
-                  SOME 0 => AAst.Op(Ast.EQ,[x,AAst.Null])
+      val exp = case String.compare("0",int_str) of
+                  EQUAL => AAst.Op(Ast.EQ,[x,AAst.Null])
                 | _ => AAst.Op(Ast.NOTEQ,[x,AAst.Null])
     in
       if String.isPrefix "_" name
