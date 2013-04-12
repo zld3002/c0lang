@@ -327,7 +327,7 @@ let
 	             let val verrors = AnalysisTop.verifCheck oprogram
 	                 val _ = map (say o VError.pp_error) verrors
 	                 val _ = case verrors of
-	                            [] => say "No verification condition errors."
+	                            [] => say "No verification condition errors could be found."
 	                          | _ => ()
 	             in 
                          (* Verification conditions check does not compile the program. *)
