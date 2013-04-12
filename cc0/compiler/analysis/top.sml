@@ -52,8 +52,7 @@ struct
       val print_funcs = false
       val _ = Conditions.StartZ3 ()
       val funcs = Analysis.analyze true prog
-      val fun_sums = List.map VCGen.generate_function_summary funcs
-      val fun_sum_map = List.foldr SymMap.insert' SymMap.empty fun_sums
+      val fun_sum_map = VCGen.generate_function_summaries funcs
 
       fun checkFunc f =
         (Conditions.reset();VCGen.generate_vc f debug fun_sum_map)
