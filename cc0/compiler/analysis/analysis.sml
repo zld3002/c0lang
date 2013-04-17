@@ -149,7 +149,7 @@ struct
      | ssa (Ast.If(e, strue, sfalse), env) =
          let val (st, et, trets, tbrks, tconts) = ssa (strue, env)
              val (sf, ef, frets, fbrks, fconts) = ssa (sfalse, env)
-             val (env', phis) = Env.mergeEnvs [et,ef]
+             val (env', phis) = Env.mergeTwoEnvs (et,ef)
          in
             (If ((label env e), st, sf, phis),
                  env', trets @ frets, tbrks @ fbrks, tconts @ fconts)
@@ -304,6 +304,7 @@ struct
              val (s, env, rets, _, _) = ssa (stmt', initialEnv)
              val s' = simplifySeq s
              val s'' = simplifyPhiS s'
+             val _ = TextIO.print (AAst.Print.pp_astmt s''  ^ "\n")
           in
              [Function(rtp, name, types, args, reqs', s'', ens')]
           end 

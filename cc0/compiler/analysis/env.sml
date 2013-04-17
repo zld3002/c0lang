@@ -16,6 +16,7 @@ sig
    val incAll: env -> env
    val lookup: env -> symbol -> int option
    val lookup': env -> symbol -> int
+   val mergeTwoEnvs: env * env -> env * (AAst.aphi list)
    (* Given a list of environments, mergeEnvs will construct a new environment
       in which each symbol has a new, fresh definition if there were differing
       definitions in the inputs, but the same definition if all inputs agree for
@@ -54,6 +55,20 @@ struct
    fun incAll env = T.map (fn i => next()) env
    fun lookup env v = T.find (env, v)
    fun lookup' env v = valOf (T.find (env, v))
+   
+   fun mergeTwoEnvs (a, b) =
+   let val union = T.unionWith (#1) (a,b)
+       val common = T.listItemsi (T.intersectWith (fn x => x) (a, b))
+       val conflicts = List.filter (fn (_, (i, j)) => not(i = j)) common
+       fun buildphi ((x, (a,b)), (phis, ctx)) =
+         let val i = next() in
+           (AAst.PhiDef(x, i, [a,b]) :: phis, T.insert(ctx, x, i))
+         end
+       val (phis, env) = foldl buildphi ([], union) conflicts 
+   in
+      (env, phis)
+   end
+   
    fun mergeEnvs envs =
     let
       fun singleton e = T.map (fn i => SInt.singleton i) e
