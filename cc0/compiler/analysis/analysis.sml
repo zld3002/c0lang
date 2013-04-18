@@ -304,7 +304,6 @@ struct
              val (s, env, rets, _, _) = ssa (stmt', initialEnv)
              val s' = simplifySeq s
              val s'' = simplifyPhiS s'
-             val _ = TextIO.print (AAst.Print.pp_astmt s''  ^ "\n")
           in
              [Function(rtp, name, types, args, reqs', s'', ens')]
           end 
