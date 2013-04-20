@@ -6,30 +6,21 @@
 signature VCGEN =
 sig
 
-  type summary = ((AAst.aexpr -> VError.error list) -> AAst.aexpr list ->
-                   VError.error list) * (AAst.loc -> unit) *
-                  (AAst.aexpr list -> AAst.loc -> AAst.astmt) option
-
-  (* Generates summaries of requires/ensures and inlining for all functions *)
-  val generate_function_summaries : AAst.afunc list -> summary SymMap.map
-
   (* Given a function and a debug indicator, generates a list of verification
    * errors for that function. *)
-  val generate_vc : AAst.afunc -> bool -> summary SymMap.map -> VError.error list
+  val generate_vc : AAst.afunc -> bool ->
+    FunctionSummary.summary SymMap.map -> VError.error list
 
 end
 
 structure VCGen :> VCGEN =
 struct
+
   structure C = Conditions
 
   open AAst
 
   exception CriticalError of VError.error list
-
-  type summary = ((AAst.aexpr -> VError.error list) -> AAst.aexpr list ->
-                   VError.error list) * (AAst.loc -> unit) *
-                  (AAst.aexpr list -> AAst.loc -> AAst.astmt) option
 
   (* How do we want to give back the model?
    * Give values of all arguments, and all current values?
@@ -48,22 +39,30 @@ struct
    * ^- should see if this works for div by 2.
    * (would be nice to hook isolation up to purity) *)
   
-  (* Also SSA is broken *)
   (* How to inline functions with multiple returns? *)
   (* Simplify case in model parsing function, use mlyacc? *)
-  (* Put function summarizing in separate module, fix replace_returns for ifs *)
 
   (* use implications/conjunction with ifs, have expression to use for implication
    * when entering if/else. *)
 
+  (* implement multiple return inline functions by allowing phi functions
+   * anywhere, so just have a phi function at the end of the inline. *)
+
   val ZERO = IntConst(Word32Signed.ZERO)
   val typemap : tp SymMap.map ref = ref (SymMap.empty)
-  val funmap : summary SymMap.map ref = ref (SymMap.empty)
+  val funmap : FunctionSummary.summary SymMap.map ref = ref (SymMap.empty)
   val debug = ref false
   val declaredVars : LocalSet.set ref = ref LocalSet.empty
 
   fun print_dbg s = if !debug then print s else ()
   fun opeq e1 e2 = Op(Ast.EQ, [e1,e2])
+
+  fun declare_local type_map l =
+    if LocalSet.member(!declaredVars,l) then ()
+      else (declaredVars := LocalSet.add(!declaredVars,l);C.declare type_map l
+        handle C.Unimplemented s => 
+          print_dbg ("Unimplemented declaration for " ^ Print.pp_loc l ^
+                     " found in " ^ s ^ "\n"))
 
   (* Declares all the variables in the given expression. *)
   fun declare_exp decl e =
@@ -216,18 +215,6 @@ struct
     | MarkedS m => could_break (Mark.data m)
     | _ => false
 
-  (* Returns true if the statement could potentially return
-   * (but not from inside a loop). *)
-  fun could_return stm =
-    case stm of
-      Seq(s1,s2) => (could_return s1) orelse
-                    (could_return s2)
-    | Return _ => true
-    | If(_,s1,s2,_) => (could_return s1) orelse
-                       (could_return s2)
-    | MarkedS m => could_return (Mark.data m)
-    | _ => false
-
   (* Strips out top-level markings, for use in looking at lvalues and
    * top-level effectual expressions. *)
   fun strip_marked exp =
@@ -305,13 +292,10 @@ struct
                 assert (array_length
                   (fn l => Op(Ast.GEQ,[l,ZERO])) e))
             | _ => ()
-          val _ =
-            case strip_marked e of
-              Alloc(_) => assert (Op(Ast.NOTEQ,[Local(v,i),Null]))
-            | _ => ()
           val fun_errs =
             case strip_marked e of
-              Call(s,es) =>
+              Alloc(_) => (assert (Op(Ast.NOTEQ,[Local(v,i),Null]));[])
+            | Call(s,es) =>
                 (case SymMap.find(!funmap,s) of
                   SOME (rf,ef,NONE) =>
                     let
@@ -320,10 +304,13 @@ struct
                     in errs
                     end
                 | SOME (_,_,SOME inline) =>
-                    process_stms NONE funs cnt_info [inline es (v,i)]
+                  let
+                    val decl_fun = fn t => declare_stm (declare_local t)
+                    val inlined_fun = inline decl_fun es (v,i)
+                  in process_stms NONE funs cnt_info [inlined_fun]
+                  end
                 | _ => [])
-            | _ => []
-          val _ = assert (opeq (Local(v,i)) e)
+            | _ => (assert (opeq (Local(v,i)) e);[])
         in
           errs @ fun_errs @ (process_stms ext funs cnt_info cont_stms)
         end
@@ -541,173 +528,6 @@ struct
       | NONE => raise CriticalError (errs @ [crit_error])
     end
 
-  (* Generates requires/ensures information for a function, for use in verification *)
-  fun generate_function_contracts (f as Function(_,sym,_,args,requires,_,ensures)) =
-    let
-      fun replace_local loc_map e =
-        case e of
-          Local(s,g) =>
-            (case SymMap.find(loc_map,s) of
-              NONE => e
-            | SOME e => e)
-        | Op(oper,es) => Op(oper,List.map (replace_local loc_map) es)
-        | Call(s,es) => Call(s,List.map (replace_local loc_map) es)
-        | Length e => Length(replace_local loc_map e)
-        | Select(e,s) => Select(replace_local loc_map e,s)
-        | MarkedE m => replace_local loc_map (Mark.data m)
-        | _ => e
-
-      val old_args = List.map (fn (_,_,(s,_)) => s) args
-
-      fun check_requires check_fun new_args =
-        let
-          val arg_list = List.tabulate(List.length args,
-                                       fn i => (List.nth(old_args,i),
-                                                List.nth(new_args,i)))
-          val map = List.foldr SymMap.insert' SymMap.empty arg_list
-          val errs = List.map (check_fun o (replace_local map)) requires
-        in List.foldr op@ [] errs
-        end
-
-      fun replace_result (l as (sym,gen)) e =
-        case e of
-          Op(oper,es) => Op(oper,List.map (replace_result l) es)
-        | Call(s,es) => Call(s,List.map (replace_result l) es)
-        | Result => Local(sym,gen)
-        | Length e => Length(replace_result l e)
-        | Select(e,s) => Select(replace_result l e,s)
-        | MarkedE m => replace_result l (Mark.data m)
-        | _ => e
-
-      fun assert_ensures (l : AAst.loc) =
-        ignore(List.map (fn e => C.assert (replace_result l e )
-                          handle C.Unimplemented s =>
-                            print ("Unimplemented ensures:" ^ s ^ "\n"))
-                        ensures)
-
-    in (check_requires,assert_ensures)
-    end
-
-  (* Generates summary information for functions, for use in verification *)
-  fun generate_function_summaries all_funcs =
-    let
-      val inline_map : bool SymMap.map ref = ref SymMap.empty
-
-      fun can_inline_exp e entered_funcs =
-        case e of
-          Op(_,es) => List.foldr (fn (e,b) =>
-                        (can_inline_exp e entered_funcs) andalso b) true es
-        | Call(s,es) =>
-          let
-            val inline =
-              (* If we've already checked the function, use that result,
-               * otherwise we need to look it up and save that result in
-               * case we call the function again. *)
-              case SymMap.find(!inline_map,s) of
-                SOME b => b
-              | NONE =>
-                 let
-                  (* If we've already entered the current function, then there
-                   * is a possible recursive loop, so don't check inlining. *)
-                   val is_recursive =
-                     List.exists (fn f => Symbol.compare(s,f) = EQUAL)
-                               entered_funcs
-                   val b = if is_recursive
-                             then false
-                             else can_inline_fun entered_funcs s
-                   val _ = inline_map := SymMap.insert(!inline_map,s,b)
-                 in b
-                 end
-          in inline andalso
-            (List.foldr (fn (e,b) =>
-                       (can_inline_exp e entered_funcs) andalso b) true es)
-          end
-        | Length e => can_inline_exp e entered_funcs
-        | Old e => can_inline_exp e entered_funcs
-        | AllocArray(_,e) => can_inline_exp e entered_funcs
-        | Select(e,_) => can_inline_exp e entered_funcs
-        | MarkedE m => can_inline_exp (Mark.data m) entered_funcs
-        | _ => true
-
-      and can_inline_stm s entered_funcs =
-        case s of
-          Nop => true
-        | Seq(s1,s2) => (can_inline_stm s1 entered_funcs) andalso
-                        (can_inline_stm s2 entered_funcs) andalso
-                        (* If both paths return, then there is no easy way
-                         * to assing the resulting value when inlined. *)
-                        ((not (could_return s1)) orelse
-                         (not (could_return s2)))
-        | Assert e => can_inline_exp e entered_funcs
-        | Error e => can_inline_exp e entered_funcs
-        | Annotation e => can_inline_exp e entered_funcs
-        | Def(l,e) => can_inline_exp e entered_funcs
-        | Assign(e1,oper,e2) => (can_inline_exp e1 entered_funcs) andalso
-                                (can_inline_exp e2 entered_funcs)
-        | Expr e => can_inline_exp e entered_funcs
-        | Return (SOME e) => can_inline_exp e entered_funcs
-        | Return NONE => true
-        | If(e,s1,s2,phis) => (can_inline_exp e entered_funcs) andalso
-                              (can_inline_stm s1 entered_funcs) andalso
-                              (can_inline_stm s2 entered_funcs)
-        | MarkedS m => can_inline_stm (Mark.data m) entered_funcs
-        | _ => false
-
-      and can_inline_fun entered_funcs sym =
-        let
-          val funopt = List.find (fn (Function(_,s,_,_,_,_,_)) => 
-                                   Symbol.compare(s,sym) = EQUAL) all_funcs
-        in
-          case funopt of
-            NONE => raise Fail "Can't call a non-existant function"
-          | SOME(Function(_,_,_,_,_,stm,_)) => can_inline_stm stm (sym::entered_funcs)
-        end
-
-      fun inline_fun (Function(_,sym,_,args,_,stm,_)) applied_args result_loc =
-        let
-          fun replace_returns stm =
-            case stm of
-              Seq(s1,s2) => Seq(replace_returns s1,replace_returns s2)
-            | Return (SOME e) => Def(result_loc,e)
-            (* TODO fix this, it doesn't work if both cases return (which
-             * is what you'd expect), since the same variable is assigned to
-             * both returns, so we need to make a new variable and a new phi *)
-            | If(e,s1,s2,phis) => If(e,replace_returns s2,replace_returns s2,phis)
-            | MarkedS m => replace_returns (Mark.data m)
-            | _ => stm
-
-          fun make_arg_stms args applied_args =
-            case (args,applied_args) of
-              ([],[]) => replace_returns stm
-            | ((_,_,loc)::args',aa::aas) =>
-              let
-                val rest = make_arg_stms args' aas
-                val def_arg = Def(loc,aa)
-              in Seq(def_arg,rest)
-              end
-            | _ => raise Fail "unequal number of arguments"
-
-        in make_arg_stms args applied_args
-        end
-
-      fun make_summary s f =
-        let
-          val (requiresf,ensuresf) = generate_function_contracts f
-        in
-          if can_inline_fun [] s
-            then (requiresf,ensuresf,SOME(inline_fun f))
-            else (requiresf,ensuresf,NONE)
-        end
-        
-      val fun_sym_pairs = List.map (fn (f as Function(_,sym,_,_,_,_,_)) =>
-                                     (sym,f)) all_funcs
-      val summaries = List.foldr (fn ((s,f),m) => SymMap.insert(m,s,make_summary s f))
-                                 SymMap.empty
-                                 fun_sym_pairs
-
-    in summaries
-    end
-
   fun add_note fun_sym errs =
     case errs of
       [] => []
@@ -721,14 +541,7 @@ struct
       val _ = debug := dbg
       val _ = declaredVars := LocalSet.empty
 
-      val declare = C.declare types
-      val declare_fun =
-        fn l => 
-          if LocalSet.member(!declaredVars,l) then ()
-            else (declaredVars := LocalSet.add(!declaredVars,l);declare l
-              handle C.Unimplemented s => 
-                print_dbg ("Unimplemented declaration for " ^ Print.pp_loc l ^
-                           " found in " ^ s ^ "\n"))
+      val declare_fun = declare_local types
       val assert_fun =
         fn e => C.assert e
           handle C.Unimplemented s => 

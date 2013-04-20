@@ -52,14 +52,14 @@ struct
       val print_funcs = false
       val _ = Conditions.StartZ3 ()
       val funcs = Analysis.analyze true prog
-      val fun_sum_map = VCGen.generate_function_summaries funcs
+      val fun_sum_map = FunctionSummary.generate_function_summaries funcs
 
       fun checkFunc f =
         (Conditions.reset();VCGen.generate_vc f debug fun_sum_map)
       fun check funcs = List.concat (map checkFunc funcs)
 
       val _ = if print_funcs
-        then print (List.foldr (fn (f,s) => (AAst.Print.pp_afunc f) ^ "\n" ^ s) "" funcs)
+        then print (List.foldr (fn (f,s) => (AAst.Print.pp_afunc f) ^ "\n" ^ s) "" funcs ^ "\n")
         else ()
 
       val errs = check funcs
