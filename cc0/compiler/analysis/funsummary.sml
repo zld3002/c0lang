@@ -30,7 +30,7 @@ struct
 
   val inline_map : bool SymMap.map ref = ref SymMap.empty
   val max_gen = ref 0
-
+  val alpha_count = ref 0
 
   (* Returns true if the statement could potentially return
    * (but not from inside a loop). *)
@@ -173,58 +173,58 @@ struct
       | SOME(Function(_,_,_,_,_,stm,_)) => can_inline_stm stm (all_funcs,sym::entered_funcs)
     end
 
-  fun alpha_vary_symbol sym =
-    Symbol.symbol(Symbol.name sym ^ "-inline")
+  fun alpha_vary_symbol alpha sym =
+    Symbol.symbol(Symbol.name sym ^ "-inline" ^ (Int.toString alpha))
 
-  fun alpha_vary_phi (PhiDef(sym,i,is)) =
-    PhiDef(alpha_vary_symbol sym,i,is)
+  fun alpha_vary_phi alpha (PhiDef(sym,i,is)) =
+    PhiDef(alpha_vary_symbol alpha sym,i,is)
 
-  fun alpha_vary_exp e =
+  fun alpha_vary_exp alpha e =
     case e of
-      Local(sym,gen) => Local(alpha_vary_symbol sym,gen)
-    | Op(oper,es) => Op(oper,List.map alpha_vary_exp es)
-    | Call(sym,es) => Call(alpha_vary_symbol sym,List.map alpha_vary_exp es)
-    | Length e => Length(alpha_vary_exp e)
-    | Old e => Old(alpha_vary_exp e)
-    | AllocArray(t,e) => AllocArray(t,alpha_vary_exp e)
-    | Select(e,s) => Select(alpha_vary_exp e,s)
-    | MarkedE m => MarkedE(Mark.mark' (alpha_vary_exp (Mark.data m),Mark.ext m))
+      Local(sym,gen) => Local(alpha_vary_symbol alpha sym,gen)
+    | Op(oper,es) => Op(oper,List.map (alpha_vary_exp alpha) es)
+    | Call(sym,es) => Call(alpha_vary_symbol alpha sym,List.map (alpha_vary_exp alpha) es)
+    | Length e => Length(alpha_vary_exp alpha e)
+    | Old e => Old(alpha_vary_exp alpha e)
+    | AllocArray(t,e) => AllocArray(t,alpha_vary_exp alpha e)
+    | Select(e,s) => Select(alpha_vary_exp alpha e,s)
+    | MarkedE m => MarkedE(Mark.mark' (alpha_vary_exp alpha (Mark.data m),Mark.ext m))
     | _ => e
 
-  fun alpha_vary_stm stm =
+  fun alpha_vary_stm alpha stm =
     case stm of
-      Seq(s1,s2) => Seq(alpha_vary_stm s1,alpha_vary_stm s2)
-    | Assert e => Assert(alpha_vary_exp e)
-    | Error e => Error(alpha_vary_exp e)
-    | Annotation e => Annotation(alpha_vary_exp e)
-    | Def((s,g),e) => Def((alpha_vary_symbol s,g),alpha_vary_exp e)
-    | Assign(e1,oper,e2) => Assign(alpha_vary_exp e1,oper,alpha_vary_exp e2)
-    | Expr e => Expr(alpha_vary_exp e)
-    | Return(SOME e) => Return(SOME (alpha_vary_exp e))
-    | If(e,s1,s2,phis) => If(alpha_vary_exp e,
-                             alpha_vary_stm s1,
-                             alpha_vary_stm s2,
-                             List.map alpha_vary_phi phis)
-    | While(cphis,e,invs,s,bphis) => While(List.map alpha_vary_phi cphis,
-                                           alpha_vary_exp e,
-                                           List.map alpha_vary_exp invs,
-                                           alpha_vary_stm s,
-                                           List.map alpha_vary_phi bphis)
-    | MarkedS m => MarkedS(Mark.mark' (alpha_vary_stm (Mark.data m),Mark.ext m))
+      Seq(s1,s2) => Seq(alpha_vary_stm alpha s1,alpha_vary_stm alpha s2)
+    | Assert e => Assert(alpha_vary_exp alpha e)
+    | Error e => Error(alpha_vary_exp alpha e)
+    | Annotation e => Annotation(alpha_vary_exp alpha e)
+    | Def((s,g),e) => Def((alpha_vary_symbol alpha s,g),alpha_vary_exp alpha e)
+    | Assign(e1,oper,e2) => Assign(alpha_vary_exp alpha e1,oper,alpha_vary_exp alpha e2)
+    | Expr e => Expr(alpha_vary_exp alpha e)
+    | Return(SOME e) => Return(SOME (alpha_vary_exp alpha e))
+    | If(e,s1,s2,phis) => If(alpha_vary_exp alpha e,
+                             alpha_vary_stm alpha s1,
+                             alpha_vary_stm alpha s2,
+                             List.map (alpha_vary_phi alpha) phis)
+    | While(cphis,e,invs,s,bphis) => While(List.map (alpha_vary_phi alpha) cphis,
+                                           alpha_vary_exp alpha e,
+                                           List.map (alpha_vary_exp alpha) invs,
+                                           alpha_vary_stm alpha s,
+                                           List.map (alpha_vary_phi alpha) bphis)
+    | MarkedS m => MarkedS(Mark.mark' (alpha_vary_stm alpha (Mark.data m),Mark.ext m))
     | _ => stm
 
   fun inline_fun func declare_fun applied_args (result_sym,gen) =
     let
       val Function(_,sym,types,args,_,stm,_) = func
       val types = SymMap.foldri (fn (sym,t,m) =>
-                                  SymMap.insert(m,alpha_vary_symbol sym,t))
+                                  SymMap.insert(m,alpha_vary_symbol (!alpha_count) sym,t))
                                 SymMap.empty
                                 types
-      val stm = alpha_vary_stm stm
+      val stm = alpha_vary_stm (!alpha_count) stm
       val _ = declare_fun types stm
       val arg_vars = List.map (fn (_,_,(sym,gen)) =>
-                       (alpha_vary_symbol sym,gen)) args
-
+                       (alpha_vary_symbol (!alpha_count) sym,gen)) args
+      val _ = alpha_count := !alpha_count + 1
       fun replace_returns new_gen stm =
         case stm of
           Seq(s1,s2) => Seq(replace_returns new_gen s1,

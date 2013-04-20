@@ -303,11 +303,13 @@ struct
                       val _ = ef (v,i)
                     in errs
                     end
-                | SOME (_,_,SOME inline) =>
+                | SOME (rf,ef,SOME inline) =>
                   let
+                    val errs = rf (check ext) es
                     val decl_fun = fn t => declare_stm (declare_local t)
                     val inlined_fun = inline decl_fun es (v,i)
-                  in process_stms NONE funs cnt_info [inlined_fun]
+                    val _ = ef (v,i)
+                  in errs @ (process_stms NONE funs cnt_info [inlined_fun])
                   end
                 | _ => [])
             | _ => (assert (opeq (Local(v,i)) e);[])
