@@ -367,7 +367,7 @@ fun getModel toks =
         then getModel ss
         else (AAst.Op(Ast.EQ,[x,word]))::(getModel ss)
     end
-  | "(define-fun"::var::"()"::"Int"::"(-"::value::ss =>
+  | "(define-fun"::var::"()"::"Int"::rest =>
     let
       val [name,ext] = String.tokens (fn c => Char.compare(c,#"$") = EQUAL) var
       val [num,gen] = String.tokens Char.isPunct ext
@@ -375,23 +375,12 @@ fun getModel toks =
                      NONE => raise Unimplemented "gen number of var not valid"
                    | SOME n => n
       val x = AAst.Local (Symbol.symbol name,gennum)
-      val [int_str] = String.tokens (not o Char.isDigit) value
-      val exp = case String.compare("0",int_str) of
-                  EQUAL => AAst.Op(Ast.EQ,[x,AAst.Null])
-                | _ => AAst.Op(Ast.NOTEQ,[x,AAst.Null])
-    in
-      if String.isPrefix "_" name
-        then getModel ss
-        else exp::(getModel ss)
-    end
-  | "(define-fun"::var::"()"::"Int"::value::ss =>
-    let
-      val [name,ext] = String.tokens (fn c => Char.compare(c,#"$") = EQUAL) var
-      val [num,gen] = String.tokens Char.isPunct ext
-      val gennum = case Int.fromString gen of
-                     NONE => raise Unimplemented "gen number of var not valid"
-                   | SOME n => n
-      val x = AAst.Local (Symbol.symbol name,gennum)
+      val (value,ss) =
+        case rest of
+          "(-"::v::ss => (v,ss)
+        | v::ss => (v,ss)
+        | _ => raise Unimplemented "Model contains unknown type"
+
       val [int_str] = String.tokens (not o Char.isDigit) value
       val exp = case String.compare("0",int_str) of
                   EQUAL => AAst.Op(Ast.EQ,[x,AAst.Null])

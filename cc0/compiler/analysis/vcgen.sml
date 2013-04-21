@@ -421,7 +421,9 @@ struct
           val resterrs = process_stms ext funs cnt_info cont_stms
         in exp_errs @ thenerrs @ elseerrs @ resterrs
         end
-    | Break => [VError.VerificationNote(ext,"Warning: loop invariants cannot be verified when using breaks")]
+    | Break => [VError.VerificationNote(ext,
+                  "Warning: loop invariants cannot be verified when using" ^
+                  " breaks or effectual operations in loop conditions.")]
     | Continue => cnt_phi_fun ext cnt_num
     | While(cntphis,e,invs,s,brkphis) =>
         let
