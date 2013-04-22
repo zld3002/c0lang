@@ -32,7 +32,7 @@ struct
   (* Test continues *)
   (* Fix tests for conditions.sml (need to declare variables) *)
 
-  (* tests with gcd and binary search error *)
+  (* test inlining *)
 
   (* What to do about function calls in loop conditions? Adds breaks to code
    * when isolated, so can't use loop invariants with them. (TODO document this)
@@ -40,7 +40,6 @@ struct
    * (would be nice to hook isolation up to purity) *)
   
   (* How to inline functions with multiple returns? *)
-  (* Simplify case in model parsing function, use mlyacc? *)
 
   (* use implications/conjunction with ifs, have expression to use for implication
    * when entering if/else. *)
