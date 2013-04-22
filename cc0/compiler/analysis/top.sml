@@ -51,6 +51,12 @@ struct
       val debug = false
       val print_funcs = false
       val _ = Conditions.StartZ3 ()
+      (* Analyze all the functions to convert them into SSA form. It also runs
+       * isolation on the functions.
+       * NOTE: Isolation will add breaks to loops if the loop condition has an
+       * effectual operation in it (like a division or function call). This
+       * will make VC not able to properly verify loop invariants for that
+       * loop due to the break. *)
       val funcs = Analysis.analyze true prog
       val fun_sum_map = FunctionSummary.generate_function_summaries funcs
 

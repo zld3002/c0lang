@@ -22,27 +22,21 @@ struct
 
   exception CriticalError of VError.error list
 
+  (* TODO *)
   (* How do we want to give back the model?
    * Give values of all arguments, and all current values?
    * Return model as pairs of variable and value *)
 
-  (* TODO *)
   (* Add arrays to z3 so we can assert about them *)
 
-  (* Test continues *)
+  (* Test continues, inlining *)
   (* Fix tests for conditions.sml (need to declare variables) *)
 
-  (* test inlining *)
-
-  (* What to do about function calls in loop conditions? Adds breaks to code
-   * when isolated, so can't use loop invariants with them. (TODO document this)
-   * ^- should see if this works for div by 2.
-   * (would be nice to hook isolation up to purity) *)
+  (* Could isolation be made to properly handle effectual things? Just
+   * create a new variable before loop and bind to it before and at each
+   * continue point (does isolation even work for continues)? *)
   
   (* How to inline functions with multiple returns? *)
-
-  (* use implications/conjunction with ifs, have expression to use for implication
-   * when entering if/else. *)
 
   (* implement multiple return inline functions by allowing phi functions
    * anywhere, so just have a phi function at the end of the inline. *)
@@ -262,7 +256,10 @@ struct
     | MarkedE m => process_exp (Mark.ext m) check (Mark.data m)
     | _ => []
 
-  (* Makes assertions for a given statement *)
+  (* Makes assertions for a given list of statements, using the provided
+   * utility functions. The cnt_info is for passing information about
+   * continues, and the cond_exp is the expression to assert with everything
+   * else inside of a conditional. *)
   fun process_stms ext funs cnt_info [] = []
     | process_stms ext (funs as (assert,check,ensure))
                        (cnt_info as (cnt_phi_fun,cnt_num))
@@ -481,10 +478,8 @@ struct
     | MarkedS m =>
         process_stms (Mark.ext m) funs cnt_info ((Mark.data m)::cont_stms)
 
-  (* The primary function used for making and checking assertions. It produces
-   * both warnings and errors (as specified in vcrules.tex). It can also just
-   * make regular assertions, for things like assignments where there are no
-   * assumptions to check. *)
+  (* The primary function used for checking assertions. It produces errors
+   * when an error case is satisfiable, or guaranteed to be the case. *)
   fun check_assert assert_fun ext e =
     let
       val _ =
