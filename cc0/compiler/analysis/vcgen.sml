@@ -35,9 +35,13 @@ struct
   (* Could isolation be made to properly handle effectual things? Just
    * create a new variable before loop and bind to it before and at each
    * continue point (does isolation even work for continues)? *)
+
+  (* Fix convert_returns to alpha_vary if duplicated in both branches, and
+   * change variables in statements to use branch variables, not phi variables. *)
   
   (* implement multiple return inline functions by allowing phi functions
-   * anywhere, so just have a phi function at the end of the inline. *)
+   * anywhere, so just have a phi function at the end of the inline.
+   * Ask Jason about this... *)
 
   val ZERO = IntConst(Word32Signed.ZERO)
   val typemap : tp SymMap.map ref = ref (SymMap.empty)
