@@ -36,8 +36,6 @@ struct
    * create a new variable before loop and bind to it before and at each
    * continue point (does isolation even work for continues)? *)
   
-  (* How to inline functions with multiple returns? *)
-
   (* implement multiple return inline functions by allowing phi functions
    * anywhere, so just have a phi function at the end of the inline. *)
 

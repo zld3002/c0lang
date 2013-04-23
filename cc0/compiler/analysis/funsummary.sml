@@ -32,6 +32,18 @@ struct
   val max_gen = ref 0
   val alpha_count = ref 0
 
+  (* Returns true if the statement definitely return
+   * (but not from inside a loop). *)
+  fun definitely_returns stm =
+    case stm of
+      Seq(s1,s2) => (definitely_returns s1) orelse
+                    (definitely_returns s2)
+    | Return _ => true
+    | If(_,s1,s2,_) => (definitely_returns s1) andalso
+                       (definitely_returns s2)
+    | MarkedS m => definitely_returns (Mark.data m)
+    | _ => false
+
   (* Returns true if the statement could potentially return
    * (but not from inside a loop). *)
   fun could_return stm =
@@ -143,7 +155,8 @@ struct
     | Seq(s1,s2) => (can_inline_stm s1 funcs) andalso
                     (can_inline_stm s2 funcs) andalso
                     (* If both paths return, then there is no easy way
-                     * to assign the resulting value when inlined. *)
+                     * to assign the resulting value when inlined.
+                     * TODO remove this when inlining for multiple returns. *)
                     ((not (could_return s1)) orelse
                      (not (could_return s2)))
     | Assert e => can_inline_exp e funcs
@@ -213,9 +226,43 @@ struct
     | MarkedS m => MarkedS(Mark.mark' (alpha_vary_stm alpha (Mark.data m),Mark.ext m))
     | _ => stm
 
+  (* Converts statements that return in multiple places outside of ifs
+   * into statements that will only return once or in both branches of
+   * an if (applied recursively to statements inside the ifs). This
+   * ignores loops, as this is only meant for inlined functions so that
+   * they can be properly inlined. *)
+  fun convert_returns [] = Nop
+    | convert_returns (stm::stms) =
+    case stm of
+      Seq(s1,s2) => convert_returns (s1::s2::stms)
+    | If(e,s1,s2,phis) => 
+      let
+        val s1_returns = definitely_returns s1
+        val s2_returns = definitely_returns s2
+        val s1_could_ret = could_return s1
+        val s2_could_ret = could_return s2
+        val (new_s1,new_s2) =
+          case (s1_returns,s2_returns,s1_could_ret,s2_could_ret) of
+            (true,true,_,_) =>
+              (convert_returns [s1],convert_returns [s2])
+          | (true,false,_,_) =>
+              (convert_returns [s1],convert_returns (s2::stms))
+          | (false,true,_,_) => 
+              (convert_returns (s1::stms),convert_returns [s2])
+          | (_,_,false,false) => (s1,s2)
+          | (false,false,_,_) => 
+              (convert_returns (s1::stms),convert_returns (s2::stms))
+      in if not (s1_could_ret orelse s2_could_ret)
+           then Seq(If(e,new_s1,new_s2,phis),convert_returns stms)
+           else If(e,new_s1,new_s2,phis)
+      end
+    | MarkedS m => convert_returns ((Mark.data m)::stms)
+    | _ => Seq(stm,convert_returns stms)
+
   fun inline_fun func declare_fun applied_args (result_sym,gen) =
     let
       val Function(_,sym,types,args,_,stm,_) = func
+      val stm = convert_returns [stm]
       val types = SymMap.foldri (fn (sym,t,m) =>
                                   SymMap.insert(m,alpha_vary_symbol (!alpha_count) sym,t))
                                 SymMap.empty
