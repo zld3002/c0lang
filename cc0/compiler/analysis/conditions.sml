@@ -479,6 +479,18 @@ in
         val true = ((print "Testing Z3 boot...\n");
             Conditions.StartZ3();
             Conditions.z3Started())
+        val _ = (print "Declaring variables...\n")
+
+        val t0 = Symbol.symbol("t0")
+        val t1 = Symbol.symbol("t1")
+        val t2 = Symbol.symbol("t2")
+        val A = Symbol.symbol("A")
+        val map = SymMap.insert(SymMap.empty,t0,Ast.Int)
+        val map = SymMap.insert(map,t1,Ast.Int)
+        val map = SymMap.insert(map,t2,Ast.Int)
+        val map = SymMap.insert(map,A,Ast.Array Ast.Int)
+        val decl_fun = Conditions.declare map
+            
                
         val SOME _ = ((print "Testing Z3 asserts and checks...\n");
             (print "==ASSERT(expr)[expected]==\n");
@@ -490,45 +502,48 @@ in
              assert(AAst.BoolConst(false));
              Conditions.check())
         val () = break()
+        val _ = (decl_fun (t0,0))
         val SOME _ = ((print "  ASSERT(t0 = 10)[true]\n");
             assert(
             AAst.Op(Ast.EQ,
-                [AAst.Local(Symbol.symbol("t0"), 0),
+                [AAst.Local(t0, 0),
                  AAst.IntConst(Word32.fromInt 10)]));
             Conditions.check())
         val NONE = ((print "  ASSERT(t0 != 10)[false]\n");
              assert(
              AAst.Op(Ast.NOTEQ,
-                 [AAst.Local(Symbol.symbol("t0"), 0),
+                 [AAst.Local(t0, 0),
                   AAst.IntConst(Word32.fromInt 10)]));
              Conditions.check())
         val () = break()
+        val _ = (decl_fun (t1,0))
+        val _ = (decl_fun (t2,0))
         val SOME _ = ((print "  ASSERT(t1 = 10)[true]\n");
             assert(
             AAst.Op(Ast.EQ,
-                [AAst.Local(Symbol.symbol("t1"), 0),
+                [AAst.Local(t1, 0),
                  AAst.IntConst(Word32.fromInt 10)]));
             Conditions.check())
         val SOME _ = ((print "  ASSERT(t2 = 10)[true]\n");
             assert(
             AAst.Op(Ast.EQ,
-                [AAst.Local(Symbol.symbol("t2"), 0),
+                [AAst.Local(t2, 0),
                  AAst.IntConst(Word32.fromInt 10)]));
             Conditions.check())
         val SOME _ = ((print "  ASSERT(t1*t2 == 100)[true]\n");
             assert(
             AAst.Op(Ast.EQ,
                 [AAst.Op(Ast.TIMES,
-                     [AAst.Local(Symbol.symbol("t1"), 0),
-                      AAst.Local(Symbol.symbol("t2"), 0)]),
+                     [AAst.Local(t1, 0),
+                      AAst.Local(t2, 0)]),
                  AAst.IntConst(Word32.fromInt 100)]));
             Conditions.check())
         val NONE = ((print "  ASSERT(t1*t2 != 100)[false]\n");
              assert(
              AAst.Op(Ast.NOTEQ,
                  [AAst.Op(Ast.TIMES,
-                      [AAst.Local(Symbol.symbol("t1"), 0),
-                       AAst.Local(Symbol.symbol("t2"), 0)]),
+                      [AAst.Local(t1, 0),
+                       AAst.Local(t2, 0)]),
                   AAst.IntConst(Word32.fromInt 100)]));
              Conditions.check())
         val () = break()
@@ -570,6 +585,7 @@ in
                  AAst.BoolConst(false)]));
             Conditions.check())
         val () = break()
+        val _ = (decl_fun (t2,0))
         val SOME _ = ((print "  ASSERT(t2 = 0)[true]\n");
             assert(
             AAst.Op(Ast.EQ,
@@ -636,6 +652,7 @@ in
                  AAst.IntConst(Word32.fromInt(3))]));
             Conditions.check())
         val () = break()
+        val _ = (decl_fun (A,0))
         val SOME _ = ((print "  ASSERT(\\length(A) = 10)[true]\n");
             assert(
             AAst.Op(Ast.EQ,

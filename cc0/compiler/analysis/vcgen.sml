@@ -30,7 +30,6 @@ struct
   (* Add arrays to z3 so we can assert about them *)
 
   (* Test continues, inlining *)
-  (* Fix tests for conditions.sml (need to declare variables) *)
 
   (* Could isolation be made to properly handle effectual things? Just
    * create a new variable before loop and bind to it before and at each
