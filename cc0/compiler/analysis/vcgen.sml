@@ -198,6 +198,13 @@ struct
                            | _ => false)
                          stm
 
+  (* Returns true if the statement errors or returns. *)
+  fun errors_returns stm =
+    control_flow_changes (fn Error _ => true
+                           | Return _ => true
+                           | _ => false)
+                         stm
+
   (* Returns true if the statement could potentially break
    * out of the outermost loop. *)
   fun could_break stm =
@@ -419,9 +426,9 @@ struct
           val resterrs = process_stms ext funs cnt_info cont_stms
         in exp_errs @ thenerrs @ elseerrs @ resterrs
         end
-    | Break => [VError.VerificationNote(ext,
+    | Break => [](*[VError.VerificationNote(ext,
                   "Warning: loop invariants cannot be verified when using" ^
-                  " breaks or effectual operations in loop conditions.")]
+                  " breaks or effectual operations in loop conditions.")]*)
     | Continue => cnt_phi_fun ext cnt_num
     | While(cntphis,e,invs,s,brkphis) =>
         let
@@ -450,7 +457,6 @@ struct
                            NONE => false
                          | SOME _ => true
 
-          val forget = breaks_errors_returns s
           (* Assert the condition while inside the loop *)
           val _ = assert e
           (* Assert the loop invariants at the start of the loop *)
@@ -459,7 +465,7 @@ struct
                                   (check_invariants cntphis,2) [s]
           (* Now check the case where the loop continues from the end, but
            * only if we can actually reach it. *)
-          val errs = if forget then errs
+          val errs = if breaks_errors_returns s then errs
                        else errs @ (check_invariants cntphis ext 1)
 
           (* Only keep errors if the loop could be entered *)
@@ -468,11 +474,40 @@ struct
           (* Now revert back to outside the loop *)
           val _ = C.pop()
 
-          (* Assert the invariants, since we can assume that they
-           * were true upon exiting the loop (but only if we didn't
-           * break out of it). *)
+          (* TODO need to assert that either all invariants are true, or we
+           * broke out of the loop and the (nonzero) break phis apply *)
+
+          fun fold_exps oper es =
+            case es of
+              [] => BoolConst(true)
+            | [e] => e
+            | e::es => Op(oper,[e,fold_exps oper es])
+
+          fun make_phi_assertion index (PhiDef(s,i,is)) = 
+            opeq (Local(s,i)) (Local(s,List.nth(is,index)))
+          fun make_break_assertions index =
+            fold_exps Ast.LOGAND (List.map (make_phi_assertion index) brkphis)
+
+          (* Update the invariants for the values that they have at
+           * the end of the loop, if exited normally. *)
           val new_invs = List.map (replace_inv brkphis 0 true) invs
-          val _ = if forget orelse could_break s then [] else List.map assert invs
+          val invariant_assertion = fold_exps Ast.LOGAND new_invs
+
+          val phi_len = case brkphis of
+                      [] => 0
+                    | (PhiDef(s,i,is))::_ => List.length is
+          (* The assertions resulting from the break phis. *)
+          val break_assertions = List.tabulate(phi_len,make_break_assertions)
+          val disjunction = fold_exps Ast.LOGOR (invariant_assertion::break_assertions)
+
+          (* Assert the disjunction of the invariants and the phi functions
+           * for each break statement. Either the loop didn't break and we can
+           * assert the invariants, or one of the breaks in the loop was
+           * reached, and the corresponding phis are true. Only make this
+           * assertion if it's possible to exit the loop without exiting the
+           * function (i.e. it doesn't error or return). *)
+          val _ = if errors_returns s then () else assert disjunction
+
           (* Generate errors for the rest of the statements in the program. *)
           val rest_errs = process_stms ext funs cnt_info cont_stms
         in exp_errs @ inv_errs @ while_errs @ rest_errs
