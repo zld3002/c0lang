@@ -23,24 +23,16 @@ struct
   exception CriticalError of VError.error list
 
   (* TODO *)
-  (* How do we want to give back the model?
-   * Give values of all arguments, and all current values?
-   * Return model as pairs of variable and value *)
-
-  (* Add arrays to z3 so we can assert about them *)
-
-  (* Test continues, inlining *)
-
-  (* Could isolation be made to properly handle effectual things? Just
-   * create a new variable before loop and bind to it before and at each
-   * continue point (does isolation even work for continues)? *)
-
-  (* Fix convert_returns to alpha_vary if duplicated in both branches, and
-   * change variables in statements to use branch variables, not phi variables. *)
-  
-  (* implement multiple return inline functions by allowing phi functions
-   * anywhere, so just have a phi function at the end of the inline.
-   * Ask Jason about this... *)
+  (* 1. How do we want to give back the model?
+   *    Give values of all arguments, and all current values?
+   *    Return model as pairs of variable and value
+   * 2. Add arrays to z3 so we can assert about them
+   * 3. Implement multiple return inline functions by using loops
+   *    with breaks to simulate returns.
+   * 4. Could isolation be made to properly handle effectual things? Just
+   *    create a new variable before loop and bind to it before and at each
+   *    continue point (does isolation even work for continues)?
+   *)
 
   val ZERO = IntConst(Word32Signed.ZERO)
   val typemap : tp SymMap.map ref = ref (SymMap.empty)

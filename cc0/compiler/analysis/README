@@ -15,6 +15,7 @@ Files
   purity.sml: Checks annotation functions for externally visible effects.
   top.sml: Top level functions for invoking the purity and safety analyzes.
   conditions.sml: Interface for using Z3 to SAT-solve verifications.
+  funsummary.sml: Generates function summaries for use in verification.
   vcgen.sml: Verification of contracts and other potential errors.
 
 Current Issues:
