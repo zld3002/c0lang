@@ -26,15 +26,14 @@ mentioned above. To assert something, it makes a call to the assert function
 in conditions.sml, which interfaces with Z3. When given an expression to
 assert, it is translated into code that Z3 understands, and sent to Z3 to
 process. If it can satisfy the assertions that it has made so far, then it
-returns with true, otherwise it returns false. This result is then used by
+returns with a model, otherwise it returns a failure. This result is then used by
 vcgen to generate error messages, if warranted by the result of the call to Z3.
 
-Currently, VC is only implemented for straightline code in C0, and will not
-work on code with conditionals or loops. However, as outlined in vcrules, most
-of what is required for these features have been worked out, and they just need
-to be implemented. The current code does check for division errors, as well as
-out of bounds array accesses (which it does by keeping track of array lengths).
-It also checks to make sure that the ensures statements are valid for each
-possible return expression. Another future addition would be using requires and
-ensures contracts to make assertions about function calls and verify that they
-are made correctly.
+Currently, VC is implemented for most of C0, and can check the following:
+  ~arithmetic errors (div by 0, integer overflow)
+  ~array index out-of-bounds
+  ~pointer dereference
+  ~conditionals
+  ~loops (using loop invariants)
+  ~function contracts
+  ~function calls inlined (for simple functions)
