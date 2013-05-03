@@ -45,7 +45,7 @@ struct
 (*Debug flags*)
 val print_local_var_list = false
 val print_z3_print = false
-val print_z3_errors = true
+val print_z3_errors = false
 val print_z3_read = false
 val print_raw_expr = false
 
@@ -166,10 +166,9 @@ fun assert (map : Ast.tp SymMap.map) e =
         case e of
             AAst.Local((sym, gen)) =>
               (case SymMap.find(map,sym) of
-                SOME Ast.Int => localName e
-              | SOME Ast.Bool => localName e
-              | SOME (Ast.Pointer _) => localName e
-              | _ => raise Unimplemented "type of variable can not be reasoned about")
+                SOME (Ast.Array _) =>
+                  raise Unimplemented "type of variable can not be reasoned about"
+              | _ => localName e)
           | AAst.Op(oper, exprlist) => (
             case oper of
             Ast.SUB => raise Unimplemented "assert_expr sub" (* Not seen *)
