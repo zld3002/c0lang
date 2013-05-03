@@ -7,7 +7,7 @@ signature FUNCTION_SUMMARY =
 sig
 
   type summary = ((AAst.aexpr -> VError.error list) -> AAst.aexpr list ->
-                   VError.error list) * (AAst.loc -> unit) *
+                   VError.error list) * (AAst.aexpr list -> AAst.loc -> unit) *
                   ((AAst.tp SymMap.map -> AAst.astmt -> unit) -> 
                     AAst.aexpr list -> AAst.loc -> AAst.astmt) option
 
@@ -24,7 +24,7 @@ struct
   open AAst
 
   type summary = ((AAst.aexpr -> VError.error list) -> AAst.aexpr list ->
-                   VError.error list) * (AAst.loc -> unit) *
+                   VError.error list) * (AAst.aexpr list -> AAst.loc -> unit) *
                   ((AAst.tp SymMap.map -> AAst.astmt -> unit) -> 
                     AAst.aexpr list -> AAst.loc -> AAst.astmt) option
 
@@ -87,25 +87,33 @@ struct
     let
       val old_args = List.map (fn (_,_,(s,_)) => s) args
 
-      (* Checks that the requires expressions are true given a check function
-       * and a list of values to replace the arguments. *)
-      fun check_requires check_fun new_args =
+      fun make_arg_map new_args =
         let
           val arg_list = List.tabulate(List.length args,
                                        fn i => (List.nth(old_args,i),
                                                 List.nth(new_args,i)))
-          val map = List.foldr SymMap.insert' SymMap.empty arg_list
+        in List.foldr SymMap.insert' SymMap.empty arg_list
+        end
+      (* Checks that the requires expressions are true given a check function
+       * and a list of values to replace the arguments. *)
+      fun check_requires check_fun new_args =
+        let
+          val map = make_arg_map new_args
           val errs = List.map (check_fun o (replace_local map)) requires
         in List.foldr op@ [] errs
         end
 
       (* Asserts that the ensures expressions are true given a local
        * to replace \result. *)
-      fun assert_ensures l =
-        ignore(List.map (fn e => C.assert types (replace_result l e )
-                          handle C.Unimplemented s =>
-                            print ("Unimplemented ensures:" ^ s ^ "\n"))
-                        ensures)
+      fun assert_ensures new_args l =
+        let
+          val map = make_arg_map new_args
+          val _ = List.map (fn e => C.assert types (replace_result l (replace_local map e))
+                              handle C.Unimplemented s =>
+                                print ("Unimplemented ensures:" ^ s ^ "\n"))
+                           ensures
+        in ()
+        end
 
     in (check_requires,assert_ensures)
     end

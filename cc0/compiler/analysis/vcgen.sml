@@ -296,7 +296,7 @@ struct
                   SOME (rf,ef,NONE) =>
                     let
                       val errs = rf (check ext) es
-                      val _ = ef (v,i)
+                      val _ = ef es (v,i)
                     in errs
                     end
                 | SOME (rf,ef,SOME inline) =>
@@ -304,7 +304,7 @@ struct
                     val errs = rf (check ext) es
                     val decl_fun = fn t => declare_stm (declare_local t)
                     val inlined_fun = inline decl_fun es (v,i)
-                    val _ = ef (v,i)
+                    val _ = ef es (v,i)
                   in errs @ (process_stms NONE funs cnt_info [inlined_fun])
                   end
                 | _ => [])
