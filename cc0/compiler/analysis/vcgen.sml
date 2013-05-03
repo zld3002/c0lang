@@ -57,7 +57,7 @@ struct
        (* Need to make sure that array lengths are non-negative. *)
         case SymMap.find(!typemap,s) of
           SOME (Ast.Array _) => 
-            C.assert (Op(Ast.GEQ,[Length e,ZERO]))
+            C.assert (!typemap) (Op(Ast.GEQ,[Length e,ZERO]))
         | _ => ())
      | Op(oper,es) => ignore(List.map (declare_exp decl) es)
      | Call(f,es) => ignore(List.map (declare_exp decl) es)
@@ -569,10 +569,14 @@ struct
 
       val declare_fun = declare_local types
       val assert_fun =
-        fn e => C.assert e
-          handle C.Unimplemented s => 
-            print_dbg ("Unimplemented assertion for " ^ Print.pp_aexpr e ^
-                       " found in " ^ s ^ "\n")
+        let
+          val func = C.assert types
+        in
+          fn e => func e
+            handle C.Unimplemented s => 
+              print_dbg ("Unimplemented assertion for " ^ Print.pp_aexpr e ^
+                         " found in " ^ s ^ "\n")
+        end
 
       (* Make functions for use in statement processing *)
       val check = check_assert assert_fun

@@ -83,7 +83,7 @@ struct
     | _ => e
 
   (* Generates requires/ensures information for a function, for use in verification *)
-  fun generate_function_contracts (f as Function(_,sym,_,args,requires,_,ensures)) =
+  fun generate_function_contracts (f as Function(_,sym,types,args,requires,_,ensures)) =
     let
       val old_args = List.map (fn (_,_,(s,_)) => s) args
 
@@ -102,7 +102,7 @@ struct
       (* Asserts that the ensures expressions are true given a local
        * to replace \result. *)
       fun assert_ensures l =
-        ignore(List.map (fn e => C.assert (replace_result l e )
+        ignore(List.map (fn e => C.assert types (replace_result l e )
                           handle C.Unimplemented s =>
                             print ("Unimplemented ensures:" ^ s ^ "\n"))
                         ensures)
