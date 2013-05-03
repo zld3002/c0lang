@@ -26,10 +26,13 @@ struct
   (* 1. How do we want to give back the model?
    *    Give values of all arguments, and all current values?
    *    Return model as pairs of variable and value
-   * 2. Add arrays to z3 so we can assert about them
-   * 3. Implement multiple return inline functions by using loops
+   * 2. Make it so ifs are only processed once by keeping track of
+   *    condition and asserting it with all other expressions inside
+   *    of the conditional.
+   * 3. Add arrays to z3 so we can assert about them
+   * 4. Implement multiple return inline functions by using loops
    *    with breaks to simulate returns.
-   * 4. Could isolation be made to properly handle effectual things? Just
+   * 5. Could isolation be made to properly handle effectual things? Just
    *    create a new variable before loop and bind to it before and at each
    *    continue point (does isolation even work for continues)?
    *)
