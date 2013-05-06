@@ -440,6 +440,7 @@ struct
 
           (* Thanks to SSA, everything defined before we enter the loop is a
            * constant inside of and after the loop *)
+          val _ = C.push()
 
           (* First make sure that invariants hold before entering the loop *)
           val inv_errs = check_invariants cntphis ext 0
@@ -463,6 +464,9 @@ struct
 
           (* Only keep errors if the loop could be entered *)
           val while_errs = if cond_sat then errs else []
+
+          (* Now revert back to outside the loop *)
+          val _ = C.pop()
 
           fun fold_exps oper es =
             case es of
