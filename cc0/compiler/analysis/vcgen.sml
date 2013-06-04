@@ -338,6 +338,7 @@ struct
         let
           val errs1 = process_exp ext check e1
           val errs2 = process_exp ext check e2
+          (* TODO fix this, could easily be duplicating effects *)
           val _ = assert (opeq e1 (Op(oper,[e1,e2])))
         in
           errs1 @ errs2 @ (process_stms ext funs cnt_info cont_stms)

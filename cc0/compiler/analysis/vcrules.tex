@@ -33,112 +33,151 @@
 \renewcommand\or{\mathop{\vee}}
 \newcommand\ent{\vdash}
 \newcommand\G{\Gamma}
+\newcommand\D{\Delta}
 \newcommand\tri{\triangleright}
 \newcommand\openc{\text{\textopencorner}}
 \newcommand\closec{\text{\textcorner}}
 \newcommand\con[1]{\openc #1 \closec}
 \newcommand\imp[2]{\G #1 \ent \ttt{#2}}
 \newcommand\impt[3]{\G #1 \ent \ttt{#2} \tri #3}
-
-\title{}
-\author{}
-\date{}
+\newcommand\impa[4]{#1 \ent \ttt{#2} \tri [#3;#4]}
 
 \begin{document}
-% \maketitle
 
 
 The following are the set of rules for generating verification conditions. They verify contracts, as well as check for other potential errors.
+
+The statement $\impa{\G}{s}{\G'}{\D}$ means that given assertions $\G$, the process of verifying statement
+\ttt{s}  makes new assertions $\G'$ that are known to be true after \ttt{s} is run (e.g. \ttt{x = 3}) with a list of
+noncritical errors $\D$. These errors are satisfiable expressions that could result in an error, given a specific model of
+the existing variables. Critical errors occur when the code can be proven to have an error on all inputs, which causes
+verification to halt and return the errors.
+
+Note that the current system makes assertions aggresively, in that it asserts whatever it can if it knows something is true,
+even if that assertion is not useful or even something that can't be understood. These get filtered out when passed to Z3,
+so an assertion like \ttt{A[i] = x} would (in the current implementation) not get to Z3 because Conditions wouldn't understand
+how to assert \ttt{A[i]}.
+
+Also, these rules are made with SSA in mind, since that is necessary to even make this work (otherwise we'd be asserting contradictory
+things on multiple assertions, among other things). While it won't be made explicit, much of the reasoning behind certain rules will
+be due to invariants upheld by SSA form. Isolation is also run on the code, so we know that anything that could have effects will
+happen in an assignment as they are isolated out of their original expressions.
 
 \section*{Statements}
 
 \subsection*{Assignments}
 
 \[
-  \infer[]{\impt{}{lv = e}{\G_2 \and lv = \con{e}}}{\impt{}{lv}{\G_1} & \impt{_1}{e}{\G_2}}
+  \infer[]{\impa{\G}{e$_1$ = e$_2$}{\G_1 \and \G_2 \and (\ttt{e$_1$ = e$_2$})}{\D_1,\D_2}}
+	  {\impa{\G \and \G_1}{e$_1$}{\G_1}{\D_1} & \impa{\G}{e$_2$}{\G_2}{\D_2}}
 \]
+
+The basic assignment form is pretty simple, with just checking the subexpressions and combining with the new assertion. However, there are a few special cases:
+
+Assigning into an array variable will give us an assertion about its length, for use when making memory accesses.
+
+\[
+  \infer[]{\impa{\G}{A = e}{\G_1 \and (\ttt{$\backslash$length(A) = $\backslash$length(e)})}{\D_1}}
+	  {\ttt{Type(A)} = \ttt{Array} & \impa{\G}{e}{\G_1}{\D_1}}
+\]
+
+A more specific case of this, to help simplify things, is the following rule.
+
+\[
+  \infer[]{\impa{\G}{A = alloc$\_$array($\_$,e)}{\G_1 \and (\ttt{$\backslash$length(A) = e})}{\D_1}}
+	  {\impa{\G}{e}{\G_1}{\D_1}}
+\]
+
+When we allocate a pointer, we know that it is not NULL. We also know that it is not equal to any other existing pointers, however that knowledge
+has not been implemented yet.
+
+\[
+  \infer[]{\impa{\G}{p = alloc(e)}{\G_1 \and (\ttt{p != NULL})}{\D_1}}
+	  {\impa{\G}{e}{\G_1}{\D_1}}
+\]
+
+For functions, we have to check that the requires contracts hold, and afterwards we know that the ensures contracts are true for the result,
+which is put in the assigned variable.
+
+\[
+  \infer[]{\impa{\G}{x = f(e$_1$,...,e$_n$)}{\G_1 \and ... \and \G_n \and \G' \and (\ttt{[x/$\backslash$result]ensures(f)})}{\D_1,..., \D_n, \D'}}
+	  {\impa{\G}{e$_i$}{\G_i}{\D_i} & \impa{\G \and \G_1 \and ... \and \G_n}{requires(f,es)}{\G'}{\D'}}
+\]
+
+However if we can inline the function, then we do that instead, which is more complicated.
 
 \subsection*{Returns}
 
+For a \ttt{return} statement we have to make sure that the ensures statements hold for the returned expression.
+
 \[
-  \infer[]{\impt{}{return e}{\G_2 \and lv = \con{e}}}{\impt{}{e}{\G_1} & \imp{_1}{[e/$\backslash$result]post}}
+  \infer[]{\impa{\G}{return e}{\G_1 \and \G_2}{\D_1,\D_2}}
+	  {\impa{\G}{e}{\G_1}{\D_1} & \impa{\G \and \G_1}{[e/$\backslash$result]ensures}{\G_2}{\D_2}}
 \]
 
 \subsection*{Asserts}
 
-\[
-  \infer[]{\impt{}{assert e}{ERROR}}{\imp{}{$\neg$ e}}\quad
-  \infer[WARN]{\impt{}{assert e}{\G_1 \and \con{e}true}}{}
-\]
+Asserts actually get filtered out by some part of the compiler before reaching this verification, so they are never run.
+However, if they were, these rules would apply. The first rule illustrates how if the context can guarantee that e is false,
+then it raises a critical error and stops. The second is when it is successful.
 
 \[
-  \infer[]{\impt{}{assert e}{\G_1 \and \con{e}true}}{\impt{}{e}{\G_1}}
+  \infer[]{\impt{}{assert e}{ERROR}}
+	  {\impa{\G}{e}{\G_1}{\D_1} & \imp{\and \G_1}{$\neg$ e}}\quad
+  \infer[]{\impa{\G}{assert e}{\G_1}{\D_1}}
+	  {\impa{\G}{e}{\G_1}{\D_1} & \imp{\and \G_1}{e}}
+\]
+
+This last rule only applies if neither of the above do, so when e can't be verified or contradicted.
+
+\[
+  \infer[]{\impa{\G}{assert e}{\G_1 \and \ttt{e}}{\D, \ttt{assert e}}}
+	      {\impa{\G}{e}{\G_1}{\D_1}}
 \]
 
 
 \subsection*{Ifs}
+    
+We know that one of the branches must have been taken, so it must be
+that either the assertions from the then branch or the assertions from the else branch are true.
 
 \[
-  \infer[]{\impt{}{if e then s$_1$ else s$_2$}{\G_2 \or \G_3}}{
-    \impt{}{e}{\G_1} &
-    \impt{_1 \and \con{e} true}{s$_1$}{\G_2} &
-    \impt{_2 \and \con{e} false}{s$_2$}{\G_3}}
+  \infer[]{\impa{\G}{if e then s$_1$ else s$_2$}{\G_1 \and ((\G_2 \and \ttt{e}) \or (\G_3 \and \ttt{!e}))}{\D_1,\D_2,\D_3}}
+ {\impa{\G}{e}{\G_1}{\D_1} &
+  \impa{\G \and \G_1 \and \ttt{e}}{s$_1$}{\G_2}{\D_2} &
+  \impa{\G \and \G_1 \and \ttt{!e}}{s$_2$}{\G_3}{\D_3}}
 \]
+    
+This is actually more of a conceptual rule, since it isn't exactly what happens (due to SSA). In reality there are phi
+functions for the \ttt{if} statement. We instead keep around all assertions (both $\G_2$ and $\G_3$) and instead we 
+assert the disjunction of \ttt{e} and $\neg$ \ttt{e} in relation to the phi functions.
 
 \subsection*{Whiles}
 
-We define $\G|_\ttt{UV}$ to be $\G$ restricted to the unchanging vars with the loop
+Before verifying the loop we must check that the invariants are true. We must also check
+that the invariants still hold for the changed variables at the end of the loop (which proves
+the inductive quality of the invariants). We can keep around all the contexts while in the loop
+since variable assignments are unique due to SSA. After the loop, only $\G_2$ is related to things
+outside. Also we only know that the loop invariants are true and loop condition is false if
+the loop contains no \ttt{break} statements.
 
 \[
-  \infer[]{\impt{}{while(e) linv \{s\}}{ERROR}}{
-    \imp{}{$\neg$ linv}}
+  \infer[]{\impa{\G}{while(e) invs s}{\G_2 \and \ttt{invs} \and \ttt{!e}}{\D_1,\D_2,\D_3,\D_4}}{
+  \deduce[]{\impa{\G \and \G_1}{e}{\G_2}{\D_2}}{\impa{\G}{invs}{\G_1}{\D_1}} &
+  \deduce[]{\impa{\G \and \G_1 \and \G_2 \and \G_3 \and \ttt{invs} \and \ttt{e}}{invs$_{new}$}{\G_4}{\D_4}}
+           {\impa{\G \and \G_1 \and \G_2 \and \ttt{invs} \and \ttt{e}}{s}{\G_3}{\D_3}}}
 \]
 
-\[
-  \infer[]{\impt{}{while(e) linv \{s\}}{ERROR}}{
-    \impt{}{linv}{\G_1} & 
-    \impt{_1|_\ttt{UV} \and \con{linv}}{e}{\G_2} &
-    \impt{_2 \and \con{e} true}{s}{\G_3} &
-    \imp{_3}{$\neg$ linv}}
-\]
-
-The following are warnings because either the invariants could not be verified at the start of the loop or 
-after going around the loop.
-
-\[
-  \infer[WARN]{\impt{}{while(e) linv \{s\}}{\G_2 \and \con{e} false}}{
-    \impt{|_\ttt{UV} \and \con{linv}}{e}{\G_1} &
-    \impt{_1 \and \con{e} true}{s}{\G_2}}
-\]
-
-\[
-  \infer[WARN]{\impt{}{while(e) linv \{s\}}{\G_2 \and \con{e} false}}{
-    \impt{|_\ttt{UV} \and \con{linv}}{e}{\G_1} &
-    \impt{_1 \and \con{e} true}{s}{\G_2} &
-    \imp{_2}{linv}}
-\]
-
-\[
-  \infer[WARN]{\impt{}{while(e) linv \{s\}}{\G_3 \and \con{e} false}}{
-    \impt{}{linv}{\G_1} & 
-    \impt{_1|_\ttt{UV} \and \con{linv}}{e}{\G_2} &
-    \impt{_2 \and \con{e} true}{s}{\G_3}}
-\]
-
-\[
-  \infer[]{\impt{}{while(e) linv \{s\}}{\G_3 \and \con{e} false}}{
-    \impt{}{linv}{\G_1} & 
-    \impt{_1|_\ttt{UV} \and \con{linv}}{e}{\G_2} &
-    \impt{_2 \and \con{e} true}{s}{\G_3} &
-    \imp{_3}{linv}}
-\]
+While not included in the rule so as to make it clearer, when asserting and checking things, we need to transform
+them in accordance with the phi functions. The different uses of \ttt{invs} aren't all the same, as they need to have
+the correct generations of each of the variables given their context.
 
 \subsection*{Sequence}
 
 \[
-  \infer[]{\impt{}{s$_1$ ; s$_2$}{\G_2}}{
-    \impt{}{s$_1$}{\G_1} &
-    \impt{_1}{s$_2$}{\G_2}}
+  \infer[]{\impa{\G}{s$_1$ ; s$_2$}{\G_1 \and \G_2}{\D_1,\D_2}}{
+    \impa{\G}{s$_1$}{\G_1}{\D_1} &
+    \impa{\G_1}{s$_2$}{\G_2}{\D_2}}
 \]
 
 \section*{Expressions}
@@ -146,34 +185,59 @@ after going around the loop.
 \subsection*{Pointer Dereferences}
 
 \[
-  \infer[]{\impt{}{*p}{\G}}{\imp{}{p != NULL}}\quad\quad
-  \infer[]{\impt{}{*p}{ERROR}}{\imp{}{p==NULL}}\quad\quad
-  \infer[WARN]{\impt{}{*p}{\G \and p \neq NULL}}{}
+  \infer[]{\impa{\G}{*e}{\G_1}{\D_1}}{\impa{\G}{e}{\G_1}{\D_1} & \imp{\and \G_1}{e != NULL}}\quad\quad
+  \infer[]{\impt{}{*e}{ERROR}}{\impa{\G}{e}{\G_1}{\D_1} & \imp{\and \G_1}{e == NULL}}\quad\quad
 \]
 
-\subsection*{If/Else Expressions}
-
 \[
-  \infer[]{\impt{}{e$_1$?e$_2$:e$_3$}{\G_2 \or \G_3}}{
-    \impt{}{e$_1$}{\G_1} &
-    \impt{_1 \and \con{e_1} true}{e$_2$}{\G_2} &
-    \impt{_2 \and \con{e_1} false}{e$_3$}{\G_3}}
+  \infer[]{\impa{\G}{*e}{\G_1 \and \ttt{e != NULL}}{\D_1,\ttt{*e}}}{\impa{\G}{e}{\G_1}{\D_1}}
 \]
 
 \subsection*{Array Accesses}
 
 \[
-  \infer[]{\impt{}{A[e]}{ERROR}}{\impt{}{e}{\G_1} & \imp{_1}{0 $>$ e}}\quad\quad
-  \infer[]{\impt{}{A[e]}{ERROR}}{\impt{}{e}{\G_1} & \imp{_1}{e $\geq$ $\backslash$length(A)}}
+  \infer[]{\impt{}{A[e]}{ERROR}}{\impa{\G}{e}{\G_1}{\D_1} & \imp{\and \G_1}{$\ttt{e} < 0$}}\quad\quad
+  \infer[]{\impt{}{A[e]}{ERROR}}{\impa{\G}{e}{\G_1}{\D_1} & \imp{_1}{$\ttt{e} \geq \backslash\ttt{length(A)}$}}
 \]
 
 \[
-  \infer[WARN]{\impt{}{A[e]}{\G_1 \and 0 \leq \con{e} \and \con{e} < \backslash length(A)}}{\impt{}{e}{\G_1}}
+  \infer[]{\impa{\G}{A[e]}{\G_1}{\D_1}}
+	  {\impa{\G}{e}{\G_1}{\D_1} & \imp{\and \G_1}{$0 \leq \ttt{e}$} & \imp{\and \G_1}{$\ttt{e} < \backslash \ttt{length(A)}$}}
 \]
 
 \[
-  \infer[]{\impt{}{A[e]}{\G_1}}{\impt{}{e}{\G_1} & \imp{_1}{0 $\leq$ e} & \imp{_1}{e $<$ $\backslash$length(A)}}
+  \infer[]{\impa{\G}{A[e]}{\G_1 \and (0 \leq \ttt{e}) \and (\ttt{e} < \backslash \ttt{length(A)})}
+	      {\D_1,0 \leq \ttt{e},\ttt{e} < \backslash \ttt{length(A)}}}
+	  {\impa{\G}{e}{\G_1}{\D_1}}
 \]
 
+\subsection*{Division}
+
+\[
+  \infer[]{\impt{}{$\ttt{e}_1 / \ttt{e}_2$}{ERROR}}
+	  {\impa{\G}{e$_1$}{\G_1}{\D_1} & \impa{\G \and \G_1}{e$_2$}{\G_2}{\D_2} & \imp{\and \G_1 \and \G_2}{$\ttt{e}_2 == 0$}}
+\]
+
+\[
+  \infer[]{\impt{}{$\ttt{e}_1 / \ttt{e}_2$}{ERROR}}
+	  {\impa{\G}{e$_1$}{\G_1}{\D_1} & \impa{\G \and \G_1}{e$_2$}{\G_2}{\D_2} &
+	    \imp{\and \G_1 \and \G_2}{$\ttt{e}_2 == -1$} & \imp{\and \G_1 \and \G_2}{$\ttt{e}_1 == \ttt{INT}\_\ttt{MIN}$}}
+\]
+
+\[
+  \infer[]{\impa{\G}{$\ttt{e}_1 / \ttt{e}_2$}{\G_1 \and \G_2}{\D_1,\D_2}}
+	  {\impa{\G}{e$_1$}{\G_1}{\D_1} & \impa{\G \and \G_1}{e$_2$}{\G_2}{\D_2} &
+	    \imp{\and \G_1 \and \G_2}{$(\ttt{e}_2 \ttt{!=} 0) \and ((\ttt{e}_2 \ttt{!=} -1) \or (\ttt{e}_1 \ttt{!=} \ttt{INT}\_\ttt{MIN}))$}}
+\]
+
+And if none of the above apply,
+
+\[
+  \infer[]{\impa{\G}{$\ttt{e}_1 / \ttt{e}_2$}{\G_1 \and \G_2 \and (\ttt{e}_2 \ttt{!=} 0) \and ((\ttt{e}_2 \ttt{!=} -1) \or (\ttt{e}_1 \ttt{!=} \ttt{INT}\_\ttt{MIN}))}
+					      {\D_1,\D_2,\ttt{e}_1 / \ttt{e}_2}}
+	  {\impa{\G}{e$_1$}{\G_1}{\D_1} & \impa{\G \and \G_1}{e$_2$}{\G_2}{\D_2}}
+\]
+
+The above rules are the same for modulus.
 
 \end{document}
