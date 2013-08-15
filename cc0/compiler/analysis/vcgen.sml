@@ -56,7 +56,7 @@ struct
   (* Declares all the variables in the given expression. *)
   fun declare_exp decl e =
     case e of
-       Local (s,g) => (decl (s,g);
+       Local (s,g) => (ignore(decl (s,g)) ; (* correct? Aug 14, 2013 -fp *)
        (* Need to make sure that array lengths are non-negative. *)
         case SymMap.find(!typemap,s) of
           SOME (Ast.Array _) => 
@@ -79,7 +79,8 @@ struct
     | Assert e => declare_exp decl e
     | Error e => declare_exp decl e
     | Annotation e => declare_exp decl e
-    | Def(l,e) => (decl l;declare_exp decl e)
+    | Def(l,e) => (ignore (decl l); (* correct? Aug 13, 2013 -fp *)
+                   declare_exp decl e)
     | Assign(e1,oper,e2) => (declare_exp decl e1;
                                   declare_exp decl e2)
     | Expr e => declare_exp decl e

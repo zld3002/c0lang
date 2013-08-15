@@ -2,7 +2,7 @@
  * Lexing 
  * Rob Simmons
  *
- * Nearly-stateless lexer. In order to smootly integrate with the interactive 
+ * Nearly-stateless lexer. In order to smoothly integrate with the interactive 
  * top-level, this lexer takes a persistent stream and returns a token, a new 
  * persistent stream, and an object representing the internal state of the
  * lexer. The point of the lexer is that it can have its legs kicked out from

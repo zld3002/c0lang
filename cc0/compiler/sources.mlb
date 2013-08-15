@@ -9,6 +9,8 @@ local
 
       ast/ast.sml
 
+      warn/warn.sml
+
       type/symtab.sml
       type/typechecker.sml
       type/syn.sml
@@ -32,6 +34,7 @@ local
       analysis/nullity.sml
       analysis/purity.sml
       analysis/conditions.sml
+      analysis/funsummary.sml
       analysis/vcgen.sml
       analysis/top.sml
 

@@ -92,7 +92,8 @@ fun mark_stm (A.Assert(exp, nil), (left, right)) =
 			       ext))
     end 
   | mark_stm (A.StmDecl(d), r) = A.StmDecl(d) (* do not mark, so we can pattern match! *)
-  | mark_stm (A.Seq(ds,ss), r) = A.Seq(ds,ss) (* do not mark, so we can pattern match! *)
+  (* mark sequences, because we no longer pattern match against them? *)
+  (* | mark_stm (A.Seq(ds,ss), r) = A.Seq(ds,ss) *) (* do not mark, so we can pattern match! *)
   | mark_stm (s, (left, right)) = A.Markeds (Mark.mark' (s, PS.ext (left, right)))
 
 fun spec_ext spec = case spec of

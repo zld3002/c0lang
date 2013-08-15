@@ -16,6 +16,8 @@ Group is
 
         ast/ast.sml
 
+        warn/warn.sml
+	
         type/symtab.sml
 	type/typechecker.sml
 	type/syn.sml
@@ -29,7 +31,7 @@ Group is
 	parse/lex.sml
         parse/parse-pragma.sml    
 	parse/parse.sml
-	
+
 	analysis/error.sml
 	analysis/analysisast.sml
 	analysis/env.sml
@@ -39,6 +41,7 @@ Group is
 	analysis/nullity.sml
 	analysis/purity.sml
 	analysis/conditions.sml
+        analysis/funsummary.sml
 	analysis/vcgen.sml
 	analysis/top.sml
 

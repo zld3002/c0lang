@@ -13,6 +13,7 @@ signature FLAGS = sig
   val flag_static_check : Flag.flag
   val flag_purity_check : Flag.flag
   val flag_verif_check : Flag.flag
+  val flag_warn : Flag.flag
   val flag_save_files : Flag.flag
   val flag_exec : Flag.flag
   val flag_bytecode : Flag.flag 
@@ -58,6 +59,7 @@ structure Flags :> FLAGS = struct
   val flag_static_check = Flag.flag "static-check"
   val flag_purity_check = Flag.flag "purity-check"
   val flag_verif_check = Flag.flag "verif-check"
+  val flag_warn = Flag.flag "warn"
   val flag_save_files = Flag.flag "save-files"
   val flag_exec = Flag.flag "exec"
   val flag_bytecode = Flag.flag "bytecode"
@@ -214,6 +216,9 @@ structure Flags :> FLAGS = struct
      {short = "n", long=["no-log"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_no_log),
       help="Disable logging for this compile"},
+     {short = "w", long=["warn"],
+      desc=GetOpt.NoArg (fn () => Flag.set flag_warn),
+      help="Warn about style issues in the code"},
      {short = "x", long=["exec"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_exec),
       help="Execute compiled file"}]

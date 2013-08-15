@@ -266,7 +266,7 @@ struct
 
         (* process multiple programs in sequence, left-to-right *)
         val programs = (map process_program sources)
-        (* extrac the contract-transformed programs and the original programs *)
+        (* extract the contract-transformed programs and the original programs *)
         val tprogram = List.concat (map #1 programs)
         val oprogram = List.concat (map #2 programs)
    in
@@ -397,6 +397,10 @@ let
         (* Load the program into memory *)
         val {library_headers, program, oprogram} = typecheck_and_load sources
         val {library_wrappers} = finalize {library_headers = library_headers}
+        val () = if Flag.isset Flags.flag_warn
+                 then Warn.warn_program oprogram
+                 else ()
+
         val () = static_analysis oprogram
 
         (* Determine output files Based on the initial files *)
@@ -554,7 +558,7 @@ let
 	   | EXIT => OS.Process.failure
 	   | FINISHED => OS.Process.success
            | e => ( say ("Unexpected exception in cc0:\n" ^ exnMessage e ^ "\n")
-                  ; if false (* true: development mode, false: production *)
+                  ; if true (* true: development mode, false: production *)
                     then raise e
                     else OS.Process.failure)
            (* foldr (fn (a,b) => a ^ "\n" ^ b) "" (SMLofNJ.exnHistory e) *)
