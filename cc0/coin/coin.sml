@@ -51,7 +51,7 @@ let
        , versioninfo = versioninfo
        , usageinfo = usageinfo
        , args = !args}
-    val {library_headers, program, oprogram} = Top.typecheck_and_load sources
+    val {library_headers, program, oprogram, sprogram} = Top.typecheck_and_load sources
     val {library_wrappers} = 
        Top.finalize {library_headers = library_headers}
     val () = Top.static_analysis oprogram

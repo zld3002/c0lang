@@ -21,6 +21,15 @@ struct
     fun col2 NONE = 0
       | col2 (SOME(_, (_,c2), _)) = c2
 
+    fun join_ext ext NONE = ext
+      | join_ext NONE ext' = ext'
+      | join_ext (SOME((l1,c1),(l2,c2),filename))
+                 (SOME((l1',c1'),(l2',c2'),filename')) =
+        (* filename = filename' *)
+        SOME((Int.min(l1,l1'),Int.min(c1,c1')),
+             (Int.max(l2,l2'),Int.max(c2,c2')),
+             filename)
+
     fun diff_line NONE ext = true
       | diff_line (SOME((prev_l1:int, _), _, _)) (SOME((l1, _), _, _)) = (prev_l1 <> l1)
       | diff_line (SOME _) NONE = (* possible? *)
@@ -33,6 +42,12 @@ struct
 
     fun same_line ext' ext = (line1 ext' = line1 ext)
 
+    fun same_lines nil = true
+      | same_lines (ext::nil) = true
+      | same_lines (ext1::ext2::exts) =
+          same_line ext1 ext2
+          andalso same_lines (ext2::exts)
+        
     fun pp_bounds (left, right) = "[" ^ Int.toString left ^ "," ^ Int.toString right ^ "]"
 
     fun pp_pos (line,col) = "(" ^ Int.toString line ^ "," ^ Int.toString col ^ ")"
@@ -52,12 +67,17 @@ struct
              ^ Int.toString right ^ "]; starts at column "
              ^ Int.toString col
 
+
     fun stm_ext (A.Markeds(marked_stm)) ext =
           stm_ext (Mark.data marked_stm) (Mark.ext marked_stm)
       | stm_ext (A.StmDecl(A.VarDecl(_, _, _, ext'))) ext =
         (* StmDecls are not provided a region *)
         ext'
       | stm_ext s ext = ext
+
+    fun exp_ext (A.Marked(marked_exp)) ext =
+          exp_ext (Mark.data marked_exp) (Mark.ext marked_exp)
+      | exp_ext e ext = ext (* require there to be a mark? *)
 
     fun spec_ext (A.Requires(e, ext)) = ext
       | spec_ext (A.Ensures(e, ext)) = ext
@@ -103,40 +123,72 @@ struct
       | pp_tp (Any) = "$" (* should only be internal *)
     *)
 
+    fun indent_exp' (A.Var(id)) left ext = ()
+      | indent_exp' (A.IntConst(w)) left ext = ()
+      | indent_exp' (A.StringConst(s)) left ext = ()
+      | indent_exp' (A.CharConst(c)) left ext = ()
+      | indent_exp' (A.True) left ext = ()
+      | indent_exp' (A.False) left ext = ()
+      | indent_exp' (A.Null) left ext = ()
+      | indent_exp' (A.OpExp(A.SUB, [e1,e2])) left ext =
+        (* same line? *)
+        ( indent_exp' e1 left ext
+        ; indent_exp e2 (left + min_indent, max_col) ext )
+        (* e1 ^ "[" ^ indent_exp' e2 ^ "]" ) *)
+      | indent_exp' (A.OpExp(A.COND, [e1,e2,e3])) left ext =
+        ( indent_exp' e1 left ext 
+        ; if diff_line (exp_ext e2 ext) (exp_ext e3 ext) (* working??? *)
+          then indent_exps [e2,e3] (left + min_indent, max_col) (exp_ext e2 ext) ext
+          else ( indent_exp e2 (left + min_indent, max_col) ext
+               ; indent_exp e3 (left + min_indent, max_col) ext )
+        ) 
+        (* "(" ^ indent_exp' e1 ^ " ? " ^ indent_exp' e2 ^ " : " ^ indent_exp' e3 ^ ")" *)
+      | indent_exp' (A.OpExp(oper, [e])) left ext =
+          indent_exp e (left + 1, max_col) ext (* not min_indent, in case on same line *)
+      | indent_exp' (A.OpExp(oper, [e1,e2])) left ext =
+        ( indent_exp' e1 left ext
+        ; indent_exp e2 (left + min_indent, max_col) ext )
+        (* "(" ^ indent_exp' e1 ^ " " ^ pp_oper oper ^ " " ^ indent_exp' e2 ^ ")" *)
+      | indent_exp' (A.Select(A.OpExp(A.DEREF, [e]),id)) left ext = 
+          indent_exp' e left ext (* same line? *)
+	  (* indent_exp' e ^ "->" ^ pp_ident id *)
+      | indent_exp' (A.Select(e,id)) left ext = 
+          indent_exp' e left ext  (* same line? *)
+	  (* "(" ^ indent_exp' e ^ ")" ^ "." ^ pp_ident id *)
+      | indent_exp' (A.FunCall(id, es)) left ext =
+          indent_exps es (left + min_indent, max_col) NONE ext (* same line? *)
+      | indent_exp' (A.Alloc(tp)) left ext = (* "alloc" ^ "(" ^ pp_tp tp ^ ")" *)
+          ()
+      | indent_exp' (A.AllocArray(tp, e)) left ext =
+          (* "alloc_array" ^ "(" ^ pp_tp tp ^ ", " ^ indent_exp' e ^ ")" *)
+          indent_exp e (left + min_indent, max_col) ext
+      | indent_exp' (A.Result) left ext = ()
+      | indent_exp' (A.Length(e)) left ext = 
+          indent_exp e (left + min_indent, max_col) ext
+        (* "\\length" ^ "(" ^ indent_exp' exp ^ ")" *)
+      | indent_exp' (A.Old(e)) left ext =
+          indent_exp e (left +  min_indent, max_col) ext
+        (* "\\old" ^ "(" ^ indent_exp' exp ^ ")" *)
+      | indent_exp' (A.Marked(marked_exp)) left ext =
+	  indent_exp' (Mark.data marked_exp) left (Mark.ext marked_exp)
+
+    and indent_exps nil bounds prev_ext ext = ()
+      | indent_exps (e::es) bounds prev_ext ext =
+        let val ext' = exp_ext e ext
+            val next_bounds = if diff_line prev_ext ext'
+                              then (col1 ext', col1 ext')
+                              else bounds
+        in
+            ( if diff_line prev_ext ext' andalso out_of_bounds (col1 ext') bounds
+              then ErrorMsg.warn ext' ("expression sequence not properly aligned\n" ^ oob (col1 ext') bounds)
+              else ()
+            ; indent_exp' e (col1 ext') ext'
+            ; indent_exps es next_bounds ext' ext )
+        end
+
     (*
-    fun pp_exp (Var(id)) = pp_ident id
-      | pp_exp (IntConst(w)) = Word32Signed.toString w
-      | pp_exp (StringConst(s)) = "\"" ^ String.toCString s ^ "\""
-      | pp_exp (CharConst(c)) = "'" ^ C0Char.toC0String c ^ "'"
-      | pp_exp (True) = "true"
-      | pp_exp (False) = "false"
-      | pp_exp (Null) = "NULL"
-      | pp_exp (OpExp(SUB, [e1,e2])) =
-	  pp_exp e1 ^ "[" ^ pp_exp e2 ^ "]"
-      | pp_exp (OpExp(COND, [e1,e2,e3])) =
-          "(" ^ pp_exp e1 ^ " ? " ^ pp_exp e2 ^ " : " ^ pp_exp e3 ^ ")"
-      | pp_exp (OpExp(oper, [e])) =
-	  pp_oper oper ^ "(" ^ pp_exp e ^ ")"
-      | pp_exp (OpExp(oper, [e1,e2])) =
-	  "(" ^ pp_exp e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp e2 ^ ")"
-      | pp_exp (Select(OpExp(DEREF, [e]),id)) = 
-          (* ( *e).f ===> e->f *)
-          (* Should always be safe, as -> is the lowest-precedence operator...
-           * -rjs nov 16 2012 *)
-	  pp_exp e ^ "->" ^ pp_ident id
-      | pp_exp (Select(e,id)) = 
-	  "(" ^ pp_exp e ^ ")" ^ "." ^ pp_ident id
-      | pp_exp (FunCall(id, es)) =
-	  pp_ident id ^ "(" ^ pp_exps es ^ ")"
-      | pp_exp (Alloc(tp)) = "alloc" ^ "(" ^ pp_tp tp ^ ")"
-      | pp_exp (AllocArray(tp, exp)) = "alloc_array" ^ "(" ^ pp_tp tp ^ ", " ^ pp_exp exp ^ ")"
-      | pp_exp (Result) = "\\result"
-      | pp_exp (Length(exp)) = "\\length" ^ "(" ^ pp_exp exp ^ ")"
-      | pp_exp (Old(exp)) = "\\old" ^ "(" ^ pp_exp exp ^ ")"
-      | pp_exp (Marked(marked_exp)) =
-	  pp_exp (Mark.data marked_exp)
-    *)
     fun indent_exp' e' left ext = () (* fix!!! *)
+    *)
 
     and indent_exp (A.Marked(marked_exp)) bounds ext =
           indent_exp (Mark.data marked_exp) bounds (Mark.ext marked_exp)
@@ -146,6 +198,12 @@ struct
                ("expression not properly aligned\n" ^ oob (col1 ext) bounds)
           else ()
         ; indent_exp' e (col1 ext) ext )
+
+    (* if not marked, do not analyze: position information unavailable *)
+    (* currently used to handle expansion lv++ to lv += 1 *)
+    and indent_marked_exp (A.Marked(marked_exp)) bounds =
+          indent_exp (Mark.data marked_exp) bounds (Mark.ext marked_exp)
+      | indent_marked_exp e bounds = ()
 
     (*
     and pp_exps nil = ""
@@ -178,7 +236,7 @@ struct
      * or expressions *)
     and indent_stm' (A.Assign (_, lv, e)) left ext =
         (* lv must be indented to column 'left' *)
-          indent_exp e (left + min_indent, max_col) ext
+          indent_marked_exp e (left + min_indent, max_col)
           (* (pp_exp lv ^ " = " ^ pp_exp e ^ ";") *)
       | indent_stm' (A.Exp(e)) left ext =
         (* e must be indented to column 'left' *)
@@ -200,6 +258,7 @@ struct
         ; indent_block s1 (left + min_indent, max_col) ext
           (* cannot check the 'else' placement, since region info is lost *)
         ; indent_else s2 (left + min_indent, max_col) (stm_ext s1 ext) ext )
+      (*
       | indent_stm' (A.While(e, nil, s)) left ext = (* no loop invariants *)
         (* indent n ("while (" ^ pp_exp e ^ ") {\n")
  	   ^ pp_seq (n+2) s
@@ -207,6 +266,7 @@ struct
          *)
         ( indent_exp e (left + min_indent, max_col) ext (* ?? *)
         ; indent_stm s (left + min_indent, max_col) ext )
+      *)
       | indent_stm' (A.While(e, invs, s)) left ext =
         (*
 	indent n ("while (" ^ pp_exp e ^ ")\n")
@@ -215,9 +275,14 @@ struct
 	^ pp_seq (n+4) s
 	^ indent (n+2) "}"
         *)
-        ( indent_exp e (left + min_indent, max_col) ext 
-        ; ignore (indent_specs invs (left + min_indent, max_col)) (* fix!!! *)
-        ; indent_stm s (left + min_indent, max_col) ext )
+        let val bounds = (left + min_indent, max_col)
+            val () = indent_exp e bounds ext 
+            val () = indent_specs invs bounds
+        in
+            indent_block s bounds ext
+        end
+
+      (*
       | indent_stm' (A.For(s1, e, s2, nil, s3)) left ext = (* no loop invariants *)
         (*
 	indent n ("for (" ^ pp_simp_null s1 ^ "; " ^ pp_exp e ^ "; " ^ pp_simp_null s2 ^ ") {\n")
@@ -225,6 +290,7 @@ struct
 	^ indent n "}"
         *)
         ( indent_stm s3 (left + min_indent, max_col) ext )
+      *)
       | indent_stm' (A.For(s1, e, s2, invs, s3)) left ext =
         (*
 	indent n ("for (" ^ pp_simp_null s1 ^ "; " ^ pp_exp e ^ "; " ^ pp_simp_null s2 ^ ")\n")
@@ -233,8 +299,19 @@ struct
 	^ pp_seq (n+4) s3
 	^ indent (n+2) "}"
         *)
-        ( ignore(indent_specs invs (left + min_indent, max_col))
-        ; indent_stm s3 (left + min_indent, max_col) ext )
+        let (* val (ext_s1, ext_e, ext_s2) = (stm_ext s1 ext, exp_ext e ext, stm_ext s2 ext)
+            val () = if not (same_lines [ext, ext_s1, ext_e, ext_s2])
+                     then indent_stms [s1, Mark.mark'(A.Exp(e),ext_e), s2]
+                                      (left + min_indent, max_col) NONE ext
+                     else ()
+             *)
+            val bounds = (left + min_indent, max_col)
+            val () = indent_stms [s1, A.Markeds(Mark.mark'(A.Exp(e), exp_ext e ext)), s2]
+                     bounds NONE ext
+            val () = indent_specs invs bounds
+        in
+            indent_block s3 bounds ext
+        end
       | indent_stm' (A.Continue) left ext = ()
       | indent_stm' (A.Break) left ext = ()
       | indent_stm' (A.Return(SOME(e))) left ext =
@@ -248,7 +325,7 @@ struct
         ( indent_exp e (left + min_indent, max_col) ext )
         (* indent n "error(" ^ pp_exp e ^ ");" *)
       | indent_stm' (A.Anno(specs)) left ext =
-        ignore (indent_specs specs (left + min_indent, max_col))
+          indent_specs specs (left + min_indent, max_col)
       | indent_stm' (A.Markeds(marked_stm)) left ext =
 	  indent_stm' (Mark.data marked_stm) left (Mark.ext marked_stm)
 
@@ -266,9 +343,10 @@ struct
 
     and indent_stms nil bounds prev_ext ext = ()
       | indent_stms (A.Anno(specs)::ss) bounds prev_ext ext =
-	let val bounds' = indent_specs specs bounds
+	let val () = indent_specs specs bounds
+        (* cannot reliably tell real indentation of specs; ignore *)
         in
-            indent_stms ss bounds' NONE ext (* fix!!! *)
+            indent_stms ss bounds prev_ext ext
         end
       | indent_stms (A.Seq(ds',ss')::ss) bounds prev_ext ext =
         (* sequence without region means implicit block due
@@ -307,7 +385,10 @@ struct
       | indent_spec (A.LoopInvariant(e, ext)) left = indent_exp e (left+2, max_col) ext
       | indent_spec (A.Assertion(e, ext)) left = indent_exp e (left+2, max_col) ext
 
-    and indent_specs nil bounds = bounds
+    (* we cannot reliably tell where the pseudo-comment for an annotation starts
+     * so we force the alignment to be internally consistent, but do not report
+     * back bounds information *)
+    and indent_specs nil bounds = ()
       | indent_specs (spec::specs) bounds =
         let val left = col1 (spec_ext spec)
         in 
@@ -328,12 +409,15 @@ struct
     *)
 
     and indent_decls nil bounds prev_ext = (bounds, prev_ext)
-      | indent_decls (A.VarDecl(id, tp, eOpt, ext)::decls) bounds prev_ext =
+      | indent_decls (A.VarDecl(id, tp, eOpt, ext)::decls) (bounds as (left,right)) prev_ext =
         (* ignore eOpt for now, fix!!! *)
         ( if diff_line prev_ext ext andalso out_of_bounds (col1 ext) bounds
           then ErrorMsg.warn ext
                ("variable declaration not properly aligned\n" ^ oob (col1 ext) bounds)
           else ()
+        ; (case eOpt
+            of NONE => ()
+             | SOME(e) => indent_marked_exp e (left + min_indent, max_col))
         ; indent_decls decls (col1 ext, col1 ext) ext)
 
     (*
@@ -374,7 +458,7 @@ struct
 	 ^ pp_specs 2 specs (* pre/postconditions, terminated by newline *)
 	 ^ pp 2 ";\n"
         *)
-        ignore (indent_specs specs (col1 ext + min_indent, max_col))
+        indent_specs specs (col1 ext + min_indent, max_col)
       | indent_gdecl (A.Function(fun_name, result, params, SOME(s), nil, is_extern, ext)) =
         (*
 	"\n" ^ pp_tp result ^ " " ^ pp_ident fun_name ^ "("
@@ -389,9 +473,10 @@ struct
 	^ pp_specs 0 specs
 	^ "{\n" ^ pp_seq 2 s ^ "}\n"
         *)
-        let val bounds' = indent_specs specs (col1 ext + min_indent, max_col)
+        let val bounds = (col1 ext + min_indent, max_col)
+            val () = indent_specs specs bounds
         in
-            ignore (indent_seq s bounds' ext)
+            ignore (indent_seq s bounds ext)
         end
       | indent_gdecl (A.TypeDef(aid, tp, ext)) =
 	(* "typedef " ^ pp_tp tp ^ " " ^ Symbol.name aid ^ ";\n" *)

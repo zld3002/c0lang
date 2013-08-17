@@ -28,7 +28,8 @@ sig
        args: string list}
       -> string list
   val typecheck_and_load : 
-      string list -> {library_headers : Ast.program, program : Ast.program, oprogram : Ast.program}
+      string list -> {library_headers : Ast.program, program : Ast.program,
+                      oprogram : Ast.program, sprogram : Ast.program}
   val finalize : 
       {library_headers : Ast.program} -> {library_wrappers: Ast.program}
   val static_analysis : Ast.program -> unit
@@ -233,14 +234,14 @@ struct
 				    then DynCheck.contracts ast'
 				    else ast'
 		    in
-			SOME (ast'', ast')
+			SOME (ast'', ast', ast)
 		    end
 	    end
 
         and process_program source_c0 = 
             case process_program' source_c0 of
-               NONE => ([],[])
-             | SOME (prog, prog') => (prog, prog')
+               NONE => ([],[],[])
+             | SOME (prog'', prog', prog) => (prog'', prog', prog)
 
         and process_library_header source_c0 = 
             case process_library_header' source_c0 of
@@ -269,8 +270,11 @@ struct
         (* extract the contract-transformed programs and the original programs *)
         val tprogram = List.concat (map #1 programs)
         val oprogram = List.concat (map #2 programs)
+        val sprogram = List.concat (map #3 programs)
    in
-      {library_headers = library_headers, program = tprogram, oprogram = oprogram}
+      (* propagate original source program (sprogram) here? *)
+      {library_headers = library_headers, program = tprogram,
+       oprogram = oprogram, sprogram = sprogram}
    end
 
 fun finalize {library_headers} = 
@@ -395,10 +399,10 @@ let
 	val () = Symset.add main; (* main is implicitly used *)
 
         (* Load the program into memory *)
-        val {library_headers, program, oprogram} = typecheck_and_load sources
+        val {library_headers, program, oprogram, sprogram} = typecheck_and_load sources
         val {library_wrappers} = finalize {library_headers = library_headers}
         val () = if Flag.isset Flags.flag_warn
-                 then Warn.warn_program oprogram
+                 then Warn.warn_program sprogram
                  else ()
 
         val () = static_analysis oprogram
@@ -558,7 +562,7 @@ let
 	   | EXIT => OS.Process.failure
 	   | FINISHED => OS.Process.success
            | e => ( say ("Unexpected exception in cc0:\n" ^ exnMessage e ^ "\n")
-                  ; if true (* true: development mode, false: production *)
+                  ; if false (* true: development mode, false: production *)
                     then raise e
                     else OS.Process.failure)
            (* foldr (fn (a,b) => a ^ "\n" ^ b) "" (SMLofNJ.exnHistory e) *)

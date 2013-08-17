@@ -492,7 +492,7 @@ struct
   (* Typecheck, enforcing the presence of a correctly-defined main function *)
    val main = Symbol.symbol "main" 
 
-   val {library_headers, program, oprogram} = 
+   val {library_headers, program, oprogram, sprogram} = 
    let 
       val maindecl = Ast.Function (main, Ast.Int, [], NONE, nil, false, NONE)
    in

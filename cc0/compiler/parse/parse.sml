@@ -611,9 +611,9 @@ and r_decl_or_assign (S $ Tp(tp,r1) $ Ident(vid,r2)) =
       (* t must be assignment operator *)
       S $ m_simple(A.Assign(assign_op t, e1, e2), join r1 r2)
   | r_decl_or_assign (S $ Exp(e,r1) $ Tok(T.PLUSPLUS,r2)) =
-      S $ m_simple(A.Assign(SOME(A.PLUS), e, A.IntConst(One)), join r1 r2)
+      S $ m_simple(A.Assign(SOME(A.PLUS), e, A.IntConst(One)), join r1 r2) (* mark_exp(e,r1) ? *)
   | r_decl_or_assign (S $ Exp(e,r1) $ Tok(T.MINUSMINUS,r2)) =
-      S $ m_simple(A.Assign(SOME(A.MINUS), e, A.IntConst(One)), join r1 r2)
+      S $ m_simple(A.Assign(SOME(A.MINUS), e, A.IntConst(One)), join r1 r2) (* mark_exp(e,r1) ? *)
   (* the above should be exhaustive *)
   (* | r_decl_or_assign S = ( println (stackToString S) ; raise Domain ) *)
 
