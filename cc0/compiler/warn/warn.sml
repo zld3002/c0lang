@@ -57,7 +57,9 @@ struct
         "[" ^ pp_pos(line1,col1) ^ "," ^ pp_pos(line2, col2) ^ "]"
 
     fun out_of_bounds col (left, right) =
-        col < left orelse right < col
+        (* col = 0 means no information available
+         * do not declare out of bounds *)
+        col <> 0 andalso (col < left orelse right < col)
 
     fun oob col (left, right) =
         if left = right
@@ -67,12 +69,18 @@ struct
              ^ Int.toString right ^ "]; starts at column "
              ^ Int.toString col
 
-    fun stm_ext (A.Markeds(marked_stm)) ext =
-          stm_ext (Mark.data marked_stm) (Mark.ext marked_stm)
-      | stm_ext (A.StmDecl(A.VarDecl(_, _, _, ext'))) ext =
+    (* stm_ext' s ext = ext', the extent of s or ext' if not provided *)
+    fun stm_ext' (A.Markeds(marked_stm)) ext =
+          stm_ext' (Mark.data marked_stm) (Mark.ext marked_stm)
+      | stm_ext' (A.StmDecl(A.VarDecl(_, _, _, ext'))) ext =
         (* StmDecls are not provided a region *)
         ext'
-      | stm_ext s ext = ext
+      | stm_ext' s ext = ext
+
+    (* stm_ext s = ext, the extent of s or NONE if not provided *)
+    fun stm_ext (A.Markeds(marked_stm)) =
+          stm_ext' (Mark.data marked_stm) (Mark.ext marked_stm)
+      | stm_ext s = stm_ext' s NONE
 
     fun exp_ext (A.Marked(marked_exp)) ext =
           exp_ext (Mark.data marked_exp) (Mark.ext marked_exp)
@@ -175,7 +183,8 @@ struct
       | indent_marked_exp e bounds = ()
 
     fun indent_stm s bounds ext =
-        let val ext' = stm_ext s ext
+        (* s should carry its own extent; accept if it does not *)
+        let val ext' = stm_ext s
         in
             ( if out_of_bounds (col1 ext') bounds
               then ErrorMsg.warn ext'
@@ -185,12 +194,14 @@ struct
         end
 
     and indent_block s bounds ext =
-        if is_block s andalso same_line (stm_ext s ext) ext
+        if is_block s andalso same_line (stm_ext s) ext
         then indent_seq s bounds ext
         else indent_stm s bounds ext
 
     and indent_else s bounds then_ext ext =
-        if is_block s andalso line2 then_ext = line1 (stm_ext s ext)
+        (* s may not have a region, because it could be an implicit
+         * else case, which explands to '{}' *)
+        if is_block s andalso line2 then_ext = line1 (stm_ext s)
         then (* continuing on the 'else' line *)
             indent_seq s bounds then_ext
         else indent_stm s bounds ext (* insist on just as then-case? *)
@@ -214,7 +225,7 @@ struct
             val () = indent_exp e bounds ext
             val () = indent_block s1 (left + min_indent, max_col) ext
             (* cannot check the 'else' placement, since region info is lost *)
-            val () = indent_else s2 (left + min_indent, max_col) (stm_ext s1 ext) ext
+            val () = indent_else s2 (left + min_indent, max_col) (stm_ext s1) ext
         in () end
       | indent_stm' (A.While(e, invs, s)) left ext =
         let val bounds = (left + min_indent, max_col)
@@ -244,11 +255,13 @@ struct
 	  indent_stm' (Mark.data marked_stm) left (Mark.ext marked_stm)
 
     and indent_stms nil bounds prev_ext ext = ()
-      | indent_stms (A.Anno(specs)::ss) bounds prev_ext ext =
-	let val () = indent_specs specs bounds
-        (* cannot reliably tell real indentation of specs; ignore *)
+      | indent_stms (A.Anno(specs)::ss) (left, right) prev_ext ext =
+	let val loose_bounds = (left+3, max_col) (* '//@' is 3 characters *)
+            val () = indent_specs specs loose_bounds
+        (* cannot reliably tell real indentation of specs *)
+        (* use previous bounds *)
         in
-            indent_stms ss bounds prev_ext ext
+            indent_stms ss (left, right) prev_ext ext
         end
       | indent_stms (A.Seq(ds',ss')::ss) bounds prev_ext ext =
         (* sequence without region means implicit block due
@@ -260,7 +273,7 @@ struct
             indent_stms (ss' @ ss) bounds' prev_ext' ext
         end
       | indent_stms (s::ss) bounds prev_ext ext = 
-        let val ext' = stm_ext s ext
+        let val ext' = stm_ext s
             val next_bounds = if diff_line prev_ext ext'
                               then (col1 ext', col1 ext')
                               else bounds

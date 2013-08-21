@@ -70,6 +70,10 @@ structure T = Terminal
 val quiet = ref false
 fun error pos msg = if !quiet then () else ErrorMsg.error (PS.ext pos) msg
 
+fun warn pos msg = if !quiet (* orelse (not (Flag.isset Flags.flag_warn)) *)
+                   then ()
+                   else ErrorMsg.warn (PS.ext pos) msg
+
 (* Functionally, a near-duplicate of Char.fromCString *)
 fun special_char c pos = 
    case c of 
@@ -134,6 +138,7 @@ fun lex_code (pos, charstream, code_state) =
        (* Whitespace *)
        | M.Cons (#" ", cs) => lex_code (pos+1, cs, code_state)
        | M.Cons (#"\t", cs) => lex_code (pos+1, cs, code_state)
+                               before warn (pos, pos+1) ("replace tab character by spaces")
        | M.Cons (#"\011", cs) => lex_code (pos+1, cs, code_state)
        | M.Cons (#"\012", cs) => lex_code (pos+1, cs, code_state)
        | M.Cons (#"\r", cs) => lex_code (pos+1, cs, code_state)
@@ -408,7 +413,7 @@ and lex_pragma (pos, charstream, pragma) =
     | M.Cons (#"\n", cs) => 
       let val old_pos = pos - length pragma in
          PS.newline pos
-         ; (T.PRAGMA(implode (rev pragma)), old_pos, pos, cs, CODE NORMAL) 
+         ; (T.PRAGMA(implode (rev pragma)), old_pos, pos+1, cs, CODE NORMAL) 
       end
     | M.Cons (c, cs) => lex_pragma (pos+1, cs, c :: pragma)
 

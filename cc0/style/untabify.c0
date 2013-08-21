@@ -1,0 +1,34 @@
+#use <string>
+#use <file>
+#use <conio>
+
+int main () {
+  int tabstop = 8;
+  int max_col = 80;
+  int ln = 0;
+  while (!eof()) {
+    string line = readline(); ln++;
+    int length = string_length(line);
+    // if (length > 10000) error("line too long (> 10000 characters)");
+    char[] src = string_to_chararray(line);
+    int pos = 0;
+    for (int i = 0; i < length; i++)
+      //@loop_invariant 0 <= i && i <= length;
+      {
+        if (src[i] == '\t') {
+          printchar(' '); pos++;
+          while (pos % tabstop != 0)
+            { printchar(' '); pos++; }
+        } else { printchar(src[i]); pos++; }
+      }
+    /*
+    if (pos >= max_col)
+      { print("line "); printint(ln); print(" too long\n");
+        printint(ln); print(" > "); printint(max_col); print(" characters");
+        
+      }
+    */
+    printchar('\n');
+  }
+  return 0;
+}
