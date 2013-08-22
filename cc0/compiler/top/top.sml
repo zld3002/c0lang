@@ -168,6 +168,7 @@ struct
 			val () = Libtab.bind (libsym, case library_c0_opt of NONE => true | SOME _ => false)
 			val () = Flag.guard Flags.flag_verbose
 				 (fn () => say ("Reading library header " ^ library_h0 ^ " ...")) ()
+                        val () = ( C0Lex.warnings := Flag.isset Flags.flag_warn )
 			val ast = Parse.parse library_h0 process_library_header process_usefile
 			val () = Flag.guard Flags.flag_ast
 				 (fn () => say (Ast.Print.pp_program ast)) ()
@@ -189,6 +190,7 @@ struct
 			  | SOME(library_c0) =>
 			    let val () = Flag.guard Flags.flag_verbose
 					 (fn () => say ("Reading library implementation " ^ library_c0 ^ " ...")) ()
+                                val () = ( C0Lex.warnings := Flag.isset Flags.flag_warn )
 				val ast' = Parse.parse library_c0 process_library_header process_usefile
 				val () = Flag.guard Flags.flag_ast
 					 (fn () => say (Ast.Print.pp_program ast)) ()
@@ -220,6 +222,7 @@ struct
 		    let val () = Filetab.bind (filesym, ())
 			val () = Flag.guard Flags.flag_verbose
 				 (fn () => say ("Parsing file " ^ source_c0 ^ " ...")) ()
+                        val () = ( C0Lex.warnings := Flag.isset Flags.flag_warn )
 			val ast = Parse.parse source_c0 process_library_header
                                               process_usefile
 			val () = Flag.guard Flags.flag_ast

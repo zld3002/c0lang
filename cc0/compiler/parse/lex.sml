@@ -18,7 +18,8 @@ structure C0Lex :> sig
    eqtype state 
    val normal : state 
    val toString : state -> string
-   val quiet : bool ref
+   val quiet : bool ref (* if true, show no error messages *)
+   val warnings : bool ref  (* if true, show warnings *)
 
    (* Turns a string into a character stream *)
    val str_stream : string -> char Stream.stream
@@ -70,9 +71,12 @@ structure T = Terminal
 val quiet = ref false
 fun error pos msg = if !quiet then () else ErrorMsg.error (PS.ext pos) msg
 
-fun warn pos msg = if !quiet (* orelse (not (Flag.isset Flags.flag_warn)) *)
-                   then ()
-                   else ErrorMsg.warn (PS.ext pos) msg
+val maxcol = 80
+val warnings = ref true
+fun warn pos msg = if !warnings
+                   then ErrorMsg.warn (PS.ext pos) msg
+                   else ()
+fun toolong () = ("line too long: " ^ Int.toString (PS.linewidth()) ^ " > " ^ Int.toString maxcol)
 
 (* Functionally, a near-duplicate of Char.fromCString *)
 fun special_char c pos = 
@@ -137,13 +141,16 @@ fun lex_code (pos, charstream, code_state) =
 
        (* Whitespace *)
        | M.Cons (#" ", cs) => lex_code (pos+1, cs, code_state)
-       | M.Cons (#"\t", cs) => lex_code (pos+1, cs, code_state)
-                               before warn (pos, pos+1) ("replace tab character by spaces")
+       | M.Cons (#"\t", cs) => ( warn (pos, pos+1) ("replace tab character by spaces")
+                               ; lex_code (pos+1, cs, code_state) )
        | M.Cons (#"\011", cs) => lex_code (pos+1, cs, code_state)
        | M.Cons (#"\012", cs) => lex_code (pos+1, cs, code_state)
        | M.Cons (#"\r", cs) => lex_code (pos+1, cs, code_state)
        | M.Cons (#"\n", cs) => 
          (PS.newline pos
+          ; if !warnings andalso PS.linewidth() > maxcol
+            then warn (pos-PS.linewidth(), pos) (toolong ())
+            else ()
           ; case code_state of
                ANNO_LINE => (T.ANNO_END,    pos, pos+1, cs, CODE NORMAL)
              | _ => lex_code (pos+1, cs, code_state))
@@ -382,6 +389,9 @@ and lex_comment (pos, charstream, depth, prev) =
       M.Nil => (T.EOF, pos, pos, charstream, COMMENT (depth, prev))
     | M.Cons (#"\n", cs) => 
       (PS.newline pos
+       ; if !warnings andalso PS.linewidth() > maxcol
+         then warn (pos-PS.linewidth(), pos) (toolong ())
+         else ()
        ; case prev of
             ANNO_LINE => error (pos, pos+1)
             "end of delimited comment in single-line annotation"
@@ -403,7 +413,8 @@ and lex_escape_pragma (pos, charstream, pragma) =
    case M.force charstream of
       M.Nil => (T.EOF, pos, pos, charstream, ESCAPE_PRAGMA pragma)
     | M.Cons (#"\n", cs) => 
-      (PS.newline pos; lex_pragma (pos+1, cs, #"\n" :: pragma))
+      ( PS.newline pos
+      ; lex_pragma (pos+1, cs, #"\n" :: pragma) )
     | M.Cons (c, cs) => lex_pragma (pos+1, cs, c :: pragma)
 
 and lex_pragma (pos, charstream, pragma) = 
@@ -412,8 +423,11 @@ and lex_pragma (pos, charstream, pragma) =
     | M.Cons (#"\\", cs) => lex_escape_pragma (pos+1, cs, #"\\" :: pragma)
     | M.Cons (#"\n", cs) => 
       let val old_pos = pos - length pragma in
-         PS.newline pos
-         ; (T.PRAGMA(implode (rev pragma)), old_pos, pos+1, cs, CODE NORMAL) 
+          PS.newline pos
+        ; if !warnings andalso PS.linewidth() > maxcol
+          then warn (pos-PS.linewidth(), pos) (toolong())
+          else ()
+        ; (T.PRAGMA(implode (rev pragma)), old_pos, pos+1, cs, CODE NORMAL) 
       end
     | M.Cons (c, cs) => lex_pragma (pos+1, cs, c :: pragma)
 
@@ -421,8 +435,11 @@ and lex_comment_line (pos, charstream, prev) =
    case M.force charstream of
       M.Nil => (T.EOF, pos, pos, charstream, COMMENT_LINE prev)
     | M.Cons (#"\n", cs) => 
-      (PS.newline pos
-       ; case prev of
+      ( PS.newline pos
+      ; if !warnings andalso PS.linewidth() > maxcol
+        then warn (pos-PS.linewidth(), pos) (toolong())
+        else ()
+      ; case prev of
             ANNO_LINE => (T.ANNO_END, pos, pos+1, cs, CODE NORMAL)
           | _ => lex_code (pos+1, cs, prev))
     | M.Cons (_, cs) => lex_comment_line (pos+1, cs, prev)

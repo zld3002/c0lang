@@ -113,11 +113,14 @@ structure Flags :> FLAGS = struct
           List.app Flag.unset [flag_verbose, flag_help,
                                flag_version, flag_no_log,
                                flag_ast, flag_exec, flag_bytecode, 
-                               flag_static_check,
-                               flag_verif_check, flag_save_files,
+                               flag_static_check, flag_verif_check,
+                               flag_warn, flag_save_files,
                                flag_trace, flag_print_codes];
           (* Set default flags *)
           List.app Flag.set [flag_purity_check];
+
+          (* Set associated local references *)
+          C0Lex.warnings := Flag.isset flag_warn;
 
           (* Set other defaults *)
           libraries := []; runtime := "c0rt"; a_out := "a.out";

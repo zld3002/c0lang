@@ -16,6 +16,9 @@ sig
     (* newline(pos) adds pos to newline positions in current file *)
     val newline : int -> unit
 
+    (* linewidth () returns length of preceding line *)
+    val linewidth : unit -> int
+
     (* returns the extent when given a region region (left, right),
      * inclusive at left, exclusive at right *)
     val ext : int * int -> Mark.ext option
@@ -39,6 +42,15 @@ struct
 
   fun newline pos =
       (currLiness := (pos::(hd (!currLiness)))::(tl (!currLiness)))
+
+  (* toolong max_col checks if the last line was too long *)
+  (* call only right after 'newline pos' *)
+  fun linewidth () =
+      (case hd (!currLiness)
+        of nil => 0
+         | (pos::nil) => pos
+         | (last::prev::rest) => last-prev-1 (* do not count '\n' character *)
+      )
 
   (* look (pos, newline_positions, line_number) = (line, col)
    * pos is buffer position
