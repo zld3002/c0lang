@@ -13,7 +13,7 @@ else
 fi
 for f in $*; do
     tmpfile=$f.$$
-    untabify-exec $tabstop < $f > $tmpfile
+    untabify.bin $tabstop < $f > $tmpfile
     if [ $? -eq 0 ]; then
         mv $tmpfile $f
         if [ $? -ne 0 ]; then

@@ -69,7 +69,7 @@ functor NativeHeapFn (structure Data : CONCRETE_DATA
   type loc = ptr option
   fun loc_string NONE = "NULL"
     | loc_string (SOME ptr) = 
-      "0x" ^ Word.toString (MLton.Pointer.diff (MLton.Pointer.null, ptr))
+      "0x" ^ Word.toString (MLton.Pointer.diff (ptr, MLton.Pointer.null))
 
   (* Allocation *)
   type heap = unit  

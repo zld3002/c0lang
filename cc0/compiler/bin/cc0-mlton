@@ -5,4 +5,4 @@
 # is made to be binary-compatible with libc0rt.so.  -wjl, 09-14-2011
 export LD_LIBRARY_PATH=/usr/lib64
 
-$0.exe "$@"
+$0.bin "$@"
