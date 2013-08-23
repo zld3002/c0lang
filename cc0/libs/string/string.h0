@@ -1,11 +1,12 @@
 /* Library string */
-/* Provides basic function for working with strings consisting of ASCII characters.
- * For most nontrivial operations it is best to convert back and forth between
- * character arrays and strings, using the string_to_chararray and
- * string_from_chararray functions.  The two are identified in C, but distinguished
- * in C0 to allow a type-safe and memory-safe implementation.  Note that character
- * arrays should contain a trailing '\0' character not present in the corresponding
- * strings.
+/* Provides basic function for working with strings consisting of
+ * ASCII characters.  For most nontrivial operations it is best to
+ * convert back and forth between character arrays and strings, using
+ * the string_to_chararray and string_from_chararray functions.  The
+ * two are identified in C, but distinguished in C0 to allow a
+ * type-safe and memory-safe implementation.  Note that character
+ * arrays should contain a trailing '\0' character not present in the
+ * corresponding strings.
  */
 
 /* Return length of s, in characters.
