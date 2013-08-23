@@ -40,6 +40,11 @@ struct
       | is_block (A.Seq _) = true
       | is_block _ = false
 
+    fun is_if (A.Markeds(marked_stm)) =
+          is_if (Mark.data marked_stm)
+      | is_if (A.If _) = true
+      | is_if _ = false
+
     fun same_line ext' ext = (line1 ext' = line1 ext)
 
     fun same_lines nil = true
@@ -198,13 +203,18 @@ struct
         then indent_seq s bounds ext
         else indent_stm s bounds ext
 
-    and indent_else s bounds then_ext ext =
+    and indent_else s left bounds then_ext ext =
         (* s may not have a region, because it could be an implicit
          * else case, which explands to '{}' *)
         if is_block s andalso line2 then_ext = line1 (stm_ext s)
         then (* continuing on the 'else' line *)
             indent_seq s bounds then_ext
-        else indent_stm s bounds ext (* insist on just as then-case? *)
+        else if is_if s (* andalso line2 then_ext = line1 (stm_ext s) *)
+        (* line2 then_ext = line1 (stm_ext s) only if 'then' branch is a block; omit *)
+        then (* 'else if'; use bounds from enclosing 'if' *)
+            indent_stm' s left (stm_ext s)
+        else 
+            indent_stm s bounds ext (* insist on just as then-case? *)
 
     (* indent_stm' s left ext
      * have already checked s is properly aligned; check substatements
@@ -225,7 +235,7 @@ struct
             val () = indent_exp e bounds ext
             val () = indent_block s1 (left + min_indent, max_col) ext
             (* cannot check the 'else' placement, since region info is lost *)
-            val () = indent_else s2 (left + min_indent, max_col) (stm_ext s1) ext
+            val () = indent_else s2 left (left + min_indent, max_col) (stm_ext s1) ext
         in () end
       | indent_stm' (A.While(e, invs, s)) left ext =
         let val bounds = (left + min_indent, max_col)

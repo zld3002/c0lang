@@ -178,6 +178,11 @@ struct
 			    let val () = Flag.guard Flags.flag_verbose
 					 (fn () => say ("Checking library " ^ library_h0 ^ " ...")) ()
 				(* true : is library *)
+                                val () = case !Flags.standard
+                                          of "c0" => StdC0.check ast
+                                           | "c1" => ()
+                                           | std => ( say ("Unknown language standard '" ^ std ^ "'")
+                                                    ; raise EXIT )
 				val ast' = TypeChecker.typecheck(ast, true) 
 				val () = Flag.guards [Flags.flag_verbose, Flags.flag_dyn_check]
 					 (fn () => say ("Transforming contracts on library " ^ library_h0  ^ " ...")) ()
@@ -197,6 +202,11 @@ struct
 				(* false : do not treat as library, because functions are not external! *)
 				val () = Flag.guard Flags.flag_verbose
 					 (fn () => say ("Checking library " ^ library ^ " ...")) ()
+                                val () = case !Flags.standard
+                                          of "c0" => StdC0.check (ast @ ast')
+                                           | "c1" => ()
+                                           | std => ( say ("Unknown language standard '" ^ std ^ "'")
+                                                    ; raise EXIT )
 				val ast'' = TypeChecker.typecheck(ast @ ast', false)
 				val () = Flag.guards [Flags.flag_verbose, Flags.flag_dyn_check]
 					 (fn () => say ("Transforming contracts on library " ^ library ^ " ...")) ()
@@ -230,6 +240,11 @@ struct
 			val () = Flag.guard Flags.flag_verbose
 				 (fn () => say ("Checking file " ^ source_c0 ^ " ...")) ()
                         (* false : is not library *)
+                        val () = case !Flags.standard
+                                  of "c0" => StdC0.check ast
+                                   | "c1" => ()
+                                   | std => ( say ("Unknown language standard '" ^ std ^ "'")
+                                            ; raise EXIT )
 			val ast' = TypeChecker.typecheck(ast, false)
 			val () = Flag.guards [Flags.flag_verbose, Flags.flag_dyn_check]
 				 (fn () => say ("Transforming contracts on file " ^ source_c0 ^ " ...")) ()

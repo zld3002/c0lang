@@ -24,6 +24,7 @@ signature FLAGS = sig
   val gcc_args : string list ref
   val runtime_args : string list ref
   val runtime : string ref
+  val standard : string ref
   val a_out : string ref
   val bytecode_arch : int ref
 
@@ -65,14 +66,15 @@ structure Flags :> FLAGS = struct
   val flag_bytecode = Flag.flag "bytecode"
   val flag_static = Flag.flag "static"
 
-  val base_dir = ref ""                       (* see reset_flags ()        *)
-  val search_path : string list ref = ref []  (* Search path for libraries  *)
-  val libraries : string list ref = ref []    (* Desired libraries          *)
-  val runtime_args : string list ref = ref [] (* Arguments for runtime      *)
-  val gcc_args : string list ref = ref []     (* Arguments for gcc          *)
+  val base_dir = ref ""                       (* see reset_flags ()           *)
+  val search_path : string list ref = ref []  (* Search path for libraries    *)
+  val libraries : string list ref = ref []    (* Desired libraries            *)
+  val runtime_args : string list ref = ref [] (* Arguments for runtime        *)
+  val gcc_args : string list ref = ref []     (* Arguments for gcc            *)
   val runtime  = ref ""                       (* Runtime (bare, c0rt, unsafe) *)
-  val a_out = ref ""                          (* Output executable *)
-  val bytecode_arch = ref 64                  (* Architecture for bytecode *)
+  val standard = ref "c0"                     (* Language standard (c0, c1)   *)
+  val a_out = ref ""                          (* Output executable            *)
+  val bytecode_arch = ref 64                  (* Architecture for bytecode    *)
 
   val flag_trace = Flag.flag "trace"
   val flag_print_codes = Flag.flag "print_codes"
@@ -124,6 +126,7 @@ structure Flags :> FLAGS = struct
 
           (* Set other defaults *)
           libraries := []; runtime := "c0rt"; a_out := "a.out";
+          standard := "c0";
           runtime_args := []; gcc_args := [];
 	  bytecode_arch := 64;
           SOME (#2 (GetOpt.getOpt {argOrder = GetOpt.Permute,
@@ -170,6 +173,9 @@ structure Flags :> FLAGS = struct
       desc=GetOpt.ReqArg 
               ((fn (s) => (runtime_args := s :: !runtime_args)), "<arg>"),
       help="Pass an argument to the executing C0 program"},
+     {short = "", long=["standard"],
+      desc=GetOpt.ReqArg ((fn (s) => (standard := s)), "<std>"),
+      help="Select a language standard (default 'c0')"},
      {short = "V", long=["version"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_version),
       help="Print version number and compile info"}]
@@ -202,7 +208,7 @@ structure Flags :> FLAGS = struct
       help="Save .c and .h files produced by the compiler"},
      {short = "r", long=["runtime"],
       desc=GetOpt.ReqArg ((fn (s) => (runtime := s)), "<rt>"),
-      help="Select a runtime (default \"c0rt\")"},
+      help="Select a runtime (default 'c0rt')"},
      {short = "b", long=["bytecode"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_bytecode),
       help="Generate bytecode instead of executable"},
