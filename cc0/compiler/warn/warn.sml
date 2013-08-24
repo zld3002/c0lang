@@ -132,34 +132,38 @@ struct
       | indent_exp' (A.OpExp(A.SUB, [e1,e2])) left ext =
         (* force same line? *)
         ( indent_exp' e1 left ext
-        ; indent_exp e2 (left + min_indent, max_col) ext )
+        ; indent_exp e2 (left + 0, max_col) ext )
       | indent_exp' (A.OpExp(A.COND, [e1,e2,e3])) left ext =
         ( indent_exp' e1 left ext 
         ; if diff_line (exp_ext e2 ext) (exp_ext e3 ext) (* working??? *)
-          then indent_exps [e2,e3] (left + min_indent, max_col) (exp_ext e2 ext) ext
-          else ( indent_exp e2 (left + min_indent, max_col) ext
-               ; indent_exp e3 (left + min_indent, max_col) ext )
+          then indent_exps [e2,e3] (left + 0, max_col) (exp_ext e2 ext) ext
+          else ( indent_exp e2 (left + 0, max_col) ext
+               ; indent_exp e3 (left + 0, max_col) ext )
         ) 
       | indent_exp' (A.OpExp(oper, [e])) left ext =
           (* increase indent only by 1, in case 'e' on same line as 'oper' *)
-          indent_exp e (left + 1, max_col) ext
+          indent_exp e (left + 0, max_col) ext
       | indent_exp' (A.OpExp(oper, [e1,e2])) left ext =
         ( indent_exp' e1 left ext
-        ; indent_exp e2 (left + min_indent, max_col) ext )
+        ; indent_exp e2 (left + 0, max_col) ext )
       | indent_exp' (A.Select(A.OpExp(A.DEREF, [e]),id)) left ext = 
           indent_exp' e left ext  (* force same line? *)
       | indent_exp' (A.Select(e,id)) left ext = 
           indent_exp' e left ext  (* force same line? *)
       | indent_exp' (A.FunCall(id, es)) left ext =
+          (* here we do force an increase --- seems too odd without *)
           indent_exps es (left + min_indent, max_col) NONE ext (* force same line? *)
       | indent_exp' (A.Alloc(tp)) left ext =
           ()
       | indent_exp' (A.AllocArray(tp, e)) left ext =
+          (* here we do force an increase --- seems too odd without *)
           indent_exp e (left + min_indent, max_col) ext
       | indent_exp' (A.Result) left ext = ()
       | indent_exp' (A.Length(e)) left ext = 
+          (* here we do force an increase --- seems too odd without *)
           indent_exp e (left + min_indent, max_col) ext
       | indent_exp' (A.Old(e)) left ext =
+          (* here we do force an increase --- seems too odd without *)
           indent_exp e (left +  min_indent, max_col) ext
       | indent_exp' (A.Marked(marked_exp)) left ext =
 	  indent_exp' (Mark.data marked_exp) left (Mark.ext marked_exp)
@@ -186,7 +190,12 @@ struct
           then ErrorMsg.warn ext
                  ("expression not properly aligned\n" ^ oob (col1 ext) bounds)
           else ()
-        ; indent_exp' e (col1 ext) ext )
+          (* instead of (col1 ext) we use #1 bounds as a loose
+           * approximation to allow
+           * return true &&
+           *   true;
+           * as legal *)
+        ; indent_exp' e (#1 bounds) ext )
 
     (* if not marked, do not analyze: position information unavailable *)
     (* currently used to handle expansion lv++ to lv += 1 *)
