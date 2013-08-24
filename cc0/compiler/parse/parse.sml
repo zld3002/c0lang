@@ -274,7 +274,7 @@ val One = Word32.fromInt(1)
  * a terminal that completes that is not part of an expression.
  *
  * p_<nt> is a function that parses nonterminal <nt>
- * r_<nt> is a function that reduced nonterminal <nt>
+ * r_<nt> is a function that reduces nonterminal <nt>
  * c_<cond> is a function that checks condition <cond>
  * e_<error> is a function that reports error <error>
  * m_<nt> is a function that marks nonterminal <nt> with region information
@@ -598,7 +598,9 @@ and r_stmt_3 (S $ Tok(T.ASSERT,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_
   | r_stmt_3 (S $ Tok(T.ERROR,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_) $ Tok(T.SEMI,r2)) =
       S $ m_stm(A.Error e,join r1 r2)
   | r_stmt_3 (S $ Annos(specs) $ Stm(s,r)) =
-      S $ m_stm(A.Seq([], [A.Anno(specs), s]),r) (* needs to become one stmt *)
+      (* do not mark the artifical sequence below; it does not have a
+       * proper source region. -fp Aug 23, 2013 *)
+      S $ Stm(A.Seq([], [A.Anno(specs), s]),r) (* needs to become one stmt *)
   | r_stmt_3 (S $ Simple(s,r1) $ Tok(T.SEMI,r2)) = S $ m_stm(s,join r1 r2)
   (* the above should be exhaustive *)
   (* r_stmt_3 S = ( println (stackToString S) ; raise Domain ) *)

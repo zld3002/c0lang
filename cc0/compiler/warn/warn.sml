@@ -40,6 +40,9 @@ struct
       | is_block (A.Seq _) = true
       | is_block _ = false
 
+    fun is_marked (A.Markeds(marked_stm)) = true
+      | is_marked _ = false
+
     fun is_if (A.Markeds(marked_stm)) =
           is_if (Mark.data marked_stm)
       | is_if (A.If _) = true
@@ -63,8 +66,12 @@ struct
 
     fun out_of_bounds col (left, right) =
         (* col = 0 means no information available
-         * do not declare out of bounds *)
-        col <> 0 andalso (col < left orelse right < col)
+         * do not declare out of bounds.  Similarly,
+         * if col or left bound are > max_col, suppress
+         * error message *)
+        (0 < col andalso col <= max_col)
+        andalso (0 < left andalso left <= max_col)
+        andalso (col < left orelse right < col)
 
     fun oob col (left, right) =
         if left = right
@@ -199,7 +206,9 @@ struct
         end
 
     and indent_block s bounds ext =
-        if is_block s andalso same_line (stm_ext s) ext
+        if is_block s andalso is_marked s (* require explicit braces *)
+           (* do not require trailing opening brace *)
+           (* andalso same_line (stm_ext s) ext *)
         then indent_seq s bounds ext
         else indent_stm s bounds ext
 
@@ -233,7 +242,7 @@ struct
       | indent_stm' (A.If(e, s1, s2)) left ext =
         let val bounds = (left + min_indent, max_col)
             val () = indent_exp e bounds ext
-            val () = indent_block s1 (left + min_indent, max_col) ext
+            val () = indent_block s1 bounds ext
             (* cannot check the 'else' placement, since region info is lost *)
             val () = indent_else s2 left (left + min_indent, max_col) (stm_ext s1) ext
         in () end
