@@ -89,8 +89,15 @@ struct
   fun get_library_header name = 
       let
           val candidates =
+              List.foldr (fn (path, cands) => path_concat (path, name ^ ".h0")
+                                              :: path_concat (path, name ^ ".h1")
+                                              :: cands)
+                         nil
+                         (!Flags.search_path)
+              (* 
               map (fn path => path_concat (path, name ^ ".h0"))
                   (!Flags.search_path)
+               *)
       in (* improve this error message, now that we have #use <lib>? *)
           case List.find readable candidates of
             NONE => (say ("Could not find " ^ name ^ ".h0"); raise EXIT)
@@ -100,10 +107,30 @@ struct
   fun get_library_source name =
       let
 	  val candidates =
-	      map (fn path => path_concat (path, name ^ ".c0"))
-	          (!Flags.search_path)
+	      List.foldr (fn (path, cands) => path_concat (path, name ^ ".c0")
+                                              :: path_concat (path, name ^ ".c1")
+                                              :: cands)
+                         nil
+	                 (!Flags.search_path)
       in
 	  List.find readable candidates
+      end
+
+  fun check_language_standard filename ast =
+      let
+          val {base=_, ext=file_ext} = OS.Path.splitBaseExt filename
+      in
+          case file_ext
+           of SOME("c0") => StdC0.check ast
+            | SOME("h0") => StdC0.check ast
+            | SOME("c1") => () (* nothing to check at the moment *)
+            | SOME("h1") => () (* nothing to check at the moment *)
+            | _ => (* unknown or missing extension; apply default standard *)
+              (case !Flags.standard
+                of "c0" => StdC0.check ast
+                 | "c1" => ()
+                 | std => ( say ("Unknown language standard '" ^ std ^ "'")
+                          ; raise EXIT ))
       end
 
   fun is_fundef (Ast.Function(_, _, _, SOME(s), _, _, _)) = true
@@ -178,11 +205,7 @@ struct
 			    let val () = Flag.guard Flags.flag_verbose
 					 (fn () => say ("Checking library " ^ library_h0 ^ " ...")) ()
 				(* true : is library *)
-                                val () = case !Flags.standard
-                                          of "c0" => StdC0.check ast
-                                           | "c1" => ()
-                                           | std => ( say ("Unknown language standard '" ^ std ^ "'")
-                                                    ; raise EXIT )
+                                val () = check_language_standard library_h0 ast
 				val ast' = TypeChecker.typecheck(ast, true) 
 				val () = Flag.guards [Flags.flag_verbose, Flags.flag_dyn_check]
 					 (fn () => say ("Transforming contracts on library " ^ library_h0  ^ " ...")) ()
@@ -202,11 +225,8 @@ struct
 				(* false : do not treat as library, because functions are not external! *)
 				val () = Flag.guard Flags.flag_verbose
 					 (fn () => say ("Checking library " ^ library ^ " ...")) ()
-                                val () = case !Flags.standard
-                                          of "c0" => StdC0.check (ast @ ast')
-                                           | "c1" => ()
-                                           | std => ( say ("Unknown language standard '" ^ std ^ "'")
-                                                    ; raise EXIT )
+                                val () = check_language_standard library_h0 ast
+                                val () = check_language_standard library_c0 ast'
 				val ast'' = TypeChecker.typecheck(ast @ ast', false)
 				val () = Flag.guards [Flags.flag_verbose, Flags.flag_dyn_check]
 					 (fn () => say ("Transforming contracts on library " ^ library ^ " ...")) ()
@@ -240,11 +260,7 @@ struct
 			val () = Flag.guard Flags.flag_verbose
 				 (fn () => say ("Checking file " ^ source_c0 ^ " ...")) ()
                         (* false : is not library *)
-                        val () = case !Flags.standard
-                                  of "c0" => StdC0.check ast
-                                   | "c1" => ()
-                                   | std => ( say ("Unknown language standard '" ^ std ^ "'")
-                                            ; raise EXIT )
+                        val () = check_language_standard source_c0 ast
 			val ast' = TypeChecker.typecheck(ast, false)
 			val () = Flag.guards [Flags.flag_verbose, Flags.flag_dyn_check]
 				 (fn () => say ("Transforming contracts on file " ^ source_c0 ^ " ...")) ()
