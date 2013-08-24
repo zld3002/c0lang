@@ -425,19 +425,36 @@ let
 
         val () = static_analysis oprogram
 
+        (* Check to make sure we're not trying to output a .c0 or .h0 file. *)
+        val {dir = _, file = a_out_file} = OS.Path.splitDirFile (!Flags.a_out)
+        val {base = _, ext = a_out_extOpt} = OS.Path.splitBaseExt a_out_file
+        val () = case a_out_extOpt of
+                    SOME "c0" => ( say ("Cannot produce .c0 files as output.\n"
+                                        ^ "This would overwrite " ^ a_out_file 
+                                        ^ " if it exists.\n") ;
+                                   raise EXIT )
+                  | SOME "h0" => ( say ("Cannot produce .h0 files as output.\n"
+                                        ^ "This would overwrite " ^ a_out_file 
+                                        ^ " if it exists.\n") ;
+                                   raise EXIT )
+                  | _ => () 
+
         (* Determine output files Based on the initial files *)
         (* use last input file as name for intermediate .c and .h files *)
 	val last_source = List.last sources
         val {dir = out_dir, file = out_file} = OS.Path.splitDirFile last_source
         val {base = out_base, ext = extOpt} = OS.Path.splitBaseExt out_file
 	val () = case extOpt
-		  of SOME "c" => ( say ("Compilation would overwrite " ^ last_source ^ "\n"
-					^ "should source be " ^ out_file ^ ".c0 ?") ;
+		  of SOME "c" => ( say ("Compilation would overwrite " 
+                                        ^ last_source ^ "\n"
+					^ "should source be " ^ out_file 
+                                        ^ ".c0 ?") ;
 				   raise EXIT )
-		   | SOME "h" => ( say ("Compilation would overwrite " ^ last_source ^ "\n"
+		   | SOME "h" => ( say ("Compilation would overwrite " 
+                                        ^ last_source ^ "\n"
 					^ "do not compile .h files") ;
 				   raise EXIT )
-		   | _ => ()
+		   | _ => () 
         val cname = OS.Path.joinBaseExt {base = out_base, ext = SOME "c0.c"}
         val hname = OS.Path.joinBaseExt {base = out_base, ext = SOME "c0.h"}
 	val bcfile = if !Flags.a_out = "a.out" (* if no output specified with -o *)
