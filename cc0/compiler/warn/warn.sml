@@ -1,17 +1,38 @@
+(* C0 Compiler
+ * Warnings for proper indentation and alignment
+ * Frank Pfenning <fp@cs.cmu.edu>
+ *)
+
 signature WARN =
 sig
-    val warn_program : Ast.program -> unit
+    val warn_program : Ast.program -> unit  (* prints all warnings *)
 end
+
+(*
+ * 'bounds' refers to an interval [left,right]
+ * at present, bounds are always [left,left] for exact alignment
+ * or [left,max_col] when only a minimum indentation is required
+ *
+ * 'left' refers to the column of an enclosing
+ * statement or expression
+ *
+ * 'ext' refers to an "extent" which is either NONE when there
+ * is no information available, or has the form
+ * SOME((line1, col1), (line2, col2), filename)
+ *
+ * The style criteria are described in a separate file, syntaxrules.txt
+ *)
 
 structure Warn :> WARN =
 struct
 
   structure A = Ast
 
-    val max_col = 80
-    val min_indent = 2
+    val max_col = 80            (* max column permitted *)
+    val min_indent = 2          (* minimum indent required *)
 
-    (* lines and colums start at 1! *)
+    (* extraction line or column information from ext *)
+    (* lines and colums start at 1 *)
     fun line1 NONE = 0
       | line1 (SOME((l1, _), _, _)) = l1
     fun col1 NONE = 0
@@ -21,17 +42,10 @@ struct
     fun col2 NONE = 0
       | col2 (SOME(_, (_,c2), _)) = c2
 
-    fun join_ext ext NONE = ext
-      | join_ext NONE ext' = ext'
-      | join_ext (SOME((l1,c1),(l2,c2),filename))
-                 (SOME((l1',c1'),(l2',c2'),filename')) =
-        (* filename = filename' *)
-        SOME((Int.min(l1,l1'),Int.min(c1,c1')),
-             (Int.max(l2,l2'),Int.max(c2,c2')),
-             filename)
-
+    (* diff_line ext ext' = true if ext and ext' start on different lines *)
     fun diff_line NONE ext = true
-      | diff_line (SOME((prev_l1:int, _), _, _)) (SOME((l1, _), _, _)) = (prev_l1 <> l1)
+      | diff_line (SOME((prev_l1:int, _), _, _)) (SOME((l1, _), _, _)) =
+          (prev_l1 <> l1)
       | diff_line (SOME _) NONE = (* possible? *)
         true
 
@@ -48,14 +62,7 @@ struct
       | is_if (A.If _) = true
       | is_if _ = false
 
-    fun same_line ext' ext = (line1 ext' = line1 ext)
-
-    fun same_lines nil = true
-      | same_lines (ext::nil) = true
-      | same_lines (ext1::ext2::exts) =
-          same_line ext1 ext2
-          andalso same_lines (ext2::exts)
-        
+    (* debugging functions *)
     fun pp_bounds (left, right) = "[" ^ Int.toString left ^ "," ^ Int.toString right ^ "]"
 
     fun pp_pos (line,col) = "(" ^ Int.toString line ^ "," ^ Int.toString col ^ ")"
@@ -64,6 +71,9 @@ struct
       | pp_ext (SOME((line1,col1),(line2,col2),filename)) =
         "[" ^ pp_pos(line1,col1) ^ "," ^ pp_pos(line2, col2) ^ "]"
 
+    (* out_of_bounds col (left, right) = true
+     * if col is out of bounds wrt region [left, right].
+     * Special consideration are applied when lines are too long *)
     fun out_of_bounds col (left, right) =
         (* col = 0 means no information available
          * do not declare out of bounds.  Similarly,
@@ -73,6 +83,8 @@ struct
         andalso (0 < left andalso left <= max_col)
         andalso (col < left orelse right < col)
 
+    (* oob col (left, right) = msg, the warning message if
+     * 'col' is out of bounds [left,right] *)
     fun oob col (left, right) =
         if left = right
         then "should start at column " ^ Int.toString left
@@ -85,7 +97,7 @@ struct
     fun stm_ext' (A.Markeds(marked_stm)) ext =
           stm_ext' (Mark.data marked_stm) (Mark.ext marked_stm)
       | stm_ext' (A.StmDecl(A.VarDecl(_, _, _, ext'))) ext =
-        (* StmDecls are not provided a region *)
+        (* StmDecls are not marked by a region but carry it *)
         ext'
       | stm_ext' s ext = ext
 
@@ -108,7 +120,7 @@ struct
       | gdecl_ext (A.TypeDef(_, _, ext)) = ext
       | gdecl_ext (A.Pragma(_, ext)) = ext 
 
-    (* indent_tp - force same line? *)
+    (* currently not checking types *)
     (*
     fun indent_tp (Int) = ()
       | indent_tp (Bool) = ()
@@ -191,14 +203,14 @@ struct
                  ("expression not properly aligned\n" ^ oob (col1 ext) bounds)
           else ()
           (* instead of (col1 ext) we use #1 bounds as a loose
-           * approximation to allow
+           * approximation to allow, for example
            * return true &&
            *   true;
            * as legal *)
         ; indent_exp' e (#1 bounds) ext )
 
     (* if not marked, do not analyze: position information unavailable *)
-    (* currently used to handle expansion lv++ to lv += 1 *)
+    (* currently used to handle expansion of lv++ to lv += 1 *)
     and indent_marked_exp (A.Marked(marked_exp)) bounds =
           indent_exp (Mark.data marked_exp) bounds (Mark.ext marked_exp)
       | indent_marked_exp e bounds = ()
@@ -214,43 +226,53 @@ struct
             ; indent_stm' s (col1 ext') ext' )
         end
 
+    (* indent_block s bounds ext
+     * used for then-branch of conditional or while/for loop body.
+     * If it is an explicit block, ignore the '{' and '}' braces
+     * and insist on proper indentation of statement sequence inside.
+     *
+     * Implicit blocks arise from '//@assert e;\n s' and need to be
+     * treated like statements (indentation required if these constitute
+     * a conditional branch)
+     *)
     and indent_block s bounds ext =
         if is_block s andalso is_marked s (* require explicit braces *)
-           (* do not require trailing opening brace *)
-           (* andalso same_line (stm_ext s) ext *)
         then indent_seq s bounds ext
         else indent_stm s bounds ext
 
+    (* indent_else s left bounds then_ext ext
+     * like indent_block, but account for 'else if' which inherits
+     * bounds from enclosing 'if' *)
     and indent_else s left bounds then_ext ext =
         (* s may not have a region, because it could be an implicit
-         * else case, which explands to '{}' *)
-        (* allow braces to align with the 'else', so we remove line
-         * continuation test.  Sun Aug 25, 2013 - fp *)
-        if is_block s andalso is_marked s
-            (* require explicit braces, but do not requiring trailing open brace *)
-            (* andalso line2 then_ext = line1 (stm_ext s) *)
+         * else case, which explands to '{}', or '//@assert e;\n s' *)
+        if is_block s andalso is_marked s (* require explicit braces *)
         then indent_seq s bounds then_ext
-        else if is_if s (* andalso line2 then_ext = line1 (stm_ext s) *)
-        (* line2 then_ext = line1 (stm_ext s) only if 'then' branch is a block; omit *)
-        then (* 'else if'; use bounds from enclosing 'if' *)
+        else if is_if s
+        then (* 'else if' uses bounds from enclosing 'if' *)
             indent_stm' s left (stm_ext s)
         else 
-            indent_stm s bounds ext (* insist on just as then-case? *)
+            indent_stm s bounds ext
 
     (* indent_stm' s left ext
-     * have already checked s is properly aligned; check substatements
-     * or expressions *)
+     * check substatements and expressions of 's' for proper indentation.
+     * 'left' is the column of 's', 'ext' an (approx) region for 's'.
+     * 's' has already been checked *)
     and indent_stm' (A.Assign (_, lv, e)) left ext =
         (* lv must be indented to column 'left' *)
-          indent_marked_exp e (left + min_indent, max_col)
+        (* probably should be checked if it is complex *)
+        indent_marked_exp e (left + min_indent, max_col)
       | indent_stm' (A.Exp(e)) left ext =
-          indent_exp' e left ext
+        (* because the beginning of the expression 'e' is the same
+         * as the beginning of the statement 'e;', we just check
+         * the subexpressions of 'e', not 'e' itself *)
+        indent_exp' e left ext
       | indent_stm' (A.Seq([], [])) left ext = ()
       | indent_stm' (A.Seq(ds, ss)) left ext =
           indent_seq (A.Seq(ds, ss)) (left + min_indent, max_col) ext
       | indent_stm' (A.StmDecl(d)) left ext =
-        (* do not increase indent *)
-          ignore (indent_decls [d] (left, max_col) NONE)
+        (* do not increase indent; no prior extent in a sequence *)
+        ignore (indent_decls [d] (left, max_col) NONE)
       | indent_stm' (A.If(e, s1, s2)) left ext =
         let val bounds = (left + min_indent, max_col)
             val () = indent_exp e bounds ext
@@ -265,9 +287,10 @@ struct
             val () = indent_block s bounds ext
         in () end
       | indent_stm' (A.For(s1, e, s2, invs, s3)) left ext =
+        (* treat '(s1; e; s2)' like a sequence of statements *)
         let val bounds = (left + min_indent, max_col)
-            val () = indent_stms [s1, A.Markeds(Mark.mark'(A.Exp(e), exp_ext e ext)), s2]
-                     bounds NONE ext
+            val s_e = A.Markeds(Mark.mark'(A.Exp(e), exp_ext e ext))
+            val () = indent_stms [s1, s_e, s2] bounds NONE ext
             val () = indent_specs invs bounds
             val () = indent_block s3 bounds ext
         in () end
@@ -285,6 +308,11 @@ struct
       | indent_stm' (A.Markeds(marked_stm)) left ext =
 	  indent_stm' (Mark.data marked_stm) left (Mark.ext marked_stm)
 
+    (* indent_stms ss bounds prev_ext ext
+     * check sequence 'ss' according to 'bounds'.
+     * 'prev_ext' is the region of the previous statement (before 'ss')
+     * or NONE if there is none; 'ext' is the enclosing region of 'ss'
+     *)
     and indent_stms nil bounds prev_ext ext = ()
       | indent_stms (A.Anno(specs)::ss) (left, right) prev_ext ext =
 	let val loose_bounds = (left+3, max_col) (* '//@' is 3 characters *)
@@ -295,9 +323,9 @@ struct
             indent_stms ss (left, right) prev_ext ext
         end
       | indent_stms (A.Seq(ds',ss')::ss) bounds prev_ext ext =
-        (* sequence without region means implicit block due
-         * to declaration in middle of block.  Treat this case
-         * as if there was no block
+        (* sequence without region information means implicit block
+         * due to a declaration in middle of a block.  Treat this case
+         * as if there was no block.
          *)
         let val (bounds', prev_ext') = indent_decls ds' bounds prev_ext
         in
@@ -312,10 +340,14 @@ struct
              then ErrorMsg.warn ext'
                     ("statement not properly aligned\n" ^ oob (col1 ext') bounds)
              else ()
-           ; indent_stm' s (col1 ext') ext' (* check substatements and subexpressions *)
+           ; indent_stm' s (col1 ext') ext' (* check substatements and subexpressions of 's' *)
            ; indent_stms ss next_bounds ext' ext )
         end 
 
+    (* indent_seq s bounds ext
+     * check statements inside sequence 's' according to 'bounds',
+     * 'ext' is extent of 's'.
+     * See indent_stms *)
     and indent_seq (A.Seq(ds, ss)) bounds ext =
         let
             val (bounds', last_ext) = indent_decls ds bounds NONE (* no prior statement in list *)
@@ -324,17 +356,23 @@ struct
         end
       | indent_seq (A.Markeds(marked_stm)) bounds ext =
 	  indent_seq (Mark.data marked_stm) bounds (Mark.ext marked_stm)
-      | indent_seq s bounds ext = (* possible?  allowed? *)
+      | indent_seq s bounds ext = (* should be impossible *)
 	  indent_stm s bounds ext
 
+    (* indent_spec spec left
+     * check indentation of subexpression of 'spec', where 'left'
+     * is the indentation of 'spec'.  Note that '//@' does not count
+     * into the region or indentation of a specification *)
     and indent_spec (A.Requires(e, ext)) left = indent_exp e (left + min_indent, max_col) ext
       | indent_spec (A.Ensures(e, ext)) left = indent_exp e (left + min_indent, max_col) ext
       | indent_spec (A.LoopInvariant(e, ext)) left = indent_exp e (left + min_indent, max_col) ext
       | indent_spec (A.Assertion(e, ext)) left = indent_exp e (left + min_indent, max_col) ext
 
-    (* we cannot reliably tell where the pseudo-comment for an annotation starts
-     * so we force the alignment to be internally consistent, but do not report
-     * back bounds information *)
+    (* indent_specs specs bounds
+     * check indentation of 'specs' with respect to 'bounds'.
+     * We cannot reliably tell where the pseudo-comment for an annotation starts
+     * so we force the alignment to be internally consistent, but do not return
+     * bounds information *)
     and indent_specs nil bounds = ()
       | indent_specs (spec::specs) bounds =
         let val left = col1 (spec_ext spec)
@@ -347,6 +385,13 @@ struct
             ; indent_specs specs (left, left) )
         end
 
+    (* indent_decls ds bounds prev_ext = (bounds', last_ext)
+     * check indentation of 'ds' with respect to 'bounds'.
+     * 'prev_ext' is the extent of the previous declaration before
+     * 'ds' or NONE.
+     * Returns new bounds and the region for the last declaration
+     * in 'ds' so that the alignment of statements following 'ds'
+     * can be enforced *)
     and indent_decls nil bounds prev_ext = (bounds, prev_ext)
       | indent_decls (A.VarDecl(id, tp, eOpt, ext)::decls) (bounds as (left,right)) prev_ext =
         ( if diff_line prev_ext ext andalso out_of_bounds (col1 ext) bounds
@@ -358,13 +403,15 @@ struct
              | SOME(e) => indent_marked_exp e (left + min_indent, max_col))
         ; indent_decls decls (col1 ext, col1 ext) ext)
 
+    (* currently not checking indentation of function parameters; probably should *)
     (*
-    fun layout_params nil = ""
-      | layout_params (d::nil) = layout_simp_decl d
-      | layout_params (d::params) = (* params <> nil *)
-	  layout_simp_decl d ^ ", " ^ layout_params params
+     fun indent_params ds bounds = ignore (indent_decls ds bounds NONE)
     *)
 
+    (* indent_fields fields bounds
+     * check indentation of 'fields' wrt 'bounds'.
+     * After the first one, the remaining ones must align exactly
+     * on the left column *)
     fun indent_fields (nil) bounds = ()
       | indent_fields (A.Field(f,tp,ext)::fields) bounds =
         ( if out_of_bounds (col1 ext) bounds
@@ -373,21 +420,26 @@ struct
           else ()
         ; indent_fields fields (col1 ext, col1 ext) )
 
+    (* indent_gdecl' gdecl
+     * check indentation of components of 'gdecl' *)
     fun indent_gdecl' (A.Struct(s,NONE,_,ext)) = ()
       | indent_gdecl' (A.Struct(s,SOME(fields),_,ext)) =
           indent_fields fields (col1 ext + min_indent, max_col)
       | indent_gdecl' (A.Function(fun_name, result, params, NONE, nil, is_extern, ext)) =
-	(* no pre/postconditions *)
+	(* no pre/postconditions, no body *)
         ()
       | indent_gdecl' (A.Function(fun_name, result, params, NONE, specs, is_extern, ext)) =
+          (* col1 ext + min_indent works, because '//@' is 3 characters, >= min_indent *)
           indent_specs specs (col1 ext + min_indent, max_col)
       | indent_gdecl' (A.Function(fun_name, result, params, SOME(s), nil, is_extern, ext)) =
-          ignore (indent_seq s (col1 ext + min_indent, max_col) ext)
+          (* ignore the placement of braces; check seqence of statements
+           * constituting the body *)
+          indent_seq s (col1 ext + min_indent, max_col) ext
       | indent_gdecl' (A.Function(fun_name, result, params, SOME(s), specs, is_extern, ext)) =
         let val bounds = (col1 ext + min_indent, max_col)
             val () = indent_specs specs bounds
         in
-            ignore (indent_seq s bounds ext)
+            indent_seq s bounds ext
         end
       | indent_gdecl' (A.TypeDef(aid, tp, ext)) = ()
       | indent_gdecl' (A.Pragma(A.UseLib(libname, _), ext)) = ()
@@ -396,6 +448,9 @@ struct
         ( ErrorMsg.warn ext ("unrecognized pragma " ^ pname)
         ; () )
 
+    (* indent_gdecl gdecl = ()
+     * Check indentation of global declaration 'gdecl'.
+     * Should be at left margin (column 0) *)
     fun indent_gdecl (gdecl) =
         let val ext = gdecl_ext gdecl
             val () = if out_of_bounds (col1 ext) (1, 1)
@@ -407,12 +462,13 @@ struct
             ()
         end
 
+    (* indent_gdecls gdecls = ()
+     * Check indentation of all global declarations 'gdecls' *)
     fun indent_gdecls nil = ()
       | indent_gdecls (gdecl::gdecls) =
         ( indent_gdecl gdecl
         ; indent_gdecls gdecls )
 
     fun warn_program (gdecls) = indent_gdecls gdecls
-
 
 end (* structure Warn *)
