@@ -224,9 +224,12 @@ struct
     and indent_else s left bounds then_ext ext =
         (* s may not have a region, because it could be an implicit
          * else case, which explands to '{}' *)
-        if is_block s andalso line2 then_ext = line1 (stm_ext s)
-        then (* continuing on the 'else' line *)
-            indent_seq s bounds then_ext
+        (* allow braces to align with the 'else', so we remove line
+         * continuation test.  Sun Aug 25, 2013 - fp *)
+        if is_block s andalso is_marked s
+            (* require explicit braces, but do not requiring trailing open brace *)
+            (* andalso line2 then_ext = line1 (stm_ext s) *)
+        then indent_seq s bounds then_ext
         else if is_if s (* andalso line2 then_ext = line1 (stm_ext s) *)
         (* line2 then_ext = line1 (stm_ext s) only if 'then' branch is a block; omit *)
         then (* 'else if'; use bounds from enclosing 'if' *)
