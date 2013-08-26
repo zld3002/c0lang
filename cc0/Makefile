@@ -295,7 +295,7 @@ bin/csharp-test: bin tests/drivers/*
 # If I add the explicit dependency, it always builds cc0-test which is probably
 # not the desired behavior most of the time
 TESTDIRS = rjs-basic fp-simple fp-basic wjl-basic lib-basic
-TESTFILES = tests/*/*.c0 tests/*/*.test # $(patsubst %,tests/%/sources.test tests/%/*.c0,$(TESTDIRS))
+TESTFILES = tests/*/*.c0 tests/*/*.c1 tests/*/*.test # $(patsubst %,tests/%/sources.test tests/%/*.c0,$(TESTDIRS))
 .PHONY: check checkunsafe checkc0rt checkall checkvm checkcsharp checkcoin
 check: bin/cc0-test
 	bin/cc0-test $(TESTFILES)

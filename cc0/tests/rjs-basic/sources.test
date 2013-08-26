@@ -5,8 +5,8 @@ return 0             ~ anno4.c0
 return 0             ~ carsten-pure.c0
 safe => return 0     ~ carsten-pure.c0 -d
 safe => return 1     ~ check-arr.c0 -d
-return 208           ~ collatz.c0
-return 71            ~ collatz2.c0
+return 208           ~ collatz.c1
+return 71            ~ collatz2.c1
 return 4             ~ array.c0
 !safe => return *; safe => segfault ~ arrayerr.c0
 return 30            ~ demo.c0

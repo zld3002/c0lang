@@ -266,14 +266,18 @@ end
       val full_filename = OS.FileSys.fullPath filename
       val {dir, file = filepart} = OS.Path.splitDirFile full_filename
       val file = TextIO.openIn filename
-      val contents = 
-        case OS.Path.splitBaseExt filepart of
-          {ext = SOME "c0", ...} => 
+
+      fun cN () = 
           (base_path := OS.FileSys.getDir ();
            case String.tokens Char.isSpace (valOf (TextIO.inputLine file)) of
              "//test" :: rest =>
              [ String.concatWith " " (rest @ ["~", filename]) ]
            | _ => [])
+
+      val contents = 
+        case OS.Path.splitBaseExt filepart of
+          {ext = SOME "c0", ...} => cN ()
+        | {ext = SOME "c1", ...} => cN ()
         | {ext = SOME "test", ...} =>
           (base_path := dir;
            String.tokens  (fn c => c = #"\n") (TextIO.inputAll file))

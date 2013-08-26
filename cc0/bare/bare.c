@@ -60,10 +60,24 @@ c0_int c0_sar(c0_int x, c0_int y) {
 
 /* Memory */
 
+/* Arrays are represented as EITHER a null pointer or an array with
+ * three fields: count, elt_size, and elems.  Elems is a void pointer
+ * pointing to the array data.
+ * 
+ * In fact, this pointer always actually points one past the end of
+ * the struct:       _
+ *                  / \
+ * |---------------/---v------...
+ * |    |    |    *   |       ...
+ * |--------------------------...
+ *
+ * It would be incorrect for an implementation to rely on this
+ * behavior. */
+
 struct c0_array_header {
   c0_int count;
   c0_int elt_size;
-  c0_char elems[];
+  void* elems;
 };
 
 void c0_abort_mem(const char *reason) {
@@ -91,6 +105,8 @@ c0_array c0_array_alloc(size_t elemsize, c0_int elemcount) {
   if (p == NULL) c0_abort_mem("array allocation failed");
   p->count = elemcount;              /* initialize number of elements */
   p->elt_size = elemsize;            /* store element size */
+  p->elems = (void*)(p+1);           /* initalize pointer to memory immediately
+                                        following the struct */
   return p;
 }
 
@@ -98,7 +114,7 @@ void* c0_array_sub(c0_array A, int i, size_t elemsize) {
   if (A == NULL) c0_abort_mem("attempt to access default zero-size array");
   if (((unsigned)i) >= (unsigned)(A->count))
     c0_abort_mem("array index out of bounds");
-  return (void *) (A->elems + i*A->elt_size);
+  return (void *) (((char*)A->elems) + i*A->elt_size);
 }
 
 c0_int c0_array_length(c0_array A) {
