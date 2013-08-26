@@ -1,0 +1,59 @@
+This is intended to be a list of simple, algorithmically enforceable
+rules. This is not an exhaustive guide to style! Not all of these
+errors will be caught by the `-w` flag in `cc0`, but anything caught
+by the `-w` flag should be describable in terms of one of these
+errors.
+
+1) Lines should be at most 80 characters long. (Overly-long lines show
+up horribly in Autolab.)
+
+2) Tab characters should not be used anywhere. (This, in particular,
+is not a universal rule of style, but various pieces of the course
+infrastructure - especially Autolab - show tabs differently, so we
+don't use tabs in 122.)
+
+3) Top-level declarations should not be indented.
+
+4) Indention should be the same across a set of commands in the same
+block.
+
+```
+No: {
+      int x = y+1;
+       y--;
+      ...
+    }
+No: { 
+       int x = y+1;
+      y--;
+      ...
+    }   
+```
+
+5) Indention in functions and loops should be at least two characters wide.
+
+```
+No: while (x < n) 
+    x++;
+No: while (x < n) {
+     x++;
+    }
+OK: while (x < n) {
+      x++;
+    }
+OK: while (x < n) 
+    {
+      x++;
+    }
+OK: while (x < n) 
+    //loop_invariant 0 <= x;
+    {
+      x++;
+    }
+OK: while (x < n) 
+      //loop_invariant 0 <= x;
+      {
+        x++;
+      }
+```
+
