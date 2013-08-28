@@ -1,12 +1,12 @@
 cc0/README.txt
 cc0/bin/cc0
-cc0/bin/cc0.exe
+cc0/bin/cc0.bin
 cc0/bin/coin
 cc0/bin/coin.exe
 cc0/bin/coin-exec
-cc0/bin/coin-exec.exe
+cc0/bin/coin-exec.bin
 cc0/bin/codex
-cc0/bin/codex.exe
+cc0/bin/codex.bin
 cc0/lib
 cc0/runtime
 cc0/include

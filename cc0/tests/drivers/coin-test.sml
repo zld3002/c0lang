@@ -62,7 +62,7 @@ structure Test = Testing (struct
   val coin_exec =
     let 
        val curdir = OS.FileSys.getDir ()
-       val coin_exec_exe = OS.Path.concat (curdir, "bin/coin-exec.exe")
+       val coin_exec_exe = OS.Path.concat (curdir, "bin/coin-exec.bin")
     in
       print ("Invoking " ^ coin_exec_exe ^ "\n");
       coin_exec_exe
