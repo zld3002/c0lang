@@ -2,7 +2,7 @@ cc0/README.txt
 cc0/bin/cc0
 cc0/bin/cc0.bin
 cc0/bin/coin
-cc0/bin/coin.exe
+cc0/bin/coin.bin
 cc0/bin/coin-exec
 cc0/bin/coin-exec.bin
 cc0/bin/codex
