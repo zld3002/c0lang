@@ -21,7 +21,7 @@
 
 \title{C0 Reference}
 \author{15-122: Principles of Imperative Computation \\ Frank Pfenning}
-\date{December 27, 2012\\Compiler revision 216\\
+\date{September 1, 2013\\Compiler revision 350\\
   (\hyperlink{sec:updates}{updates} since January 30, 2011)}
 
 \usepackage{fancyhdr}
@@ -336,16 +336,10 @@ like the empty command which immediately finishes without an effect.
 If $s_1$ is a variable declaration, the scope of the declared variable
 consists of $e$, $s_2$, and $s_3$.
 
-There are two control commands that can affect the execution of a
-loop.
-
-\verb'continue' immediately short-circuits the body of the
-innermost loop that contains it and proceeds with the exit test (in a
-\verb'while' loop) or the step command followed by the exit test
-(in a \verb'for' loop).
-
-\verb'break' immediately exits the innermost loop that contains
-it and proceeds with the statement following the loop.
+The two control commands that can affect the execution of a
+loop, \verb'break' and \verb'continue', are only available
+in the extended language standard C1, but are reserved
+keywords in C0.  See Section~\ref{sec:c1}.
 
 \subsection{Blocks}
 
@@ -790,6 +784,7 @@ surround nonterminals in the grammar.
                | & | ^ | | | && | || | ? | :
 <asnop>      ::= = | += | -= | *= | /= | %= | <<= | >>=
                | &= | ^= | |=
+<postop>     ::= -- | ++
 \end{verbatim}
 \end{small}
 \caption{C0 lexical tokens}
@@ -830,8 +825,6 @@ can be reused.
          | if ( <exp> ) <stmt> [ else <stmt> ]
          | while ( <exp> ) <stmt>
          | for ( [<simple>] ; <exp> ; [<simple>] ) <stmt>
-         | continue ;
-         | break ;
          | return [<exp>] ;
          | { <stmt>* }
          | assert ( <exp> ) ;
@@ -844,7 +837,7 @@ can be reused.
            | <tp> <vid> [= <exp>]
 
 <lv> ::= <vid> | <lv> . <fid> | <lv> -> <fid>
-       | * <lv> | <lv> [ <exp> ]
+       | * <lv> | <lv> [ <exp> ] | ( <lv> )
 
 <tp> ::= int | bool | string | char | void
        | <tp> * | <tp> [ ] | struct <sid> | <aid>
@@ -942,6 +935,30 @@ form \verb'<anno> <anno> <stmt>' could be one statement with two
 annotations, or an annotated annotated statement.  We resolve this by
 always interpreting it as a single statement with two annotations, or
 multiple annotations in the general case.
+
+\section{C1 Language Extension}
+\label{sec:c1}
+
+As of September 1, 2013 (svn revision 350), the C0 compiler supports a
+new language standard C1, invoked on files with the \verb'.c1' file
+extension.  Currently, the only change is support for the \verb'break'
+and \verb'continue' control constructs, previously available in C0.
+
+\begin{small}
+\begin{verbatim}
+<stmt> ::= ... | break ; | continue ;
+\end{verbatim}
+\end{small}
+% \caption{C1 grammar extension of C0}
+% \label{fig:c1-grammar}
+
+\verb'break' immediately exits the innermost loop that contains
+it and proceeds with the statement following the loop.
+
+\verb'continue' immediately short-circuits the body of the
+innermost loop that contains it and proceeds with the exit test (in a
+\verb'while' loop) or the step command followed by the exit test
+(in a \verb'for' loop).
 
 \section{Static Semantics Reference}
 
@@ -1046,6 +1063,9 @@ In addition we check in annotations:
 \item[Dec 22 2012.] Statement blocks may end in annotations.
 \item[Dec 27 2012.] Conditional expressions must have small type.
 \item[Dec 27 2012.] Documented purity checking.
+\item[Sep 1 2013.] Moved \verb'break' and \verb'continue' from
+  C0 to an extended language standard C1.  They remain reserved
+  keywords in C0.
 \end{description}
 
 \end{document}
