@@ -135,6 +135,25 @@ struct
                           ; raise EXIT ))
       end
 
+  fun allow_annos filename =
+      let
+          val {base=_, ext=file_ext} = OS.Path.splitBaseExt filename
+      in
+          case file_ext
+           of SOME("l1") => false
+            | SOME("c0") => true
+            | SOME("h0") => true
+            | SOME("c1") => true
+            | SOME("h1") => true
+            | _ => (* unknown or missing extension; apply default standard *)
+              (case !Flags.standard
+                of "l1" => false
+                 | "c0" => true
+                 | "c1" => true
+                 | std => ( say ("Unknown language standard '" ^ std ^ "'")
+                          ; raise EXIT ))
+      end
+
   fun is_fundef (Ast.Function(_, _, _, SOME(s), _, _, _)) = true
     | is_fundef _ = false
 
@@ -198,6 +217,7 @@ struct
 			val () = Flag.guard Flags.flag_verbose
 				 (fn () => say ("Reading library header " ^ library_h0 ^ " ...")) ()
                         val () = ( C0Lex.warnings := Flag.isset Flags.flag_warn )
+                        val () = ( C0Lex.annosAllowed := allow_annos library_h0 )
 			val ast = Parse.parse library_h0 process_library_header process_usefile
 			val () = Flag.guard Flags.flag_ast
 				 (fn () => say (Ast.Print.pp_program ast)) ()
@@ -221,6 +241,7 @@ struct
 			    let val () = Flag.guard Flags.flag_verbose
 					 (fn () => say ("Reading library implementation " ^ library_c0 ^ " ...")) ()
                                 val () = ( C0Lex.warnings := Flag.isset Flags.flag_warn )
+                                val () = ( C0Lex.annosAllowed := allow_annos library_c0 )
 				val ast' = Parse.parse library_c0 process_library_header process_usefile
 				val () = Flag.guard Flags.flag_ast
 					 (fn () => say (Ast.Print.pp_program ast)) ()
@@ -255,6 +276,7 @@ struct
 			val () = Flag.guard Flags.flag_verbose
 				 (fn () => say ("Parsing file " ^ source_c0 ^ " ...")) ()
                         val () = ( C0Lex.warnings := Flag.isset Flags.flag_warn )
+                        val () = ( C0Lex.annosAllowed := allow_annos source_c0 )
 			val ast = Parse.parse source_c0 process_library_header
                                               process_usefile
 			val () = Flag.guard Flags.flag_ast
