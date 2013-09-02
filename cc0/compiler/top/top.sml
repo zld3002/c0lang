@@ -121,7 +121,8 @@ struct
           val {base=_, ext=file_ext} = OS.Path.splitBaseExt filename
       in
           case file_ext
-           of SOME("c0") => StdC0.check ast
+           of SOME("l1") => StdL1.check ast
+            | SOME("c0") => StdC0.check ast
             | SOME("h0") => StdC0.check ast
             | SOME("c1") => () (* nothing to check at the moment *)
             | SOME("h1") => () (* nothing to check at the moment *)
