@@ -128,7 +128,8 @@ struct
             | SOME("h1") => () (* nothing to check at the moment *)
             | _ => (* unknown or missing extension; apply default standard *)
               (case !Flags.standard
-                of "c0" => StdC0.check ast
+                of "l1" => StdL1.check ast
+                 | "c0" => StdC0.check ast
                  | "c1" => ()
                  | std => ( say ("Unknown language standard '" ^ std ^ "'")
                           ; raise EXIT ))
