@@ -20,7 +20,7 @@ structure C0Lex :> sig
    val toString : state -> string
    val quiet : bool ref (* if true, show no error messages *)
    val warnings : bool ref  (* if true, show warnings *)
-   val annosAllowed : bool ref  (* if false, do not allow annotations *)
+   val lexAnnos : bool ref  (* if false, all annotations are comments *)
 
    (* Turns a string into a character stream *)
    val str_stream : string -> char Stream.stream
@@ -73,7 +73,7 @@ val quiet = ref false
 fun error pos msg = if !quiet then () else ErrorMsg.error (PS.ext pos) msg
 
 (* Prohibit annotations, for L1-5 language fragments *)
-val annosAllowed = ref true
+val lexAnnos = ref true
 
 val maxcol = 80
 val warnings = ref true
@@ -204,20 +204,26 @@ fun lex_code (pos, charstream, code_state) =
            | M.Cons (#"/", cs) => 
              (case M.force cs of
                 M.Cons (#"@", cs) => 
-                (case (code_state,!annosAllowed) of
+                (case (code_state,!lexAnnos) of
                     (NORMAL,true) => (T.ANNO_BEGIN, pos, pos+3, cs, CODE ANNO_LINE)
-                  | (_,false) => (T.LEX_ERROR, pos, pos+3, cs, s)
+                  | (NORMAL,false) => lex_comment_line (pos+3, cs, code_state)
+                  (*
+                    (T.LEX_ERROR, pos, pos+3, cs, s)
                     before error (pos, pos+3) "annotations not allowed in language fragment"
+                  *)
                   | _ =>      (T.LEX_ERROR,  pos, pos+3, cs, s)
                     before error (pos, pos+3) "no nested annotations")
               | _ => lex_comment_line (pos+2, cs, code_state))
            | M.Cons (#"*", cs) => 
              (case M.force cs of
                 M.Cons (#"@", cs) =>
-                (case (code_state,!annosAllowed) of
+                (case (code_state,!lexAnnos) of
                     (NORMAL,true) => (T.ANNO_BEGIN, pos, pos+3, cs, CODE ANNO)
+                  | (NORMAL,false) => lex_comment (pos+3, cs, 1, code_state)
+                  (*
                   | (_,false) => (T.LEX_ERROR, pos, pos+3, cs, s)
                     before error (pos, pos+3) "annotations not allowed in language fragment"
+                  *)
                   | _ =>      (T.LEX_ERROR,  pos, pos+3, cs, s)
                     before error (pos, pos+3) "no nested annotations")
               | _ => lex_comment (pos+2, cs, 1, code_state))
