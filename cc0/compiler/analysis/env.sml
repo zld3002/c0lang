@@ -16,12 +16,13 @@ sig
    val incAll: env -> env
    val lookup: env -> symbol -> int option
    val lookup': env -> symbol -> int
-   val mergeTwoEnvs: env * env -> env * (AAst.aphi list)
+   
    (* Given a list of environments, mergeEnvs will construct a new environment
       in which each symbol has a new, fresh definition if there were differing
       definitions in the inputs, but the same definition if all inputs agree for
       that variable. *)
    val mergeEnvs: env list -> env * (AAst.aphi list)
+
    (* Given a definition environment, and a list of environments to merge,
       mergeEnvsLoop will construct a new environment along with a set of 
       phi definitions such that everything in the definition environment
@@ -30,6 +31,7 @@ sig
       one other definition. The relabeling will map the new, redundant definition
       to the one in the input list. *)
    val mergeEnvsLoop: env -> env list -> env * (AAst.aphi list) * relabeling
+
    val toString: env -> string
 end
 
@@ -56,74 +58,55 @@ struct
    fun lookup env v = T.find (env, v)
    fun lookup' env v = valOf (T.find (env, v))
    
-   fun mergeTwoEnvs (a, b) =
-   let val union = T.unionWith (#1) (a,b)
-       val common = T.listItemsi (T.intersectWith (fn x => x) (a, b))
-       val conflicts = List.filter (fn (_, (i, j)) => not(i = j)) common
-       fun buildphi ((x, (a,b)), (phis, ctx)) =
-         let val i = next() in
-           (AAst.PhiDef(x, i, [a,b]) :: phis, T.insert(ctx, x, i))
-         end
-       val (phis, env) = foldl buildphi ([], union) conflicts 
+   fun liftMapList maps =
+     let val allDomain = foldl (T.unionWith #1) T.empty maps
+     in T.mapi (fn (k, _) => map (fn m => T.find(m,k)) maps) allDomain end
+   local 
+     fun atMostOne [] = NONE
+       | atMostOne (x::xs) = (case List.all (fn y => x = y) xs of
+                                true => SOME x | false => NONE)
    in
-      (env, phis)
+     fun uniqueValue x = atMostOne (List.mapPartial (fn i=>i) x)
+     fun uniqueValueWithout v lst = 
+      (case atMostOne (List.mapPartial (fn (SOME l) => if l = v then NONE else (SOME l) 
+                                           | NONE => NONE) lst) of 
+          SOME u => SOME u
+        | NONE => uniqueValue lst)
    end
-   
+     
    fun mergeEnvs envs =
     let
-      fun singleton e = T.map (fn i => SInt.singleton i) e
-      fun merge maps = T.unionWith (fn sets => SInt.union sets) maps
-      val collected = foldr merge (singleton empty) (map singleton envs)
-      val preserved = T.mapPartial
-                         (fn s => case SInt.numItems s of
-                                     1 => SOME (valOf(SInt.find (fn _ => true) s))
-                                   | _ => NONE)
-                         collected
-      val newDefs = T.mapPartial
-                         (fn s => case SInt.numItems s of
-                                     1 => NONE
-                                   | _ => SOME(next(), SInt.listItems s))
-                         collected
-      val justNewDefs = T.map (fn (i, _) => i) newDefs
-      val env' = T.unionWith (fn (a,b) => b) (preserved, justNewDefs)
-      val defs = map (fn (sym, (i, l)) => AAst.PhiDef(sym, i, l))
-                     (T.listItemsi newDefs)
-    in (env', defs) end
+      val info = T.mapi 
+        (fn (sym, locals) =>
+            case uniqueValue locals of 
+              SOME l => (NONE, SOME l)
+            | NONE => let val n = next() in
+                      (SOME(AAst.PhiDef(sym, n, map (fn l => getOpt(l, n)) locals)),
+                       SOME n)
+                      end) (liftMapList envs)
+      val env' = T.mapPartial (fn (phi, def) => def) info
+      val phis = T.mapPartial (fn (phi, def) => phi) info
+      
+    in (env', T.listItems phis) end
    
    fun mergeEnvsLoop defenv envs =
     let
-      fun getRelabeling (v, (i, s)) = 
-         let val s' = SInt.difference (s, (SInt.singleton i))
-         in case SInt.numItems s' of 
-               1 => let val j = valOf(SInt.find (fn _ => true) s')
-                    in SOME(i,j) end
-             | _ => NONE
-         end
-      fun getNonTrivialDef (v, (i, s, l)) = 
-         let val s' = SInt.difference (s, (SInt.singleton i))
-         in case SInt.numItems s' of 
-               1 => NONE
-             | _ => SOME(AAst.PhiDef(v, i, l))
-         end        
-      fun singleton e = T.map (fn i => SInt.singleton i) e
-      fun singleton' e = T.map (fn i => [i]) e
-      fun merge maps = T.unionWith (fn sets => SInt.union sets) maps
-      fun merge' maps = T.unionWith (op@) maps
-      val collected = foldr merge (singleton empty) (map singleton envs)
-      val collected' = foldr merge' (singleton' empty) (map singleton' envs)
-      val merged = T.intersectWith (fn (i, s) => (i, s))
-                                     (defenv, collected)
-      val merged' = T.intersectWith (fn ((i, s), l) => (i, s, l))
-                                     (merged, collected')
-      val phidefs = T.mapPartiali getNonTrivialDef merged'
-      val relabelings = foldr (LocalMap.insert') (LocalMap.empty)
-                           (map (fn (v, (i,j)) => ((v,i),j))
-                                (T.listItemsi(T.mapPartiali getRelabeling merged)))
-      val defenv' = T.mapi (fn (v, i) => case LocalMap.find (relabelings, (v,i)) of
-                                            SOME j => j
-                                          | NONE => i) defenv
-    in (defenv', T.listItems phidefs, relabelings)
+      val info = T.mapPartiali 
+        (fn (sym, (SOME d)::locals) =>
+          SOME (case (uniqueValueWithout d locals) of 
+                   SOME l => (NONE, SOME l, SOME(d,l))
+                 | NONE => (SOME(AAst.PhiDef(sym, d, map (fn l => getOpt(l, d)) locals)),
+                               SOME d, NONE))
+          | (sym, NONE :: locals) => NONE                        
+        ) (liftMapList (defenv::envs))
+            
+      val env' = T.mapPartial (fn (phi, def, relabel) => def) info
+      val phis = T.mapPartial (fn (phi, def, relabel) => phi) info
+      val relabeling = T.mapPartial (fn (phi, def, relabel) => relabel) info
+      val relabeling' = foldr (LocalMap.insert') (LocalMap.empty)
+                           (map (fn (v, (i,j)) => ((v,i),j)) (T.listItemsi relabeling))
+    in (env', T.listItems phis, relabeling')
     end
   fun toString env =
-     foldl (fn (a, b) => a ^ ", " ^ b) "" (map (fn (l, i) => Symbol.nameFull l ^ " -> "^ Int.toString i) (T.listItemsi env))
+     AAst.Print.commas "," (map (fn (l, i) => Symbol.nameFull l ^ " -> "^ Int.toString i) (T.listItemsi env))
 end
