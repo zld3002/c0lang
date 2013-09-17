@@ -87,6 +87,10 @@ fun chk_stm (A.Assign(NONE, lv, e)) ext =
            ("assignment operator '" ^ A.Print.pp_oper oper ^ "' not supported in L1")
          ; raise ErrorMsg.Error )
     else ( chk_exp lv ext ; chk_exp e ext )
+  | chk_stm (A.Exp(e)) ext =
+    ( ErrorMsg.error ext
+      ("expressions not supported as statements in L1")
+    ; raise ErrorMsg.Error )
   | chk_stm (A.Seq(ds, ss)) ext =
     ( List.app (fn d => chk_decl d) ds
     ; List.app (fn s => chk_stm s ext) ss )

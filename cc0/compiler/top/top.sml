@@ -122,6 +122,7 @@ struct
       in
           case file_ext
            of SOME("l1") => StdL1.check ast
+            | SOME("l2") => StdL2.check ast
             | SOME("c0") => StdC0.check ast
             | SOME("h0") => StdC0.check ast
             | SOME("c1") => () (* nothing to check at the moment *)
@@ -129,6 +130,7 @@ struct
             | _ => (* unknown or missing extension; apply default standard *)
               (case !Flags.standard
                 of "l1" => StdL1.check ast
+                 | "l2" => StdL2.check ast
                  | "c0" => StdC0.check ast
                  | "c1" => ()
                  | std => ( say ("Unknown language standard '" ^ std ^ "'")
@@ -141,6 +143,7 @@ struct
       in
           case file_ext
            of SOME("l1") => false
+            | SOME("l2") => false
             | SOME("c0") => true
             | SOME("h0") => true
             | SOME("c1") => true
@@ -148,6 +151,7 @@ struct
             | _ => (* unknown or missing extension; apply default standard *)
               (case !Flags.standard
                 of "l1" => false
+                 | "l2" => false
                  | "c0" => true
                  | "c1" => true
                  | std => ( say ("Unknown language standard '" ^ std ^ "'")
@@ -599,10 +603,27 @@ let
             ^ " -Wl,-rpath " ^ runtimeDir
             ^ " " ^ (abspath (path_concat (runtimeDir, native_lib_name (!Flags.runtime))))
 
-        val gcc_command = (if Flag.isset Flags.flag_static then 
-                             gcc_static_lib_command ()
-                           else
-                             gcc_dynamic_lib_command ())
+        (* gcc command for producing assembly file *)
+        (* This is used when pretending cc0 is a 15-411 student compiler
+         * that is required to produce a .s file in GNU Assembler (gas) format.
+         * It should not be used when cc0 is used as a reference compiler
+         * on .l{1,2,3,4} files for validating test cases
+         *)
+        val asname = OS.Path.joinBaseExt {base = out_base, ext = SOME "s"}
+        val gcc_gas_command = fn () =>
+            "gcc"
+            ^ " -I" ^ path_concat (!Flags.base_dir, "include")
+            ^ " -I" ^ path_concat (!Flags.base_dir, "runtime")
+            ^ " -S"             (* produce .s file and stop *)
+            ^ " -o " ^ path_concat (out_dir, asname)
+            ^ " " ^ path_concat (out_dir, cname)
+        val use_as_411_compiler = false
+
+        val gcc_command = (if use_as_411_compiler
+                           then gcc_gas_command ()
+                           else if Flag.isset Flags.flag_static
+                           then gcc_static_lib_command ()
+                           else gcc_dynamic_lib_command ())
 
         val () = Flag.guard Flags.flag_verbose (fn () => say ("% " ^ gcc_command)) ()
         val status = OS.Process.system gcc_command
@@ -637,7 +658,7 @@ let
 	   | EXIT => OS.Process.failure
 	   | FINISHED => OS.Process.success
            | e => ( say ("Unexpected exception in cc0:\n" ^ exnMessage e ^ "\n")
-                  ; if false (* true: development mode, false: production *)
+                  ; if true (* true: development mode, false: production *)
                     then raise e
                     else OS.Process.failure)
            (* foldr (fn (a,b) => a ^ "\n" ^ b) "" (SMLofNJ.exnHistory e) *)
