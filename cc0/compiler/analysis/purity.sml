@@ -365,8 +365,7 @@ struct
          mergeCheck
          [if isImm (imms, getlvtag ctx lv)
           then ([VError.VerificationError(mark, 
-                 "function called from contract may have side effect\n"
-                 ^ "assignment may modify previously allocated memory")], SymMap.empty)
+                 "function may assign to previously allocated memory")], SymMap.empty)
           else checkEmpty, checkE mark ctx imms e, checkE mark ctx imms lv]
                     
      | Expr e => (checkE mark ctx imms e)

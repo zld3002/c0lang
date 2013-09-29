@@ -27,14 +27,13 @@ struct
             VE (NONE, s) => VE(SOME r, s)
           | VN (NONE, s) => VN(SOME r, s)
           | _ => e
-   fun pp_error (VE (SOME e, s)) =
-                    (Mark.show e) ^ ":error:" ^ s
-     | pp_error (VE (NONE, s)) =
-                    ":error: " ^ s
-     | pp_error (VN (SOME e, s)) =
-                    (Mark.show e) ^ ":note:" ^ s
-     | pp_error (VN (NONE, s)) =
-                    ":note:" ^ s
+   fun make_msg kind ext msg =
+      (Option.getOpt(Option.map (Mark.show) ext,"")) ^
+      (String.concat[":", kind, ":", msg, "\n"]) ^
+      (Option.getOpt(Option.map (Mark.show_source) ext,""))
+         
+   fun pp_error (VE (ext, msg)) = make_msg "error" ext msg
+     | pp_error (VN (ext, msg)) = make_msg "note" ext msg 
 end
 
 signature LOCAL_MAP = ORD_MAP where type Key.ord_key = Symbol.symbol * int

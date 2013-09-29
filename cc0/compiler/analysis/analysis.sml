@@ -141,7 +141,7 @@ struct
          in foldl ssa' ((Nop, env, [], [], [])) sl end
      | ssa (Ast.Seq _, env) = raise Fail "preprocessor error"
      | ssa (Ast.StmDecl decl, env) = (ssaVarDecl ([decl], env, [], [], []))
-     | ssa (Ast.Return NONE, env) = (Return NONE, Env.empty, [env], [], [])
+     | ssa (Ast.Return NONE, env) = (Return NONE, env, [env], [], [])
      | ssa (Ast.Return (SOME e), env) =
                         (Return (SOME (label env e)), env, [env], [], [])
      | ssa (Ast.Break, env) = (Break, env, [], [env], [])
