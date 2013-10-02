@@ -123,6 +123,7 @@ struct
           case file_ext
            of SOME("l1") => StdL1.check ast
             | SOME("l2") => StdL2.check ast
+            | SOME("l3") => StdL3.check ast
             | SOME("c0") => StdC0.check ast
             | SOME("h0") => StdC0.check ast
             | SOME("c1") => () (* nothing to check at the moment *)
@@ -131,6 +132,7 @@ struct
               (case !Flags.standard
                 of "l1" => StdL1.check ast
                  | "l2" => StdL2.check ast
+                 | "l3" => StdL3.check ast
                  | "c0" => StdC0.check ast
                  | "c1" => ()
                  | std => ( say ("Unknown language standard '" ^ std ^ "'")
@@ -144,6 +146,7 @@ struct
           case file_ext
            of SOME("l1") => false
             | SOME("l2") => false
+            | SOME("l3") => false
             | SOME("c0") => true
             | SOME("h0") => true
             | SOME("c1") => true
@@ -152,6 +155,7 @@ struct
               (case !Flags.standard
                 of "l1" => false
                  | "l2" => false
+                 | "l3" => false
                  | "c0" => true
                  | "c1" => true
                  | std => ( say ("Unknown language standard '" ^ std ^ "'")

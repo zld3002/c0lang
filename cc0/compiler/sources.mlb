@@ -16,6 +16,7 @@ local
       type/std-c0.sml
       type/std-l1.sml
       type/std-l2.sml
+      type/std-l3.sml
       type/typechecker.sml
       type/syn.sml
       type/dyn-check.sml
