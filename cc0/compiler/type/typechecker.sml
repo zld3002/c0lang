@@ -1164,11 +1164,11 @@ struct
 	 of NONE => ( chk_tp tp ext ; Symtab.bind(aid, tdef) )
 	  | SOME(A.TypeDef(aid', tp', ext')) =>
 		 ( ErrorMsg.error ext ("type name '" ^ Symbol.name aid ^ "' defined more than once\n"
-				       ^ "previous definition at " ^ Mark.show (Option.valOf ext'))
+				       ^ "previous definition at " ^ Mark.show' ext')
 		 ; raise ErrorMsg.Error )
           | SOME(A.Function(gid, _, _, _, _, _, ext')) =>
                  ( ErrorMsg.error ext ("type name '" ^ Symbol.name aid ^ "' already used as function name\n"
-                                       ^ "function definition at " ^ Mark.show (Option.valOf ext'))
+                                       ^ "function declaration or definition at " ^ Mark.show' ext')
                  ; raise ErrorMsg.Error )
       ; tdef )
     | tc_gdecl (sdecl as A.Struct(sid, NONE, is_extern, ext)) is_library =
@@ -1184,14 +1184,14 @@ struct
 	   ( if (not is_library) andalso is_extern'
 	     then ( ErrorMsg.error ext
 		      ("'struct " ^ Symbol.name sid ^ "' declared in library cannot be defined\n"
-		       ^ "library declaration at " ^ Mark.show(Option.valOf ext'))
+		       ^ "library declaration at " ^ Mark.show' ext')
 		    ; raise ErrorMsg.Error )
 	     else ()
 	   ; chk_struct_fields fields
 	   ; Structtab.bind(sid, sdecl) )
 	 | SOME(A.Struct(sid', SOME _, _, ext')) => (* previously defined *)
 	   ( ErrorMsg.error ext ("'struct " ^ Symbol.name sid ^ "' defined more than once\n"
-				 ^ "previous definition at " ^ Mark.show(Option.valOf ext'))
+				 ^ "previous definition at " ^ Mark.show' ext')
 	   ; raise ErrorMsg.Error )
      ; sdecl )
     | tc_gdecl (A.Function(g, rtp, params, NONE, specs, _, ext)) is_library =
@@ -1241,7 +1241,7 @@ struct
 			 then (* function previously declared in a library cannot be defined outside of it *)
 			     ( ErrorMsg.error ext
 			        ("cannot define function declared in a library\n"
-				 ^ "previous declaration at " ^ Mark.show (Option.valOf ext'))
+				 ^ "previous declaration at " ^ Mark.show' ext')
 			     ; raise ErrorMsg.Error )
 			 else ()
                        (* check compatibility of types *)
@@ -1255,7 +1255,7 @@ struct
 		       ; Symtab.bind (g, fdecl) )
 		    | SOME(A.Function(g', rtp', params', SOME _, _, _, ext')) =>
 		      ( ErrorMsg.error ext ("function '" ^ Symbol.name g ^ "' defined more than once\n"
-					    ^ "previous definition at " ^ Mark.show (Option.valOf ext'))
+					    ^ "previous definition at " ^ Mark.show' ext')
 		      ; raise ErrorMsg.Error )
 		    | SOME(A.TypeDef(aid, tp, ext')) =>
 		      ( ErrorMsg.error ext ("cannot define type name '" ^ Symbol.name aid ^ "' as function name")

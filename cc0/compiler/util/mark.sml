@@ -9,6 +9,7 @@ sig
   type ext = (int * int) * (int * int) * string
 
   val show : ext -> string     (* print ext as filename:line1.col1-line2.col2 *)
+  val show' : ext option -> string (* like show, but given <unknown location> if NONE *)
   val show_source : ext -> string (* print first line of ext in source file *)
 
   type 'a marked	       (* value of type 'a marked with extent *)
@@ -36,6 +37,9 @@ struct
     | pos (line, col) = Int.toString line ^ "." ^ Int.toString col
 
   fun show (left, right, file) = file ^ ":" ^ pos left ^ "-" ^ pos right
+
+  fun show' (SOME(ext)) = show ext
+    | show' (NONE) = "<unknown location>"
 
   fun theLine (NONE) = NONE
     | theLine (SOME(line)) = SOME(String.substring(line, 0, String.size(line)-1))
