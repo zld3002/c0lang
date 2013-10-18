@@ -124,6 +124,7 @@ struct
            of SOME("l1") => StdL1.check ast
             | SOME("l2") => StdL2.check ast
             | SOME("l3") => StdL3.check ast
+            | SOME("l4") => StdL4.check ast
             | SOME("c0") => StdC0.check ast
             | SOME("h0") => StdC0.check ast
             | SOME("c1") => () (* nothing to check at the moment *)
@@ -133,6 +134,7 @@ struct
                 of "l1" => StdL1.check ast
                  | "l2" => StdL2.check ast
                  | "l3" => StdL3.check ast
+                 | "l4" => StdL4.check ast
                  | "c0" => StdC0.check ast
                  | "c1" => ()
                  | std => ( say ("Unknown language standard '" ^ std ^ "'")
@@ -147,6 +149,7 @@ struct
            of SOME("l1") => false
             | SOME("l2") => false
             | SOME("l3") => false
+            | SOME("l4") => false
             | SOME("c0") => true
             | SOME("h0") => true
             | SOME("c1") => true
@@ -156,6 +159,7 @@ struct
                 of "l1" => false
                  | "l2" => false
                  | "l3" => false
+                 | "l4" => false
                  | "c0" => true
                  | "c1" => true
                  | std => ( say ("Unknown language standard '" ^ std ^ "'")
@@ -662,7 +666,7 @@ let
 	   | EXIT => OS.Process.failure
 	   | FINISHED => OS.Process.success
            | e => ( say ("Unexpected exception in cc0:\n" ^ exnMessage e ^ "\n")
-                  ; if true (* true: development mode, false: production *)
+                  ; if false (* true: development mode, false: production *)
                     then raise e
                     else OS.Process.failure)
            (* foldr (fn (a,b) => a ^ "\n" ^ b) "" (SMLofNJ.exnHistory e) *)

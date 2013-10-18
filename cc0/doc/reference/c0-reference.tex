@@ -228,10 +228,11 @@ t g (t1 x1, ..., tn xn);
 which allows the use of $g$ in subsequent functions in the same
 compilation unit.
 
-A function may be declared multiple times in a compilation unit, but
-must be defined exactly once.  Multiple declarations must be
-consistent, and consistent with a possible definition, but can differ
-in the name of the parameters.
+A function may be declared multiple times in a compilation unit.
+Those that are referenced (and not in a library) must be defined
+exactly once.  Multiple declarations must be consistent, and
+consistent with a possible definition, but can differ in the name of
+the parameters and contracts.
 
 Library functions are special in that they may be declared in
 a library header file \verb'<lib>.h0' for library \verb'<lib>', but
@@ -993,14 +994,14 @@ The static semantics enforces the following conditions.
   with overlapping scopes may not have the same name.
 \item Names of functions or variables may not collide with the names
   of defined types.
-\item Functions may be declared multiple times with consistent
-  types, but must be defined exactly once unless they are library
-  functions, in which case they may not be defined.  Structs may
-  be declared multiple times, but may be defined at most once.
-  Structs declared in libraries cannot be defined.  Type names may
-  be defined only once (they cannot be declared).
+\item Functions may be declared multiple times with consistent types.
+  Functions that are referenced (and not library functions) must be
+  defined exactly once.  Structs may be declared multiple times, but
+  may be defined at most once.  Structs declared in libraries cannot
+  be defined.  Type names may be defined only once (they cannot be
+  declared).
 \item A function \verb'int main();' is implicitly declared and
-  also implicitly used, because this is the function called
+  also implicitly referenced, because this is the function called
   when an executable resulting from compilation is invoked.
   Therefore, when a collection of sources is compiled, at
   least one of them must define \verb'main' to match the
