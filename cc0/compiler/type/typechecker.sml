@@ -738,7 +738,7 @@ struct
               | NONE => ( ErrorMsg.error ext ("'struct " ^ Symbol.name sid ^ "' not defined")
 			; raise ErrorMsg.Error )
            )
-	 | tp => ( ErrorMsg.error ext ("subject of '->' not a struct pointer, or of '.' not a struct"
+	 | tp => ( ErrorMsg.error ext ("subject of '->' not a struct pointer, or of '.' not a struct\n"
 				       ^ "inferred type " ^ P.pp_tp tp)
 		 ; raise ErrorMsg.Error ))
     | syn_exp env (A.FunCall(g, es)) ext =
