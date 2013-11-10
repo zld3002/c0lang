@@ -177,6 +177,7 @@ struct
   val lib_file = "stdc0.h0"
   val cc0_lib = "cc0lib.h"	(* using .h *)
   val cc0_main = "cc0main.c"	(* using .c *)       
+  (* val cc0_main = "cc0bench.c" *)  (* for 15411, Nov 9, 2013 *)
 
   (* Reset all the internal tables of the compiler and all flags *)
   fun reset () =
