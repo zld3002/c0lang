@@ -3,7 +3,6 @@ Group is
 	$/pp-lib.cm
 	$/smlnj-lib.cm
 	$/ml-yacc-lib.cm
-
         ../buildid.sml
 
         util/safe-io.sml
@@ -38,18 +37,23 @@ Group is
         parse/parse-pragma.sml    
 	parse/parse.sml
 
-	analysis/error.sml
-	analysis/analysisast.sml
-	analysis/env.sml
-	analysis/preprocess.sml
-	analysis/analysis.sml
-	analysis/safety.sml
-	analysis/nullity.sml
-	analysis/purity.sml
-	analysis/conditions.sml
+        ../../externals/bulp/sources.cm
+        analysis/util.sml
+        analysis/error.sml
+        analysis/analysisast.sml
+        analysis/preprocess.sml
+        analysis/gcl.sml
+        analysis/trans.sml
+        analysis/env.sml
+        analysis/analysis.sml
+        analysis/purity.sml
+        analysis/modifies.sml
+        analysis/safety.sml
+        analysis/nullity.sml
+        analysis/conditions.sml
         analysis/funsummary.sml
-	analysis/vcgen.sml
-	analysis/top.sml
+        analysis/vcgen.sml
+        analysis/top.sml
 
         c0vm/c0vm.sml
         c0vm/c0vm-c0ffi.sml

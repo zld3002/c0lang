@@ -9,13 +9,25 @@ structure AnalysisTop :> ANALYSISTOP =
 struct
   fun staticCheck prog =
     let
-      fun checkFunc (AAst.Function(rtp, name, types, formals, reqs, s, ens)) =
-              NullityAnalysis.checkFunc rtp types reqs s ens
-      fun check funcs = List.concat (map checkFunc funcs)
-      val funcs = Analysis.analyze false prog
+      val foldedProg = Preprocess.fold_stacked_defns prog
+      val translatedFunctions =
+         List.mapPartial (fn (fdecl as Ast.Function(name, _, _, SOME _, _, false,_))
+                                => SOME (name, Trans.trans_func fdecl)
+                            | _ => NONE) foldedProg
+                                 
+      val _ = Modifies.analyze translatedFunctions
+ (*      val _ = List.app (fn (n,f) => AUtil.say (Gcl.pp_func (Symbol.name n) f))
+                      translatedFunctions *)
+    val _ = map (fn (n,f) => NullityAnalysis.checkFunc n f)
+                        translatedFunctions (* Saves summaries, round 1 *)
+      val _ = map (fn (n,f) => NullityAnalysis.checkFunc n f)
+                        translatedFunctions (* Saves summaries, round 2 *)
     in
-      check funcs
+      List.concat (map (fn (n,f) => NullityAnalysis.checkFunc n f)
+                        translatedFunctions)
     end
+    
+    
   fun purityCheck prog =
     let
       val funcs = (Analysis.analyze false prog)
@@ -37,7 +49,7 @@ struct
             val errors' = errors @ errors_so_far
         in 
           case SymMap.numItems newpure of
-             0 => errors'
+             0 => (Purity.bind overallpf; errors')
            | _ => round (SymMap.unionWith #1 (overallpf, newpure)) newpure errors'
         end
         

@@ -7,6 +7,9 @@ SML     = sml
 MLTON_VERB = 0
 MLTON_BASIC = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -verbose $(MLTON_VERB) -output
 
+#Uncomment to use SMLNJ, which has significantly faster compile times than mlton
+NJ=1
+
 ifdef STATIC
 ifdef LIBSPLUS
 MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -Llib -Lruntime -lfile -lconio -lstring -lparse -lcurses -limg -lclock -lbare -lpng -lz /usr/lib/libcurses.a" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output 
@@ -111,6 +114,7 @@ unsafe/$(call dllname,unsafe): gc
 ### cc0 - the C0 compiler
 
 CC0_DEPS = compiler/sources.cm compiler/*.mlb compiler/*.sml compiler/*/*.sml
+
 
 .PHONY: cc0
 cc0: bin/cc0

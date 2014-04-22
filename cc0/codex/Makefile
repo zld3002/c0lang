@@ -7,4 +7,4 @@ code:
 clean:
 	find . -type d -name .cm | xargs rm -rf
 	find . -type f | grep '~$$' | xargs ${RM}
-	${RM} coin*.heap.*
+	${RM} codex.heap.*

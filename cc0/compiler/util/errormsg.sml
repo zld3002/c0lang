@@ -26,11 +26,15 @@ struct
   val anyErrors = ref false
 		   
   fun reset () = ( anyErrors := false )
-	      
+  
+  (* We turn tabs into spaces because they are counted as a single character in
+     the extents, so in order for the emphasis to be correct we need each
+     character to be one column wide. *)     
+  val tabToSpace = String.translate (fn #"\t" => " " | c => String.str c)
   fun msg str ext note =
       ( ignore (Option.map (TextIO.print o Mark.show) ext)
       ; List.app TextIO.print [":", str, ":", note, "\n"]
-      ; ignore (Option.map (TextIO.print o Mark.show_source) ext)
+      ; ignore (Option.map (TextIO.print o tabToSpace o Mark.show_source) ext)
       )
     
   fun error ext note = (anyErrors := true; msg "error" ext note)

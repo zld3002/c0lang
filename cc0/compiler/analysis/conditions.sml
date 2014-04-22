@@ -320,7 +320,7 @@ fun assert (map : Ast.tp SymMap.map) e =
           | AAst.Length e => localArrayLengthName e (* Treat as a _length variable *)
           | AAst.Old _ => raise Unimplemented "assert_expr old" (* ??? *)
           | AAst.AllocArray(tp,expr) => raise Unimplemented "assert_expr allocarray" (* Not seen *)
-          | AAst.Select(expr,sym) => raise Unimplemented "assert_expr select" (* Struct fields, we'll deal with this later *)
+          | AAst.Select(expr,strct,field) => raise Unimplemented "assert_expr select" (* Struct fields, we'll deal with this later *)
           | AAst.MarkedE(mk) => assert_expr(Mark.data(mk))
 
         val raw_expr = assert_expr(e)

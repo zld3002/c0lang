@@ -1,614 +1,355 @@
-
-(* The four element lattice representing a single variable's nullity
-   information. *)
-structure NullityLattice = 
-struct
-   datatype lat = Top | Bot | Null | NotNull
-   fun lub Top _ = Top
-     | lub _ Top = Top
-     | lub Bot b = b
-     | lub a Bot = a
-     | lub Null NotNull = Top
-     | lub NotNull Null = Top
-     | lub NotNull NotNull = NotNull
-     | lub Null Null = Null
-     
-   fun glb Bot _ = Bot
-     | glb _ Bot = Bot
-     | glb Top b = b
-     | glb a Top = a
-     | glb Null NotNull = Bot
-     | glb NotNull Null = Bot
-     | glb NotNull NotNull = NotNull
-     | glb Null Null = Null
-     
-   fun neg Top = Bot
-     | neg Bot = Top
-     | neg Null = NotNull
-     | neg NotNull = Null
-   fun pp_lat Top = "Top"
-     | pp_lat Null = "Null"
-     | pp_lat NotNull = "NotNull"
-     | pp_lat Bot = "Bot"
-end
-
-(* A CONTEXT which tracks only nullity information about local variables. *)
+(* A CONTEXT which tracks only nullity information. *)
 structure NullityContext :> CONTEXT =
 struct
-   structure NL = NullityLattice
-   type context = NL.lat LocalMap.map
-        (*map locals to their lattice types, but only if they are pointer type *)
+   datatype chain = Var of Gcl.ident
+                  | Field of chain * Gcl.field
+                  | NullChain
    
-   open VError
+   fun pp_chain (Var l) = Symbol.name l
+     | pp_chain (Field(c, f)) = (pp_chain c) ^ "->" ^ (Gcl.pp_field f)
+     | pp_chain (NullChain) = "NULL"
+   structure ChainOrd = struct
+     type ord_key = chain
+     fun compare (NullChain, NullChain) = EQUAL
+       | compare (NullChain, _) = LESS
+       | compare (_, NullChain) = GREATER
+       | compare (Var _ , Field _) = GREATER
+       | compare (Var s, Var t) = Symbol.compare (s,t)
+       | compare (Field _, Var _) = LESS
+       | compare (Field (c1, f1), Field(c2, f2)) =
+           case compare(c1, c2) of 
+              EQUAL => Gcl.compareField (f1, f2)
+            | ord => ord
+   end
+   structure PairChainOrd = PairOrd(structure A = ChainOrd structure B = ChainOrd)
+   structure CMap = RedBlackMapFn(ChainOrd)
+   structure CSet = RedBlackSetFn(ChainOrd)
+   structure PSet = RedBlackSetFn(PairChainOrd)
+      
+   datatype ctx = Facts of ((chain * CSet.set) list) * (chain * chain) list
+                | Bot
+   type context = ctx * ctx
    
-   val empty = LocalMap.empty
-   val bot =  LocalMap.insert (empty, (Symbol.new "_", 0), NL.Bot)
+   val empty = (Facts ([],[]), Facts ([],[]))
+   val bot =  (Bot, Bot)
    
-   fun singleContext l elt = 
-      LocalMap.insert (empty, l, elt)
+   fun isBot (Bot, Bot) = true
+     | isBot _ = false
    
-   fun isBot g = LocalMap.foldr (fn (elt, b) => b orelse elt = NL.Bot) false g
+   fun pp_ctx (Bot) = "_|_"
+     | pp_ctx (Facts (al, dis)) = 
+         let val neqs = String.concatWith ", " (map (fn (a,b) => pp_chain a ^ " != " ^ pp_chain b) dis)
+             val eqs = String.concatWith ", " (map (fn (r, a) => 
+                                                    String.concatWith "==" (map pp_chain (r::(CSet.listItems a)))) al)
+         in "{" ^ eqs ^ " and " ^ neqs ^ "}" end
+   fun pp_context (rt,rf) = 
+      case isBot (rt,rf) of
+         true => "_|_"
+       | false => "\\r true: " ^ pp_ctx rt ^ " /\\ \\r false: " ^ pp_ctx rf   
+   fun exp_deref e f =
+      case e of 
+         Gcl.Deref(e, _) => 
+          (case expr_chain e of
+              SOME c => SOME (f c)
+            | NONE => NONE)
+       | _ => NONE
+   and expr_chain e =
+      case e of 
+         Gcl.Var (x,_) => SOME (Var x)
+       | Gcl.Select(e, f, s) => exp_deref e (fn c => Field(c,f))
+       | Gcl.Null _ => SOME (NullChain)
+       | _ => NONE
    
-   fun pp_context gamma = 
-      case isBot gamma of
-         true => "{_|_}"
-       | false =>
-      "{" ^ (AAst.Print.commas "; " 
-               (map (fn (l, tp) => (AAst.Print.pp_aexpr (AAst.Local l)) ^ " => " ^ (NL.pp_lat tp))
-                    (LocalMap.listItemsi gamma))) ^ "}"
-    
-   val result = (Symbol.new "\\result", 0)
-   fun getLat gamma l =
-      case LocalMap.find (gamma, l) of                            
-         NONE => NL.Top
-       | SOME e => e
-   fun glb (g, g') = 
-       LocalMap.unionWith (fn (x,y) => NL.glb x y) (g,g')
-   (* FIXME: this is wrong. the issue is that if you are given something like 
-      if( * ) n`1 := alloc else n`2 := alloc} n`3 := phi(n`1,n`2),
-      you want to be able to say that between the the if and the phi, n`1 is
-      not null and so is n`2, so when the phi comes along they get merged properly.
-      however, under the current code, while loops break.*)
-   fun lub (g, g') =
-       case (isBot g, isBot g') of
-          (true, _) => g'
-        | (_, true) => g
-        | _ => LocalMap.intersectWith (fn (x,y) => NL.lub x y) (g, g')
+   
+   fun inDomain ctx e = 
+     case e of
+        Gcl.Rel(_, Gcl.Pointer _, a, b) => 
+          (case (expr_chain a, expr_chain b) of
+             (SOME _, SOME _) => true
+           | _ => false)
+      | _ => false
      
-   fun exp_lat gamma e = 
-      case e of
-         AAst.Alloc _ => NL.NotNull
-       | AAst.AllocArray _ => NL.NotNull                     
-       | AAst.Local l => getLat gamma l
-       | AAst.Null => NL.Null
-       | AAst.Result => getLat gamma result
-       | AAst.MarkedE m => exp_lat gamma (Mark.data m)
-       | _ => NL.Top
+   
+   fun ce c d = (ChainOrd.compare(c,d) = EQUAL)
+   fun swapChain (a,b) = if ChainOrd.compare(a,b) = GREATER then (b,a) else (a,b)
+   
+   fun setFromList l = foldl CSet.add' CSet.empty l
+   fun setToRepr s = 
+      case CSet.listItems s of
+         r::x::rest => SOME (r, foldl CSet.add' CSet.empty (x::rest))
+       | [_] => NONE
+       | [] => NONE
        
+   local
+      fun chnDomain (Var x) = SymSet.singleton x
+        | chnDomain (Field(c,_)) = chnDomain c
+        | chnDomain (NullChain) = SymSet.empty
+      fun varDomain Bot = SymSet.empty
+        | varDomain (Facts(al, dj)) = 
+            let val chains = List.concat ((map (fn (r, c) => r::(CSet.listItems c)) al)
+                                          @ (map (fn (a,b) => [a,b]) dj))
+            in foldl SymSet.union SymSet.empty (map chnDomain chains) end
+            
+            
+      
+      fun renameCh mapping (Var x) = Var (case SymMap.find(mapping,x) of SOME x => x | _ => raise Fail "couldn't find var")
+        | renameCh mapping (Field(c,f)) = Field(renameCh mapping c, f)
+        | renameCh mapping (NullChain) = NullChain
+      fun renameCtx mapping Bot = Bot
+        | renameCtx mapping (Facts(al, dj)) = 
+            let val al' = List.mapPartial (fn (r, c) => 
+                                let val s = CSet.add(CSet.map (renameCh mapping) c, renameCh mapping r)
+                                in setToRepr s end
+                              ) al
+                val dj' = map (fn (a,b) => swapChain(renameCh mapping a, renameCh mapping b)) dj
+            in Facts(al', dj') end
+   in
+      fun ctxDomain (a,b) = SymSet.union(varDomain a, varDomain b)
+      fun alphaRename ((ca,cb), formals) = 
+         (* Note: ctxDomain context == formals*)
+        let val formals' = (map (fn f => (f, Symbol.new(Symbol.name f))) formals)
+            val mapping = foldl SymMap.insert' SymMap.empty formals'
+        in ((renameCtx mapping ca, renameCtx mapping cb), map (#2) formals') end
+   end
+     
+   
+   fun aliasRepr' al c =
+         case List.find (fn (r, s) => ce c r orelse CSet.member(s,c)) al of
+            NONE => c
+          | SOME (r, s) => r  
+   fun aliasRepr al (Field(c,f)) = aliasRepr' al (Field(aliasRepr al c, f))
+     | aliasRepr al x = aliasRepr' al x
+   
+   
+   fun lub' (Bot) (a) = a
+     | lub' (a) (Bot) = a
+     | lub' (Facts (aal, adj)) (Facts (bal, bdj)) = 
+       let val eqlists = map (fn (r, s) => r :: (CSet.listItems s)) aal
+           val pairs = map (map (fn x => (aliasRepr bal x, x))) eqlists
+           val groups = List.concat (map (AUtil.collect ChainOrd.compare) pairs)
+           val sets = List.mapPartial (fn (r, l) => setToRepr(setFromList l)) groups
+           fun newDisj aliases olddj =   
+             let val members = foldl CMap.insert' CMap.empty (map (fn (r, s) => (r, r::(CSet.listItems s))) aliases)
+                 fun handleDj (rA,rB) = 
+                   let val (ma,mb) = (getOpt(CMap.find(members, rA), [rA]),
+                                      getOpt(CMap.find(members, rB), [rB]))
+                          
+                   in foldl PSet.add' PSet.empty (List.concat (map (fn a => map (fn b => swapChain (aliasRepr sets a, aliasRepr sets b)) mb) ma)) end
+             in foldl PSet.union PSet.empty (map handleDj olddj) end
+           val disjoints = PSet.listItems(PSet.intersection(newDisj aal adj, newDisj bal bdj))
+         (*val _ = AUtil.say ("lub' of " ^ (pp_ctx (Facts (aal, adj))) ^ "\n   with " ^(pp_ctx (Facts (bal, bdj))) ^ "\n   into " ^ (pp_ctx (Facts(sets, disjoints)))) *)
+       in Facts(sets, disjoints) end
        
-   (* add the fact that e has type elt to the context gamma. only useful
-      if we have a local, or a null. *)
-   fun learnFromFact gamma e elt = 
-      case e of
-         AAst.Local l => glb (gamma, (singleContext l elt))
-       | AAst.Null => (case elt of (*FIXME this is a hack...*)
-                          NL.Top => gamma
-                        | NL.Null => gamma
-                        | NL.Bot => bot
-                        | NL.NotNull => bot)
-       | AAst.MarkedE m => learnFromFact gamma (Mark.data m) elt
-       | _ => gamma
+   fun glb' (Bot) (_) = Bot
+     | glb' (_) (Bot) = Bot
+     | glb' (Facts (aal, adj)) (Facts (bal, bdj)) =
+         (* Take al and bl together. If they imply contradiction, glb' is bot.
+            Otherwise, simplify the joined result and return it. *)
+       let
        
-   (* given that the comparison a == b is true,
-      add the facts we learn to the context*)
-   fun learnFromEquality gamma a b = 
-         let val aelt = exp_lat gamma a
-             val belt = exp_lat gamma b
-             val overall = NL.glb aelt belt
-         in learnFromFact (learnFromFact gamma a overall) b overall end
+         (*val _ = AUtil.say "glbing ..." *)
+           val reprList = (List.concat (map (fn (r, s) => map (fn x => (x,r))
+                                                              (CSet.listItems s))
+                                            (aal @ bal)))
+           fun trueRepr reprs (Field(c,f)) =
+                 let val f = Field(trueRepr reprs c,f) in (case CMap.find(reprs, f) of 
+                                                NONE => f
+                                              | SOME r => trueRepr reprs r) end
+             | trueRepr reprs x =(case CMap.find(reprs, x) of 
+                                     NONE => x
+                                   | SOME r => trueRepr reprs r)
+           fun unionFindStep ((a, r), reprs) =
+             let val reprA = trueRepr reprs a
+                 val reprR = trueRepr reprs r
+             in 
+               if ChainOrd.compare (reprA,reprR) <> EQUAL then
+                 CMap.insert(reprs, reprA, reprR)
+               else reprs
+             end
+           
+           (*val _ = AUtil.say "union find..."*)
+           val reprs = foldl unionFindStep CMap.empty reprList
+           
+         (*val _ = AUtil.say "mapping..."
+           val _ = AUtil.say (String.concatWith ", " (map (fn (k,ch) => (pp_chain k) ^ " -> " ^ (pp_chain ch)) (CMap.listItemsi reprs))) *)
+           val reprsCompressed = CMap.map (trueRepr reprs) reprs (* Compress the reprs*)
+           fun reprOf (Field(c,f)) = 
+                        let val x = Field(reprOf c,f) in getOpt(CMap.find(reprs, x), x) end
+             | reprOf x = getOpt(CMap.find(reprs, x), x)
+             
+           val contradict = List.exists (fn (a,b) => ce (reprOf a) (reprOf b)) (adj@bdj)
+           val sets = List.mapPartial (fn (r, l) => setToRepr(setFromList (r::l)))
+                                      (AUtil.collect ChainOrd.compare (map (fn (a,b)=>(b,a)) (CMap.listItemsi reprsCompressed)))
+           val disjoints = ListMergeSort.uniqueSort PairChainOrd.compare 
+                           (map (fn (a,b) => swapChain (aliasRepr sets a, aliasRepr sets b)) (adj@bdj))
+                           
+         (*val _ = AUtil.say "done." *)
+       in case contradict of 
+             true => Bot
+           | false => Facts (sets, disjoints)
+       end
+            
+   
+   
+   fun glb (a as (gt,gf), b as (gt',gf')) = 
+     let (*val _ = AUtil.say ("before glb: " ^ pp_context a ^ " -- "^ pp_context b)*)
+         val res = (glb' gt gt', glb' gf gf')
+         (*val _ = AUtil.say ("after glb: " ^ pp_context res)*)
+     in res end
+   fun lub ((gt,gf), (gt',gf')) = (lub' gt gt', lub' gf gf')
+   
+   fun aliasesCtx (a,b) = let val (a,b) = swapChain (a,b) in Facts([(a,CSet.singleton b)], []) end
+   fun disjointCtx (a,b) = Facts([], [swapChain(a,b)])
+   
+   fun learnFromEquality g (SOME a) (SOME b) = 
+         glb (g, (aliasesCtx(a,b), aliasesCtx(a,b)))
+     | learnFromEquality (rt,rf) _ _ = (rt,rf)
+     
+   fun learnFromDisequality g (SOME a) (SOME b) =  
+         glb (g, (disjointCtx(a,b), disjointCtx(a,b)))
+     | learnFromDisequality (rt,rf) _ _ = (rt,rf)
          
-   (* given that the comparison a != b is true,
-      add the facts we learn to the context*)
-   fun learnFromDisequality gamma a b = 
-         let val aelt = exp_lat gamma a
-             val belt = exp_lat gamma b
-         in case (aelt, belt) of
-               (NL.Null, _) => learnFromFact gamma b NL.NotNull
-             | (_, NL.Null) => learnFromFact gamma a NL.NotNull
-             | _ => gamma
-         end
+   local
+   fun is_chain_outof _ (NullChain) = true
+     | is_chain_outof (Modifies.ModUnion mods) c =  List.all (fn m => is_chain_outof m c) mods
+     | is_chain_outof (Modifies.ModField f) (Field (c,f')) = Gcl.compareField (f,f') <> EQUAL
+                                                             andalso is_chain_outof (Modifies.ModField f) c
+     | is_chain_outof (Modifies.ModField f) _ = true
+     | is_chain_outof (Modifies.ModVar v)    (Var v') = Symbol.compare (v, v') <> EQUAL
+     | is_chain_outof (Modifies.ModVar v)    (Field (c,_)) = is_chain_outof (Modifies.ModVar v) c
+     | is_chain_outof (Modifies.ModAnyField) (Field _) = false
+     | is_chain_outof (Modifies.ModAnyField) _ = true
+   in
+     fun havoc' modifies Bot = Bot
+       | havoc' modifies (Facts (al, dj)) = 
+           let val outof = is_chain_outof modifies
+               fun newClauseAndRepr (oldRepr, set) = 
+                  let val oldSet = CSet.add(set, oldRepr) in    
+                    case CSet.listItems (CSet.filter outof oldSet) of
+                       [] => (NONE, NONE)
+                     | r::[] => (SOME (oldRepr, r), NONE)
+                     | r::rest => (SOME(oldRepr, r), 
+                                   SOME(r, List.foldl CSet.add' CSet.empty rest))
+                  
+                  end
+               val (mappingPairs, newClauses) = ListPair.unzip(List.map newClauseAndRepr al)
+               val reprs = foldl CMap.insert' CMap.empty (List.mapPartial (fn x=>x) mappingPairs)
+               fun newReprOf x =
+                  case CMap.find(reprs, x) of 
+                     NONE => if outof x then SOME x else NONE
+                   | SOME x' => SOME x'
+               val new_disj = List.mapPartial (fn (a,b) => 
+                                                 case (newReprOf a, newReprOf b) of
+                                                    (SOME a',SOME b') => SOME (a', b')
+                                                  | _ => NONE ) dj
+           in Facts(List.mapPartial (fn x=>x) newClauses, new_disj) end
+     fun havoc modifies (t,f) =
+     let (* val _ = AUtil.say ("before havoc: " ^ pp_context (t,f)) *)
+         val res = (havoc' modifies t, havoc' modifies f)
+         (* val _ = AUtil.say ("after havoc: " ^ pp_context res) *)
+     in res end
+     fun havocLocals locs ctx = havoc (Modifies.ModUnion(map Modifies.ModVar locs)) ctx
+   end
    
-   fun proveEquality gamma (ext, a, b) =
-     let val aelt = exp_lat gamma a
-         val belt = exp_lat gamma b
-     in 
-       if (aelt = NL.Null orelse belt = NL.Null)
-          then
-          if (aelt = belt) then []
-          else [VerificationError (ext, "could not prove equality")]
-       else []
-     end
+   fun havocCall f gamma =
+     if Purity.is_pure f then gamma
+     else havoc (Modifies.lookup f) gamma
      
-   fun proveDisequality gamma (ext, a, b) =
-     let val aelt = exp_lat gamma a
-         val belt = exp_lat gamma b
-     in if (NL.glb aelt belt) = NL.Bot
-        then []
-        else [VerificationError (ext, "could not prove inequality")]
+   structure FMap = SymMap
+   val summaries = ref (FMap.empty : (context * Gcl.ident list) FMap.map)
+   
+   fun bindSummary f formals context =
+     let  
+          val toHavoc = SymSet.difference(ctxDomain context,
+                                          foldl SymSet.add' SymSet.empty formals)
+          val context' = havoc (Modifies.ModUnion (map Modifies.ModVar (SymSet.listItems toHavoc)))
+                               context
+          val _ = ()(*AUtil.say ("Summary for " ^ (Symbol.name f) ^ " = " ^ pp_context context')*)
+     in 
+       summaries := FMap.insert(!summaries, f, (context', formals))
      end
+   fun chainFromField (p,f) = Field(Var p, f)
+   fun chainFromVar p = Var p
    
+   open Gcl
    
-   fun analyzeExpr types gamma (ext, e) =
-      case e of
-         AAst.Local _ => ([],gamma)
-       | AAst.IntConst _ => ([],gamma)
-       | AAst.BoolConst _ => ([],gamma)
-       | AAst.StringConst _ => ([],gamma)
-       | AAst.CharConst _ => ([],gamma)
-       | AAst.Alloc _ => ([],gamma)
-       | AAst.AllocArray (tp, e) => analyzeExpr types gamma (ext, e)
-       | AAst.Null => ([],gamma)
-       | AAst.Result => ([],gamma)
-       | AAst.Length(e) => analyzeExpr types gamma (ext, e)
-       | AAst.Old(e) => analyzeExpr types gamma (ext, e)
-       | AAst.Select(e, f) => analyzeExpr types gamma (ext, e)
-       | AAst.Call (f, args) => 
-           let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) args
-           in (List.concat errs,gamma) end
-       | AAst.Op (Ast.DEREF, [a]) => 
-           (case exp_lat gamma a of
-               NL.Top => [VerificationError (ext, "unprotected dereference "
-                                                     ^ (AAst.Print.pp_aexpr e))]
-             | NL.Null => [VerificationError (ext, "null dereference "
-                                                     ^ (AAst.Print.pp_aexpr e))]
-             | _ => [], gamma)
-       | AAst.Op (oper, args) => (* FIXME: this is plain wrong if we have a boolean*)
-           let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) args in (List.concat errs, gamma) end
-       | AAst.MarkedE me => analyzeExpr types gamma (Mark.ext me, Mark.data me)
-   
-
-   
-   (* computes (G', G'') corresponding to the judgements G; exp true |> G'
-      and G; exp false |> G'', where G = gamma. *)
-   fun analyzeBoolExpr types gamma (ext, exp) = 
+   fun applySummary ctx f args =
+     case FMap.find(!summaries, f) of 
+        NONE => (()(*AUtil.say ("warning: function not summarized " ^ (Symbol.name f))*); (ctx,ctx))
+      | SOME (context, formals) =>
+          let val ((sT, sF), formals') = alphaRename (context, formals)
+              val ctx' = foldl (fn ((f,ch),c) => learnFromEquality c (SOME(chainFromVar f)) ch)
+                         ctx (ListPair.zip (formals', args))
+          in (glb (ctx', (sT, sT)), glb(ctx', (sF,sF))) end
+          
+   fun analyzeBoolExpr gamma exp = 
       case exp of 
-         AAst.BoolConst true => ([], gamma, bot)
-       | AAst.BoolConst false => ([], bot, gamma)
-       | AAst.Local _ => ([], gamma, gamma) (*right now we have no information from
-                                          booleans.*)
-       | AAst.Op(Ast.LESS, a) =>
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma, gamma) end
-       | AAst.Op(Ast.LEQ, a) => 
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma, gamma) end
-       | AAst.Op(Ast.GREATER, a) => 
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma, gamma) end
-       | AAst.Op(Ast.GEQ, a) => 
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma, gamma) end
-       | AAst.Call (name, a) => 
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma, gamma) end
-       | AAst.Op(Ast.EQ, [a,b]) => 
-            let val (e, _) = analyzeExpr types gamma (ext,a)
-                val (e', _) = analyzeExpr types gamma (ext,b)
-            in (e @ e', learnFromEquality gamma a b,
-                        learnFromDisequality gamma a b) end
-       | AAst.Op(Ast.NOTEQ, [a,b]) => 
-            let val (e, _) = analyzeExpr types gamma (ext, a)
-                val (e',_) = analyzeExpr types gamma (ext, b)
-            in (e @ e', learnFromDisequality gamma a b,
-                        learnFromEquality gamma a b) end
-       | AAst.Op(Ast.LOGNOT, [a]) =>
-            let val (e,t,f) = analyzeBoolExpr types gamma (ext,a) in (e,f,t) end
-       | AAst.Op(Ast.LOGAND, [a,b]) => 
-            let val (e,t,f) = analyzeBoolExpr types gamma (ext, a)
-                val (e',t', f') = analyzeBoolExpr types t (ext, b)
-            in (e @ e', t', lub (f, f')) end
-       | AAst.Op(Ast.LOGOR, [a,b]) => 
-            let val (e,t,f) = analyzeBoolExpr types gamma (ext, a)
-                val (e',t',f') = analyzeBoolExpr types f (ext, b)
-            in (e @ e', lub (t, t'), f') end
-       | AAst.Op(Ast.DEREF, [a]) =>
-           let val (e, gamma') = analyzeExpr types gamma (ext, a)
-           in (e, gamma', gamma') end
-       | AAst.Op(Ast.SUB, [a,b]) =>
-           let val (e, gamma') = analyzeExpr types gamma (ext, a)
-               val (e, gamma'') = analyzeExpr types gamma' (ext, b)
-           in (e, gamma'', gamma'') end
-       | AAst.Select(e, f) => 
-           let val (err, gamma') = analyzeExpr types gamma (ext, e)
-           in (err, gamma', gamma') end
-       | AAst.Op(Ast.COND, [c, a, b]) =>
-           let val (e, ct, cf) = analyzeBoolExpr types gamma (ext, c)
-               val (e', at, af) = analyzeBoolExpr types ct (ext, a)
-               val (e', bt, bf) = analyzeBoolExpr types cf (ext, b)
-            in (e @ e', lub(at, bt), lub (af, bf)) end
-       | AAst.MarkedE me => analyzeBoolExpr types gamma (Mark.ext me, Mark.data me)
-       | AAst.Result => ([], gamma, gamma)
-       | _ => raise Fail ("domain is bool-typed expressions only. bad: " ^ (AAst.Print.pp_aexpr exp))
-
-   fun proveBoolExpr types gamma (ext, exp) tf = 
-      case exp of 
-         AAst.BoolConst const => 
-           (case tf = const of
-               true => ([], gamma)
-             | false => ([VerificationError (ext,
-                      "could not prove expression " ^ (AAst.Print.pp_aexpr exp) ^ (if tf then " to be true" else " to be false"))], bot))
-       | AAst.Local _ => ([], gamma) (* no info from booleans yet. *)
-       | AAst.Op(Ast.LESS, a) =>
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma) end
-       | AAst.Op(Ast.LEQ, a) => 
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma) end
-       | AAst.Op(Ast.GREATER, a) => 
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma) end
-       | AAst.Op(Ast.GEQ, a) => 
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma) end
-       | AAst.Call (name, a) => 
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma) end
-       | AAst.Op(Ast.EQ, [a,b]) => 
-            let val (e, _) = analyzeExpr types gamma (ext,a)
-                val (e',_) = analyzeExpr types gamma (ext,b)
-                val (e'') = (if tf then proveEquality
-                                 else proveDisequality) gamma (ext, a, b)
-            in (e @ e' @ e'',(if tf then learnFromEquality
-                              else learnFromDisequality) gamma a b) end
-       | AAst.Op(Ast.NOTEQ, [a,b]) => 
-            let val (e,_) = analyzeExpr types gamma (ext,a)
-                val (e',_) = analyzeExpr types gamma (ext,b)
-                val (e'') = (if tf then proveDisequality
-                                 else proveEquality) gamma (ext, a, b)
-            in (e @ e' @ e'', (if tf then learnFromDisequality
-                               else learnFromEquality) gamma a b) end
-       | AAst.Op(Ast.LOGNOT, [a]) =>
-            proveBoolExpr types gamma (ext, a) (not tf)
-       | AAst.Op(Ast.LOGAND, [a,b]) => 
-          (case tf of
-              true => let val (e,t) = proveBoolExpr types gamma (ext, a) tf
-                          val (e',t') = proveBoolExpr types t (ext, b) tf
-                      in (e @ e', t') end
-            | false => let val (e,t,f) = analyzeBoolExpr types gamma (ext, a)
-                           val (e',f') = proveBoolExpr types t (ext, b) tf
-                       in (e @ e', lub (f, f')) end)
-       | AAst.Op(Ast.LOGOR, [a,b]) => 
-          (case tf of
-              true => let val (e,t,f) = analyzeBoolExpr types gamma (ext, a)
-                          val (e',t') = proveBoolExpr types f (ext, b) tf
-                      in (e @ e', lub (t, t')) end
-            | false => let val (e,f) = proveBoolExpr types  gamma (ext, a) tf
-                           val (e',f') = proveBoolExpr types f (ext, b) tf
-                       in (e @ e', f') end)
-       | AAst.Op(Ast.DEREF, [a]) =>
-           let val (e, gamma') = analyzeExpr types gamma (ext, a)
-           in (e, gamma') end
-       | AAst.MarkedE me => proveBoolExpr types gamma (Mark.ext me, Mark.data me) tf
-       (* TODO: handle boolean arrays, i.e. the sub operator. *)
-       | _ => raise Fail ("domain is bool-typed expressions only. bad: " ^ (AAst.Print.pp_aexpr exp))
-    
-   fun analyzePhi types g (AAst.PhiDef(v,i,l)) =
-         glb (g, (singleContext (v,i)
-                      (foldr (fn (a,b) => NL.lub a b) NL.Bot
-                             (map (fn i' => getLat g (v,i')) l))))
-   fun analyzePhi' types g (AAst.PhiDef(v,i,l)) j =
-         LocalMap.insert(g, (v,i), getLat g (v, List.nth (l, j)))
-   fun havocPhi types g (AAst.PhiDef(v,i,l)) =
-               lub (g, (singleContext (v,i) NL.Top))
-   fun isPointerLocal types (sym, i) =
-      case SymMap.find (types, sym) of
-         NONE => raise Fail "local not in type map?"
-       | SOME tp => (case tp of Ast.Pointer _ => true | _ => false)
+         (* We don't track locals yet... *)
+         Var (v, _) => if Symbol.compare (v, Trans.resultVar) = EQUAL then ((#1 gamma, Bot), (Bot, #2 gamma))
+                       else (gamma, gamma)
+       | ValOp (BoolConst true, []) => (gamma, bot)
+       | ValOp (BoolConst false, []) => (bot, gamma)
+       | ValOp (Not, [e]) =>
+           let val (gt,gf) = analyzeBoolExpr gamma e in (gf, gt) end
+       
+       | ValOp (And, [e1, e2]) =>
+            let val (t,f) = analyzeBoolExpr gamma e1
+                val (t', f') = analyzeBoolExpr t e2
+            in (t', lub (f, f')) end
+       | ValOp (Or, [e1, e2]) =>
+            let val (t, f ) = analyzeBoolExpr gamma e1
+                val (t',f') = analyzeBoolExpr f e2
+            in (lub (t, t'), f') end
+       | ValOp (Cond, [c, a, b]) =>
+           let val (ct, cf) = analyzeBoolExpr gamma c
+               val (at, af) = analyzeBoolExpr ct a
+               val (bt, bf) = analyzeBoolExpr cf b
+            in (lub(at, bt), lub (af, bf)) end
+       | ValOp (PureCall (f, Bool), args) => applySummary gamma f (map expr_chain args)
+       | ValOp (oper, args) => (gamma, gamma)
+       | Rel (Eq, Pointer _, e1, e2) => 
+             (learnFromEquality gamma (expr_chain e1) (expr_chain e2),
+              learnFromDisequality gamma (expr_chain e1) (expr_chain e2))
+       | Rel (Neq, Pointer _, e1, e2) =>
+             (learnFromDisequality gamma (expr_chain e1) (expr_chain e2),
+              learnFromEquality gamma (expr_chain e1) (expr_chain e2))
+       | Rel (r, Char, e1, e2) => (gamma, gamma)
+       | Rel (r, Int, e1, e2) => (gamma, gamma)
+       | Sub (a, i, tp) => (gamma, gamma)
+       
+       | Null tp => (gamma,gamma)
+       | Select (e, f, tp) => (gamma,gamma)
+       | Deref (e,tp) => (gamma,gamma)
    
-   fun analyzeDef types gamma (ext, l, e) =  
-      let val (err, gamma') = analyzeExpr types gamma (ext, e)
-      in if isPointerLocal types l
-         then (err, glb (gamma', (singleContext l (exp_lat gamma e))))
-         else (err, gamma') end
-   
-   fun analyzeReturn rtp types gamma (ext, e) =  
-      let val (err, gamma') = analyzeExpr types gamma (ext, e)
-      in
-      case rtp of
-         Ast.Pointer _ => (err, glb (gamma', (singleContext result (exp_lat gamma e))))
-       | _ => (err, gamma')
-      end
+   fun analyzeAssign gamma (lhs, rhs) = 
+     let 
+      (*val _ = AUtil.say ("\n  before " ^ (Gcl.pp_stmt (Gcl.Assign(lhs,rhs))) ^ ": " ^ pp_context gamma) *)
+         val (gamma, rhs_chain) =
+       case rhs of
+          Expr e => (gamma, expr_chain e)
+        | Alloc t =>
+             let val sym = Symbol.new("$alloc")
+                 val chain = SOME (chainFromVar sym)
+                 val gamma' = learnFromDisequality gamma chain (SOME NullChain)
+             in (gamma', chain) end
+        | AllocArray (t, e) => (gamma, NONE)
+        | Call (f,args) => (havocCall f gamma, NONE)
+     val res =
+       case lhs of 
+           Local x =>
+            (case (Symbol.compare(x, Trans.resultVar), rhs) of
+               (EQUAL, Expr(ValOp(BoolConst true, []))) => (#1 gamma, Bot)
+             | (EQUAL, Expr(ValOp(BoolConst false, []))) => (Bot, #2 gamma)
+             | _ => 
+                 let val g = havoc (Modifies.ModVar x) gamma
+                 in learnFromEquality g (SOME (chainFromVar x)) rhs_chain end)
+         | Field (p,f) => let val g = havoc (Modifies.ModField f) gamma in
+             learnFromEquality g (SOME (chainFromField (p,f))) rhs_chain end
+         | Cell p => gamma
+         | ArrayElem (a,i) => gamma
+     
+      (*val _ = AUtil.say ("\n  after: " ^ pp_context res) *)
+     in res end
 end
 
-
-(* A CONTEXT which tracks only nullity information about local variables. 
-structure NullityReturnContext :> CONTEXT =
-struct
-   structure NL = NullityLattice
-   type map = NL.lat LocalMap.map
-   type context = map * map * 
-        (*map locals to their lattice types, but only if they are pointer type *)
-   
-   open VError
-   
-   val empty = LocalMap.empty
-   val bot =  LocalMap.insert (empty, (Symbol.new "_", 0), NL.Bot)
-   
-   fun singleContext l elt = 
-      LocalMap.insert (empty, l, elt)
-   
-   fun isBot g = LocalMap.foldr (fn (elt, b) => b orelse elt = NL.Bot) false g
-   
-   fun pp_context gamma = 
-      case isBot gamma of
-         true => "{_|_}"
-       | false =>
-      "{" ^ (AAst.Print.commas "; " 
-               (map (fn (l, tp) => (AAst.Print.pp_aexpr (AAst.Local l)) ^ " => " ^ (NL.pp_lat tp))
-                    (LocalMap.listItemsi gamma))) ^ "}"
-    
-   val result = (Symbol.new "\\result", 0)
-   fun getLat gamma l =
-      case LocalMap.find (gamma, l) of                            
-         NONE => NL.Top
-       | SOME e => e
-   fun glb (g, g') = 
-       LocalMap.unionWith (fn (x,y) => NL.glb x y) (g,g')
-   (* FIXME: this is wrong. the issue is that if you are given something like 
-      if( * ) n`1 := alloc else n`2 := alloc} n`3 := phi(n`1,n`2),
-      you want to be able to say that between the the if and the phi, n`1 is
-      not null and so is n`2, so when the phi comes along they get merged properly.
-      however, under the current code, while loops break.*)
-   fun lub (g, g') =
-       case (isBot g, isBot g') of
-          (true, _) => g'
-        | (_, true) => g
-        | _ => LocalMap.intersectWith (fn (x,y) => NL.lub x y) (g, g')
-     
-   fun exp_lat gamma e = 
-      case e of
-         AAst.Alloc _ => NL.NotNull
-       | AAst.AllocArray _ => NL.NotNull                     
-       | AAst.Local l => getLat gamma l
-       | AAst.Null => NL.Null
-       | AAst.Result => getLat gamma result
-       | AAst.MarkedE m => exp_lat gamma (Mark.data m)
-       | _ => NL.Top
-       
-       
-   (* add the fact that e has type elt to the context gamma. only useful
-      if we have a local, or a null. *)
-   fun learnFromFact gamma e elt = 
-      case e of
-         AAst.Local l => glb (gamma, (singleContext l elt))
-       | AAst.Null => (case elt of (*FIXME this is a hack...*)
-                          NL.Top => gamma
-                        | NL.Null => gamma
-                        | NL.Bot => bot
-                        | NL.NotNull => bot)
-       | AAst.MarkedE m => learnFromFact gamma (Mark.data m) elt
-       | _ => gamma
-       
-   (* given that the comparison a == b is true,
-      add the facts we learn to the context*)
-   fun learnFromEquality gamma a b = 
-         let val aelt = exp_lat gamma a
-             val belt = exp_lat gamma b
-             val overall = NL.glb aelt belt
-         in learnFromFact (learnFromFact gamma a overall) b overall end
-         
-   (* given that the comparison a != b is true,
-      add the facts we learn to the context*)
-   fun learnFromDisequality gamma a b = 
-         let val aelt = exp_lat gamma a
-             val belt = exp_lat gamma b
-         in case (aelt, belt) of
-               (NL.Null, _) => learnFromFact gamma b NL.NotNull
-             | (_, NL.Null) => learnFromFact gamma a NL.NotNull
-             | _ => gamma
-         end
-   
-   fun proveEquality gamma (ext, a, b) =
-     let val aelt = exp_lat gamma a
-         val belt = exp_lat gamma b
-     in 
-       if (aelt = NL.Null orelse belt = NL.Null)
-          then
-          if (aelt = belt) then []
-          else [VerificationError (ext, "could not prove equality")]
-       else []
-     end
-     
-   fun proveDisequality gamma (ext, a, b) =
-     let val aelt = exp_lat gamma a
-         val belt = exp_lat gamma b
-     in if (NL.glb aelt belt) = NL.Bot
-        then []
-        else [VerificationError (ext, "could not prove inequality")]
-     end
-   
-   
-   fun analyzeExpr types gamma (ext, e) =
-      case e of
-         AAst.Local _ => ([],gamma)
-       | AAst.IntConst _ => ([],gamma)
-       | AAst.BoolConst _ => ([],gamma)
-       | AAst.StringConst _ => ([],gamma)
-       | AAst.CharConst _ => ([],gamma)
-       | AAst.Alloc _ => ([],gamma)
-       | AAst.AllocArray (tp, e) => analyzeExpr types gamma (ext, e)
-       | AAst.Null => ([],gamma)
-       | AAst.Result => ([],gamma)
-       | AAst.Length(e) => analyzeExpr types gamma (ext, e)
-       | AAst.Old(e) => analyzeExpr types gamma (ext, e)
-       | AAst.Select(e, f) => analyzeExpr types gamma (ext, e)
-       | AAst.Call (f, args) => 
-           let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) args
-           in (List.concat errs,gamma) end
-       | AAst.Op (Ast.DEREF, [a]) => 
-           (case exp_lat gamma a of
-               NL.Top => [VerificationError (ext, "unprotected dereference "
-                                                     ^ (AAst.Print.pp_aexpr e))]
-             | NL.Null => [VerificationError (ext, "null dereference "
-                                                     ^ (AAst.Print.pp_aexpr e))]
-             | _ => [], gamma)
-       | AAst.Op (oper, args) => (* FIXME: this is plain wrong if we have a boolean*)
-           let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) args in (List.concat errs, gamma) end
-       | AAst.MarkedE me => analyzeExpr types gamma (Mark.ext me, Mark.data me)
-   
-
-   
-   (* computes (G', G'') corresponding to the judgements G; exp true |> G'
-      and G; exp false |> G'', where G = gamma. *)
-   fun analyzeBoolExpr types gamma (ext, exp) = 
-      case exp of 
-         AAst.BoolConst true => ([], gamma, bot)
-       | AAst.BoolConst false => ([], bot, gamma)
-       | AAst.Local _ => ([], gamma, gamma) (*right now we have no information from
-                                          booleans.*)
-       | AAst.Op(Ast.LESS, a) =>
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma, gamma) end
-       | AAst.Op(Ast.LEQ, a) => 
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma, gamma) end
-       | AAst.Op(Ast.GREATER, a) => 
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma, gamma) end
-       | AAst.Op(Ast.GEQ, a) => 
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma, gamma) end
-       | AAst.Call (name, a) => 
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma, gamma) end
-       | AAst.Op(Ast.EQ, [a,b]) => 
-            let val (e, _) = analyzeExpr types gamma (ext,a)
-                val (e', _) = analyzeExpr types gamma (ext,b)
-            in (e @ e', learnFromEquality gamma a b,
-                        learnFromDisequality gamma a b) end
-       | AAst.Op(Ast.NOTEQ, [a,b]) => 
-            let val (e, _) = analyzeExpr types gamma (ext, a)
-                val (e',_) = analyzeExpr types gamma (ext, b)
-            in (e @ e', learnFromDisequality gamma a b,
-                        learnFromEquality gamma a b) end
-       | AAst.Op(Ast.LOGNOT, [a]) =>
-            let val (e,t,f) = analyzeBoolExpr types gamma (ext,a) in (e,f,t) end
-       | AAst.Op(Ast.LOGAND, [a,b]) => 
-            let val (e,t,f) = analyzeBoolExpr types gamma (ext, a)
-                val (e',t', f') = analyzeBoolExpr types t (ext, b)
-            in (e @ e', t', lub (f, f')) end
-       | AAst.Op(Ast.LOGOR, [a,b]) => 
-            let val (e,t,f) = analyzeBoolExpr types gamma (ext, a)
-                val (e',t',f') = analyzeBoolExpr types f (ext, b)
-            in (e @ e', lub (t, t'), f') end
-       | AAst.Op(Ast.DEREF, [a]) =>
-           let val (e, gamma') = analyzeExpr types gamma (ext, a)
-           in (e, gamma', gamma') end
-       | AAst.Op(Ast.SUB, [a,b]) =>
-           let val (e, gamma') = analyzeExpr types gamma (ext, a)
-               val (e, gamma'') = analyzeExpr types gamma' (ext, b)
-           in (e, gamma'', gamma'') end
-       | AAst.Select(e, f) => 
-           let val (err, gamma') = analyzeExpr types gamma (ext, e)
-           in (err, gamma', gamma') end
-       | AAst.Op(Ast.COND, [c, a, b]) =>
-           let val (e, ct, cf) = analyzeBoolExpr types gamma (ext, c)
-               val (e', at, af) = analyzeBoolExpr types ct (ext, a)
-               val (e', bt, bf) = analyzeBoolExpr types cf (ext, b)
-            in (e @ e', lub(at, bt), lub (af, bf)) end
-       | AAst.MarkedE me => analyzeBoolExpr types gamma (Mark.ext me, Mark.data me)
-       | AAst.Result => ([], gamma, gamma)
-       | _ => raise Fail ("domain is bool-typed expressions only. bad: " ^ (AAst.Print.pp_aexpr exp))
-
-   fun proveBoolExpr types gamma (ext, exp) tf = 
-      case exp of 
-         AAst.BoolConst const => 
-           (case tf = const of
-               true => ([], gamma)
-             | false => ([VerificationError (ext,
-                      "could not prove expression " ^ (AAst.Print.pp_aexpr exp) ^ (if tf then " to be true" else " to be false"))], bot))
-       | AAst.Local _ => ([], gamma) (* no info from booleans yet. *)
-       | AAst.Op(Ast.LESS, a) =>
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma) end
-       | AAst.Op(Ast.LEQ, a) => 
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma) end
-       | AAst.Op(Ast.GREATER, a) => 
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma) end
-       | AAst.Op(Ast.GEQ, a) => 
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma) end
-       | AAst.Call (name, a) => 
-            let val errs = map (fn a => #1(analyzeExpr types gamma (ext, a))) a
-            in (List.concat errs, gamma) end
-       | AAst.Op(Ast.EQ, [a,b]) => 
-            let val (e, _) = analyzeExpr types gamma (ext,a)
-                val (e',_) = analyzeExpr types gamma (ext,b)
-                val (e'') = (if tf then proveEquality
-                                 else proveDisequality) gamma (ext, a, b)
-            in (e @ e' @ e'',(if tf then learnFromEquality
-                              else learnFromDisequality) gamma a b) end
-       | AAst.Op(Ast.NOTEQ, [a,b]) => 
-            let val (e,_) = analyzeExpr types gamma (ext,a)
-                val (e',_) = analyzeExpr types gamma (ext,b)
-                val (e'') = (if tf then proveDisequality
-                                 else proveEquality) gamma (ext, a, b)
-            in (e @ e' @ e'', (if tf then learnFromDisequality
-                               else learnFromEquality) gamma a b) end
-       | AAst.Op(Ast.LOGNOT, [a]) =>
-            proveBoolExpr types gamma (ext, a) (not tf)
-       | AAst.Op(Ast.LOGAND, [a,b]) => 
-          (case tf of
-              true => let val (e,t) = proveBoolExpr types gamma (ext, a) tf
-                          val (e',t') = proveBoolExpr types t (ext, b) tf
-                      in (e @ e', t') end
-            | false => let val (e,t,f) = analyzeBoolExpr types gamma (ext, a)
-                           val (e',f') = proveBoolExpr types t (ext, b) tf
-                       in (e @ e', lub (f, f')) end)
-       | AAst.Op(Ast.LOGOR, [a,b]) => 
-          (case tf of
-              true => let val (e,t,f) = analyzeBoolExpr types gamma (ext, a)
-                          val (e',t') = proveBoolExpr types f (ext, b) tf
-                      in (e @ e', lub (t, t')) end
-            | false => let val (e,f) = proveBoolExpr types  gamma (ext, a) tf
-                           val (e',f') = proveBoolExpr types f (ext, b) tf
-                       in (e @ e', f') end)
-       | AAst.Op(Ast.DEREF, [a]) =>
-           let val (e, gamma') = analyzeExpr types gamma (ext, a)
-           in (e, gamma') end
-       | AAst.MarkedE me => proveBoolExpr types gamma (Mark.ext me, Mark.data me) tf
-       (* TODO: handle boolean arrays, i.e. the sub operator. *)
-       | _ => raise Fail ("domain is bool-typed expressions only. bad: " ^ (AAst.Print.pp_aexpr exp))
-    
-   fun analyzePhi types g (AAst.PhiDef(v,i,l)) =
-         glb (g, (singleContext (v,i)
-                      (foldr (fn (a,b) => NL.lub a b) NL.Bot
-                             (map (fn i' => getLat g (v,i')) l))))
-   fun analyzePhi' types g (AAst.PhiDef(v,i,l)) j =
-         LocalMap.insert(g, (v,i), getLat g (v, List.nth (l, j)))
-   fun havocPhi types g (AAst.PhiDef(v,i,l)) =
-               lub (g, (singleContext (v,i) NL.Top))
-   fun isPointerLocal types (sym, i) =
-      case SymMap.find (types, sym) of
-         NONE => raise Fail "local not in type map?"
-       | SOME tp => (case tp of Ast.Pointer _ => true | _ => false)
-   
-   fun analyzeDef types gamma (ext, l, e) =  
-      let val (err, gamma') = analyzeExpr types gamma (ext, e)
-      in if isPointerLocal types l
-         then (err, glb (gamma', (singleContext l (exp_lat gamma e))))
-         else (err, gamma') end
-   
-   fun analyzeReturn rtp types gamma (ext, e) =  
-      let val (err, gamma') = analyzeExpr types gamma (ext, e)
-      in
-      case rtp of
-         Ast.Pointer _ => (err, glb (gamma', (singleContext result (exp_lat gamma e))))
-       | _ => (err, gamma')
-      end
-end
-
-*)
 structure NullityAnalysis = SafetyAnalysis(NullityContext)

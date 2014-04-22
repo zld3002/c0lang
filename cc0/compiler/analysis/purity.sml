@@ -1,7 +1,8 @@
 
 signature PURITY = 
 sig
-
+  (* Note this is not a set because we map each function to the reason it
+     needs to be pure*)
   type pureset = VError.error SymMap.map
   
   (* Check the purity of a function, assuming the given set contains the pure
@@ -13,6 +14,9 @@ sig
      as Verification Notes) as to why they need purity (this lets us give better
      error messages). *)
   val needspurity: AAst.afunc -> pureset
+  
+  val bind: pureset -> unit
+  val is_pure: Symbol.symbol -> bool
 end
 
 structure Purity :> PURITY =
@@ -41,14 +45,13 @@ struct
      | St s => "struct "^Symbol.name s
   structure C = 
   struct
-    structure PairMap = RedBlackMapFn(struct type ord_key = sym*sym
-                                      fun compare ((ast,af),(bs,bf)) =
-                                        case Symbol.compare(ast,bs) of
-                                           EQUAL => Symbol.compare(af,bf)
-                                         | r => r
-                                      end
-                                     )
-    type ctx = {types: Ast.tp SymMap.map, locals: etype LocalMap.map, fields: etype PairMap.map, imms: SymSet.set, pures: SymSet.set}
+    structure PairMap = RedBlackMapFn(PairOrd(structure A = SymOrd structure B = SymOrd))
+    
+    type ctx = {types: Ast.tp SymMap.map,
+                locals: etype LocalMap.map,
+                fields: etype PairMap.map,
+                imms: SymSet.set,
+                pures: SymSet.set}
     fun empty (tps,pures) = {types = tps, locals = LocalMap.empty, fields=PairMap.empty, imms = SymSet.empty, pures = pures}
     fun is_struct_imm (ctx:ctx) s = SymSet.member(#imms ctx, s)
     fun mark_struct_imm (ctx:ctx) s = {imms = SymSet.add(#imms ctx, s),
@@ -172,7 +175,7 @@ struct
      | Return e => ctx
      | If (e, a, b, phi) => 
          buildContextPhis (buildContext (buildContext ctx a) b) phi
-     | While (phi, g, loopinv, b, phi') =>
+     | While (phi, g, loopinv, modes, b, phi') =>
          buildContextPhis (buildContext ctx b) (phi@phi')
      | MarkedS m => buildContext ctx (Mark.data m)
    
@@ -214,7 +217,7 @@ struct
      | Alloc t => tp_extend_mutable(Pointer t)
      | Null => Pt(Mut, Atom)
      | AllocArray (t, e) => tp_extend_mutable(Array t)
-     | Select (e, f) => C.lookup_field ctx (structofE ctx e) f
+     | Select (e, s, f) => C.lookup_field ctx (structofE ctx e) f
      | MarkedE m => syn_extended ctx (Mark.data m)
   
   
@@ -270,7 +273,7 @@ struct
      | Return e => imms
      | If (e, a, b, phi) => 
           constraintsP ctx (constraints ctx (constraints ctx imms a) b) phi
-     | While (phi, g, loopinv, b, phi') =>
+     | While (phi, g, loopinv, mods, b, phi') =>
           constraintsP ctx (constraints ctx (constraintsP ctx imms phi) b) phi'
      | MarkedS m => constraints ctx imms (Mark.data m)
      
@@ -279,7 +282,7 @@ struct
        Op(DEREF, [a]) =>(case syn_extended ctx a of
                             Pt(tag, e) => tag
                          )
-     | Select(e, f) => getlvtag ctx e
+     | Select(e, s, f) => getlvtag ctx e (*TODO: this looks suspicious... -jrk Oct 13*)
      | Local(l) => Mut
      | Op(SUB, [a, i]) => (case syn_extended ctx a of
                             Arr(tag, e) => tag
@@ -350,7 +353,7 @@ struct
      | Length e' => checkE mark ctx imms e'
      | Old e' => checkE mark ctx imms e'
      | AllocArray (tp, e') => checkE mark ctx imms e'
-     | Select (e', field) => checkE mark ctx imms e'
+     | Select (e', s, field) => checkE mark ctx imms e'
      | MarkedE (m) => checkE (Mark.ext m) ctx imms (Mark.data m)
      
   fun check mark ctx imms s = 
@@ -377,7 +380,7 @@ struct
          mergeCheck [checkE mark ctx imms e,
                      check mark ctx imms a,
                      check mark ctx imms b]
-     | While (phi, g, loopinv, b, phi') =>
+     | While (phi, g, loopinv, mods, b, phi') =>
          mergeCheck[checkE mark ctx imms g, check mark ctx imms b]
      | MarkedS m => check (Mark.ext m) ctx imms (Mark.data m)
      
@@ -424,7 +427,7 @@ struct
      | Length e' => needspurityE e'
      | Old e' => needspurityE e'
      | AllocArray (tp, e') => needspurityE e'
-     | Select (e', field) => needspurityE e'
+     | Select (e', s, field) => needspurityE e'
      | MarkedE (m) =>
         let val np = needspurityE (Mark.data m)
         in map (SymMap.map (fn e => VError.enclose e (Mark.ext m))) np end
@@ -443,7 +446,7 @@ struct
      | Continue => []
      | Return _ => []
      | If (e, a, b, p) => (needspurityS a) @ (needspurityS b)
-     | While (p, a, invs, b, p') =>
+     | While (p, a, invs, mods, b, p') =>
          (List.concat (map needspurityE invs)) @ (needspurityS b)
      | MarkedS m => needspurityS (Mark.data m)
      
@@ -454,4 +457,10 @@ struct
          (needspurityS body) @
          (List.concat (map needspurityE ens))
        )
+  val pures = ref (SymMap.empty: pureset)
+  fun bind ps = (pures := ps)
+  fun is_pure f = 
+    case SymMap.find(!pures,f) of
+       SOME _ => true
+     | NONE => false
 end

@@ -389,9 +389,9 @@ let
 	           (fn () => 
 	             let val verrors = AnalysisTop.staticCheck oprogram
 	                 val _ = map (say o VError.pp_error) verrors
-	                 val _ = case verrors of
+	                 val _ = (*case verrors of
 	                            [] => say "No static errors."
-	                          | _ => ()
+	                          | _ => ()*)()
 	             in 
                          (* Static check does not compile the program. *)
 	                 raise FINISHED
@@ -668,9 +668,8 @@ let
 	   | FINISHED => OS.Process.success
            | e => ( say ("Unexpected exception in cc0:\n" ^ exnMessage e ^ "\n")
                   ; if false (* true: development mode, false: production *)
-                    then raise e
+                    then ((*say (String.concatWith "\n" (SMLofNJ.exnHistory e));*) raise e)
                     else OS.Process.failure)
-           (* foldr (fn (a,b) => a ^ "\n" ^ b) "" (SMLofNJ.exnHistory e) *)
            (* Above extra bits commented out by Rob, Nov 15 2012. 
             * The compiler needs to compile with MLton! - Rob *)
 

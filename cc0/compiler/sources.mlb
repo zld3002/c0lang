@@ -1,6 +1,7 @@
 $(SML_LIB)/basis/basis.mlb
 $(SML_LIB)/smlnj-lib/PP/pp-lib.mlb
 $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+../../externals/bulp/sources.mlb
 
 util/sources.mlb
 
@@ -30,15 +31,19 @@ local
       parse/lex.sml
       parse/parse-pragma.sml
       parse/parse.sml
-   
+
+      analysis/util.sml
       analysis/error.sml
       analysis/analysisast.sml
-      analysis/env.sml
       analysis/preprocess.sml
+      analysis/env.sml
       analysis/analysis.sml
+      analysis/purity.sml
+      analysis/gcl.sml
+      analysis/modifies.sml
+      analysis/trans.sml
       analysis/safety.sml
       analysis/nullity.sml
-      analysis/purity.sml
       analysis/conditions.sml
       analysis/funsummary.sml
       analysis/vcgen.sml
@@ -52,6 +57,7 @@ local
 
    ../buildid.sml
    top/flags.sml
+   analysis/top.sml
    top/top.sml
 in
    structure Syn

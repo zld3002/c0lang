@@ -67,7 +67,7 @@ struct
      | Length e => declare_exp decl e
      | Old e => declare_exp decl e
      | AllocArray(_,e) => declare_exp decl e
-     | Select(e,s) => declare_exp decl e
+     | Select(e,s,f) => declare_exp decl e
      | MarkedE m => declare_exp decl (Mark.data m)
      | _ => ()
 
@@ -93,7 +93,7 @@ struct
         val _ = List.map (fn PhiDef(s,i,_) => decl (s,i)) phis
       in ()
       end
-    | While(cnt_phis,e,lvs,s,brk_phis) =>
+    | While(cnt_phis,e,lvs, mods,s,brk_phis) =>
       let
         val _ = List.map (fn PhiDef(s,i,_) => decl (s,i)) cnt_phis
         val _ = declare_exp decl e
@@ -114,7 +114,7 @@ struct
     | Length e => Length(replace_result retval e)
     | Old e => Old(replace_result retval e)
     | AllocArray(t,e) => AllocArray(t,replace_result retval e)
-    | Select(e,s) => Select(replace_result retval e,s)
+    | Select(e,s,f) => Select(replace_result retval e,s,f)
     | MarkedE m => replace_result retval (Mark.data m)
     | _ => exp
 
@@ -158,7 +158,7 @@ struct
     | Length e => Length(replace_inv phis index switch e)
     | Old e => Old(replace_inv phis index switch e)
     | AllocArray(t,e) => AllocArray(t,replace_inv phis index switch e)
-    | Select(e,s) => Select(replace_inv phis index switch e,s)
+    | Select(e,s,f) => Select(replace_inv phis index switch e,s,f)
     | MarkedE m =>
         MarkedE(Mark.mark' (replace_inv phis index switch (Mark.data m),Mark.ext m))
     | _ => inv
@@ -254,7 +254,7 @@ struct
               (check ext (array_length (fn l => Op(Ast.LESS,[e2,l])) e1))
           | _ => [])
     | AllocArray(t,e) => check ext (Op(Ast.GEQ,[e,ZERO]))
-    | Select(e,field) => process_exp ext check e
+    | Select(e,s, field) => process_exp ext check e
     | Call(f,es) =>
         List.foldr (fn (e,l) => (process_exp ext check e) @ l) [] es
     | MarkedE m => process_exp (Mark.ext m) check (Mark.data m)
@@ -426,7 +426,7 @@ struct
                   "Warning: loop invariants cannot be verified when using" ^
                   " breaks or effectual operations in loop conditions.")]*)
     | Continue => cnt_phi_fun ext cnt_num
-    | While(cntphis,e,invs,s,brkphis) =>
+    | While(cntphis,e,invs, mods,s,brkphis) =>
         let
           (* Check the invariants hold *)
           fun check_invariants phis ext index =

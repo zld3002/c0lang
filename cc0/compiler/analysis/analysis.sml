@@ -3,9 +3,6 @@
  * Jason Koenig <jrkoenig@andrew.cmu.edu>
  *)
 
-
-
-
 signature ANALYSIS = 
 sig
    val analyze: bool -> Ast.program -> AAst.afunc list
@@ -17,6 +14,7 @@ struct
    structure Env = SSAEnvironment
    open AAst
    
+   val typeContext = ref (Symbol.empty: Ast.tp Symbol.table)
    fun labelVar env v =
      case Env.lookup env v of
         NONE => raise Fail ("unknown variable, internal bug: " ^ Symbol.name v)
@@ -39,7 +37,9 @@ struct
           | Ast.Result => Result
           | Ast.Null => Null
           | Ast.Alloc(tp) => Alloc(tp)
-          | Ast.Select(e, f) => Select(label env e, f)
+          | Ast.Select(e, f) =>
+              let val Ast.StructName s = Syn.expand_def (Syn.syn_exp (!typeContext) e)
+              in Select(label env e, s, f) end
           | Ast.AllocArray(tp, e) => AllocArray(tp, label env e)
           (*| _ => raise UnsupportedConstruct ("label: " ^ (Ast.Print.pp_exp exp))*)
    (* the same as the above, except will strip the annotation category (requires,
@@ -69,7 +69,7 @@ struct
        | Length (e) => Length (relabel rl e)
        | Old (e) => Old (relabel rl e)
        | AllocArray (tp, e) => AllocArray(tp, relabel rl e)
-       | Select(e, f) => Select (relabel rl e, f)
+       | Select(e, s, f) => Select (relabel rl e, s, f)
        | MarkedE e => MarkedE (Mark.map (relabel rl) e)
    (* the same as the above, except for statements instead of expressions. *)
    fun relabelStmt rl stmt = 
@@ -90,8 +90,8 @@ struct
        | Return e => Return(case e of NONE => NONE
                                     | SOME e' => SOME (relabel rl e'))
        | If (e, s1, s2, phis) => If(relabel rl e, relabelStmt rl s1, relabelStmt rl s2, phis)
-       | While (phis, guard, specs, s, endphis) =>
-            While(phis, relabel rl guard, map (relabel rl) specs, relabelStmt rl s, endphis)
+       | While (phis, guard, specs, mods, s, endphis) =>
+            While(phis, relabel rl guard, map (relabel rl) specs, mods, relabelStmt rl s, endphis)
        | MarkedS s => MarkedS (Mark.map (relabelStmt rl) s)
        
    (* If the expression is just a local variable, retrieve it ignoring marking
@@ -102,7 +102,7 @@ struct
          | Ast.Var v => SOME v
          | _ => NONE     
    fun ssaVarDecl (decls, env, r, b, c) =
-      let fun s' (Ast.VarDecl(v, tp, SOME ex, _), (s,e, r, b, c)) =
+      let fun s' (Ast.VarDecl(v, tp, SOME ex, _), (s, e, r, b, c)) =
                       let val (sp, ep, _, _, _) = ssa (Ast.Assign(NONE, Ast.Var v, ex), e)
                       in (Seq(s, sp), ep, r, b, c) end
             | s' (Ast.VarDecl(v, tp, NONE, _), (s,e, r, b, c)) =
@@ -163,7 +163,7 @@ struct
          in
             (relabelStmt relabeling
             (While(loopPhis, (label envdef e),
-                       map (labelSpec envdef) specs, stm',endPhis)),
+                       map (labelSpec envdef) specs, ModAnything, stm',endPhis)),
              envOverallExit, rets, [], [])
          end
      | ssa ((Ast.Exp e), env) = (Expr (label env e), env, [], [], [])
@@ -182,7 +182,7 @@ struct
                       | (a, Nop) => a
                       | (a, b) => Seq(a,b))
        | If(e, a, b, p) => If(e, simplifySeq a, simplifySeq b, p)
-       | While(p, e, specs, a, p') => While(p, e, specs, simplifySeq a, p')
+       | While(p, e, specs, mods, a, p') => While(p, e, specs, mods, simplifySeq a, p')
        | Nop => Nop
        | Assert _ => stm
        | Error _ => stm
@@ -213,7 +213,7 @@ struct
          | Length (e) => usedE e
          | Old (e) => usedE e
          | AllocArray (tp, e) => usedE e
-         | Select (e, f) => usedE e
+         | Select (e, s, f) => usedE e
          | MarkedE m => usedE (Mark.data m)
      fun usedP' (PhiDef(s,i,l)) =
         S.addList (S.empty, map (fn j => (s,j)) l)
@@ -234,7 +234,7 @@ struct
          | Return (SOME e) => usedE e
          | If (e,a,b,p) =>
              S.union(usedE e, S.union(usedS a, S.union(usedS b, usedP p)))
-         | While (p, e, invs, b, p') =>
+         | While (p, e, invs, mods, b, p') =>
              let val i = foldl S.union S.empty (map usedE invs)
              in S.union(usedE e, S.union(i, S.union(usedS b, usedP (p@p'))))
              end
@@ -255,11 +255,11 @@ struct
                  val (b', cb) = simplifyPhiS' ctx b
                  val (p', cp) = simplifyPhiP ctx p
              in (If(e, a', b', p'), ca orelse cb orelse cp) end
-         | While(pb, e, invs, b, pe) =>
+         | While(pb, e, invs, mods, b, pe) =>
              let val (pb', cpb) = simplifyPhiP ctx pb
                  val (pe', cpe) = simplifyPhiP ctx pe
                  val (b', cb) = simplifyPhiS' ctx b
-             in (While(pb', e, invs, b', pe'), cpb orelse cpe orelse cb) end
+             in (While(pb', e, invs, mods, b', pe'), cpb orelse cpe orelse cb) end
          | Nop => (stm, false)
          | Assert _ => (stm, false)
          | Error _ => (stm, false) (* Is this right? -rjs Dec 8 2012 *)
@@ -294,6 +294,7 @@ struct
                  (Ast.Function(name, rtp, args,
                                SOME (Ast.Markeds (Mark.mark' (stmt, ext))),
                                specs, false, ext))
+             val _ = typeContext := Symbol.digest (SymMap.listItemsi types)
              val (_, initialEnv, _, _, _) = ssaVarDecl (args, Env.empty, [], [], [])
              val args = analyzeArgs initialEnv args
              val reqs = List.filter (fn Ast.Requires _ => true | _ => false) specs

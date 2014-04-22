@@ -6,6 +6,7 @@ sig
       variable type table. Also, Seq is always Seq([], l), i.e. all vardecls
       are StmDecls. Also runs isolation if the first parameter is true. *)
    val preprocess : bool -> Ast.gdecl -> Ast.stm * (Ast.tp SymMap.map)
+   val fold_stacked_defns : Ast.program -> Ast.program
 end
 
 structure Preprocess :> PREPROCESS = 
@@ -14,10 +15,19 @@ struct
    exception UnsupportedConstruct of string
    open Ast 
    
-   fun preprocessArgs args = 
-     let fun addDecl (VarDecl(i, tp, _,_), (remap, types)) =
-        (SymMap.insert (remap, i, i), SymMap.insert(types, i, tp))
-     in foldl addDecl (SymMap.empty, SymMap.empty) args end
+   fun preprocessArgs wL args = 
+     let fun addDecl (VarDecl(i, tp, _,_), (init, remap, types)) =
+        case SymSet.member(wL, i) of 
+           true => 
+              let val i' = Symbol.new (Symbol.name i)
+                  val t = Syn.expand_all tp 
+              in 
+                ((StmDecl(VarDecl(i', tp, SOME (Var i), NONE)))::init,
+                 SymMap.insert (remap, i, i'),
+                 SymMap.insert(SymMap.insert(types, i, t), i', t))
+              end
+         | false => (init, SymMap.insert (remap, i, i), SymMap.insert(types, i, Syn.expand_all tp))
+     in foldl addDecl ([], SymMap.empty, SymMap.empty) args end
    
    fun color mapping e =
       case e of  
@@ -49,7 +59,34 @@ struct
        | Assertion (e, ext) => Assertion (color mapping e, ext)
        
    val empty = SymMap.empty
-   fun merge m m' = SymMap.unionWith (fn (a,b) => a) (m, m')
+   fun merge m m' = SymMap.unionWith (#1) (m, m')
+   
+   
+   fun writtenLocals stmt =
+      case stmt of
+         Assign (oper, Var x, e) => SymSet.singleton x
+       | Assign (oper, Marked m, e) => 
+          (case Mark.data m of 
+              Var x => SymSet.singleton x
+            | _ => SymSet.empty)
+       | Assign (oper, _, e) => SymSet.empty
+       | Exp e => SymSet.empty
+       | Seq (vars, stmts) => 
+           foldl SymSet.union SymSet.empty (map writtenLocals (stmts))
+              (* ignore vars because shadowing is disallowed. *)
+       | StmDecl (VarDecl(v, tp, e, ext)) => SymSet.empty
+       | If (e, s1, s2) => 
+           SymSet.union(writtenLocals s1, writtenLocals s2)
+       | While (e, specs, s) => writtenLocals s
+       | Continue => SymSet.empty
+       | Break => SymSet.empty
+       | Return _ => SymSet.empty
+       | Assert _ => SymSet.empty
+       | Error e => SymSet.empty
+       | Anno annos => SymSet.empty
+       | Markeds m => writtenLocals (Mark.data m)
+       | For _ => raise UnsupportedConstruct "Bad construct"
+       
    
    fun preprocess' (stmt, mapping) =
       case stmt of
@@ -102,7 +139,8 @@ struct
    fun preprocess iso f =
      case f of
         Function(name, rtp, args, SOME stmt, specs, false, ext) =>
-          let val (remap, types) = preprocessArgs args
+          let val wL = writtenLocals stmt
+              val (init, remap, types) = preprocessArgs wL args
               val stmts = 
                  case iso of
                     true => Isolate.iso_stm (Symbol.digest 
@@ -111,9 +149,43 @@ struct
                   | false => [stmt]
                  
               val (stmt', types', remap') = preprocess' (Seq([],stmts), remap)
-          in (stmt',
+              val stmt'' = case Syn.expand_def rtp of 
+                              Void => Seq([],[stmt', Return NONE])
+                            | _ => stmt'
+              val stmt''' = Seq([], init @ [stmt'])
+          in (stmt''',
               SymMap.map Syn.expand_all 
               (SymMap.unionWith (#1) (types, types')))
           end
       | _ => raise UnsupportedConstruct "Bad construct"
+  
+   (* TODO: this doesn't actually work, as the annotations that get checked depend
+      on where the function is called from in the source. So only annotations
+      that are present up to the point where the function is invoked should be actually
+      used. *)
+   fun fold_stacked_defns prog =
+     let
+      val (other, internal_fn) = List.partition
+                                        (fn Ast.Function(_,_,_,_,_,extern,_) => extern | _ => true) prog
+                 (* TODO: check that the sort used in AUtil.collect is stable. *)
+      val funcs = AUtil.collect Symbol.compare
+                         (map (fn f as (Ast.Function(n,_,_,_,_,_,_)) => (n,f)) internal_fn)
+      fun getPreconditions (Ast.Function(_,_,_,_,specs,_,_)) = 
+        List.mapPartial (fn s as (Ast.Requires _) => SOME s | _ => NONE) specs
+      fun getPostconditions (Ast.Function(_,_,_,_,specs,_,_)) = 
+        List.mapPartial (fn s as (Ast.Ensures _) => SOME s | _ => NONE) specs
+      fun getBody (Ast.Function(_,_,_,body,_,_,ext)) = 
+        case body of SOME b => [(b, ext)] | NONE => []
+      fun foreach (n, fs as f_first::_) =
+         let val pre  = List.concat (map getPreconditions (rev fs))
+             val post = List.concat (map getPostconditions fs)
+             val bodyext = List.concat (map getBody fs)
+             val Ast.Function(name, rtp, form, _, specs, extern, ext) = f_first
+             val body' = case bodyext of [] => NONE | [(b,e)] => SOME b
+             
+             val ext' = case bodyext of [] => ext | [(b,e)] => e
+         in
+             Ast.Function(name, rtp, form, body', pre @ post, extern, ext')
+         end
+    in other @ (map foreach funcs) end
 end

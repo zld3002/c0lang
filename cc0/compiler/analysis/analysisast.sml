@@ -11,6 +11,7 @@ sig
    type tp = Ast.tp
    type symbol = Symbol.symbol
    type loc = Symbol.symbol * int
+   type field = symbol * symbol
    datatype aexpr = 
        Local of loc
      | Op of Ast.oper * (aexpr list)
@@ -25,10 +26,12 @@ sig
      | Length of aexpr
      | Old of aexpr
      | AllocArray of tp * aexpr
-     | Select of aexpr * symbol
+     | Select of aexpr * symbol * symbol
      | MarkedE of aexpr Mark.marked
    datatype aphi = 
        PhiDef of (Symbol.symbol * int * (int list))
+   datatype modifies = ModFields of field list | ModAnything
+   
    datatype astmt = 
        Nop
      | Seq of astmt * astmt
@@ -42,11 +45,16 @@ sig
      | Continue
      | Return of aexpr option
      | If of aexpr * astmt * astmt * (aphi list)
-     | While of (aphi list) * aexpr * (aexpr list) * astmt * (aphi list)
+     | While of (aphi list) * aexpr * (aexpr list) * modifies * astmt * (aphi list)
      | MarkedS of astmt Mark.marked
    datatype afunc =
        Function of tp * symbol * (tp SymMap.map) * ((Ast.ident * tp * loc) list) * (aexpr list) * astmt * (aexpr list)
        (*return type, name, type map, formals, requires, body, ensures *)
+       
+   type aprog = afunc list
+   
+   val lookup : aprog -> symbol -> afunc
+   
    structure Print :
 	  sig
 	   val pp_loc : loc -> string
@@ -55,6 +63,7 @@ sig
 		 val pp_verif_aexpr : aexpr -> string
 		 val pp_astmt : astmt -> string
 		 val pp_afunc : afunc -> string
+		 val pp_aprog : aprog -> string
 		 val commas : string -> string list -> string
 	  end
 end
@@ -67,6 +76,7 @@ struct
    type symbol = Symbol.symbol
    type tp = Ast.tp
    type loc = Symbol.symbol * int
+   type field = symbol * symbol
    datatype aexpr = 
        Local of loc
      | Op of Ast.oper * (aexpr list)
@@ -81,10 +91,12 @@ struct
      | Length of aexpr
      | Old of aexpr
      | AllocArray of Ast.tp * aexpr
-     | Select of aexpr * symbol
+     | Select of aexpr * symbol * symbol
      | MarkedE of aexpr Mark.marked
    datatype aphi = 
        PhiDef of (Symbol.symbol * int * (int list))
+   datatype modifies = ModFields of field list | ModAnything
+   
    datatype astmt = 
        Nop
      | Seq of astmt * astmt
@@ -98,11 +110,17 @@ struct
      | Continue
      | Return of aexpr option
      | If of aexpr * astmt * astmt * (aphi list)
-     | While of (aphi list) * aexpr * (aexpr list) * astmt * (aphi list)
+     | While of (aphi list) * aexpr * (aexpr list) * modifies * astmt * (aphi list)
      | MarkedS of astmt Mark.marked
    datatype afunc =
        Function of tp * symbol * (tp SymMap.map) * ((Ast.ident * tp * loc) list) * (aexpr list) * astmt * (aexpr list)
        (*return type, formals, requires, body, ensures *)
+   
+   type aprog = afunc list
+   
+   fun lookup [] _ = raise Fail "Function does not have an analyzed form"
+     | lookup ((desc as Function(_,n,_,_,_,_,_))::rest) f =
+            if Symbol.compare(f,n) = EQUAL then desc else lookup rest f
    structure Print =
    struct
       (*
@@ -111,6 +129,10 @@ struct
 		                     [] => ""
 		                  |  x::[] => x
 		                  |  x::xs => x ^ c ^ (commas c xs)
+		fun newlines c sl = case sl of
+		                     [] => ""
+		                  |  x::[] => x ^ c
+		                  |  x::xs => x ^ c ^ (newlines c xs)
 		
 		fun pp_aphi (PhiDef(sym, i, l)) = 
 		    (Symbol.name sym)^"`"^(Int.toString i) ^
@@ -139,14 +161,14 @@ struct
 		  | pp_aexpr (Call (sym, l)) =
 		       (Symbol.name sym) ^ "(" ^ (commas ", " (map pp_aexpr l)) ^ ")"
 		  | pp_aexpr (Null) = "NULL"
-      | pp_aexpr (Result) = "\\result"
-      | pp_aexpr (Length(e)) = "\\length(" ^ pp_aexpr(e) ^ ")"
-      | pp_aexpr (Old(e)) = "\\old(" ^ pp_aexpr(e) ^ ")"
+          | pp_aexpr (Result) = "\\result"
+          | pp_aexpr (Length(e)) = "\\length(" ^ pp_aexpr(e) ^ ")"
+          | pp_aexpr (Old(e)) = "\\old(" ^ pp_aexpr(e) ^ ")"
 		  | pp_aexpr (Alloc (tp)) =
 		       "alloc("^(Ast.Print.pp_tp tp)^")"
 		  | pp_aexpr (AllocArray (tp, e)) =
 		       "alloc("^(Ast.Print.pp_tp tp)^","^(pp_aexpr e)^")"
-		  | pp_aexpr (Select (e, f)) =
+		  | pp_aexpr (Select (e, s, f)) =
 		       "(" ^ (pp_aexpr e) ^ ")."^(Symbol.name f)
 		  | pp_aexpr (MarkedE me) = pp_aexpr (Mark.data me)
 
@@ -169,23 +191,26 @@ struct
 		  | pp_verif_aexpr (Call (sym, l)) =
 		       (Symbol.name sym) ^ "(" ^ (commas ", " (map pp_verif_aexpr l)) ^ ")"
 		  | pp_verif_aexpr (Null) = "NULL"
-      | pp_verif_aexpr (Result) = "\\result"
-      | pp_verif_aexpr (Length(e)) = "\\length(" ^ pp_verif_aexpr(e) ^ ")"
-      | pp_verif_aexpr (Old(e)) = "\\old(" ^ pp_verif_aexpr(e) ^ ")"
+          | pp_verif_aexpr (Result) = "\\result"
+          | pp_verif_aexpr (Length(e)) = "\\length(" ^ pp_verif_aexpr(e) ^ ")"
+          | pp_verif_aexpr (Old(e)) = "\\old(" ^ pp_verif_aexpr(e) ^ ")"
 		  | pp_verif_aexpr (Alloc (tp)) =
 		       "alloc("^(Ast.Print.pp_tp tp)^")"
 		  | pp_verif_aexpr (AllocArray (tp, e)) =
 		       "alloc("^(Ast.Print.pp_tp tp)^","^(pp_verif_aexpr e)^")"
-		  | pp_verif_aexpr (Select (e, f)) =
+		  | pp_verif_aexpr (Select (e, s, f)) =
 		       "(" ^ (pp_verif_aexpr e) ^ ")."^(Symbol.name f)
 		  | pp_verif_aexpr (MarkedE me) = pp_verif_aexpr (Mark.data me)
 
+    fun pp_mod ModAnything = "*"
+      | pp_mod (ModFields fs) = commas ", " (map (fn (s,f) => Symbol.name s ^"."^ Symbol.name f) fs)
 		fun pp_astmt (Nop) = "(void)"
 		  | pp_astmt (Seq(s, s')) = (pp_astmt s) ^ ";\n" ^ (pp_astmt s')
 		  | pp_astmt (Assert(e)) = "assert(" ^ (pp_aexpr e) ^ ")"
 		  | pp_astmt (Error(e)) = "error(" ^ (pp_aexpr e) ^ ")"
 		  | pp_astmt (Annotation(e)) = "/*@assert(" ^ (pp_aexpr e) ^ ")*/"
-		  | pp_astmt (Def((sym,i), e)) = (Symbol.name sym) ^ "`" ^ (Int.toString i) ^ " := " ^ (pp_aexpr e)
+		  | pp_astmt (Def((sym,i), e)) = (Symbol.name sym) ^ "`" ^ 
+		        (Int.toString i) ^ " := " ^ (pp_aexpr e)
 		  | pp_astmt (Assign(lv, oper, e)) = 
 		        (pp_aexpr lv) ^ " "^
 		          (case oper of NONE => "" | SOME oper' => Ast.Print.pp_oper oper')
@@ -199,15 +224,23 @@ struct
 		                                   ^(pp_astmt s1) ^ "\n} else {\n"
 		                                   ^ (pp_astmt s2) ^ "\n}"
 		                                   ^ (commas ";\n" (map pp_aphi phis))
-		  | pp_astmt (While (p1, e, specs, stm, p2)) = 
+		  | pp_astmt (While (p1, e, specs, modif, stm, p2)) = 
 		     "while\n"^
 		      (commas ";\n" (map pp_aphi p1))
 		      ^"\n" ^(commas ";\n" (map (fn s => "//@loop_invariant" ^ (pp_aexpr s)) specs))
+		      ^"\n//@modifies " ^ (pp_mod modif) ^ ";"
 		      ^"\n(" ^ (pp_aexpr e) ^") {\n"
 		          ^ (pp_astmt stm) ^ "\n}" ^ (commas ";\n" (map pp_aphi p2))
 		  | pp_astmt (MarkedS ms) = pp_astmt (Mark.data ms)
 		
-		fun pp_afunc (Function (rtp, name, map, formals, requires, body, ensures))=
-		  pp_astmt body
+		fun pp_afunc (Function (rtp, name, tp_map, formals, requires, body, ensures))=
+		  Ast.Print.pp_tp rtp ^ " " ^ (Symbol.name name) ^ "(...)\n" ^
+		  (newlines "\n" (map (fn req => "//@requires " ^ pp_aexpr req ^ ";") requires)) ^
+		  (newlines "\n" (map (fn ens => "//@ensures " ^ pp_aexpr ens ^ ";") ensures)) ^
+		  "{\n" ^
+		  pp_astmt body ^
+		  "\n}"
+		
+		fun pp_aprog funcs = newlines "\n" (map pp_afunc funcs)
 		end
 end

@@ -10,6 +10,7 @@ sig
     val syn_decls : Ast.tp Symbol.table -> Ast.vardecl list -> Ast.tp Symbol.table
     val expand_def : Ast.tp -> Ast.tp
     val expand_all : Ast.tp -> Ast.tp
+    val lub : Ast.tp -> Ast.tp -> Ast.tp
 
     (* creating new temporary variable declarations, unitialized or initialized *)
     val new_tmp : Ast.tp -> Mark.ext option -> Ast.vardecl * Ast.exp
@@ -46,12 +47,15 @@ struct
     | lub (A.Pointer(tp)) (A.Pointer(A.Any)) = A.Pointer(tp)
     | lub (A.TypeName(t1)) tp2 = lub (tp_expand t1) tp2
     | lub tp1 (A.TypeName(t2)) = lub tp1 (tp_expand t2)
+    | lub A.Any tp2 = tp2
+    | lub tp1 A.Any = tp1
     | lub tp1 tp2 = tp1  (* must be equal *)
 
   (* syn_var env id = tp, where env |- id : tp *)
   fun syn_var env id =
       case Symbol.look env id
          of SOME(tp) => tp
+          | NONE => raise Fail ("symbol " ^ Symbol.name id ^ " not found")
 
   (* syn_field fields f = tp, where f : tp in fields *)
   fun syn_field (A.Field(f',tp,_)::fields) f =

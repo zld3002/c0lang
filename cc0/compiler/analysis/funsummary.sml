@@ -67,7 +67,7 @@ struct
     | Op(oper,es) => Op(oper,List.map (replace_local loc_map) es)
     | Call(s,es) => Call(s,List.map (replace_local loc_map) es)
     | Length e => Length(replace_local loc_map e)
-    | Select(e,s) => Select(replace_local loc_map e,s)
+    | Select(e,s,f) => Select(replace_local loc_map e,s,f)
     | MarkedE m => replace_local loc_map (Mark.data m)
     | _ => e
 
@@ -78,7 +78,7 @@ struct
     | Call(s,es) => Call(s,List.map (replace_result l) es)
     | Result => Local(sym,gen)
     | Length e => Length(replace_result l e)
-    | Select(e,s) => Select(replace_result l e,s)
+    | Select(e,s,f) => Select(replace_result l e,s,f)
     | MarkedE m => replace_result l (Mark.data m)
     | _ => e
 
@@ -151,7 +151,7 @@ struct
     | Length e => can_inline_exp e funcs
     | Old e => can_inline_exp e funcs
     | AllocArray(_,e) => can_inline_exp e funcs
-    | Select(e,_) => can_inline_exp e funcs
+    | Select(e,_,_) => can_inline_exp e funcs
     | MarkedE m => can_inline_exp (Mark.data m) funcs
     | _ => true
 
@@ -209,7 +209,7 @@ struct
     | Length e => Length(alpha_vary_exp alpha e)
     | Old e => Old(alpha_vary_exp alpha e)
     | AllocArray(t,e) => AllocArray(t,alpha_vary_exp alpha e)
-    | Select(e,s) => Select(alpha_vary_exp alpha e,s)
+    | Select(e,s,f) => Select(alpha_vary_exp alpha e,s,f)
     | MarkedE m => MarkedE(Mark.mark' (alpha_vary_exp alpha (Mark.data m),Mark.ext m))
     | _ => e
 
@@ -227,9 +227,9 @@ struct
                              alpha_vary_stm alpha s1,
                              alpha_vary_stm alpha s2,
                              List.map (alpha_vary_phi alpha) phis)
-    | While(cphis,e,invs,s,bphis) => While(List.map (alpha_vary_phi alpha) cphis,
+    | While(cphis,e,invs, mods,s,bphis) => While(List.map (alpha_vary_phi alpha) cphis,
                                            alpha_vary_exp alpha e,
-                                           List.map (alpha_vary_exp alpha) invs,
+                                           List.map (alpha_vary_exp alpha) invs,mods,
                                            alpha_vary_stm alpha s,
                                            List.map (alpha_vary_phi alpha) bphis)
     | MarkedS m => MarkedS(Mark.mark' (alpha_vary_stm alpha (Mark.data m),Mark.ext m))
@@ -291,7 +291,7 @@ struct
     | Length e => get_max_gen_exp e
     | Old e => get_max_gen_exp e
     | AllocArray(_,e) => get_max_gen_exp e
-    | Select(e,_) => get_max_gen_exp e
+    | Select(e,_,_) => get_max_gen_exp e
     | MarkedE m => get_max_gen_exp (Mark.data m)
     | _ => 0
 
@@ -310,7 +310,7 @@ struct
     | If(e,s1,s2,phis) =>
       Int.max(get_max_gen_exp e,
         Int.max(get_max_gen_stm s1,get_max_gen_stm s2))
-    | While(cphis,e,invs,s,bphis) =>
+    | While(cphis,e,invs, mods,s,bphis) =>
       Int.max(get_max_gen_exp e,get_max_gen_stm s)
     | MarkedS m => get_max_gen_stm (Mark.data m)
     | _ => 0
