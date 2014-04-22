@@ -1,0 +1,44 @@
+$(SML_LIB)/basis/basis.mlb
+$(SML_LIB)/smlnj-lib/PP/pp-lib.mlb
+$(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+
+local
+  ann "nonexhaustiveMatch ignore" in 
+    HashTable/my-hash-table-lib.mlb
+    HashCons/hash-cons-lib.mlb
+    utility.sml
+    intset.sml
+    syntax.sml	
+    term.sml
+    check.sml
+    transform.sml
+    rename.sml
+    action.sml
+    evaluator-sig.sml
+    mcallester.sml
+    bulp.sml
+  end
+
+in
+    signature UTILITY
+    signature SYNTAX
+    signature TERM
+    signature CHECK
+    signature TRANSFORM
+    signature RENAME
+    signature ACTION
+    signature EVALUATOR
+    signature BULP
+    signature PREDICATE
+
+    structure Utility
+    structure IntSet
+    structure Syntax
+    structure Term
+    structure Check
+    structure Transform
+    structure Rename
+    structure Action
+    structure McAllester
+    functor Bulp
+end

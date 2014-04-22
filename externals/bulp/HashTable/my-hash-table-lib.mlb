@@ -1,0 +1,12 @@
+$(SML_LIB)/basis/basis.mlb
+$(SML_LIB)/smlnj-lib/PP/pp-lib.mlb
+$(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+
+local
+  hash-table-sig.sml
+  hash-table-rep.sml
+  hash-table.sml
+in
+  signature MY_HASH_TABLE
+  structure MyHashTable
+end

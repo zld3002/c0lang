@@ -1,0 +1,25 @@
+Library
+  signature HASH_CONS
+  signature HASH_CONS_MAP
+  signature HASH_CONS_SET
+
+  structure HashCons
+  structure HashConsAtom
+  structure HashConsMap
+  structure HashConsString
+  structure HashConsSet
+
+  functor HashConsGroundFn
+is
+  hash-cons-sig.sml
+  hash-cons.sml
+  hash-cons-ground-fn.sml
+  hash-cons-atom.sml
+  hash-cons-map-sig.sml
+  hash-cons-set-sig.sml
+  hash-cons-set.sml
+  hash-cons-string.sml
+  hash-cons-map.sml
+  $/basis.cm
+  $/smlnj-lib.cm
+

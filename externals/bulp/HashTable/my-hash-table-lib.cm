@@ -1,0 +1,16 @@
+(* my-hash-table-lib.cm
+ *
+ *)
+
+Library
+
+  signature MY_HASH_TABLE
+
+  structure MyHashTable
+is
+  hash-table-sig.sml
+  hash-table.sml
+  hash-table-rep.sml
+
+  $/basis.cm
+  $/smlnj-lib.cm
