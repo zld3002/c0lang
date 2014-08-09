@@ -294,7 +294,8 @@ struct
                  (Ast.Function(name, rtp, args,
                                SOME (Ast.Markeds (Mark.mark' (stmt, ext))),
                                specs, false, ext))
-             val _ = typeContext := Symbol.digest (SymMap.listItemsi types)
+             (* val _ = typeContext := Symbol.digest (SymMap.listItemsi types) *)
+             val _ = typeContext := Symbol.digest (SymMap.listItemsi (SymMap.insert(types, Symbol.symbol "\\result", rtp)))
              val (_, initialEnv, _, _, _) = ssaVarDecl (args, Env.empty, [], [], [])
              val args = analyzeArgs initialEnv args
              val reqs = List.filter (fn Ast.Requires _ => true | _ => false) specs
