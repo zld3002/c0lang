@@ -32,3 +32,5 @@
 // http://developer.apple.com/library/mac/#documentation/DeveloperTools/gcc-4.0.1/cpp/Swallowing-the-Semicolon.html)
 #define cc0_assert(cond, msg) do { if (!(cond)) { c0_abort(c0_string_tocstr(msg)); } } while(0)
 
+#define cc0_tag(ty, tyrep, e) (c0_tag_ptr(tyrep, e))
+#define cc0_untag(ty, tyrep, e) ((ty)c0_untag_ptr(tyrep, e))

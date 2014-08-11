@@ -5,7 +5,8 @@
 // contract violation would occur with -d
 
 int f (int x, int y)
-//@ensures \result == \old(x)+1;
+/* \old no longer supported */
+// //@ensures \result == \old(x)+1;
 {
   x = 0;
   y = 1;

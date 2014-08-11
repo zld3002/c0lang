@@ -24,7 +24,7 @@ datatype terminal =
  | COMMA | SEMI
  | ANNO_BEGIN | ANNO_END
  | REQUIRES | ENSURES | LOOP_INVARIANT
- | BS_RESULT | BS_LENGTH | BS_OLD
+ | BS_RESULT | BS_LENGTH | BS_HASTAG
  | PRAGMA of string | EOF | EOL | LEX_ERROR
 
 val toString : terminal -> string
@@ -52,7 +52,7 @@ datatype terminal =
  | COMMA | SEMI
  | ANNO_BEGIN | ANNO_END
  | REQUIRES | ENSURES | LOOP_INVARIANT
- | BS_RESULT | BS_LENGTH | BS_OLD
+ | BS_RESULT | BS_LENGTH | BS_HASTAG
  | PRAGMA of string | EOF | EOL | LEX_ERROR
 
 fun toString t = case t of
@@ -76,7 +76,7 @@ fun toString t = case t of
  | COMMA => "," | SEMI => ";"
  | ANNO_BEGIN => "/*@" | ANNO_END => "@*/"
  | REQUIRES => "requires" | ENSURES => "ensures" | LOOP_INVARIANT => "loop_invariant"
- | BS_RESULT => "\\result" | BS_LENGTH => "\\length" | BS_OLD => "\\old"
+ | BS_RESULT => "\\result" | BS_LENGTH => "\\length" | BS_HASTAG => "\\hastag"
  | PRAGMA(s) => "#<pragma>" | EOF => "<eof>" | EOL => "<eol>" | LEX_ERROR => "<lex error>"
 
 end

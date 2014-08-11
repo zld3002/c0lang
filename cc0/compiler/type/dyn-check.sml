@@ -33,8 +33,7 @@ struct
     (* tfm_test env e = (ds, ss, e')
      * Assumes env |- e : tp for some tp
      * Ensures env, ds |- ss stm and env, ds |- e' : tp
-     * Eliminates \old(e) and \result, keep \length(e)
-     * \old(e) ~~> (tp tmp, tmp = e, tmp) where tmp is fresh
+     * Eliminates \result, keep \length(e), \hastag(tp,e)
      * \result ~~> _result
      *)
     fun tfm_test env (e as A.Var _) = ([],[],e)
@@ -57,15 +56,23 @@ struct
       | tfm_test env (A.AllocArray(tp,e)) =
 	let val (ds, ss, e') = tfm_test env e
          in (ds, ss, A.AllocArray(tp, e')) end
+      | tfm_test env (A.Cast(tp,e)) =
+        let val (ds, ss, e') = tfm_test env e
+        in (ds, ss, A.Cast(tp, e')) end
       | tfm_test env (A.Result) = ([], [], result_var)
       | tfm_test env (A.Length(e)) =
 	let val (ds, ss, e') = tfm_test env e
 	in (ds, ss, A.Length(e')) end
+      | tfm_test env (A.Hastag(tp, e)) =
+        let val (ds, ss, e') = tfm_test env e
+        in (ds, ss, A.Hastag(tp, e')) end
+      (* 
       | tfm_test env (A.Old(e)) =
 	let val (d,t) = Syn.new_tmp (Syn.syn_exp env e) NONE (* fix NONE? -fp *)
 	    val (ds, ss, e') = tfm_test env e
 	(* \old cannot be nested; transform anyway for \result *)
 	in (ds @ [d], ss @ [A.Assign(NONE, t, e')], t) end
+      *)
       | tfm_test env (A.Marked(marked_exp)) =
 	(* simple heuristic for preserving location info *)
 	let 
@@ -216,9 +223,13 @@ struct
       | fv_exp (e as A.Alloc _) ext = e
       | fv_exp (A.AllocArray(t, e)) ext =
 	  A.AllocArray(t, fv_exp e ext)
+      | fv_exp (A.Cast(t, e)) ext =
+          A.Cast(t, fv_exp e ext)
       | fv_exp (e as A.Result) ext = e
       | fv_exp (A.Length(e)) ext =
 	  A.Length(fv_exp e ext)
+      | fv_exp (A.Hastag(tp, e)) ext =
+          A.Hastag(tp, fv_exp e ext)
       (* A.Old should be impossible *)
       | fv_exp (A.Marked(marked_exp)) ext =
 	  A.Marked(Mark.mark'(fv_exp (Mark.data marked_exp) (Mark.ext marked_exp),

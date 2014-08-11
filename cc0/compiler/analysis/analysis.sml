@@ -32,7 +32,7 @@ struct
           | Ast.False => BoolConst false
           | Ast.StringConst s => StringConst s
           | Ast.CharConst c => CharConst c
-          | Ast.Old e => Old(label env e)
+          | Ast.Hastag(tp, e) => Hastag(tp, label env e)
           | Ast.Length e => Length(label env e)
           | Ast.Result => Result
           | Ast.Null => Null
@@ -41,6 +41,7 @@ struct
               let val Ast.StructName s = Syn.expand_def (Syn.syn_exp (!typeContext) e)
               in Select(label env e, s, f) end
           | Ast.AllocArray(tp, e) => AllocArray(tp, label env e)
+          | Ast.Cast(tp, e) => Cast(tp, label env e)
           (*| _ => raise UnsupportedConstruct ("label: " ^ (Ast.Print.pp_exp exp))*)
    (* the same as the above, except will strip the annotation category (requires,
       ensures, etc.) off, then label. *)
@@ -67,8 +68,9 @@ struct
        | Null => exp
        | Result => exp
        | Length (e) => Length (relabel rl e)
-       | Old (e) => Old (relabel rl e)
+       | Hastag (tp, e) => Hastag (tp, relabel rl e)
        | AllocArray (tp, e) => AllocArray(tp, relabel rl e)
+       | Cast(tp, e) => Cast(tp, relabel rl e)
        | Select(e, s, f) => Select (relabel rl e, s, f)
        | MarkedE e => MarkedE (Mark.map (relabel rl) e)
    (* the same as the above, except for statements instead of expressions. *)
@@ -211,8 +213,9 @@ struct
          | Null => S.empty
          | Result => S.empty
          | Length (e) => usedE e
-         | Old (e) => usedE e
+         | Hastag (tp, e) => usedE e
          | AllocArray (tp, e) => usedE e
+         | Cast(tp, e) => usedE e
          | Select (e, s, f) => usedE e
          | MarkedE m => usedE (Mark.data m)
      fun usedP' (PhiDef(s,i,l)) =

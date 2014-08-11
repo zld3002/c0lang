@@ -63,6 +63,8 @@ fun chk_exp (A.Var _) ext = ()  (* L1 *)
     ( ErrorMsg.error ext ("cell allocation not supported in L2") ; raise ErrorMsg.Error )
   | chk_exp (A.AllocArray _) ext =
     ( ErrorMsg.error ext ("array allocation not supported in L2") ; raise ErrorMsg.Error )
+  | chk_exp (A.Cast _) ext =
+    ( ErrorMsg.error ext ("cast not supported in L2") ; raise ErrorMsg.Error )
   | chk_exp (A.Marked(marked_exp)) ext =
       chk_exp (Mark.data marked_exp) (Mark.ext marked_exp)
   | chk_exp e ext = (* impossible? *)

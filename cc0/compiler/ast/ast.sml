@@ -38,9 +38,10 @@ sig
     | FunCall of ident * exp list (* g(e1,...,en) *)
     | Alloc of tp		  (* alloc(tp) *)
     | AllocArray of tp * exp	  (* alloc_array(tp,e) *)
+    | Cast of tp * exp            (* (tp)e *)
     | Result			  (* \result, in @ensures *)
     | Length of exp		  (* \length(e), in contracts *)
-    | Old of exp		  (* \old(e), in @ensures *)
+    | Hastag of tp * exp          (* \hastype(tp,e), in contracts *)
     | Marked of exp Mark.marked	  (* mark with source region info *)
 
   (* Statements *)
@@ -156,9 +157,10 @@ struct
     | FunCall of ident * exp list (* g(e1,...,en) *)
     | Alloc of tp		  (* alloc(tp) *)
     | AllocArray of tp * exp	  (* alloc_array(tp,e) *)
+    | Cast of tp * exp            (* (tp)e *)
     | Result			  (* \result, in @ensures *)
     | Length of exp		  (* \length(e), in contracts *)
-    | Old of exp		  (* \old(e), in @ensures *)
+    | Hastag of tp * exp          (* \hastag(tp, e), in contracts *)
     | Marked of exp Mark.marked	  (* mark with source region info *)
 
   (* Statements *)
@@ -290,9 +292,10 @@ struct
 	  pp_ident id ^ "(" ^ pp_exps es ^ ")"
       | pp_exp (Alloc(tp)) = "alloc" ^ "(" ^ pp_tp tp ^ ")"
       | pp_exp (AllocArray(tp, exp)) = "alloc_array" ^ "(" ^ pp_tp tp ^ ", " ^ pp_exp exp ^ ")"
+      | pp_exp (Cast(tp, exp)) = "(" ^ "(" ^ pp_tp tp ^ ")" ^ pp_exp exp ^ ")"
       | pp_exp (Result) = "\\result"
       | pp_exp (Length(exp)) = "\\length" ^ "(" ^ pp_exp exp ^ ")"
-      | pp_exp (Old(exp)) = "\\old" ^ "(" ^ pp_exp exp ^ ")"
+      | pp_exp (Hastag(tp,exp)) = "\\hastag" ^ "(" ^ pp_tp tp ^ "," ^ pp_exp exp ^ ")"
       | pp_exp (Marked(marked_exp)) =
 	  pp_exp (Mark.data marked_exp)
 

@@ -23,6 +23,7 @@ typedef char c0_char;
 typedef void* c0_string;                  // NULL is the empty string
 typedef struct c0_array_header* c0_array; // NULL is a 0-element array 
 typedef void* c0_pointer;                 // NULL is a null pointer
+typedef struct c0_tagged_struct* c0_tagged_ptr;
 
 /* Initialization and control */
 
@@ -66,6 +67,11 @@ void* c0_array_sub(c0_array a, int idx, size_t elemsize);
 c0_int c0_array_length(c0_array a);
 #endif
 
+/* Tagged values of type C1 type void* */
+c0_tagged_ptr c0_tag_ptr(char* tyrep, c0_pointer a);
+void* c0_untag_ptr(char* tyrep, c0_tagged_ptr p);
+c0_bool c0_tagged_eq(c0_tagged_ptr p, c0_tagged_ptr q);
+c0_bool c0_hastag(char* tyrep, c0_tagged_ptr q);
 
 /* Primitive operations on characters and strings */
 

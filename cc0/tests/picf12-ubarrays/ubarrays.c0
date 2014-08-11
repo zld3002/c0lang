@@ -85,7 +85,7 @@ void uba_resize(uba L, int new_limit)
 //@requires is_uba(L);
 //@requires L->size < new_limit;
 //@ensures is_uba(L);
-//@ensures L->limit == new_limit && L->size == \old(L->size);
+//@ensures L->limit == new_limit; /* && L->size == \old(L->size); */
 //@ensures L->size < L->limit;
 {
   elem[] B = alloc_array(elem, new_limit);

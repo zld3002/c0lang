@@ -505,6 +505,9 @@ struct
       in trans_exp env vlist e1 ext
          @ [V.Inst(V.newarray(size), A.Print.pp_exp(e), ext)]
       end
+    | trans_exp env vlist (e as A.Cast(t, e1)) ext =
+      ( ErrorMsg.error NONE ("cast not supported by c0vm") ;
+        raise ErrorMsg.Error )
     | trans_exp env vlist (e as A.Length(e1)) ext =
         trans_exp env vlist e1 ext
         @ [V.Inst(V.arraylength, A.Print.pp_exp(e), ext)]

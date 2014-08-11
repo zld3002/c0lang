@@ -65,8 +65,9 @@ struct
      | Op(oper,es) => ignore(List.map (declare_exp decl) es)
      | Call(f,es) => ignore(List.map (declare_exp decl) es)
      | Length e => declare_exp decl e
-     | Old e => declare_exp decl e
+     | Hastag(_, e) => declare_exp decl e
      | AllocArray(_,e) => declare_exp decl e
+     | Cast(_,e) => declare_exp decl e
      | Select(e,s,f) => declare_exp decl e
      | MarkedE m => declare_exp decl (Mark.data m)
      | _ => ()
@@ -112,8 +113,9 @@ struct
     | Call(f,es) => Call(f,List.map (replace_result retval) es)
     | Result => retval
     | Length e => Length(replace_result retval e)
-    | Old e => Old(replace_result retval e)
+    | Hastag(t,e) => Hastag(t, replace_result retval e)
     | AllocArray(t,e) => AllocArray(t,replace_result retval e)
+    | Cast(t,e) => Cast(t, replace_result retval e)
     | Select(e,s,f) => Select(replace_result retval e,s,f)
     | MarkedE m => replace_result retval (Mark.data m)
     | _ => exp
@@ -156,8 +158,9 @@ struct
     | Op(oper,es) => Op(oper, List.map (replace_inv phis index switch) es)
     | Call(s,es) => Call(s,List.map (replace_inv phis index switch) es)
     | Length e => Length(replace_inv phis index switch e)
-    | Old e => Old(replace_inv phis index switch e)
+    | Hastag(t,e) => Hastag(t, replace_inv phis index switch e)
     | AllocArray(t,e) => AllocArray(t,replace_inv phis index switch e)
+    | Cast(t,e) => Cast(t,replace_inv phis index switch e)
     | Select(e,s,f) => Select(replace_inv phis index switch e,s,f)
     | MarkedE m =>
         MarkedE(Mark.mark' (replace_inv phis index switch (Mark.data m),Mark.ext m))
@@ -254,6 +257,7 @@ struct
               (check ext (array_length (fn l => Op(Ast.LESS,[e2,l])) e1))
           | _ => [])
     | AllocArray(t,e) => check ext (Op(Ast.GEQ,[e,ZERO]))
+    | Cast(t,e) => []
     | Select(e,s, field) => process_exp ext check e
     | Call(f,es) =>
         List.foldr (fn (e,l) => (process_exp ext check e) @ l) [] es

@@ -101,9 +101,10 @@ struct
              of SOME(A.Struct(s', SOME(fields), _, _)) => syn_field fields f))
     | syn_exp env (A.Alloc(tp)) = A.Pointer(tp)
     | syn_exp env (A.AllocArray(tp,e)) = A.Array(tp)
+    | syn_exp env (A.Cast(tp,e)) = tp
     | syn_exp env (A.Result) = syn_var env (Symbol.symbol "\\result")
     | syn_exp env (A.Length(e)) = A.Int
-    | syn_exp env (A.Old(e)) = syn_exp env e
+    | syn_exp env (A.Hastag(tp,e)) = A.Bool
     | syn_exp env (A.Marked(marked_exp)) =
         syn_exp env (Mark.data marked_exp)
 

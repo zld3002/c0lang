@@ -149,8 +149,9 @@ struct
                    (can_inline_exp e funcs) andalso b) true es)
       end
     | Length e => can_inline_exp e funcs
-    | Old e => can_inline_exp e funcs
+    | Hastag(_,e) => can_inline_exp e funcs (* ??? Aug 11, 2014 -fp *)
     | AllocArray(_,e) => can_inline_exp e funcs
+    | Cast(tp, e) => can_inline_exp e funcs (* ??? Aug 11, 2014 -fp *)
     | Select(e,_,_) => can_inline_exp e funcs
     | MarkedE m => can_inline_exp (Mark.data m) funcs
     | _ => true
@@ -207,8 +208,9 @@ struct
     | Op(oper,es) => Op(oper,List.map (alpha_vary_exp alpha) es)
     | Call(sym,es) => Call(alpha_vary_symbol alpha sym,List.map (alpha_vary_exp alpha) es)
     | Length e => Length(alpha_vary_exp alpha e)
-    | Old e => Old(alpha_vary_exp alpha e)
+    | Hastag(t,e) => Hastag(t, alpha_vary_exp alpha e)
     | AllocArray(t,e) => AllocArray(t,alpha_vary_exp alpha e)
+    | Cast(t,e) => Cast(t, alpha_vary_exp alpha e)
     | Select(e,s,f) => Select(alpha_vary_exp alpha e,s,f)
     | MarkedE m => MarkedE(Mark.mark' (alpha_vary_exp alpha (Mark.data m),Mark.ext m))
     | _ => e
@@ -289,8 +291,9 @@ struct
     | Op(_,es) => List.foldr Int.max 0 (List.map get_max_gen_exp es)
     | Call(_,es) => List.foldr Int.max 0 (List.map get_max_gen_exp es)
     | Length e => get_max_gen_exp e
-    | Old e => get_max_gen_exp e
+    | Hastag(_,e) => get_max_gen_exp e
     | AllocArray(_,e) => get_max_gen_exp e
+    | Cast(_,e) => get_max_gen_exp e
     | Select(e,_,_) => get_max_gen_exp e
     | MarkedE m => get_max_gen_exp (Mark.data m)
     | _ => 0

@@ -17,6 +17,12 @@ analysis/env.sml,0
 
 analysis/error.sml,0
 
+analysis/funsummary.sml,0
+
+analysis/gcl.sml,0
+
+analysis/modifies.sml,0
+
 analysis/nullity.sml,0
 
 analysis/preprocess.sml,0
@@ -26,6 +32,10 @@ analysis/purity.sml,0
 analysis/safety.sml,0
 
 analysis/top.sml,0
+
+analysis/trans.sml,0
+
+analysis/util.sml,0
 
 analysis/vcgen.sml,0
 
@@ -51,8 +61,6 @@ parse/stream.sml,0
 
 parse/terminal.sml,0
 
-top/buildid.sml,0
-
 top/cstop.sml,0
 
 top/flags.sml,0
@@ -68,6 +76,18 @@ type/iso.sml,0
 type/print-c-compact.sml,0
 
 type/print-csharp.sml,0
+
+type/std-c0.sml,0
+
+type/std-l1.sml,0
+
+type/std-l2.sml,0
+
+type/std-l3.sml,0
+
+type/std-l4.sml,0
+
+type/std-sig.sml,0
 
 type/symtab.sml,0
 
@@ -88,3 +108,5 @@ util/safe-io.sml,0
 util/symbol.sml,0
 
 util/word32.sml,0
+
+warn/warn.sml,0

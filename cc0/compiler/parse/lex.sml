@@ -294,7 +294,7 @@ fun lex_code (pos, charstream, code_state) =
          (case run_alpha (1, [], cs) of
              ("result", n, cs) => (T.BS_RESULT, pos, pos+n, cs, s)
            | ("length", n, cs) => (T.BS_LENGTH, pos, pos+n, cs, s)
-           | ("old", n, cs) =>    (T.BS_OLD,    pos, pos+n, cs, s)
+           | ("hastag", n, cs) => (T.BS_HASTAG, pos, pos+n, cs, s)
            | (bs, n, cs) =>       (T.LEX_ERROR, pos, pos+n, cs, s)
              before error (pos, pos)
                 ("illegal escaped identifier: '\\" ^ bs ^ "'"))

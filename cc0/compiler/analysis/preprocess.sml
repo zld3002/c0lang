@@ -46,9 +46,10 @@ struct
        | FunCall (f, el) => FunCall(f, map (color mapping) el)
        | Alloc _ => e
        | AllocArray (t, e') => AllocArray(t, color mapping e')
+       | Cast(t, e') => Cast(t, color mapping e')
        | Result => e
        | Length e' => Length(color mapping e')
-       | Old e' => Old(color mapping e')
+       | Hastag(t, e') => Hastag(t, color mapping e')
        | Marked m => Marked(Mark.map (color mapping) m)
    
    fun specColor mapping s =

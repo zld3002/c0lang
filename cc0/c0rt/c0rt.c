@@ -4,7 +4,7 @@
 #include <limits.h>
 #include <gc.h>
 #include <c0runtime.h>
-#include <strings.h> // defines bzero()
+#include <strings.h> // defines bzero(), strcmp
 
 void c0_runtime_init() {
     GC_INIT();
@@ -124,4 +124,45 @@ void* c0_array_sub(c0_array A, c0_int i, size_t elemsize) {
 
 c0_int c0_array_length(c0_array A) {
   return A ? A->count : 0;
+}
+
+struct c0_tagged_struct {
+  char* tyrep;
+  void* ptr;
+};
+
+c0_tagged_ptr c0_tag_ptr(char* tyrep, c0_pointer a) {
+  if (a == NULL)
+    return NULL;
+  else {
+    c0_tagged_ptr p = GC_MALLOC(sizeof(struct c0_tagged_struct));
+    if (!p) c0_abort_mem("allocation failed");
+    p->tyrep = tyrep;
+    p->ptr = a;
+    return p;
+  }
+}
+
+void* c0_untag_ptr(char* tyrep, c0_tagged_ptr p) {
+  if (p == NULL)
+    return NULL;
+  else if (strcmp(tyrep, p->tyrep) == 0)
+    return p->ptr;
+  else
+    c0_abort_mem("untagging pointer failed");
+}
+
+/* we don't compare tags since pointers with different
+ * tags cannot be equal anyway */
+c0_bool c0_tagged_eq(c0_tagged_ptr p, c0_tagged_ptr q) {
+  void* raw_p = (p == NULL) ? p : p->ptr;
+  void* raw_q = (q == NULL) ? q : q->ptr;
+  return raw_p == raw_q;
+}
+
+c0_bool c0_hastag(char* tyrep, c0_tagged_ptr p) {
+  if (p == NULL)
+    return true;
+  else
+    return strcmp(tyrep, p->tyrep) == 0;
 }

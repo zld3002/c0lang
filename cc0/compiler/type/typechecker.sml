@@ -50,6 +50,7 @@ struct
     | chk_tp (A.String) ext = ()
     | chk_tp (A.Char) ext = ()
     | chk_tp (A.Pointer(A.Any)) ext = () (* can this be asked? *)
+    | chk_tp (A.Pointer(A.Void)) ext = () (* void* allowed in C1 *)
     | chk_tp (A.Pointer(tp)) ext = chk_tp tp ext
     | chk_tp (A.Array(tp)) ext = chk_tp tp ext
     | chk_tp (A.StructName(sid)) ext = () (* need not be defined! *)
@@ -115,6 +116,7 @@ struct
     | chk_small (A.String) ext = ()
     | chk_small (A.Char) ext = ()
     | chk_small (A.Pointer(A.Any)) ext = () (* needed if "NULL;" is a statement *)
+    | chk_small (A.Pointer(A.Void)) ext = () (* void* is a small type *)
     | chk_small (A.Pointer(tp)) ext = chk_tp tp ext (* component can be any valid type *)
     | chk_small (A.Array(tp)) ext = chk_tp tp ext (* component can be any valid type *)
     | chk_small (tp as A.StructName _) ext =
@@ -271,9 +273,10 @@ struct
     | lv_exp defs (A.FunCall(f, es)) ext = List.app (fn e => lv_exp defs e ext) es
     | lv_exp defs (A.Alloc(tp)) ext = ()
     | lv_exp defs (A.AllocArray(tp, e)) ext = lv_exp defs e ext
+    | lv_exp defs (A.Cast(tp, e)) ext = lv_exp defs e ext
     | lv_exp defs (A.Result) ext = ()
     | lv_exp defs (A.Length(e)) ext = lv_exp defs e ext
-    | lv_exp defs (A.Old(e)) ext = lv_exp defs e ext
+    | lv_exp defs (A.Hastag(tp, e)) ext = lv_exp defs e ext
     | lv_exp defs (A.Marked(marked_exp)) ext =
         lv_exp defs (Mark.data marked_exp) (Mark.ext marked_exp)
 
@@ -415,9 +418,7 @@ struct
   (* Check we do not assign to variables appearing in postcondition
    * pvars - postcondition variables *)
 
-  (* pv_exp pvars e = pvars', where pvars' = pvars + vars(e)
-   * Variables in arguments to \old(_) are evaluated in initial
-   * environment, so they are ignored here *)
+  (* pv_exp pvars e = pvars', where pvars' = pvars + vars(e) *)
   fun pv_exp pvars (A.Var(x)) = Symbol.add pvars x
     | pv_exp pvars (A.IntConst _) = pvars
     | pv_exp pvars (A.StringConst _) = pvars
@@ -430,10 +431,10 @@ struct
     | pv_exp pvars (A.FunCall(g, es)) = pv_exps pvars es
     | pv_exp pvars (A.Alloc _) = pvars
     | pv_exp pvars (A.AllocArray(tp, e)) = pv_exp pvars e
+    | pv_exp pvars (A.Cast(tp, e)) = pv_exp pvars e
     | pv_exp pvars (A.Result) = pvars
     | pv_exp pvars (A.Length(e)) = pv_exp pvars e
-    (* variables in \old(e) are guarded and create no conflict *)
-    | pv_exp pvars (A.Old(e)) = pvars
+    | pv_exp pvars (A.Hastag(tp, e)) = pv_exp pvars e
     | pv_exp pvars (A.Marked(marked_exp)) =
         pv_exp pvars (Mark.data marked_exp)
   and pv_exps pvars nil = pvars
@@ -487,7 +488,7 @@ struct
 
   (* Checking that annotations are used correctly: @requires and @ensures
    * in function headers, @loop_invariant in loop headers, and @assert
-   * before statements.  Also, \old(_) and \result can only be used in
+   * before statements.  Also, \result can only be used in
    * @ensures annotations *)
 
   structure R =
@@ -521,6 +522,7 @@ struct
         List.app (fn e => rt_exp e cond ext) es
     | rt_exp (A.Alloc _) cond ext = ()
     | rt_exp (A.AllocArray(tp, e)) cond ext = rt_exp e cond ext
+    | rt_exp (A.Cast(tp, e)) cond ext = rt_exp e cond ext
     | rt_exp (A.Result) (R.ORDINARY) ext =
         R.rt_error ext ("\\result illegal in ordinary expression" ^^ "use only in @ensures annnotations")
     | rt_exp (A.Result) (R.ASSERTION) ext =
@@ -532,16 +534,10 @@ struct
     | rt_exp (A.Result) (R.POSTCOND) ext = ()
     | rt_exp (A.Length(e)) (R.ORDINARY) ext =
         R.rt_error ext ("\\length(e) illegal in ordinary expression" ^^ "use only in annotations")
-    | rt_exp (A.Length(e)) _ ext = ()
-    | rt_exp (A.Old(e)) (R.ORDINARY) ext =
-        R.rt_error ext ("\\old(e) illegal in ordinary expression" ^^ "use only in @ensures annotations")
-    | rt_exp (A.Old(e)) (R.ASSERTION) ext =
-        R.rt_error ext ("\\old(e) illegal in @assert annotation" ^^ "use only in @ensures annotations")
-    | rt_exp (A.Old(e)) (R.LOOPINV) ext =
-        R.rt_error ext ("\\old(e) illegal in @loop_invariant" ^^ "use only in @ensures annotations")
-    | rt_exp (A.Old(e)) (R.PRECOND) ext =
-        R.rt_error ext ("\\old(e) illegal in @requires" ^^ "use only in @ensures annotations")
-    | rt_exp (A.Old(e)) (R.POSTCOND) ext = ()
+    | rt_exp (A.Length(e)) cond ext = rt_exp e cond ext
+    | rt_exp (A.Hastag(tp,e)) (R.ORDINARY) ext =
+        R.rt_error ext ("\\hastag(tp,e) illegal in ordinary expression" ^^ "use only in annotations")
+    | rt_exp (A.Hastag(tp, e)) cond ext = rt_exp e cond ext
     | rt_exp (A.Marked(marked_exp)) cond ext =
         rt_exp (Mark.data marked_exp) cond (Mark.ext marked_exp)
 
@@ -573,7 +569,7 @@ struct
         R.rt_error ext' ("@assert illegal in loop invariants" ^^ "use only in statement annotations")
 
   (* rt_stm s ext = (), raises Error if annotations or special expressions
-   * (\length, \old, \result) are used incorrectly in s *)
+   * (\length, \hastag, \result) are used incorrectly in s *)
   fun rt_stm (A.Assign(operOpt, lv, e)) ext =
         ( rt_exp lv R.ORDINARY ext
 	; rt_exp e R.ORDINARY ext )
@@ -614,12 +610,12 @@ struct
 
   fun rt_fdecl (A.Function(g, rtp, params, SOME(s), specs, _, ext)) =
       let 
-	  val () = rt_stm s ext (* proper use of \length, \result, \old, and annotations *)
+	  val () = rt_stm s ext (* proper use of \length, \result, \hastag, and annotations *)
           (* pvars = list of variables appearing unguarded in postconditions *)
 	  val pvars = pv_specs Symbol.null specs
 	  val () = chk_unassigned pvars s ext (* check no assignment to vars in postconditions *)
 	  val () = List.app (fn spec => rt_spec spec R.FUNCONTRACT ext) specs
-		  (* proper use of \result, \old, and annotations in function contracts *)
+		  (* proper use of \result, \hastag, and annotations in function contracts *)
       in
 	  ()
       end
@@ -763,6 +759,21 @@ struct
     | syn_exp env (A.AllocArray(tp,e)) ext = 
       ( chk_tp tp ext ; chk_known_size tp ext ; chk_exp env e A.Int ext
       ; A.Array(tp) )
+    | syn_exp env (A.Cast(tp, e)) ext =
+      ( chk_tp tp ext ;
+        case (expand_def tp, syn_exp_expd env e ext)
+          of (A.Pointer(A.Void), A.Pointer(A.Void)) =>
+             ( ErrorMsg.error ext ("casting a void* as a void* not permitted\n")
+             ; raise ErrorMsg.Error )
+           | (A.Pointer(A.Void), A.Pointer _) => tp
+           | (A.Pointer _, A.Pointer(A.Void)) => tp
+           | (tp1 as A.Pointer _, tp2 as A.Pointer _) =>
+             ( ErrorMsg.error ext ("casting to " ^ P.pp_tp tp1 ^ " from " ^ P.pp_tp tp2 ^ " not permitted\n"
+                                   ^ "only casts to or from void* allowed")
+             ; raise ErrorMsg.Error )
+           | (tp1, tp2) => ( ErrorMsg.error ext ("casting to or from type which is not a pointer\n"
+                                                 ^ "only casts from pointer to or from void* allowed")
+                           ; raise ErrorMsg.Error ) )
     | syn_exp env (A.Result) ext =
         var_type env (Symbol.symbol "\\result") ext
     | syn_exp env (A.Length(e)) ext =
@@ -770,9 +781,21 @@ struct
 	of A.Array(tp) => A.Int
 	 | _ => ( ErrorMsg.error ext ("argument to \\length not an array")
 		 ; raise ErrorMsg.Error ))
-    | syn_exp env (A.Old(e)) ext =
+    | syn_exp env (A.Hastag(tp,e)) ext =
       (* check something about e here? *)
-        syn_exp env e ext
+      ( chk_tp tp ext ;
+        case (expand_def tp, syn_exp_expd env e ext)
+         of (A.Pointer(A.Void), _) =>
+            ( ErrorMsg.error ext ("tag can never be void*")
+            ; raise ErrorMsg.Error )
+          | (A.Pointer _, A.Pointer(A.Void)) => A.Bool
+          | (tp1, A.Pointer(A.Void)) =>
+            ( ErrorMsg.error ext ("tag " ^ P.pp_tp tp1 ^ " must be a pointer type")
+            ; raise ErrorMsg.Error )
+          | (_, tp2) =>
+            ( ErrorMsg.error ext ("tagged expression must have type void*\n"
+                                  ^ "inferred " ^ P.pp_tp tp2)
+            ; raise ErrorMsg.Error ) )
     | syn_exp env (A.Marked(marked_exp)) ext =
         syn_exp env (Mark.data marked_exp) (Mark.ext marked_exp)
 
@@ -1092,7 +1115,7 @@ struct
       ()
 
   fun chk_fun_body (fdecl) =
-      let val () = rt_fdecl fdecl (* check proper use of \length, \result, \old *)
+      let val () = rt_fdecl fdecl (* check proper use of \length, \result, \hastag *)
 	  val () = chk_fun fdecl (* type-check *)
 	  val fdecl' = elim_fors_fun fdecl (* elim for loops to simplify control *)
 	  val () = rc_fun fdecl' (* check valid returns *)

@@ -45,3 +45,5 @@ safe => lib => return 0     ~ imgtest3.c0 -d
 safe => lib => return 0     ~ filetest1.c0 -d
 safe => lib => abort        ~ filetest2.c0 -d
 safe => lib => abort        ~ filetest3.c0 -d
+safe => return 1            ~ cast10.c1 -d
+safe => abort               ~ cast11.c1 -d

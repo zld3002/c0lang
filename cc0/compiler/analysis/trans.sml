@@ -201,6 +201,7 @@ fun trans_expr ctx e tp =
             val t = freshVar ctx (Array tp)
             val (sdn, sup) = trInt size
         in (Seq[sdn,Assign(Local t, AllocArray(tp, sup))], Var (t, Array tp)) end
+   | e as (A.Cast (tp, e1)) => raise Fail ("cast not supported " ^ Ast.Print.pp_exp e) 
    | A.Result => (Seq[], Var (resultVar, Make.make_tp (returnType ctx)))
    | A.Length e => pureop(Length, [trans_expr ctx e (A.Array A.Any)])
    (*| A.Old of exp          (* \old(e), in @ensures *)*)

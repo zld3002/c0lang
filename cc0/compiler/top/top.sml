@@ -667,7 +667,7 @@ let
 	   | EXIT => OS.Process.failure
 	   | FINISHED => OS.Process.success
            | e => ( say ("Unexpected exception in cc0:\n" ^ exnMessage e ^ "\n")
-                  ; if false (* true: development mode, false: production *)
+                  ; if true (* true: development mode, false: production *)
                     then ((*say (String.concatWith "\n" (SMLofNJ.exnHistory e));*) raise e)
                     else OS.Process.failure)
            (* Above extra bits commented out by Rob, Nov 15 2012. 

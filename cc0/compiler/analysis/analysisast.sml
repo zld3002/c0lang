@@ -24,8 +24,9 @@ sig
      | Null
      | Result
      | Length of aexpr
-     | Old of aexpr
+     | Hastag of tp * aexpr
      | AllocArray of tp * aexpr
+     | Cast of tp * aexpr
      | Select of aexpr * symbol * symbol
      | MarkedE of aexpr Mark.marked
    datatype aphi = 
@@ -89,8 +90,9 @@ struct
      | Null
      | Result
      | Length of aexpr
-     | Old of aexpr
+     | Hastag of tp * aexpr
      | AllocArray of Ast.tp * aexpr
+     | Cast of tp * aexpr
      | Select of aexpr * symbol * symbol
      | MarkedE of aexpr Mark.marked
    datatype aphi = 
@@ -163,11 +165,13 @@ struct
 		  | pp_aexpr (Null) = "NULL"
           | pp_aexpr (Result) = "\\result"
           | pp_aexpr (Length(e)) = "\\length(" ^ pp_aexpr(e) ^ ")"
-          | pp_aexpr (Old(e)) = "\\old(" ^ pp_aexpr(e) ^ ")"
+          | pp_aexpr (Hastag(tp, e)) = "\\hastag(" ^ Ast.Print.pp_tp tp ^ "," ^ pp_aexpr(e) ^ ")"
 		  | pp_aexpr (Alloc (tp)) =
 		       "alloc("^(Ast.Print.pp_tp tp)^")"
 		  | pp_aexpr (AllocArray (tp, e)) =
 		       "alloc("^(Ast.Print.pp_tp tp)^","^(pp_aexpr e)^")"
+                  | pp_aexpr (Cast(tp, e)) =
+                       "cast(" ^ Ast.Print.pp_tp tp ^ "," ^ pp_aexpr e ^ ")"
 		  | pp_aexpr (Select (e, s, f)) =
 		       "(" ^ (pp_aexpr e) ^ ")."^(Symbol.name f)
 		  | pp_aexpr (MarkedE me) = pp_aexpr (Mark.data me)
@@ -193,11 +197,13 @@ struct
 		  | pp_verif_aexpr (Null) = "NULL"
           | pp_verif_aexpr (Result) = "\\result"
           | pp_verif_aexpr (Length(e)) = "\\length(" ^ pp_verif_aexpr(e) ^ ")"
-          | pp_verif_aexpr (Old(e)) = "\\old(" ^ pp_verif_aexpr(e) ^ ")"
+          | pp_verif_aexpr (Hastag(tp, e)) = "\\hastag(" ^ Ast.Print.pp_tp tp ^ "," ^ pp_verif_aexpr(e) ^ ")"
 		  | pp_verif_aexpr (Alloc (tp)) =
 		       "alloc("^(Ast.Print.pp_tp tp)^")"
 		  | pp_verif_aexpr (AllocArray (tp, e)) =
 		       "alloc("^(Ast.Print.pp_tp tp)^","^(pp_verif_aexpr e)^")"
+                  | pp_verif_aexpr (Cast (tp, e)) =
+                       "cast(" ^ Ast.Print.pp_tp tp ^ "," ^ pp_verif_aexpr e ^ ")"
 		  | pp_verif_aexpr (Select (e, s, f)) =
 		       "(" ^ (pp_verif_aexpr e) ^ ")."^(Symbol.name f)
 		  | pp_verif_aexpr (MarkedE me) = pp_verif_aexpr (Mark.data me)

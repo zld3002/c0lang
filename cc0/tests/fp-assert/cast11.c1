@@ -1,0 +1,8 @@
+/* segfault if run with -d */
+/* checking hastag */
+
+int main() {
+  void* p = (void*)alloc(int);
+  //@assert \hastag(bool*, p);
+  return 0;
+}

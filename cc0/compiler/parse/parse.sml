@@ -107,8 +107,9 @@ type region = int * int
 datatype item
   = Tok of T.terminal * region
   | Prefix of int * T.terminal * region * A.oper  (* precedence, operator *)
-  | Infix of int * T.terminal * region * A.oper  (* precedence, operator *)
-  | Nonfix of T.terminal * region  (* end of expression marker *)
+  | Infix of int * T.terminal * region * A.oper   (* precedence, operator *)
+  | Nonfix of T.terminal * region                 (* end of expression marker *)
+  | Cast of A.tp * region                         (* cast, works like prefix opr *)
   | Ident of A.ident * region
   | Exp of A.exp * region
   | Exps of A.exp list
@@ -135,6 +136,7 @@ fun itemToString item = case item of
     | Prefix _ => "Prefix"
     | Infix _ => "Infix"
     | Nonfix _ => "Nonfix"
+    | Cast _ => "Cast"
     | Ident(id,_) => "Ident(" ^ Symbol.name id ^ ")"
     | Exp(e,_) => "Exp(_)"
     | Exps(es) => "Exps(_)"
@@ -668,7 +670,13 @@ and m_exp (e, r) = Exp(mark_exp(e,r),r)
 
 (* do not reduce to expression, because p_paren_exp is
  * used for 'if' and 'while', to be reduced with statement *)
-and p_paren_exp ST = ST |> p_terminal T.LPAREN >> p_exp >> p_terminal T.RPAREN
+and p_paren_exp ST = (* ST |> p_terminal T.LPAREN >> p_exp >> p_terminal T.RPAREN *)
+    ST |> p_terminal T.LPAREN >> p_exp_or_tp
+
+and p_exp_or_tp ST =
+    if type_start (first ST)
+    then ST |> p_tp >> p_terminal T.RPAREN
+    else ST |> p_exp >> p_terminal T.RPAREN
 
 (* check that stack does *not* end in expression *)
 and c_follows_nonexp (ST as (S,_)) = case (S, first ST) of
@@ -716,8 +724,6 @@ and p_exp (ST as (S, ft)) = case (S, first ST) of
   (* pseudo function calls *)
   | (_, T.BS_LENGTH) => ST |> c_follows_nonexp >> shift >> p_terminal T.LPAREN >> p_exp >> p_terminal T.RPAREN
 			   >> reduce r_exp >> p_exp
-  | (_, T.BS_OLD) => ST |> c_follows_nonexp >> shift >> p_terminal T.LPAREN >> p_exp >> p_terminal T.RPAREN
-			>>  reduce r_exp >> p_exp
 
   (* postfix operators, highest precedence *)
   | (_, T.DOT) => ST |> c_follows_exp "field selection"
@@ -732,6 +738,8 @@ and p_exp (ST as (S, ft)) = case (S, first ST) of
 		       >> reduce r_exp >> p_exp
   | (_, T.ALLOC_ARRAY) => ST |> c_follows_nonexp >> shift >> p_terminal T.LPAREN >> p_tp >> p_terminal T.COMMA
 			     >> p_exp >> p_terminal T.RPAREN >> reduce r_exp >> p_exp
+  | (_, T.BS_HASTAG) => ST |> c_follows_nonexp >> shift >> p_terminal T.LPAREN >> p_tp >> p_terminal T.COMMA
+                           >> p_exp >> p_terminal T.RPAREN >> reduce r_exp >> p_exp
   
   (* end of expression *)
   | (S, t) => (case opr (S, t, here ST)
@@ -757,6 +765,9 @@ and p_exp_prec subject (ST as (S, ft)) = case (S, subject) of
   | (S $ Prefix(k1, _, _, _) $ Exp _, Infix (k2, _, _, _)) =>
     (* reduce, since always k1 > k2 in C and C0 *)
       ST |> reduce r_exp >> p_exp_prec subject     (* reduce *)
+  | (S $ Cast _ $ Exp _, Infix _) =>
+    (* reduce, since precedence of cast > precedence of infix ops in C and C0 *)
+      ST |> reduce r_exp >> p_exp_prec subject
   | (S $ Exp _, Infix _) =>  (* preceding two cases don't match *)
       ST |> push subject >> p_exp                  (* shift *)
   (* error conditions for Infix *)
@@ -764,13 +775,19 @@ and p_exp_prec subject (ST as (S, ft)) = case (S, subject) of
       parse_error (join r1 r2, "consecutive infix operators " ^ t_toString t1 ^ " " ^ t_toString t2)
   | (S $ Prefix(_, t1, r1, _), Infix(_, t2, r2, _)) =>
       parse_error (join r1 r2, "prefix operator " ^ t_toString t1 ^ " followed by infix operator " ^ t_toString t2)
+  | (S $ Cast(_, r1), Infix(_, t2, r2, _)) =>
+      parse_error (join r1 r2, "cast directly followed by infix operator " ^ t_toString t2)
   | (S, Infix(_, t, r, _)) =>
       parse_error (r, "leading infix operator " ^ t_toString t)
 
   (* looking at Prefix *)
   | (S $ Exp _, Prefix(_, t, r, _)) =>
       parse_error (r, "prefix operator " ^ t_toString t ^ " immediately following expression")
+  | (S $ Exp _, Cast(_, r)) =>
+      parse_error (r, "cast immediately following expression")
   | (S, Prefix _) => (* always shift, since prefix have higher precedence than infix *)
+      ST |> push subject >> p_exp
+  | (S, Cast _) => (* always shift, since cast has higher precedence than infix *)
       ST |> push subject >> p_exp
 
   (* looking at Nonfix, end of expression *)
@@ -784,8 +801,10 @@ and p_exp_prec subject (ST as (S, ft)) = case (S, subject) of
   (* at end of expressiong we keep reducing *)
   | (S $ Exp _ $ Infix _ $ Exp _, Nonfix _) => ST |> reduce r_exp >> p_exp_prec subject
   | (S $ Prefix _ $ Exp _, Nonfix _) => ST |> reduce r_exp >> p_exp_prec subject
+  | (S $ Cast _ $ Exp _, Nonfix _) => ST |> reduce r_exp >> p_exp_prec subject
   | (S $ Infix(_, t, r, _), Nonfix _) => parse_error (r, "trailing infix operator " ^ t_toString t)
   | (S $ Prefix(_, t, r, _), Nonfix _) => parse_error (r, "trailing prefix operator " ^ t_toString t)
+  | (S $ Cast(_, r), Nonfix _) => parse_error(r, "trailing cast")
   | (S $ Exp _, Nonfix _) => ST (* must be reduced if it doesn't match above *)
 
   (* try to diagnose *)
@@ -844,8 +863,8 @@ and r_exp_2 (S $ Tok(T.ALLOC,r1) $ Tok(T.LPAREN,_) $ Tp(tp,_) $ Tok(T.RPAREN,r2)
       S $ m_exp(A.AllocArray(tp, e),join r1 r2)
   | r_exp_2 (S $ Tok(T.BS_LENGTH,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,r2)) =
       S $ m_exp(A.Length(e),join r1 r2)
-  | r_exp_2 (S $ Tok(T.BS_OLD,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,r2)) =
-      S $ m_exp(A.Old(e),join r1 r2)
+  | r_exp_2 (S $ Tok(T.BS_HASTAG,r1) $ Tok(T.LPAREN,_) $ Tp(tp,_) $ Tok(T.COMMA,_) $ Exp(e,_) $ Tok(T.RPAREN,r2)) =
+      S $ m_exp(A.Hastag(tp, e),join r1 r2)
   | r_exp_2 (S $ Ident(vid,r1) $ Tok(T.LPAREN,_) $ Exps(es) $ Tok(T.RPAREN,r2)) =
       S $ m_exp(A.FunCall(vid, es),join r1 r2)
   | r_exp_2 S = r_exp_3 S
@@ -867,6 +886,7 @@ and r_exp_3 (S $ Exp(e,r1) $ Tok(T.DOT,_) $ Ident(fid,r2)) =
 
 (* operator precedence *)
 and r_exp_4 (S $ Tok(LPAREN,r1) $ Exp(e,_) $ Tok(RPAREN,r2)) = S $ m_exp(e,join r1 r2)
+  | r_exp_4 (S $ Tok(LPAREN,r1) $ Tp(tp,_) $ Tok(RPAREN,r2)) = S $ Cast(tp,join r1 r2)
   | r_exp_4 (S $ Exp(e1,r1) $ Infix(_, T.QUEST, _, _) $ Exp(e2,_) $ Infix(_, T.COLON, _, _) $ Exp(e3,r2)) =
       S $ m_exp(A.OpExp (A.COND, [e1, e2, e3]), join r1 r2)
 
@@ -878,6 +898,7 @@ and r_exp_4 (S $ Tok(LPAREN,r1) $ Exp(e,_) $ Tok(RPAREN,r2)) = S $ m_exp(e,join 
 
   | r_exp_4 (S $ Exp(e1,r1) $ Infix(_, t2, _, o2) $ Exp(e2,r2)) = S $ m_exp(A.OpExp(o2, [e1,e2]), join r1 r2)
   | r_exp_4 (S $ Prefix(_, t1, r1, o1) $ Exp(e1,r2)) = S $ m_exp(A.OpExp(o1, [e1]), join r1 r2)
+  | r_exp_4 (S $ Cast(tp, r1) $ Exp(e,r2)) = S $ m_exp(A.Cast(tp, e), join r1 r2)
 
   (* default case: alrady reduced, must be last *)
   | r_exp_4 (S $ Exp(e,r)) = S $ Exp(e,r)

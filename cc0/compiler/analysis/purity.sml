@@ -217,6 +217,7 @@ struct
      | Alloc t => tp_extend_mutable(Pointer t)
      | Null => Pt(Mut, Atom)
      | AllocArray (t, e) => tp_extend_mutable(Array t)
+     | Cast(t, e) => tp_extend_immutable(t)
      | Select (e, s, f) => C.lookup_field ctx (structofE ctx e) f
      | MarkedE m => syn_extended ctx (Mark.data m)
   
@@ -351,8 +352,9 @@ struct
      | Null => checkEmpty
      | Result => checkEmpty
      | Length e' => checkE mark ctx imms e'
-     | Old e' => checkE mark ctx imms e'
+     | Hastag(tp, e') => checkE mark ctx imms e'
      | AllocArray (tp, e') => checkE mark ctx imms e'
+     | Cast(tp, e') => checkE mark ctx imms e'
      | Select (e', s, field) => checkE mark ctx imms e'
      | MarkedE (m) => checkE (Mark.ext m) ctx imms (Mark.data m)
      
@@ -425,8 +427,9 @@ struct
      | Null => []
      | Result => []
      | Length e' => needspurityE e'
-     | Old e' => needspurityE e'
+     | Hastag(tp, e') => needspurityE e'
      | AllocArray (tp, e') => needspurityE e'
+     | Cast(tp, e') => needspurityE e'
      | Select (e', s, field) => needspurityE e'
      | MarkedE (m) =>
         let val np = needspurityE (Mark.data m)

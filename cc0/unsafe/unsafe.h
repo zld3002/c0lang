@@ -23,6 +23,9 @@
 #define c0_string_charat(s,i) ((s)[(i)])
 #define c0_string_fromliteral(s) (s)
 
+#define c0_tagged_eq(p,q) ((p == q))
+#define c0_hastag(tyrep,p) (1)
+
 // This is a dirty trick, but we can modify the definitions used by
 // the cc0 compiler in order to completely inline memory accesses.
 // The trick is to give each array the type ty* rather than the type
@@ -39,6 +42,12 @@
 
 #undef cc0_deref
 #define cc0_deref(ty, p) (*((ty *)p))
+
+#undef cc0_tag
+#define cc0_tag(ty, tyrep, e) ((void*)(e))
+
+#undef cc0_untag
+#define cc0_untag(ty, tyrep, e) ((ty)(e))
 
 #endif // CC0
 

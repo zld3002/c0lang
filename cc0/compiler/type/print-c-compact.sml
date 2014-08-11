@@ -71,6 +71,11 @@ struct
    fun is_safe_shift (A.IntConst(w)) = Word32.<(w, THIRTYTWO)
      | is_safe_shift _ = false
 
+   fun is_tagged_ptr env e =
+       ( case Syn.expand_all (Syn.syn_exp env e)
+          of A.Pointer(A.Void) => true
+           | _ => false )
+
     (*
      * Printing, under the assumption that effects have been isolated
      *)
@@ -180,6 +185,14 @@ struct
 	if is_safe_shift e2
 	then "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
 	else "c0_sar(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
+      | pp_exp env (A.OpExp(oper as A.EQ, [e1, e2])) =
+        if is_tagged_ptr env e1 andalso is_tagged_ptr env e2
+        then "c0_tagged_eq(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
+        else "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
+      | pp_exp env (A.OpExp(oper as A.NOTEQ, [e1, e2])) =
+        if is_tagged_ptr env e1 andalso is_tagged_ptr env e2
+        then "!c0_tagged_eq(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
+        else "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
       | pp_exp env (A.OpExp(A.SUB, [e1,e2])) =
 	let val A.Array(tp) = Syn.syn_exp_expd env e1
 	in
@@ -200,11 +213,24 @@ struct
 	  pp_fun id ^ "(" ^ pp_exps env es ^ ")"
       | pp_exp env (A.Alloc(tp)) = "cc0_alloc(" ^ pp_tp tp ^ ")"
       | pp_exp env (A.AllocArray(tp, e)) = "cc0_alloc_array(" ^ pp_tp tp ^ "," ^ pp_exp env e ^ ")"
+      | pp_exp env (A.Cast(tp, e)) =
+        ( case (Syn.expand_all tp)
+           of A.Pointer(A.Void) =>
+              let val tp' = Syn.expand_all (Syn.syn_exp env e)
+                  val tp_string = pp_tp tp'
+              in 
+                  "cc0_tag(" ^ tp_string ^ "," ^ "\"" ^ tp_string ^ "\"" ^ "," ^ pp_exp env e ^ ")"
+              end
+            | tp' =>
+              let val tp_string = pp_tp tp'
+              in
+                  "cc0_untag(" ^ tp_string ^ "," ^ "\"" ^ tp_string ^ "\"" ^ "," ^ pp_exp env e ^ ")"
+              end )
       | pp_exp env (A.Result) = (* should be impossible, except in comment *)
 	  "\\result"
       | pp_exp env (A.Length(e)) = "c0_array_length(" ^ pp_exp env e ^ ")"
-      | pp_exp env (A.Old(e)) = (* should be impossible, except in comment *)
-	  "\\old(" ^ pp_exp env e ^ ")"
+      | pp_exp env (A.Hastag(tp,e)) = "c0_hastag(" ^ "\"" ^ pp_tp (Syn.expand_all tp) ^ "\""
+                                      ^ "," ^ pp_exp env e ^ ")"
       | pp_exp env (A.Marked(marked_exp)) =
 	  pp_exp env (Mark.data marked_exp)
 

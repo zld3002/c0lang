@@ -170,11 +170,14 @@ struct
       | indent_exp' (A.AllocArray(tp, e)) left ext =
           (* here we do force an increase --- seems too odd without *)
           indent_exp e (left + min_indent, max_col) ext
+      | indent_exp' (A.Cast(tp, e)) left ext =
+          (* here we do force an increase --- seems too odd without *)
+          indent_exp e (left + min_indent, max_col) ext
       | indent_exp' (A.Result) left ext = ()
       | indent_exp' (A.Length(e)) left ext = 
           (* here we do force an increase --- seems too odd without *)
           indent_exp e (left + min_indent, max_col) ext
-      | indent_exp' (A.Old(e)) left ext =
+      | indent_exp' (A.Hastag(tp, e)) left ext =
           (* here we do force an increase --- seems too odd without *)
           indent_exp e (left +  min_indent, max_col) ext
       | indent_exp' (A.Marked(marked_exp)) left ext =

@@ -137,7 +137,7 @@ elem bst_search(rbt RBT, key k)
 tree balance_left(tree T)
 //@requires T != NULL;
 //@requires T->red ? is_rbtree(T->left) : is_rbtree_except_root(T->left);
-//@ensures \old(T->red) ? is_rbtree_except_root(\result) : is_rbtree(\result);
+//@ensures T->red ? is_rbtree_except_root(\result) : is_rbtree(\result);
 { if (T->red) return T;
   //@assert !T->red;
   if (T->left->red
@@ -163,7 +163,7 @@ tree balance_left(tree T)
 tree balance_right(tree T)
 //@requires T != NULL;
 //@requires T->red ? is_rbtree(T->right) : is_rbtree_except_root(T->right);
-//@ensures \old(T->red) ? is_rbtree_except_root(\result) : is_rbtree(\result);
+//@ensures T->red ? is_rbtree_except_root(\result) : is_rbtree(\result);
 { if (T->red) return T;
   //@assert !T->red;
   if (T->right->red
@@ -188,9 +188,6 @@ tree balance_right(tree T)
 
 tree tree_insert(tree T, elem e) 
 //@requires is_rbtree(T);
-/*@ensures \old(T != NULL && T->red)
-           ? is_rbtree_except_root(\result)
-           : is_rbtree(\result); @*/
 //@ensures tree_search(\result, elem_key(e)) == e;
 {
   if (T == NULL) {  /* create new node */

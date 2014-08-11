@@ -161,14 +161,18 @@ struct
        let val (ss1, p1) = iso_exp env e1 ext
 	   val (ds,t) = new_tmp_init (Syn.syn_exp env e, A.AllocArray(tp, p1)) ext
        in (ss1 @ [ds], t) end
+     | iso_exp env (e as A.Cast(tp, e1)) ext =
+       let val (ss1, p1) = iso_exp env e1 ext
+           val (ds, t) = new_tmp_init (tp, A.Cast(tp, p1)) ext
+       in (ss1 @ [ds], t) end
      | iso_exp env (e as A.Result) ext = ([], e)
      | iso_exp env (A.Length(e1)) ext =
        (* \length(p1) has no effect *)
        let val (ss1, p1) = iso_exp env e1 ext
        in (ss1, A.Length(p1)) end
-     | iso_exp env (e as A.Old(e1)) ext =
-       (* \old(e1) is not executed as given; leave alone for now *)
-         ([], e)
+     | iso_exp env (A.Hastag(tp, e1)) ext =
+       let val (ss1, p1) = iso_exp env e1 ext
+       in (ss1, A.Hastag(tp, e1)) end
      | iso_exp env (A.Marked(marked_exp)) ext =
          (* do not preserve mark here, since result is statement list
           * followed by pure expression *)

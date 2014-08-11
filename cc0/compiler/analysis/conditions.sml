@@ -318,8 +318,9 @@ fun assert (map : Ast.tp SymMap.map) e =
           | AAst.Null => "0"
           | AAst.Result => raise Unimplemented "assert_expr result" (* Not seen *)
           | AAst.Length e => localArrayLengthName e (* Treat as a _length variable *)
-          | AAst.Old _ => raise Unimplemented "assert_expr old" (* ??? *)
+          | AAst.Hastag(tp,expr) => raise Unimplemented "assert_expr hastag"
           | AAst.AllocArray(tp,expr) => raise Unimplemented "assert_expr allocarray" (* Not seen *)
+          | AAst.Cast(tp,expr) => raise Unimplemented "assert_exp cast"
           | AAst.Select(expr,strct,field) => raise Unimplemented "assert_expr select" (* Struct fields, we'll deal with this later *)
           | AAst.MarkedE(mk) => assert_expr(Mark.data(mk))
 

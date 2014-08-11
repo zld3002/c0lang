@@ -1,7 +1,7 @@
 //test error
 
 int f (int x) {
-  return (\old(x));
+  return (\hastag(int,x));
 }
 
 int main () {

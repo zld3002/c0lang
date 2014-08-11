@@ -1,0 +1,10 @@
+/* return 1 */
+/* checking correct \hastag in assertions */
+
+int main () {
+  int* p = alloc(int);
+  //@assert \hastag(int*, (void*)p); 
+  bool* q = alloc(bool);
+  //@assert \hastag(bool*, (void*)q);
+  return (void*)p != (void*)q ? 1 : 0;
+}

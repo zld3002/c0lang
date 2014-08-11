@@ -64,7 +64,7 @@ void merge (int[] A, int[] B, int lower, int mid, int upper)
 void msort (int[] A, int n)
 //@requires n <= \length(A);
 // modifies A;
-//@ensures sorted(\old(A), 0, n);
+//@ensures sorted(A, 0, n);
 {
   int[] B = A;
   int[] C = alloc_array(int, n);
