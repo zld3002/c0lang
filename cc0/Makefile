@@ -8,7 +8,7 @@ MLTON_VERB = 0
 MLTON_BASIC = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -verbose $(MLTON_VERB) -output
 
 #Uncomment to use SMLNJ, which has significantly faster compile times than mlton
-# NJ=1
+NJ=1
 
 ifdef STATIC
 ifdef LIBSPLUS
