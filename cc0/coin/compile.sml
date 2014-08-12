@@ -75,7 +75,6 @@ and cExp (pos : Mark.ext option) exp =
     | Ast.AllocArray (tp, exp) => AllocArray (tp, cExp pos exp)
     | Ast.Result => raise Error.Internal "No '\\result' action"
     | Ast.Length exp => Length (cExp pos exp)
-    | Ast.Old _ => raise Error.Internal "No '\\old' action"
     | Ast.Marked mrk => cExp (Mark.ext mrk) (Mark.data mrk)
 
 fun cVarDecl (Ast.VarDecl (x, tp, e, pos)) = 

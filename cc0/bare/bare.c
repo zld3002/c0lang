@@ -85,6 +85,8 @@ void c0_abort_mem(const char *reason) {
 }
 
 c0_pointer c0_alloc(size_t elt_size) {
+  // Require non-zero allocation so that alloc acts as a gensym
+  if (elt_size == 0) size = 1;
   int* p = calloc(1, elt_size);
   if (p == NULL) c0_abort_mem("allocation failed");
   return (void *)p;
