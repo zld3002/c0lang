@@ -36,8 +36,10 @@ signature STATE = sig
   val char           : char          -> value
   val string         : string        -> value
 
-  (* Lets NULLs know their type *)
+  (* Lets NULLs/void*s know their type *)
   val tag            : 'a state * Ast.tp * value -> value 
+  val to_voidstar    : value -> value
+  val from_voidstar  : value * Ast.tp -> value
 
   (* NOTE: the types passed to pointer and array must be free of type names *)
   val pointer        : Ast.tp * addr  -> value

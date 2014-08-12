@@ -73,8 +73,11 @@ and cExp (pos : Mark.ext option) exp =
         Call (f, map (cExp pos) es, valOf pos "No mark for call")
     | Ast.Alloc tp => Alloc tp
     | Ast.AllocArray (tp, exp) => AllocArray (tp, cExp pos exp)
+    | Ast.Cast (Ast.Pointer Ast.Void, exp) => AddTag (cExp pos exp)
+    | Ast.Cast (tp, exp) => RequireTag (tp, cExp pos exp)
     | Ast.Result => raise Error.Internal "No '\\result' action"
     | Ast.Length exp => Length (cExp pos exp)
+    | Ast.Hastag (tp, exp) => CheckTag (tp, cExp pos exp) 
     | Ast.Marked mrk => cExp (Mark.ext mrk) (Mark.data mrk)
 
 fun cVarDecl (Ast.VarDecl (x, tp, e, pos)) = 

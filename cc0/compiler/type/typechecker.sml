@@ -6,6 +6,8 @@
 signature TYPE_CHECK =
 sig
 
+  val tp_equal : Ast.tp -> Ast.tp -> bool
+
   (* prints error message and raises ErrorMsg.Error if error found *)
   val typecheck : Ast.program * bool -> Ast.program
   val check_all_defined : unit -> unit

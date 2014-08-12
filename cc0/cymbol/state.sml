@@ -21,6 +21,7 @@ functor StateFn (structure Data : DATA
 
   datatype value 
     = Unit
+    | VoidStar of value
     | Int of int_rep 
     | Bool of bool_rep
     | Char of char
@@ -31,6 +32,17 @@ functor StateFn (structure Data : DATA
     | Function of string * Ast.tp * Ast.tp list 
     | Pointer of Ast.tp * Heap.loc
     | Uninitialized
+
+  fun to_voidstar v = 
+     case v of 
+        NullPointer _ => NullPointer (SOME Ast.Void)
+      | _ => VoidStar v
+
+  fun from_voidstar (v, ty) = 
+     case v of
+        NullPointer _ => NullPointer (SOME ty)
+      | VoidStar v => v
+      | _ => raise Error.Dynamic "Not a voidstar"  
 
   type heap = Heap.heap
   datatype 'a stack
@@ -76,6 +88,7 @@ functor StateFn (structure Data : DATA
       Unit            => ("(void)")
     | Int i           => (Data.int_to_string i ^ " (int)")
     | Bool b          => (Data.bool_to_string b ^ " (bool)")
+    | VoidStar v      => value_string v ^ ", tagged as a void*"
     | Char c          => 
       if printableChar c 
       then ("'" ^ toCChar c ^ "' (char)")
@@ -109,6 +122,7 @@ functor StateFn (structure Data : DATA
   fun value_desc v = 
     case v of
       Unit => "void"
+    | VoidStar v => "dynamically tagged (void*) " ^ value_desc v
     | Int _ => "int"
     | Bool _ => "bool"
     | Char _ => "char"
@@ -118,7 +132,7 @@ functor StateFn (structure Data : DATA
     | PseudoStruct (s, _) => "struct " ^ Symbol.name s
     | Array (ty, _, _) => Ast.Print.pp_tp ty ^ "[]"
     | Function _ => "function"
-    | Uninitalized => "uninitialized value"
+    | Uninitialized => "uninitialized value"
 
 
 
@@ -145,6 +159,7 @@ functor StateFn (structure Data : DATA
     | Bool _ => ty_eq ty Ast.Bool v
     | Char _ => ty_eq ty Ast.Char v
     | String _ => ty_eq ty Ast.String v
+    | VoidStar _ => ty_eq ty (Ast.Pointer Ast.Void) v
     | NullPointer _ => 
       (* Effectively allows type of a NULL to vary *)
       (* This *should* only happen in a refinement direction. A null pointer 
@@ -377,6 +392,7 @@ functor StateFn (structure Data : DATA
          | Bool b          => Heap.put_bool   (heap, addr) b
          | Char c          => Heap.put_char   (heap, addr) c
          | String s        => Heap.put_string (heap, addr) s
+         | VoidStar f      => raise Error.Internal "impossible?"
          | Function f      => raise Error.Internal "impossible"
          | PseudoStruct _  => raise Error.Internal "impossible"
          | NullPointer _   => Heap.put_null   (heap, addr)

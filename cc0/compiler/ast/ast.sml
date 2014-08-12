@@ -75,7 +75,7 @@ sig
     | Array of tp		(* tp[] *)
     | StructName of ident	(* struct s *)
     | TypeName of ident		(* aid *)
-    | Void    			(* void, only for functions with no return value *)
+    | Void    			(* void *)
     | Any			(* only in Pointer(Any) for NULL *)
 
   (* Global declarations *)

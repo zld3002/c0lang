@@ -45,6 +45,9 @@ datatype exp =
  | Alloc of Ast.tp                          (* alloc(ty)                   *)
  | AllocArray of Ast.tp * exp               (* allocarray(ty,e)            *)
  | Length of exp                            (* \length(e)                  *)
+ | AddTag of exp                            (* (void* )e                   *)
+ | RequireTag of Ast.tp * exp               (* (tp)e                       *)
+ | CheckTag of Ast.tp * exp                 (* \hastag(tp, e)              *)
 
 (********************************)
 (*** C0 Intermediate Language ***)
@@ -116,6 +119,11 @@ fun expToString (b: bool) (exp: exp) =
     | AllocArray (ty, e1) => "alloc_array(" ^ Ast.Print.pp_tp ty ^ ", " 
       ^ expToString false e1 ^ ")"
     | Length e1 => "\\length(" ^ expToString false e1 ^ ")"
+    | AddTag e1 => "(void*)(" ^ expToString false e1 ^ ")"
+    | RequireTag (ty, e1) => "(" ^ Ast.Print.pp_tp ty ^ ")(" 
+      ^ expToString false e1 ^ ")"
+    | CheckTag (ty, e1) => "\\hastag(" ^ Ast.Print.pp_tp ty ^ "," 
+      ^ expToString false e1 ^ ")"
 
 fun cmdToString (cmd: cmd): string = 
    case cmd of

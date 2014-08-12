@@ -144,6 +144,18 @@ struct
             if D.to_bool (S.to_bool v)
             then ev_lval expT else ev_lval expF
          end
+(* Can this ever happen? - RJS August 12, 2014
+       | C0.RequireTag (ty, exp) => 
+         (case S.to_pointer (ev_lval exp) of
+             NullLoc => NullLoc
+           | HeapLoc (ty', addr) =>
+             (if ty = ty' 
+                 then HeapLoc (ty', addr)
+              else Error.DynamicCast ("Dynamic cast failed: expected " 
+                                      ^ Ast.Print.pp_tp ty ^ ", got" 
+                                      ^ Ast.Print.pp_tp ty'))
+           | StackLoc _ => 
+*)
        | _ => raise Error.Dynamic "invalid lvalue"
     end
 
@@ -207,6 +219,31 @@ struct
          end
        | C0.Call _ => 
           raise Error.Internal "Unexpected call expression; should be CCall stm after hoisting"
+
+       (* Void* Tags *)
+       | C0.AddTag exp => S.to_voidstar (ev_exp exp)
+       | C0.RequireTag (ty, exp) =>
+         let
+            val ptr = S.from_voidstar (ev_exp exp, ty)
+         in case S.to_pointer ptr of
+               NONE => S.tag (state, ty, S.null)
+             | SOME (ty', _) => 
+               (if TypeChecker.tp_equal ty (Ast.Pointer ty') 
+                   then ptr
+                (* XXX Not an assertion *)
+                else raise Error.AssertionFailed ("Cast failed: expected " 
+                                                  ^ Ast.Print.pp_tp ty
+                                                  ^ ", got " 
+                                                  ^ Ast.Print.pp_tp 
+                                                       (Ast.Pointer ty')))
+         end 
+       | C0.CheckTag (ty, exp) => 
+         let
+            val ptr = S.from_voidstar (ev_exp exp, ty)
+         in case S.to_pointer ptr of 
+               NONE => S.bool true (* XXX CHANGE THIS??? *)
+             | SOME (ty', _) => S.bool (TypeChecker.tp_equal ty (Ast.Pointer ty'))
+         end 
     end
 
 end
