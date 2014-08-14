@@ -30,6 +30,29 @@ return 2             ~ fun.c0
 return 1             ~ fun2.c0
 return 1             ~ fun3.c0
 typecheck => error   ~ fun3err.c0
+error                ~ fundef01.c1
+error                ~ fundef02.c1
+error                ~ fundef03.c1
+error                ~ fundef04.c1
+error                ~ fundef05.c1
+error                ~ fundef06.c1
+error                ~ fundef07.c1
+error                ~ fundef08.c1
+error                ~ fundef09.c1
+return 9             ~ funuse01.c1
+error                ~ funuse02.c1
+error                ~ funuse03.c1
+error                ~ funuse04.c1
+error                ~ funuse05.c1
+error                ~ funuse06.c1
+error                ~ funuse07.c1
+error                ~ funuse08.c1
+error                ~ funuse09.c1
+return 0             ~ funuse10.c1
+error                ~ funuse11.c1
+error                ~ funuse12.c1
+error                ~ funuse13.c1
+error                ~ funuse14.c1
 typecheck => error   ~ goofy-typedef2.c0
 lib => return 400    ~ image.c0 -limg
 infloop              ~ infloop.c0 
