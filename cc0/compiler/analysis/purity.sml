@@ -107,6 +107,8 @@ struct
       | Array(t) => Arr(f(), tp_extend f t)
       | StructName(i) => St(i)
       | TypeName(i) => tp_extend f (Syn.expand_all tp)
+      | FunTypeName(i) => Atom (* ??? Aug 15, 2014 -fp *)
+      | FunType _ => Atom (* ??? Aug 15, 2014 -fp *)
       | Void => Atom
       | Any => Atom
       
@@ -126,6 +128,8 @@ struct
                     in (c', Arr(Imm, et)) end
       | StructName(i) => (mark_struct_imm ctx i, St(i))
       | TypeName(i) => tp_extend_imm_rec ctx (Syn.expand_all tp)
+      | FunTypeName(i) => (ctx, Atom) (* ??? Aug 15, 2014 -fp *)
+      | FunType _ => (ctx, Atom)      (* ??? Aug 15, 2014 -fp *)
       | Void => (ctx, Atom)
       | Any => (ctx, Atom)
   and mark_struct_imm ctx s =
@@ -209,6 +213,9 @@ struct
         (case C.isPure ctx f of
             true => tp_extend_immutable (rtpofF f)
           | false => tp_extend_mutable (rtpofF f))
+
+     | AddrOf(f) => Atom
+     | Invoke (e, args) => Atom (* do not track *)
       
      | IntConst _ => Atom
      | BoolConst _ => Atom
@@ -344,6 +351,9 @@ struct
      | Call (f, args) => 
          let val errs = mergeCheck (map (fn e =>checkE mark ctx imms e) args)
          in mergeCheck[errs, checkCall mark ctx imms f args] end
+     | AddrOf _ => checkEmpty
+     | Invoke (e, args) =>
+         mergeCheck (map (fn e => checkE mark ctx imms e) (e::args))
      | IntConst _ => checkEmpty
      | BoolConst _ => checkEmpty
      | StringConst _ => checkEmpty
@@ -419,6 +429,10 @@ struct
          [SymMap.insert(SymMap.empty, f,
                     VError.VerificationNote (NONE, "function '" ^ Symbol.name f ^ "' must be pure because it is called in an annotation from here"))]
           @ (List.concat (map needspurityE args))
+     | AddrOf (f) => [] (* do not track *)
+     | Invoke (e, args) =>
+         (* warning: e computes to a function which may not be pure; do not track *)
+         List.concat (map needspurityE (e::args))
      | IntConst _ => []
      | BoolConst _ => []
      | StringConst _ => []

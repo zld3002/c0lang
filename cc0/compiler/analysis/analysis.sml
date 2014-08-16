@@ -26,6 +26,8 @@ struct
             Ast.Var v => Local(labelVar env v)
           | Ast.OpExp(oper, el) => Op(oper, map (label env) el)
           | Ast.FunCall(f, el) => Call(f, map (label env) el)
+          | Ast.AddrOf(f) => AddrOf(f)
+          | Ast.Invoke(e, el) => Invoke(label env e, map (label env) el)
           | Ast.Marked m => MarkedE (Mark.mark' (label env (Mark.data m), Mark.ext m))
           | Ast.IntConst n => IntConst n
           | Ast.True => BoolConst true
@@ -60,6 +62,8 @@ struct
                          | NONE => Local (v,i))
        | Op (oper, l) => Op(oper, map (relabel rl) l)
        | Call (f, l) => Call(f, map (relabel rl) l)
+       | AddrOf(f) => AddrOf(f)
+       | Invoke (e, el) => Invoke (relabel rl e, map (relabel rl) el)
        | IntConst _ => exp
        | BoolConst _ => exp
        | StringConst _ => exp
@@ -205,6 +209,8 @@ struct
            Local l => S.singleton l
          | Op (oper, args) => foldl S.union S.empty (map usedE args)
          | Call(f, args) => foldl S.union S.empty (map usedE args)
+         | AddrOf(f) => S.empty
+         | Invoke(e, args) => foldl S.union (usedE e) (map usedE args)
          | IntConst _ => S.empty
          | BoolConst _ => S.empty
          | StringConst _ => S.empty

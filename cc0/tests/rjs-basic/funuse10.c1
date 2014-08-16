@@ -2,7 +2,7 @@
 
 typedef bool fn(int x, int y);
 
-bool eq(int x, int y) { return 0; }
+bool eq(int x, int y) { return x == y; }
 
 bool apply(fn* f, int x, int y) {
   return (*f)(x, y);

@@ -5,7 +5,7 @@
 
 typedef bool fn(int x, int y);
 
-bool eq(int x, int y) { return 0; }
+bool eq(int x, int y) { return x == y; }
 
 int main() {
   fn f = eq;

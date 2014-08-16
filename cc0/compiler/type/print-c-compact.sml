@@ -130,8 +130,10 @@ struct
       | pp_tp (A.Array(tp)) = "cc0_array(" ^ pp_tp tp ^ ")" (* typically, struct of length and tp* *)
       | pp_tp (A.StructName(s)) = pp_struct s
       | pp_tp (A.TypeName(t)) = pp_typename t
+      | pp_tp (A.FunTypeName(t)) = pp_typename t
       | pp_tp (A.Void) = "void"        (* for function return *)
       | pp_tp (A.Any) = "void"	       (* for NULL, which has type A.Pointer(A.Any) *)
+      (* pp_tp (A.FunType(rtp,params)) should be impossible *)
 
     (* pp_oper oper = str, converting operator to C equivalent *)
     fun pp_oper A.LOGNOT = "!"
@@ -211,6 +213,10 @@ struct
 	"(" ^ pp_exp env e ^ ")." ^ pp_field f
       | pp_exp env (A.FunCall(id, es)) =
 	  pp_fun id ^ "(" ^ pp_exps env es ^ ")"
+      | pp_exp env (A.AddrOf(id)) =
+         "&" ^ pp_fun id
+      | pp_exp env (A.Invoke(e, es)) =
+          "(" ^ pp_exp env e ^ ")" ^ "(" ^ pp_exps env es ^ ")"
       | pp_exp env (A.Alloc(tp)) = "cc0_alloc(" ^ pp_tp tp ^ ")"
       | pp_exp env (A.AllocArray(tp, e)) = "cc0_alloc_array(" ^ pp_tp tp ^ "," ^ pp_exp env e ^ ")"
       | pp_exp env (A.Cast(tp, e)) =
@@ -381,6 +387,10 @@ struct
 	end
       | pp_gdecl (A.TypeDef(aid, tp, ext)) =
 	"typedef " ^ pp_tp tp ^ " " ^ pp_typename aid ^ ";\n"
+
+      | pp_gdecl (A.FunTypeDef(fid, rtp, params, specs, ext)) =
+        "typedef " ^ pp_tp rtp ^ " " ^ pp_typename fid
+        ^ "(" ^ pp_params params ^ ");\n"
 
       (* pragmas are included as comments in C file *)
       | pp_gdecl (A.Pragma(A.UseLib(libname, SOME(gdecls)), ext)) =

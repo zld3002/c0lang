@@ -2,12 +2,12 @@
 // cannot assign function pointers from 'fn1' to 'fn2'
 
 typedef bool fn1(int x, int y);
-typedef bool f21(int x, int y);
+typedef bool fn2(int x, int y);
 
-bool eq(int x, int y) { return 0; }
+bool eq(int x, int y) { return x == y; }
 
-bool apply(fn* f, int x, int y) {
-  return f(x, y);
+bool apply(fn1* f, int x, int y) {
+  return (*f)(x, y);
 }
 
 int main() {

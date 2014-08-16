@@ -22,13 +22,36 @@ struct
 
   structure A = Ast
 
+  (* should this use Symtab instead of Typetab, like typechecker.sml? *)
+  (* replace by the version below *)
+  (* Aug 14, 2014 -fp *)
+  (*
   fun tp_expand (t) =
       case Typetab.lookup t
        of SOME(tp, ext) => tp
+  *)
+
+  fun tp_expand (aid) = case Symtab.lookup aid of
+      SOME(A.TypeDef(aid, tp, ext)) => tp
 
   (* expand_def tp = tp', expand possible top-level type definitions *)
+  (* do not expand function type definitions *)
   fun expand_def (A.TypeName(t)) = expand_def (tp_expand t)
     | expand_def (tp) = tp
+
+  fun expand_fdef (A.FunTypeName(fid)) =
+      ( case Symtab.lookup fid
+         of SOME(A.FunTypeDef(fid', rtp, params, specs, ext)) =>
+            A.FunType(rtp, params)
+          (* should be only possibility *)
+      )
+    | expand_fdef (A.TypeName(aid)) = expand_fdef (tp_expand aid)
+    | expand_fdef (tp as A.FunType _) = tp
+
+  fun fun_type g =
+      (case Symtab.lookup g
+        of SOME(A.Function(g', rtp, params, _, _, _, _)) =>
+           A.FunType(rtp, params))
 
   (* expand_all tp = tp', expand possible embedded type definitions *)
   fun expand_all (tp as A.Int) = tp
@@ -39,6 +62,8 @@ struct
     | expand_all (A.Array(tp)) = A.Array(expand_all tp)
     | expand_all (tp as A.StructName(s)) = tp
     | expand_all (A.TypeName(t)) = expand_all (tp_expand t)
+    | expand_all (tp as A.FunTypeName _) = tp
+    | expand_all (tp as A.FunType _) = tp (* possible? *)
     | expand_all (tp as A.Void) = tp
     | expand_all (tp as A.Any) = A.Any (* possible for statement NULL; *)
 
@@ -94,6 +119,11 @@ struct
     | syn_exp env (A.FunCall(g, es)) =
       (case Symtab.lookup g
 	 of SOME(A.Function(g', rtp, params, _, _, _, _)) => rtp)
+    | syn_exp env (A.AddrOf(g)) =
+        A.Pointer(fun_type g)
+    | syn_exp env (A.Invoke(e, es)) =
+      (case expand_fdef (syn_exp env e)
+        of A.FunType(rtp, params) => rtp )
     | syn_exp env (A.Select(e,f)) =
       (case (syn_exp_expd env e)
 	of A.StructName(s) =>

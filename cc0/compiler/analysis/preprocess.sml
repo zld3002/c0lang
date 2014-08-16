@@ -44,6 +44,8 @@ struct
        | OpExp (oper, el) => OpExp(oper, map (color mapping) el)
        | Select (e', f) => Select (color mapping e', f)
        | FunCall (f, el) => FunCall(f, map (color mapping) el)
+       | AddrOf(g) => AddrOf(g)
+       | Invoke(e,es) => Invoke(color mapping e, map (color mapping) es)
        | Alloc _ => e
        | AllocArray (t, e') => AllocArray(t, color mapping e')
        | Cast(t, e') => Cast(t, color mapping e')

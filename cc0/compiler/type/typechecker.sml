@@ -35,6 +35,19 @@ struct
       SOME(A.TypeDef(aid, tp, ext)) => tp
       (* NONE should never happen *)
 
+  fun expand_def (A.TypeName(aid)) = expand_def (tp_expand aid)
+    | expand_def (tp) = tp
+
+  fun expand_fdef (A.FunTypeName(fid)) =
+      ( case Symtab.lookup fid
+         of SOME(A.FunTypeDef(fid', rtp, params, specs, ext)) =>
+            A.FunType(rtp, params)
+          (* should be only possibility *)
+      )
+    | expand_fdef (tp as A.FunType _) = tp
+    | expand_fdef (A.TypeName(aid)) = expand_fdef (tp_expand aid)
+    | expand_fdef (tp) = tp (* error? *)
+
   (* Use symbol table, not type table, because symbol table
    * is constructed while type-checking while type table is
    * constructed while parsing. *)
@@ -42,7 +55,10 @@ struct
       (case Symtab.lookup id
 	of SOME(A.TypeDef(t, tp, ext')) =>
 	   ( ErrorMsg.error ext ("type name '" ^ Symbol.name id ^ "' used as variable name")
-	     ; raise ErrorMsg.Error )
+	   ; raise ErrorMsg.Error )
+	 | SOME(A.FunTypeDef(fid, _, _, _, ext')) =>
+	   ( ErrorMsg.error ext ("function type name '" ^ Symbol.name id ^ "' used as variable name")
+	   ; raise ErrorMsg.Error )
 	 | _ => () )
 
   (* chk_tp tp ext = (), raises Error if tp contains A.Void.
@@ -57,11 +73,13 @@ struct
     | chk_tp (A.Array(tp)) ext = chk_tp tp ext
     | chk_tp (A.StructName(sid)) ext = () (* need not be defined! *)
     | chk_tp (A.TypeName(aid)) ext = chk_tp (tp_expand aid) ext
+    | chk_tp (A.FunTypeName(fid)) ext = () (* definition checked elsewhere *)
     | chk_tp (A.Void) ext =
       ( ErrorMsg.error ext ("illegal use of type 'void'"
 			    ^^ "'void' can only be used as return type for functions")
       ; raise ErrorMsg.Error )
     (* A.Any must be argument to Pointer *)
+    (* A.FunType only in function type definitions *)
 
   (* chk_known_size tp ext = (), raises Error if we cannot
    * allocate memory of type tp because the size is unknown, that is,
@@ -85,6 +103,9 @@ struct
       )
     | chk_known_size (A.TypeName(aid)) ext =
         chk_known_size (tp_expand aid) ext
+    | chk_known_size (A.FunTypeName(fid)) ext =
+      ( ErrorMsg.error ext ("cannot allocation memory at function type")
+      ; raise ErrorMsg.Error )
     (* A.Void, A.Any should not be asked *)
 
 (*
@@ -107,6 +128,7 @@ struct
 
   (* is_small tp = true if tp is a small type *)
   fun is_small (A.TypeName(aid)) = is_small (tp_expand aid)
+    | is_small (A.FunTypeName(fid)) = false
     | is_small (A.Void) = false
     | is_small (A.StructName _) = false
     | is_small _ = true
@@ -128,6 +150,14 @@ struct
       ; raise ErrorMsg.Error )
     | chk_small (A.TypeName(aid)) ext =
         chk_small (tp_expand aid) ext
+    | chk_small (A.FunTypeName(fid)) ext =
+      ( ErrorMsg.error ext ("function type '" ^ Symbol.name fid ^ "' not small"
+                            ^^ "cannot pass or store functions directly; use pointers")
+      ; raise ErrorMsg.Error )
+    | chk_small (A.FunType _) ext =
+      ( ErrorMsg.error ext ("function type not small"
+                             ^^ "cannot pass or store functions directly; use pointers")
+      ; raise ErrorMsg.Error )
     | chk_small (A.Void) ext = 
       ( ErrorMsg.error ext ("illegal use of type 'void'"
 		            ^^ "type void can only be used as return type for functions")
@@ -158,8 +188,21 @@ struct
 	 | _ => tp_equal (tp_expand aid1) (tp_expand aid2))
     | tp_equal (A.TypeName(aid1)) tp2 = tp_equal (tp_expand aid1) tp2
     | tp_equal tp1 (A.TypeName(aid2)) = tp_equal tp1 (tp_expand aid2)
+    | tp_equal (A.FunTypeName(fid1)) (A.FunTypeName(fid2)) =
+      (case Symbol.compare(fid1,fid2)
+        of EQUAL => true
+         | _ => false)
+    (* Function types are not equal directly, treated nominally *)
+    (* However, see tp_conv for conversion from structural function type *)
+    (* to function type definition *)
     | tp_equal (A.Void) (A.Void) = true
     | tp_equal tp1 tp2 = false
+
+  fun tp_equals nil nil = true
+    | tp_equals (_::_) nil = false
+    | tp_equals nil (_::_) = false
+    | tp_equals (A.VarDecl(_, tp1, _, _)::tps1) (A.VarDecl(_, tp2, _, _)::tps2) =
+        tp_equal tp1 tp2 andalso tp_equals tps1 tps2
 
   (* lub tp1 tp2 = SOME(tp3), the least upper bound of tp1 and tp2.
    *             = NONE if the lub does not exist.
@@ -174,6 +217,22 @@ struct
           | _ => lub (tp_expand aid1) (tp_expand aid2))
     | lub (A.TypeName(aid1)) tp2 = lub (tp_expand aid1) tp2
     | lub tp1 (A.TypeName(aid2)) = lub tp1 (tp_expand aid2)
+    | lub (A.Pointer(tp1)) (A.Pointer(tp2)) =
+      (* to access underlying function types, handling address-of *)
+      (case lub tp1 tp2
+        of SOME(tp) => SOME(A.Pointer(tp))
+         | NONE => NONE)
+    | lub (tp1 as A.FunType(rtp1, params1)) (A.FunType(rtp2, params2)) =
+        if tp_equal rtp1 rtp2 andalso tp_equals params1 params2
+        then SOME(tp1)
+        else NONE
+    | lub (tp1 as A.FunType _) (tp2 as A.FunTypeName _) =
+        (* lub is nominal on function types *)
+        if tp_conv tp1 tp2 then SOME(tp2) else NONE
+    | lub (tp1 as A.FunTypeName _) (tp2 as A.FunType _) =
+        (* lub is nominal on function types *)
+        if tp_conv tp2 tp1 then SOME(tp1) else NONE
+    (* if both are function type definition, fall back on equality *)
     | lub tp1 tp2 = if tp_equal tp1 tp2
 		    then SOME(tp1)
 		    else NONE
@@ -183,10 +242,23 @@ struct
    * Type definitions cannot contain A.Pointer(A.Any), and
    * A.Pointer(A.Any) can appear only at the top level, so we
    * do not expand tp1. *)
-  fun tp_conv (A.Pointer(A.Any)) (A.Pointer(tp)) = true
+  and tp_conv (A.Pointer(A.Any)) (A.Pointer(tp)) = true
     | tp_conv (A.Pointer(A.Any)) (A.TypeName(aid)) =
         tp_conv (A.Pointer(A.Any)) (tp_expand aid)
+    | tp_conv (A.TypeName(aid)) tp2 = tp_conv (tp_expand aid) tp2
+    | tp_conv tp1 (A.TypeName(aid)) = tp_conv tp1 (tp_expand aid)
+    | tp_conv (A.Pointer(tp1)) (A.Pointer(tp2)) = (* get to underlying function types, if necessary *)
+        tp_conv tp1 tp2
+    | tp_conv (tp1 as A.FunType _) (tp2 as A.FunTypeName _) =
+        tp_conv tp1 (expand_fdef tp2)
+    | tp_conv (A.FunType(rtp1, params1)) (A.FunType(rtp2, params2)) =
+        tp_conv rtp2 rtp1 andalso tp_convs params1 params2
     | tp_conv tp1 tp2 = tp_equal tp1 tp2
+  and tp_convs nil nil = true
+    | tp_convs (_::_) nil = false
+    | tp_convs nil (_::_) = false
+    | tp_convs (A.VarDecl(id1, tp1, _, _)::tps1) (A.VarDecl(id2, tp2, _, _)::tps2) =
+        tp_conv tp1 tp2 andalso tp_convs tps1 tps2
 
   (* tp_comparable tp1 tp2 = true if values of the two types
    * can be compared with '==' and '!=', false otherwise
@@ -272,7 +344,9 @@ struct
     | lv_exp defs (A.Null) ext = ()
     | lv_exp defs (A.OpExp(oper, es)) ext = List.app (fn e => lv_exp defs e ext) es
     | lv_exp defs (A.Select(e, f)) ext = lv_exp defs e ext
-    | lv_exp defs (A.FunCall(f, es)) ext = List.app (fn e => lv_exp defs e ext) es
+    | lv_exp defs (A.FunCall(g, es)) ext = List.app (fn e => lv_exp defs e ext) es
+    | lv_exp defs (A.AddrOf(g)) ext = () (* g is function name, not variable *)
+    | lv_exp defs (A.Invoke(e, es)) ext = List.app (fn e => lv_exp defs e ext) (e::es)
     | lv_exp defs (A.Alloc(tp)) ext = ()
     | lv_exp defs (A.AllocArray(tp, e)) ext = lv_exp defs e ext
     | lv_exp defs (A.Cast(tp, e)) ext = lv_exp defs e ext
@@ -431,6 +505,8 @@ struct
     | pv_exp pvars (A.OpExp(oper, es)) = pv_exps pvars es
     | pv_exp pvars (A.Select(e, f)) = pv_exp pvars e
     | pv_exp pvars (A.FunCall(g, es)) = pv_exps pvars es
+    | pv_exp pvars (A.AddrOf(g)) = pvars
+    | pv_exp pvars (A.Invoke(e, es)) = pv_exps pvars (e::es)
     | pv_exp pvars (A.Alloc _) = pvars
     | pv_exp pvars (A.AllocArray(tp, e)) = pv_exp pvars e
     | pv_exp pvars (A.Cast(tp, e)) = pv_exp pvars e
@@ -522,6 +598,9 @@ struct
         rt_exp e cond ext
     | rt_exp (A.FunCall(g, es)) cond ext =
         List.app (fn e => rt_exp e cond ext) es
+    | rt_exp (A.AddrOf(g)) cond ext = ()
+    | rt_exp (A.Invoke(e, es)) cond ext =
+        List.app (fn e => rt_exp e cond ext) (e::es)
     | rt_exp (A.Alloc _) cond ext = ()
     | rt_exp (A.AllocArray(tp, e)) cond ext = rt_exp e cond ext
     | rt_exp (A.Cast(tp, e)) cond ext = rt_exp e cond ext
@@ -636,11 +715,46 @@ struct
   fun syn_ext (A.Marked(marked_exp)) ext = Mark.ext marked_exp
     | syn_ext e ext = ext       (* default: context location *)
 
+  fun is_funname (id) = case Symtab.lookup id of
+        SOME(A.Function _) => true
+      | _ => false
+
   fun var_type env id ext =
       (case Symbol.look env id
-	of NONE => ( ErrorMsg.error ext ("undeclared variable '" ^ Symbol.name id ^ "'") ;
-		     raise ErrorMsg.Error )
+	of NONE => ( case Symtab.lookup id
+                      of NONE => ( ErrorMsg.error ext ("undeclared variable '" ^ Symbol.name id ^ "'")
+                                 ; raise ErrorMsg.Error )
+                       | SOME(A.Function _) =>
+                         ( ErrorMsg.error ext ("cannot use function name '" ^ Symbol.name id ^ "' like a variable\n"
+                                               ^ "[Hint: use '&" ^ Symbol.name id ^ "' to obtain a function pointer]")
+                         ; raise ErrorMsg.Error ) )
 	 | SOME(tp) => tp)
+
+  (* return the type of a function named g *)
+  (* as a side effect, note a use of g in case it is not yet defined *)
+  fun fun_type env g ext =
+      ( case Symbol.look env g
+	 of SOME _ => ( case Symtab.lookup g
+                         of NONE => ( ErrorMsg.error ext ("variable '" ^ Symbol.name g ^ "' used as a function\n"
+                                                          ^ "[Hint: try (*" ^ Symbol.name g ^ ")]")
+                                    ; raise ErrorMsg.Error )
+                          | SOME(A.Function _) => ( ErrorMsg.error ext ("function name '" ^ Symbol.name g ^ "' shadowed by local variable")
+                                      ; raise ErrorMsg.Error )
+                          | _ => () (* error caught below *) )
+	  | _ => ()
+      ; case Symtab.lookup g
+	 of NONE => ( ErrorMsg.error ext ("undeclared function '" ^ Symbol.name g ^ "'")
+		    ; raise ErrorMsg.Error )
+	  | SOME(A.Function(g', rtp, params, bodyOpt, _, _, _)) =>
+	    (* if bodyOpt = NONE, then g has been used, but is not yet defined *)
+	    ( case bodyOpt of NONE => Symset.add g | SOME _ => ()
+            ; A.FunType(rtp, params) )
+          | SOME(A.TypeDef(aid, tp, ext')) =>
+	    ( ErrorMsg.error ext ("cannot use type name '" ^ Symbol.name aid ^ "' as function name")
+	    ; raise ErrorMsg.Error )
+          | SOME(A.FunTypeDef(fid, _, _, _, ext')) =>
+	    ( ErrorMsg.error ext ("cannot use function type name '" ^ Symbol.name fid ^ "' as function name")
+	    ; raise ErrorMsg.Error ) )
 
   fun syn_field nil f ext =
         ( ErrorMsg.error ext ("undeclared field '" ^ Symbol.name f ^ "'")
@@ -649,9 +763,6 @@ struct
       (case Symbol.compare (f',f)
          of EQUAL => tp
           | _ => syn_field fields f ext)
-
-  fun expand_def (A.TypeName(aid)) = expand_def (tp_expand aid)
-    | expand_def (tp) = tp
 
   (* functions syn_<cat> synthesize the type of an exp or exps.
    * functions chk_<cat> check that a <cat> is well-typed.
@@ -680,10 +791,18 @@ struct
       (case (syn_exp_expd env e1 ext)
          of A.Pointer(A.Any) => ( ErrorMsg.error ext ("cannot dereference NULL")
 				; raise ErrorMsg.Error )
+          | A.Pointer(A.FunType _) =>
+            ( ErrorMsg.error ext ("dereferenced function pointer does not have a named type\n"
+                                  ^ "[Hint: use direct function application or variable of function type]")
+            ; raise ErrorMsg.Error )
+          | A.Pointer(A.Void) =>
+            ( ErrorMsg.error ext ("cannot dereference value of type 'void*'\n"
+                                  ^ "[Hint: cast to another pointer type with (t*)]")
+            ; raise ErrorMsg.Error )
 	  | A.Pointer(tp) => tp
           | tp => ( ErrorMsg.error ext ("subject of '*' or '->' not a pointer\n"
 					^ "inferred type " ^ P.pp_tp tp)
-		 ; raise ErrorMsg.Error ))
+		  ; raise ErrorMsg.Error ))
     | syn_exp env (A.OpExp(A.EQ, [e1,e2])) ext =
         ( chk_comparison env e1 e2 ext ; A.Bool )
     | syn_exp env (A.OpExp(A.NOTEQ, [e1,e2])) ext =
@@ -740,21 +859,28 @@ struct
 				       ^ "inferred type " ^ P.pp_tp tp)
 		 ; raise ErrorMsg.Error ))
     | syn_exp env (A.FunCall(g, es)) ext =
+      ( case fun_type env g ext
+         of A.FunType(rtp, params) => ( chk_exps env es params ext
+                                      ; rtp )
+            (* other cases should be impossible *)
+      )
+    | syn_exp env (A.AddrOf(g)) ext =
       ( case Symbol.look env g
-	 of SOME _ => ( ErrorMsg.error ext ("function name '" ^ Symbol.name g ^ "' shadowed by local variable")
-		      ; raise ErrorMsg.Error )
-	  | _ => ()
-      ; case Symtab.lookup g
-	 of NONE => ( ErrorMsg.error ext ("undeclared function '" ^ Symbol.name g ^ "'") ;
-		      raise ErrorMsg.Error )
-	  | SOME(A.Function(g', rtp, params, bodyOpt, _, _, _)) =>
-	    ( chk_exps env es params ext
-	    (* if bodyOpt = NONE, then g has been used, but is not yet defined *)
-	    ; case bodyOpt of NONE => Symset.add g | SOME _ => ()
-	    ; rtp )
-          | SOME(A.TypeDef(aid, tp, ext')) =>
-	    ( ErrorMsg.error ext ("cannot use type name '" ^ Symbol.name aid ^ "' as function name")
-	    ; raise ErrorMsg.Error ) )
+         of SOME _ => ( ErrorMsg.error ext ("cannot take address of local variable '" ^ Symbol.name g ^ "'\n"
+                                            ^ "use address-of '&f' only for functions 'f'")
+                      ; raise ErrorMsg.Error )
+          | NONE => A.Pointer(fun_type env g ext) )
+    | syn_exp env (A.Invoke(e, es)) ext =
+      ( case expand_fdef (syn_exp env e ext)
+         of A.FunType(rtp, params) => ( chk_exps env es params ext
+                                      ; rtp )
+          | tp as A.Pointer(A.FunTypeName _) =>
+              ( ErrorMsg.error ext (" (" ^ P.pp_exp e ^ ")" ^ " is a function pointer, but it is not dereferenced\n"
+                                    ^ "[Hint: try (*" ^ P.pp_exp e ^ ")]")
+              ; raise ErrorMsg.Error )
+          | tp => ( ErrorMsg.error ext ("(" ^ P.pp_exp e ^ ")" ^ "is not of function type\n"
+                                        ^ "inferred type " ^ P.pp_tp tp)
+                  ; raise ErrorMsg.Error ))
     | syn_exp env (A.Alloc(tp)) ext =
       ( chk_tp tp ext ; chk_known_size tp ext
       ; A.Pointer(tp) )
@@ -1188,14 +1314,36 @@ struct
       ( case Symtab.lookup aid
 	 of NONE => ( chk_tp tp ext ; Symtab.bind(aid, tdef) )
 	  | SOME(A.TypeDef(aid', tp', ext')) =>
-		 ( ErrorMsg.error ext ("type name '" ^ Symbol.name aid ^ "' defined more than once\n"
-				       ^ "previous definition at " ^ Mark.show' ext')
-		 ; raise ErrorMsg.Error )
+	    ( ErrorMsg.error ext ("type name '" ^ Symbol.name aid ^ "' defined more than once\n"
+				  ^ "previous definition at " ^ Mark.show' ext')
+	    ; raise ErrorMsg.Error )
+          | SOME(A.FunTypeDef(fid', _, _, _, ext')) =>
+            ( ErrorMsg.error ext ("type name '" ^ Symbol.name aid ^ "' already defined as a function type name\n"
+                                  ^ "previous definition at " ^ Mark.show' ext)
+            ; raise ErrorMsg.Error )
           | SOME(A.Function(gid, _, _, _, _, _, ext')) =>
-                 ( ErrorMsg.error ext ("type name '" ^ Symbol.name aid ^ "' already used as function name\n"
-                                       ^ "function declaration or definition at " ^ Mark.show' ext')
-                 ; raise ErrorMsg.Error )
+            ( ErrorMsg.error ext ("type name '" ^ Symbol.name aid ^ "' already used as function name\n"
+                                  ^ "function declaration or definition at " ^ Mark.show' ext')
+            ; raise ErrorMsg.Error )
       ; tdef )
+    | tc_gdecl (ftdef as A.FunTypeDef(fid, rtp, params, specs, ext)) is_library =
+      ( case Symtab.lookup fid
+         of NONE => ( (* check exactly the same property as for function declarations *)
+                      chk_fun (A.Function(fid, rtp, params, NONE, specs, false, ext))
+                    ; Symtab.bind(fid, ftdef) )
+          | SOME(A.TypeDef(aid', tp', ext')) =>
+            ( ErrorMsg.error ext ("function type name '" ^ Symbol.name fid ^ "' already defined as a type name\n"
+                                  ^ "previous definition at " ^ Mark.show' ext')
+            ; raise ErrorMsg.Error )
+          | SOME(A.FunTypeDef(fid', _, _, _, ext')) =>
+            ( ErrorMsg.error ext ("function type name '" ^ Symbol.name fid ^ "' defined more than once\n"
+                                  ^ "previous definition at " ^ Mark.show' ext')
+            ; raise ErrorMsg.Error )
+          | SOME(A.Function(gid, _, _, _, _, _, ext')) =>
+            ( ErrorMsg.error ext ("function type name '" ^ Symbol.name fid ^ "' already used as a function name\n"
+                                  ^ "function declaration or definition at " ^ Mark.show' ext')
+            ; raise ErrorMsg.Error )
+      ; ftdef )
     | tc_gdecl (sdecl as A.Struct(sid, NONE, is_extern, ext)) is_library =
       ( case Structtab.lookup sid
 	 of NONE => Structtab.bind (sid, sdecl)
@@ -1250,6 +1398,9 @@ struct
 		     | SOME(A.TypeDef(aid, tp, ext')) =>
 		       ( ErrorMsg.error ext ("cannot use type name '" ^ Symbol.name aid ^ "' as function name")
 		       ; raise ErrorMsg.Error )
+                     | SOME(A.FunTypeDef(fid, _, _, _, _)) =>
+                       ( ErrorMsg.error ext ("cannot use function type name '" ^ Symbol.name fid ^ "' as a function name")
+                       ; raise ErrorMsg.Error )
       in
 	  chk_fun_body fdecl
       end
@@ -1285,6 +1436,9 @@ struct
 		    | SOME(A.TypeDef(aid, tp, ext')) =>
 		      ( ErrorMsg.error ext ("cannot define type name '" ^ Symbol.name aid ^ "' as function name")
 		      ; raise ErrorMsg.Error )
+                    | SOME(A.FunTypeDef(fid, _, _, _, _)) =>
+                      ( ErrorMsg.error ext ("cannot use function type name '" ^ Symbol.name fid ^ "' as a function name")
+                      ; raise ErrorMsg.Error )
       in
 	  chk_fun_body fdecl
       end

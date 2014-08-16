@@ -16,6 +16,8 @@ sig
        Local of loc
      | Op of Ast.oper * (aexpr list)
      | Call of Symbol.symbol * (aexpr list)
+     | AddrOf of Symbol.symbol
+     | Invoke of aexpr * aexpr list
      | IntConst of Word32.word
      | BoolConst of bool
      | StringConst of string
@@ -82,6 +84,8 @@ struct
        Local of loc
      | Op of Ast.oper * (aexpr list)
      | Call of Symbol.symbol * (aexpr list)
+     | AddrOf of Symbol.symbol
+     | Invoke of aexpr * aexpr list
      | IntConst of Word32.word
      | BoolConst of bool
      | StringConst of string

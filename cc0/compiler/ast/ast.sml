@@ -36,6 +36,8 @@ sig
     | OpExp of oper * exp list	  (* oper(e1,...,en) *)
     | Select of exp * ident       (* e.f or e->f *)
     | FunCall of ident * exp list (* g(e1,...,en) *)
+    | AddrOf of ident             (* &g *)
+    | Invoke of exp * exp list    (* (e)(e1,...,en) *)
     | Alloc of tp		  (* alloc(tp) *)
     | AllocArray of tp * exp	  (* alloc_array(tp,e) *)
     | Cast of tp * exp            (* (tp)e *)
@@ -75,6 +77,8 @@ sig
     | Array of tp		(* tp[] *)
     | StructName of ident	(* struct s *)
     | TypeName of ident		(* aid *)
+    | FunTypeName of ident      (* fid *)
+    | FunType of tp * vardecl list (* tp (tp1,...,tpn) *)
     | Void    			(* void *)
     | Any			(* only in Pointer(Any) for NULL *)
 
@@ -83,6 +87,9 @@ sig
       Struct of ident * field list option * bool * ext
                                 (* struct s; or struct s {...}; *)
     | TypeDef of ident * tp * ext (* typedef tp aid *)
+    | FunTypeDef of ident * tp * vardecl list * spec list * ext
+                                (* typedef rtp ftpname(tp1 x1, ..., tpn xn); *)
+                                (* specs = pre/postconditions *)
     | Function of ident * tp * vardecl list * stm option
 		  * spec list * bool * ext
                                 (* rtp g(tp1 x1, ..., tpn xn); or *)
@@ -155,6 +162,8 @@ struct
     | OpExp of oper * exp list	  (* oper(e1,...,en) *)
     | Select of exp * ident       (* e.f or e->f *)
     | FunCall of ident * exp list (* g(e1,...,en) *)
+    | AddrOf of ident             (* &g *)
+    | Invoke of exp * exp list    (* (e)(e1,...,en) *)
     | Alloc of tp		  (* alloc(tp) *)
     | AllocArray of tp * exp	  (* alloc_array(tp,e) *)
     | Cast of tp * exp            (* (tp)e *)
@@ -194,6 +203,8 @@ struct
     | Array of tp		(* tp[] *)
     | StructName of ident	(* struct s *)
     | TypeName of ident		(* aid *)
+    | FunTypeName of ident      (* fid *)
+    | FunType of tp * vardecl list (* tp <- (tp1 x1,...,tpn xn) *)
     | Void    			(* void, only for functions with no return value *)
     | Any			(* only in Pointer(Any) for NULL *)
 
@@ -202,6 +213,9 @@ struct
       Struct of ident * field list option * bool * ext
                                 (* struct s; or struct s {...}; *)
     | TypeDef of ident * tp * ext (* typedef tp aid *)
+    | FunTypeDef of ident * tp * vardecl list * spec list * ext
+                                (* typedef rtp ftpname(tp1 x1, ..., tpn xn); *)
+                                (* specs = pre/postconditions *)
     | Function of ident * tp * vardecl list * stm option
 		  * spec list * bool * ext
                                 (* rtp g(tp1 x1, ..., tpn xn); or *)
@@ -263,9 +277,14 @@ struct
       | pp_tp (Array(tp)) = pp_tp tp ^ "[]" (* in C: pp_tp tp ^ "*" *)
       | pp_tp (StructName(s)) = "struct " ^ Symbol.name(s)
       | pp_tp (TypeName(t)) = Symbol.name(t)
+      | pp_tp (FunTypeName(t)) = Symbol.name(t)
+      | pp_tp (FunType(rtp,params)) = pp_tp rtp ^ "(" ^ pp_tps params ^ ")"
       | pp_tp (Void) = "void"
       | pp_tp (Any) = "$" (* should only be internal *)
-
+    and pp_tps nil = ""
+      | pp_tps (VarDecl(_,tp,_,_)::nil) = pp_tp tp
+      | pp_tps (VarDecl(_,tp,_,_)::tps) = pp_tp tp ^ "," ^ pp_tps tps
+   
     fun pp_exp (Var(id)) = pp_ident id
       | pp_exp (IntConst(w)) = Word32Signed.toString w
       | pp_exp (StringConst(s)) = "\"" ^ String.toCString s ^ "\""
@@ -290,6 +309,10 @@ struct
 	  "(" ^ pp_exp e ^ ")" ^ "." ^ pp_ident id
       | pp_exp (FunCall(id, es)) =
 	  pp_ident id ^ "(" ^ pp_exps es ^ ")"
+      | pp_exp (AddrOf(id)) =
+          "&" ^ pp_ident id
+      | pp_exp (Invoke(e, es)) =
+          "(" ^ pp_exp e ^ ")" ^ "(" ^ pp_exps es ^ ")"
       | pp_exp (Alloc(tp)) = "alloc" ^ "(" ^ pp_tp tp ^ ")"
       | pp_exp (AllocArray(tp, exp)) = "alloc_array" ^ "(" ^ pp_tp tp ^ ", " ^ pp_exp exp ^ ")"
       | pp_exp (Cast(tp, exp)) = "(" ^ "(" ^ pp_tp tp ^ ")" ^ pp_exp exp ^ ")"
@@ -439,6 +462,12 @@ struct
 	^ "{\n" ^ pp_seq 2 s ^ "}\n"
       | pp_gdecl (TypeDef(aid, tp, ext)) =
 	"typedef " ^ pp_tp tp ^ " " ^ Symbol.name aid ^ ";\n"
+      | pp_gdecl (FunTypeDef(fid, rtp, params, nil, ext)) =
+        "\n" ^ "typedef" ^ pp_tp rtp ^ " " ^ pp_ident fid ^ "(" ^ pp_params params ^ ");\n"
+      | pp_gdecl (FunTypeDef(fid, rtp, params, specs, ext)) = (* specs <> nil *)
+        "\n" ^ "typedef" ^ pp_tp rtp ^ " " ^ pp_ident fid ^ "(" ^ pp_params params ^ ")\n"
+        ^ pp_specs 0 specs
+        ^ indent 2 ";\n"
       | pp_gdecl (Pragma(UseLib(libname, _), ext)) =
 	"#use <" ^ libname ^ ">\n"
       | pp_gdecl (Pragma(UseFile(filename, _), ext)) =

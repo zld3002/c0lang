@@ -154,6 +154,13 @@ struct
 	   val tp = Syn.syn_exp env e
 	   val (ds, t) = new_tmp_init (tp, A.FunCall(g, ps)) ext
        in (ss @ [ds], t) end
+     | iso_exp env (e as A.AddrOf(g)) ext = ([], e)
+     | iso_exp env (e as A.Invoke(e1, es)) ext =
+       let val (ss1, p1, ext') = iso_lv env e1 ext
+           val (ss, ps) = iso_exps env es ext
+           val tp = Syn.syn_exp env e
+           val (ds, t) = new_tmp_init (tp, A.Invoke(p1, ps)) ext
+       in (ss1 @ ss @ [ds], t) end
      | iso_exp env (e as A.Alloc(tp)) ext =
        let val (ds, t) = new_tmp_init (Syn.syn_exp env e, A.Alloc(tp)) ext
        in ([ds], t) end
@@ -317,6 +324,10 @@ struct
     and iso_stmexp env (A.FunCall(g, es)) ext =
 	let val (ss, ps) = iso_exps env es ext
 	in (ss @ [marks (A.Exp(A.FunCall(g, ps))) ext]) end
+      | iso_stmexp env (A.Invoke(e1, es)) ext =
+        let val (ss1, p1, ext') = iso_lv env e1 ext
+            val (ss, ps) = iso_exps env es ext
+        in (ss1 @ ss @ [marks (A.Exp(A.Invoke(p1, ps))) ext]) end
       | iso_stmexp env (A.Marked(marked_exp)) ext =
 	(* do not preserve mark, since result is statement list *)
 	iso_stmexp env (Mark.data marked_exp) (Mark.ext marked_exp)

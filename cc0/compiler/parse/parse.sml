@@ -160,6 +160,8 @@ fun println (s) = print ("\n" ^ s ^ "\n")
 (* end debugging *)
 
 fun update_typetab (A.TypeDef(id, tp, ext)) = Typetab.bind (id, (tp, ext))
+  | update_typetab (A.FunTypeDef(id, rtp, params, specs, ext)) =
+      Typetab.bind(id, (A.FunType(rtp, params), ext))
   | update_typetab _ = ()
 
 fun is_typename id = case Typetab.lookup id of 
@@ -216,7 +218,7 @@ fun opr (S, t, r) = case t of
   | T.GREATER =>      Infix(9, t, r, A.GREATER)
   | T.EQEQ =>         Infix(8, t, r, A.EQ)
   | T.EXCLEQ =>       Infix(8, t, r, A.NOTEQ)
-  | T.AMP =>          Infix(7, t, r, A.AND)
+  | T.AMP =>          Infix(7, t, r, A.AND) (* prefix role is handled directly in p_exp *)
   | T.CARET =>        Infix(6, t, r, A.XOR)
   | T.BAR =>          Infix(5, t, r, A.OR)
   | T.AMPAMP =>       Infix(4, t, r, A.LOGAND)
@@ -241,6 +243,12 @@ fun type_start t = case t of
   | T.STRUCT => true
   | T.IDENT(s) => is_typename (Symbol.symbol s)
   | _ => false
+
+(* have names been entered when this is called? *)
+fun type_name id = case Typetab.lookup id of
+    SOME((A.FunType _, _)) => A.FunTypeName(id)
+  | SOME((_, _)) => A.TypeName(id)
+  (* NONE should be impossible *)
 
 fun var_name (A.Var(vid)) = SOME(Symbol.name vid)
   | var_name (A.Marked(marked_exp)) =
@@ -388,24 +396,30 @@ and e_gdecl ST = case first ST of
   | t => parse_error (here ST, "unexpected token " ^ t_toString t ^ " at top level")
 
 and r_gdecl S = r_gdecl_1 S    (* mlton performance bug work-around *)
-and r_gdecl_1 (S $ Tp(tp,r1) $ Ident(vid,_) $ VarDecls(parmlist) $ Tok(T.SEMI,r2)) =
-       S $ GDecl(A.Function(vid, tp, parmlist, NONE, nil, false, PS.ext(join r1 r2)))
-  | r_gdecl_1 (S $ Tp(tp,r1) $ Ident(vid,_) $ VarDecls(parmlist) $ Annos(specs) $ Tok(T.SEMI,r2)) =
-       S $ GDecl(A.Function(vid, tp, parmlist, NONE, specs, false, PS.ext(join r1 r2)))
-  | r_gdecl_1 (S $ Tp(tp,r1) $ Ident(vid,_) $ VarDecls(parmlist) $ Stm(stm,r2)) =
-       S $ GDecl(A.Function(vid, tp, parmlist, SOME(stm), nil, false, PS.ext(join r1 r2)))
-  | r_gdecl_1 (S $ Tp(tp,r1) $ Ident(vid,_) $ VarDecls(parmlist) $ Annos(specs) $ Stm(stm,r2)) =
-       S $ GDecl(A.Function(vid, tp, parmlist, SOME(stm), specs, false, PS.ext(join r1 r2)))
-  | r_gdecl_1 S = r_gdecl_2 S
-and r_gdecl_2 (S $ Tok(T.STRUCT,r1) $ Ident(sid,_) $ Tok(T.SEMI,r2)) =
+and r_gdecl_1 (S $ Tok(T.STRUCT,r1) $ Ident(sid,_) $ Tok(T.SEMI,r2)) =
       S $ GDecl(A.Struct(sid, NONE, false, PS.ext(join r1 r2)))
-  | r_gdecl_2 (S $ Tok(T.STRUCT,r1) $ Ident(sid,_)
+  | r_gdecl_1 (S $ Tok(T.STRUCT,r1) $ Ident(sid,_)
 	       $ Tok(T.LBRACE,_) $ Fields(fields) $ Tok(T.RBRACE,_) $ Tok(T.SEMI,r2)) =
       S $ GDecl(A.Struct(sid, SOME(fields), false, PS.ext(join r1 r2)))
-  | r_gdecl_2 (S $ Tok(T.TYPEDEF,r1) $ Tp(tp,_) $ Ident(aid,_) $ Tok(T.SEMI,r2)) =
+  | r_gdecl_1 (S $ Tok(T.TYPEDEF,r1) $ Tp(tp,_) $ Ident(aid,_) $ Tok(T.SEMI,r2)) =
       S $ GDecl(A.TypeDef(aid, tp, PS.ext(join r1 r2)))
-  | r_gdecl_2 (S $ Tok(T.PRAGMA(s),r) $ Pragma(pragma)) =
+  | r_gdecl_1 (S $ Tok(T.TYPEDEF,r1) $ Tp(tp,_) $ Ident(fid,_) $ VarDecls(parmlist) $ Tok(T.SEMI,r2)) =
+      S $ GDecl(A.FunTypeDef(fid, tp, parmlist, nil, PS.ext(join r1 r2)))
+  | r_gdecl_1 (S $ Tok(T.TYPEDEF,r1) $ Tp(tp,_) $ Ident(fid,_) $ VarDecls(parmlist) $ Annos(specs) $ Tok(T.SEMI,r2)) =
+      S $ GDecl(A.FunTypeDef(fid, tp, parmlist, specs, PS.ext(join r1 r2)))
+  | r_gdecl_1 (S $ Tok(T.PRAGMA(s),r) $ Pragma(pragma)) =
       S $ GDecl(A.Pragma(pragma, PS.ext(r)))
+  | r_gdecl_1 S = r_gdecl_2 S
+    (* function declarations must come below function type definitions *)
+and r_gdecl_2 (S $ Tp(tp,r1) $ Ident(vid,_) $ VarDecls(parmlist) $ Tok(T.SEMI,r2)) =
+       S $ GDecl(A.Function(vid, tp, parmlist, NONE, nil, false, PS.ext(join r1 r2)))
+  | r_gdecl_2 (S $ Tp(tp,r1) $ Ident(vid,_) $ VarDecls(parmlist) $ Annos(specs) $ Tok(T.SEMI,r2)) =
+       S $ GDecl(A.Function(vid, tp, parmlist, NONE, specs, false, PS.ext(join r1 r2)))
+  | r_gdecl_2 (S $ Tp(tp,r1) $ Ident(vid,_) $ VarDecls(parmlist) $ Stm(stm,r2)) =
+       S $ GDecl(A.Function(vid, tp, parmlist, SOME(stm), nil, false, PS.ext(join r1 r2)))
+  | r_gdecl_2 (S $ Tp(tp,r1) $ Ident(vid,_) $ VarDecls(parmlist) $ Annos(specs) $ Stm(stm,r2)) =
+       S $ GDecl(A.Function(vid, tp, parmlist, SOME(stm), specs, false, PS.ext(join r1 r2)))
+
 
 (* Pragmas *)
 (* first ST = '#<pragma> line' *)
@@ -419,8 +433,22 @@ and p_pragma ST = case first ST of
 
 (* Type definitions *)
 (* S = _ $ 'typedef' *)
-and p_typedef ST = ST |> p_tp >> p_ident >> p_terminal_h T.SEMI "terminate type definition with ';'"
-		      >> reduce r_gdecl
+and p_typedef ST = ST |> p_tp >> p_ident >> p_typedef1
+and p_typedef1 ST = case first ST of
+    T.SEMI => ST |> shift >> reduce r_gdecl (* ordinary type definition *)
+  | T.LPAREN => (* function type definition *)
+      ST |> p_parmlist >> p_anno_opt
+  | t => error_expected_list (here ST, [T.SEMI, T.LPAREN], t)
+  (* improve error message? *)
+  (*
+  | t => parse_error (here ST, "terminate type definition with ';'"
+                                   ^^ "found " ^ t_toString t)
+  *)
+
+and p_anno_opt ST = case first ST of
+    T.SEMI => ST |> shift >> reduce r_gdecl
+  | T.ANNO_BEGIN => ST |> push (Annos []) >> p_annos >> p_anno_opt
+  | t => error_expected_list (here ST, [T.SEMI, T.ANNO_BEGIN], t)
 
 (* Struct or function disambiguation *)
 (* S = _ $ 'struct' $ <sid> *)
@@ -428,7 +456,7 @@ and p_struct_or_fun ST = case first ST of
     T.SEMI => ST |> shift >> reduce r_gdecl  (* struct decl *)
   | T.LBRACE => ST |> shift >> push (Fields []) >> p_struct_body  (* struct defn *)
   | _ => (* have shifted 'struct s', reduce it, then continue with type *)
-    ST |> reduce r_tp >>  p_fun1 (* function decl or defn *)
+    ST |> reduce r_tp >> p_fun1 (* function decl or defn *)
 
 (* Structs *)
 and p_struct_body ST = case first ST of
@@ -640,7 +668,7 @@ and p_tp ST = case first ST of
     in if is_typename (Symbol.symbol s)
        (* only shift valid type names, signal error otherwise *)
        then ST |> shift >> reduce r_tp >> p_tp1
-       else parse_error (here ST, "expected a type name, found identifier " ^ t_toString (T.IDENT(s)))
+       else parse_error (here ST, "expected a type, found identifier " ^ t_toString (T.IDENT(s)))
     end
   | t => parse_error (here ST, "expected a type, found " ^ t_toString(t))
 
@@ -657,7 +685,7 @@ and r_tp (S $ Tok(T.INT,r)) = S $ Tp(A.Int,r)
   | r_tp (S $ Tok(T.CHAR,r)) = S $ Tp(A.Char,r)
   | r_tp (S $ Tok(T.VOID,r)) = S $ Tp(A.Void,r)
   | r_tp (S $ Tok(T.STRUCT,r1) $ Ident(sid,r2)) = S $ Tp(A.StructName(sid),join r1 r2)
-  | r_tp (S $ Tok(T.IDENT(s),r)) = S $ Tp(A.TypeName(Symbol.symbol s),r) (* s is valid type name if on stack *)
+  | r_tp (S $ Tok(T.IDENT(s),r)) = S $ Tp(type_name(Symbol.symbol s),r) (* s is valid type name if on stack *)
   | r_tp (S $ Tp(tp,r1) $ Tok(T.STAR,r2)) = S $ Tp(A.Pointer(tp),join r1 r2)
   | r_tp (S $ Tp(tp,r1) $ Tok(T.LBRACKET,_) $ Tok(T.RBRACKET,r2)) = S $ Tp(A.Array(tp),join r1 r2)
   (* above should be exhaustive *)
@@ -704,10 +732,16 @@ and c_follows_exp msg (ST as ((S $ Exp _), _)) = ST
       parse_error (here ST, msg ^ " operator " ^ t_toString (first ST)
 			    ^ " not preceeded by expression")
 
+and follows_exp (ST as (_ $ Exp(e,r), _)) = true
+  | follows_exp _ = false
+
 (* parse the maximal initial segment of ft as an expression e
  * returning (S $ Exp(e), ft') *)
 and p_exp (ST as (S, ft)) = case (S, first ST) of
-    (_, T.LPAREN) => ST |> c_follows_nonexp >> p_paren_exp >> reduce r_exp >> p_exp
+    (_, T.LPAREN) => if follows_exp ST
+                     then (* possibly invoking function pointer *)
+                         p_exp_var_or_call ST
+                     else ST |> c_follows_nonexp >> p_paren_exp >> reduce r_exp >> p_exp
 
   (* for literal expressions, shift and reduce, after checking juxtaposition *)
   | (_, T.DECNUM(s)) => ST |> c_follows_nonexp >> shift >> reduce r_exp >> p_exp
@@ -740,7 +774,14 @@ and p_exp (ST as (S, ft)) = case (S, first ST) of
 			     >> p_exp >> p_terminal T.RPAREN >> reduce r_exp >> p_exp
   | (_, T.BS_HASTAG) => ST |> c_follows_nonexp >> shift >> p_terminal T.LPAREN >> p_tp >> p_terminal T.COMMA
                            >> p_exp >> p_terminal T.RPAREN >> reduce r_exp >> p_exp
-  
+
+  (* special case for '&' as a prefix operator, because in C1
+   * it can only be applied to function names *)
+  | (S, t as T.AMP) => if follows_exp ST
+                       then (* infix operator '&' (bitwise and) *)
+                           ST |> drop >> p_exp_prec (opr (S, t, here ST))
+                       else (* prefix operator '&' (address of) *)
+                           ST |> shift >> p_ident >> reduce r_exp >> p_exp
   (* end of expression *)
   | (S, t) => (case opr (S, t, here ST)
 		of Nonfix(t', r) => (* nonfix: do not consume token *)
@@ -822,7 +863,7 @@ and e_exp_empty (ST as (S,_)) = case (S, first ST) of
   | (S $ Stms _, t) => parse_error (here ST, "expected statement, found " ^ t_toString t)
   | (S, t) => parse_error (here ST, "expected expression, found " ^ t_toString t)
 
-(* S = _ $ Ident _ *)
+(* S = _ $ Ident _ or S = _ $ Exp _ if first ST = T.LPAREN *)
 and p_exp_var_or_call ST = case first ST of
     T.LPAREN => ST |> shift >> push (Exps []) >> p_explist
 		   >> p_terminal T.RPAREN >> reduce r_exp >> p_exp
@@ -867,6 +908,8 @@ and r_exp_2 (S $ Tok(T.ALLOC,r1) $ Tok(T.LPAREN,_) $ Tp(tp,_) $ Tok(T.RPAREN,r2)
       S $ m_exp(A.Hastag(tp, e),join r1 r2)
   | r_exp_2 (S $ Ident(vid,r1) $ Tok(T.LPAREN,_) $ Exps(es) $ Tok(T.RPAREN,r2)) =
       S $ m_exp(A.FunCall(vid, es),join r1 r2)
+  | r_exp_2 (S $ Exp(e,r1) $ Tok(T.LPAREN,_) $ Exps(es) $ Tok(T.RPAREN,r2)) =
+      S $ m_exp(A.Invoke(e, es),join r1 r2)
   | r_exp_2 S = r_exp_3 S
 
 (* field access *)
@@ -875,7 +918,11 @@ and r_exp_3 (S $ Exp(e,r1) $ Tok(T.DOT,_) $ Ident(fid,r2)) =
   | r_exp_3 (S $ Exp(e,r1) $ Tok(T.ARROW,_) $ Ident(fid,r2)) =
       S $ m_exp(A.Select(A.OpExp(A.DEREF, [e]), fid), join r1 r2)
 
-  (* identifiers, must come after field access *)
+  (* address-of, must come before identifiers *)
+  | r_exp_3 (S $ Tok(T.AMP,r1) $ Ident(gid,r2)) =
+      S $ m_exp(A.AddrOf(gid), join r1 r2)
+
+  (* identifiers, must come after field access and address-of *)
   | r_exp_3 (S $ Ident(vid,r)) = S $ m_exp(A.Var(vid), r)
 
   (* array access *)
@@ -921,7 +968,7 @@ and p_terminal_h t_needed error_hint ST = case first ST of
 and e_terminal (r, t_needed, t) = case t of
     T.EQ => error_expected_h (r, t_needed, t, "assignment l = e not permitted as expression; use '==' for comparison?")
   | T.PLUSPLUS => error_expected_h (r, t_needed, t, "increment l++ not permitted as expression")
-  | T.MINUSMINUS => error_expected_h (r, t_needed, t, "increment l-- not permitted as expression")
+  | T.MINUSMINUS => error_expected_h (r, t_needed, t, "decrement l-- not permitted as expression")
   | _ => error_expected (r, t_needed, t)
 
 (* Top-level functions *)
