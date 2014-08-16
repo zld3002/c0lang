@@ -48,7 +48,7 @@ error                ~ funuse06.c1
 error                ~ funuse07.c1
 error                ~ funuse08.c1
 error                ~ funuse09.c1
-return 0             ~ funuse10.c1
+return 1             ~ funuse10.c1
 error                ~ funuse11.c1
 error                ~ funuse12.c1
 error                ~ funuse13.c1
