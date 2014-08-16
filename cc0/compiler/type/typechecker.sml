@@ -74,12 +74,12 @@ struct
     | chk_tp (A.StructName(sid)) ext = () (* need not be defined! *)
     | chk_tp (A.TypeName(aid)) ext = chk_tp (tp_expand aid) ext
     | chk_tp (A.FunTypeName(fid)) ext = () (* definition checked elsewhere *)
+    | chk_tp (A.FunType _) ext = () (* return and argument types checked before *)
     | chk_tp (A.Void) ext =
       ( ErrorMsg.error ext ("illegal use of type 'void'"
 			    ^^ "'void' can only be used as return type for functions")
       ; raise ErrorMsg.Error )
     (* A.Any must be argument to Pointer *)
-    (* A.FunType only in function type definitions *)
 
   (* chk_known_size tp ext = (), raises Error if we cannot
    * allocate memory of type tp because the size is unknown, that is,

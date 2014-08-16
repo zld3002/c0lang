@@ -781,7 +781,7 @@ and p_exp (ST as (S, ft)) = case (S, first ST) of
                        then (* infix operator '&' (bitwise and) *)
                            ST |> drop >> p_exp_prec (opr (S, t, here ST))
                        else (* prefix operator '&' (address of) *)
-                           ST |> shift >> p_ident >> reduce r_exp >> p_exp
+                           ST |> shift >> p_fun_ident >> reduce r_exp >> p_exp
   (* end of expression *)
   | (S, t) => (case opr (S, t, here ST)
 		of Nonfix(t', r) => (* nonfix: do not consume token *)
@@ -953,6 +953,11 @@ and r_exp_4 (S $ Tok(LPAREN,r1) $ Exp(e,_) $ Tok(RPAREN,r2)) = S $ m_exp(e,join 
 and p_ident ST = case first ST of
     T.IDENT(s) => ST |> drop >> push (Ident(Symbol.symbol s, here ST))
   | t => parse_error (here ST, "expected identifier, found " ^ t_toString t)
+
+and p_fun_ident ST = case first ST of
+    T.IDENT(s) => ST |> drop >> push (Ident(Symbol.symbol s, here ST))
+  | t => parse_error (here ST, "expected function, found " ^ t_toString t
+                               ^^ "address-of operator '&' can only be applied to functions")
 
 and p_terminal t_needed ST = case first ST of
     t => if t_needed = t

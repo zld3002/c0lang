@@ -68,6 +68,7 @@ struct
     | expand_all (tp as A.Any) = A.Any (* possible for statement NULL; *)
 
   (* lub tp1 tp2, least upper bound of two types (used in conditionals) *)
+  (* Aug 16, 2014 extend to handle function type names and function types? -fp *)
   fun lub (A.Pointer(A.Any)) (A.Pointer(tp)) = A.Pointer(tp)
     | lub (A.Pointer(tp)) (A.Pointer(A.Any)) = A.Pointer(tp)
     | lub (A.TypeName(t1)) tp2 = lub (tp_expand t1) tp2
