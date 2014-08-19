@@ -47,3 +47,14 @@ safe => lib => abort        ~ filetest2.c0 -d
 safe => lib => abort        ~ filetest3.c0 -d
 safe => return 1            ~ cast10.c1 -d
 safe => abort               ~ cast11.c1 -d
+safe => return 54           ~ funptr08.c1 -d
+safe => abort               ~ funptr09.c1 -d
+safe => abort               ~ funptr10.c1 -d
+safe => abort               ~ funptr11.c1 -d
+safe => div-by-zero         ~ funptr12.c1 -d
+safe => return 15           ~ funptr13.c1 -d
+safe => abort               ~ funptr14.c1 -d
+safe => return 1            ~ funptr15.c1 -d
+safe => error               ~ funptr16.c1 -d
+safe => return 5            ~ funptr17.c1 -d
+safe => return 7            ~ funptr18.c1 -d

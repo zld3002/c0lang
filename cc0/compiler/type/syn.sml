@@ -9,6 +9,7 @@ sig
     val syn_exp_expd : Ast.tp Symbol.table -> Ast.exp -> Ast.tp
     val syn_decls : Ast.tp Symbol.table -> Ast.vardecl list -> Ast.tp Symbol.table
     val expand_def : Ast.tp -> Ast.tp
+    val expand_fdef : Ast.tp -> Ast.tp (* arg must be function type or type name *)
     val expand_all : Ast.tp -> Ast.tp
     val lub : Ast.tp -> Ast.tp -> Ast.tp
 
@@ -68,13 +69,18 @@ struct
     | expand_all (tp as A.Any) = A.Any (* possible for statement NULL; *)
 
   (* lub tp1 tp2, least upper bound of two types (used in conditionals) *)
-  (* Aug 16, 2014 extend to handle function type names and function types? -fp *)
+  (* assume that lub exists, since it is only applied to well-typed conditionals *)
   fun lub (A.Pointer(A.Any)) (A.Pointer(tp)) = A.Pointer(tp)
     | lub (A.Pointer(tp)) (A.Pointer(A.Any)) = A.Pointer(tp)
     | lub (A.TypeName(t1)) tp2 = lub (tp_expand t1) tp2
     | lub tp1 (A.TypeName(t2)) = lub tp1 (tp_expand t2)
     | lub A.Any tp2 = tp2
     | lub tp1 A.Any = tp1
+    | lub (A.Pointer(tp1)) (A.Pointer(tp2)) = (* to access function types *)
+        A.Pointer(lub tp1 tp2)
+    (* lub on function pointers picks nominal alternative *)
+    | lub (tp1 as A.FunType _) (tp2 as A.FunTypeName _) = tp2
+    | lub (tp1 as A.FunTypeName _) (tp2 as A.FunType _) = tp1
     | lub tp1 tp2 = tp1  (* must be equal *)
 
   (* syn_var env id = tp, where env |- id : tp *)
@@ -133,7 +139,7 @@ struct
     | syn_exp env (A.Alloc(tp)) = A.Pointer(tp)
     | syn_exp env (A.AllocArray(tp,e)) = A.Array(tp)
     | syn_exp env (A.Cast(tp,e)) = tp
-    | syn_exp env (A.Result) = syn_var env (Symbol.symbol "\\result")
+    | syn_exp env (A.Result) = syn_var env (Symbol.symbol "\\result") (* ? Aug 18, 2014, -fp *)
     | syn_exp env (A.Length(e)) = A.Int
     | syn_exp env (A.Hastag(tp,e)) = A.Bool
     | syn_exp env (A.Marked(marked_exp)) =

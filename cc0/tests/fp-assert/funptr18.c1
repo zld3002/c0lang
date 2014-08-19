@@ -1,0 +1,22 @@
+/* //test return 7 */
+
+/* \result in function call in postcondition */
+
+typedef
+int string_fn(string s);
+
+bool pos(int x) {
+  return x >= 0;
+}
+
+int plus(int x, int y)
+//@requires pos(x) && pos(y);
+//@ensures pos(\result);
+{
+  return x+y;
+}
+
+int main() {
+  int seven = plus(3,4);
+  return seven;
+}

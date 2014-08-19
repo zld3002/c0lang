@@ -57,7 +57,7 @@ struct
 	   ( ErrorMsg.error ext ("type name '" ^ Symbol.name id ^ "' used as variable name")
 	   ; raise ErrorMsg.Error )
 	 | SOME(A.FunTypeDef(fid, _, _, _, ext')) =>
-	   ( ErrorMsg.error ext ("function type name '" ^ Symbol.name id ^ "' used as variable name")
+	   ( ErrorMsg.error ext ("function type '" ^ Symbol.name id ^ "' used as variable name")
 	   ; raise ErrorMsg.Error )
 	 | _ => () )
 
@@ -104,7 +104,7 @@ struct
     | chk_known_size (A.TypeName(aid)) ext =
         chk_known_size (tp_expand aid) ext
     | chk_known_size (A.FunTypeName(fid)) ext =
-      ( ErrorMsg.error ext ("cannot allocation memory at function type")
+      ( ErrorMsg.error ext ("cannot allocate memory at function type")
       ; raise ErrorMsg.Error )
     (* A.Void, A.Any should not be asked *)
 
@@ -725,7 +725,7 @@ struct
                       of NONE => ( ErrorMsg.error ext ("undeclared variable '" ^ Symbol.name id ^ "'")
                                  ; raise ErrorMsg.Error )
                        | SOME(A.Function _) =>
-                         ( ErrorMsg.error ext ("cannot use function name '" ^ Symbol.name id ^ "' like a variable\n"
+                         ( ErrorMsg.error ext ("cannot use function '" ^ Symbol.name id ^ "' like a variable\n"
                                                ^ "[Hint: use '&" ^ Symbol.name id ^ "' to obtain a function pointer]")
                          ; raise ErrorMsg.Error ) )
 	 | SOME(tp) => tp)
@@ -738,7 +738,7 @@ struct
                          of NONE => ( ErrorMsg.error ext ("variable '" ^ Symbol.name g ^ "' used as a function\n"
                                                           ^ "[Hint: try (*" ^ Symbol.name g ^ ")]")
                                     ; raise ErrorMsg.Error )
-                          | SOME(A.Function _) => ( ErrorMsg.error ext ("function name '" ^ Symbol.name g ^ "' shadowed by local variable")
+                          | SOME(A.Function _) => ( ErrorMsg.error ext ("function '" ^ Symbol.name g ^ "' shadowed by local variable")
                                       ; raise ErrorMsg.Error )
                           | _ => () (* error caught below *) )
 	  | _ => ()
@@ -753,7 +753,7 @@ struct
 	    ( ErrorMsg.error ext ("cannot use type name '" ^ Symbol.name aid ^ "' as function name")
 	    ; raise ErrorMsg.Error )
           | SOME(A.FunTypeDef(fid, _, _, _, ext')) =>
-	    ( ErrorMsg.error ext ("cannot use function type name '" ^ Symbol.name fid ^ "' as function name")
+	    ( ErrorMsg.error ext ("cannot use function type '" ^ Symbol.name fid ^ "' as function name")
 	    ; raise ErrorMsg.Error ) )
 
   fun syn_field nil f ext =
@@ -869,7 +869,10 @@ struct
          of SOME _ => ( ErrorMsg.error ext ("cannot take address of local variable '" ^ Symbol.name g ^ "'\n"
                                             ^ "use address-of '&f' only for functions 'f'")
                       ; raise ErrorMsg.Error )
-          | NONE => A.Pointer(fun_type env g ext) )
+          | NONE => ( case Symbol.compare (g, Symbol.symbol "main")
+                       of EQUAL => ( ErrorMsg.error ext ("cannot take address of function 'main'")
+                                   ; raise ErrorMsg.Error )
+                        | _ => A.Pointer(fun_type env g ext) ) )
     | syn_exp env (A.Invoke(e, es)) ext =
       ( case expand_fdef (syn_exp env e ext)
          of A.FunType(rtp, params) => ( chk_exps env es params ext
@@ -1057,7 +1060,7 @@ struct
     | chk_stm env (A.Assert(e1, e2s)) rtp loop ext =
         ( chk_exp env e1 A.Bool ext ;
 	  List.app (fn e => chk_exp env e A.String ext) e2s )
-    | chk_stm env (A.Error e) rtp loop ext = 
+    | chk_stm env (A.Error(e)) rtp loop ext = 
         chk_exp env e A.String ext
     | chk_stm env (A.Anno(specs)) rtp loop ext =
         List.app (fn spec => chk_spec env spec ext) specs
@@ -1318,7 +1321,7 @@ struct
 				  ^ "previous definition at " ^ Mark.show' ext')
 	    ; raise ErrorMsg.Error )
           | SOME(A.FunTypeDef(fid', _, _, _, ext')) =>
-            ( ErrorMsg.error ext ("type name '" ^ Symbol.name aid ^ "' already defined as a function type name\n"
+            ( ErrorMsg.error ext ("type name '" ^ Symbol.name aid ^ "' already defined as a function type\n"
                                   ^ "previous definition at " ^ Mark.show' ext)
             ; raise ErrorMsg.Error )
           | SOME(A.Function(gid, _, _, _, _, _, ext')) =>

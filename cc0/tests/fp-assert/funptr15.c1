@@ -1,0 +1,20 @@
+/* //test return 1 */
+/* function pointers in contracts */
+/* contract on function pointer in contract fails */
+
+typedef
+int const_int();
+
+int int_max() {
+  return 0x7FFFFFFF;
+}
+
+int int_min() {
+  return 0x80000000;
+}
+
+int main() {
+  const_int* mx = &int_max;
+  const_int* mn = &int_min;
+  return (*mx)()+1 == (*mn)() ? 1 : 0;
+}

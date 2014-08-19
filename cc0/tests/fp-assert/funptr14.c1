@@ -1,0 +1,27 @@
+/* //test return 15 */
+/* function pointers in contracts */
+/* contract on function pointer in contract fails */
+
+typedef
+bool pred(int i)
+//@requires i >= 0;
+  ;
+
+bool even(int i)
+//@requires i >= 0;
+{
+  return i%2 == 0;
+}
+
+int half(pred* p, int i)
+//@requires (*p)(i);
+//@ensures 2*\result == i || 2*\result+1 == i;
+{
+  return i/2;
+}
+
+int main() {
+  pred* e = &even;
+  int x = half(e, 29);
+  return x;
+}

@@ -1,0 +1,22 @@
+/* failing contracts */
+/* proper nesting of contracts */
+
+/* should div-by-zero */
+
+typedef
+int i2i(int x)
+//@requires x >= 0;
+//@ensures \result > 0;
+  ;
+
+int succ(int x)
+//@requires x >= 0;
+//@ensures \result > 1/0;
+{
+  return x+1;
+}
+
+int main () {
+  i2i* f = &succ;
+  return (*f)(0);
+}

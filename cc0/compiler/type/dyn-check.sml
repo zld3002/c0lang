@@ -10,6 +10,8 @@ sig
     val contracts_interpreter : Ast.tp Symbol.table -> Ast.stm -> Ast.stm
 end
 
+structure Coerciontab = Symtab (type entrytp = unit)
+
 structure DynCheck :> DYN_CHECK =
 struct
     structure A = Ast
@@ -17,7 +19,12 @@ struct
     fun location (NONE) = "_"
       | location (SOME(mark)) = Mark.show(mark)
 
+    fun fun_type g = case Symtab.lookup g of
+        SOME(A.Function(_, rtp, params, _, _, _, _)) => A.FunType(rtp, params)
+
     (* implementing \result in postconditions @ensures *)
+    (* Aug 18, 2014 Using Symbol.new below created problems with syn_exp *)
+    (* Will problems be created if user code uses variable called _result? *)
     val result_id = Symbol.new "_result" (* create new internal name *)
     val result_var = A.Var(result_id)
 
@@ -30,63 +37,44 @@ struct
     val caller_decl_main = 
         A.VarDecl(caller_id, A.String, SOME (A.StringConst "(none)"), NONE)
 
-    (* tfm_test env e = (ds, ss, e')
+    (* tfm_test env e = e'
      * Assumes env |- e : tp for some tp
-     * Ensures env, ds |- ss stm and env, ds |- e' : tp
+     * Ensures env, _result:rtp |- t' : tp
      * Eliminates \result, keep \length(e), \hastag(tp,e)
      * \result ~~> _result
      *)
-    fun tfm_test env (e as A.Var _) = ([],[],e)
-      | tfm_test env (e as A.IntConst _) = ([],[],e)
-      | tfm_test env (e as A.StringConst _) = ([],[],e)
-      | tfm_test env (e as A.CharConst _) = ([],[],e)
-      | tfm_test env (e as A.True) = ([],[],e)
-      | tfm_test env (e as A.False) = ([],[],e)
-      | tfm_test env (e as A.Null) = ([],[],e)
+    fun tfm_test env (e as A.Var _) = e
+      | tfm_test env (e as A.IntConst _) = e
+      | tfm_test env (e as A.StringConst _) = e
+      | tfm_test env (e as A.CharConst _) = e
+      | tfm_test env (e as A.True) = e
+      | tfm_test env (e as A.False) = e
+      | tfm_test env (e as A.Null) = e
       | tfm_test env (A.OpExp(oper, es)) =
-	let val (ds, ss, es') = tfm_tests env es
-	in (ds, ss, A.OpExp(oper, es')) end
+        A.OpExp(oper, List.map (fn e => tfm_test env e) es)
       | tfm_test env (A.Select(e,f)) =
-	let val (ds, ss, e') = tfm_test env e
-	in (ds, ss, A.Select(e',f)) end
+        A.Select(tfm_test env e, f)
       | tfm_test env (A.FunCall(g, es)) =
-	let val (ds, ss, es') = tfm_tests env es
-	in (ds, ss, A.FunCall(g, es')) end
-      | tfm_test env (e as A.Alloc(tp)) = ([],[],e)
+        A.FunCall(g, List.map (fn e => tfm_test env e) es)
+      | tfm_test env (e as A.AddrOf(g)) = e
+      | tfm_test env (A.Invoke(e, es)) =
+        A.Invoke(tfm_test env e, List.map (fn e => tfm_test env e) es)
+      | tfm_test env (e as A.Alloc(tp)) = e
       | tfm_test env (A.AllocArray(tp,e)) =
-	let val (ds, ss, e') = tfm_test env e
-         in (ds, ss, A.AllocArray(tp, e')) end
+        A.AllocArray(tp, tfm_test env e)
       | tfm_test env (A.Cast(tp,e)) =
-        let val (ds, ss, e') = tfm_test env e
-        in (ds, ss, A.Cast(tp, e')) end
-      | tfm_test env (A.Result) = ([], [], result_var)
+        A.Cast(tp, tfm_test env e)
+      | tfm_test env (A.Result) = result_var
       | tfm_test env (A.Length(e)) =
-	let val (ds, ss, e') = tfm_test env e
-	in (ds, ss, A.Length(e')) end
+        A.Length(tfm_test env e)
       | tfm_test env (A.Hastag(tp, e)) =
-        let val (ds, ss, e') = tfm_test env e
-        in (ds, ss, A.Hastag(tp, e')) end
-      (* 
-      | tfm_test env (A.Old(e)) =
-	let val (d,t) = Syn.new_tmp (Syn.syn_exp env e) NONE (* fix NONE? -fp *)
-	    val (ds, ss, e') = tfm_test env e
-	(* \old cannot be nested; transform anyway for \result *)
-	in (ds @ [d], ss @ [A.Assign(NONE, t, e')], t) end
-      *)
+        A.Hastag(tp, tfm_test env e)
       | tfm_test env (A.Marked(marked_exp)) =
-	(* simple heuristic for preserving location info *)
 	let 
-	    val (ds, ss, e') = tfm_test env (Mark.data marked_exp)
+	    val e' = tfm_test env (Mark.data marked_exp)
 	in
-	    (ds, ss, A.Marked(Mark.mark'(e', Mark.ext marked_exp)))
+	    A.Marked(Mark.mark'(e', Mark.ext marked_exp))
 	end
-
-    (* tfm_tests env es = (ds, ss, es'), as in tfm_test *)
-    and tfm_tests env (e::es) =
-	let val (ds1, ss1, e') = tfm_test env e
-	    val (ds2, ss2, es') = tfm_tests env es
-	in (ds1 @ ds2, ss1 @ ss2, e'::es') end
-      | tfm_tests env nil = ([], [], nil)
 
     fun m_assert(e, msg, ext) =
 	A.Markeds(Mark.mark'(A.Assert(e, msg), ext))
@@ -94,34 +82,32 @@ struct
     (* spec_to_assert env spec = A.Assert(e, msgs), marked with a region,
      * where msgs is a list of exps that constitute the error message *)
     fun spec_to_assert env (A.Requires(e,ext)) =
-	let val (ds, ss, e') = tfm_test env e
-	in (ds, ss, m_assert(e', [A.StringConst(location ext ^ ": @requires annotation failed\n"),
+	let val e' = tfm_test env e
+	in m_assert(e', [A.StringConst(location ext ^ ": @requires annotation failed\n"),
 				  caller_var, A.StringConst(": caller location")],
-			     ext))
+		    ext)
 	end
       | spec_to_assert env (A.Ensures(e,ext)) =
-	let val (ds, ss, e') = tfm_test env e
-	in (ds, ss, m_assert(e', [A.StringConst(location ext ^ ": @ensures annotation failed")], ext)) end
+	let val e' = tfm_test env e
+	in m_assert(e', [A.StringConst(location ext ^ ": @ensures annotation failed")], ext) end
       | spec_to_assert env (A.LoopInvariant(e,ext)) =
-	let val (ds, ss, e') = tfm_test env e
-	in (ds, ss, m_assert(e', [A.StringConst(location ext ^ ": @loop_invariant annotation failed")], ext)) end
+	let val e' = tfm_test env e
+	in m_assert(e', [A.StringConst(location ext ^ ": @loop_invariant annotation failed")], ext) end
       | spec_to_assert env (A.Assertion(e,ext)) =
-	let val (ds, ss, e') = tfm_test env e
-	in (ds, ss, m_assert(e', [A.StringConst(location ext ^ ": @assert annotation failed")], ext)) end
+	let val e' = tfm_test env e
+	in m_assert(e', [A.StringConst(location ext ^ ": @assert annotation failed")], ext) end
 
     (* specs_to_assert env specs, see spec_to_assert *)
     fun specs_to_assert env (spec::specs) =
-	let val (ds1, ss1, as1) = spec_to_assert env spec
-	    val (ds2, ss2, ass2) = specs_to_assert env specs
-	in (ds1 @ ds2, ss1 @ ss2, [as1] @ ass2) end
-      | specs_to_assert env nil = ([], [], [])
+	let val as1 = spec_to_assert env spec
+	    val ass2 = specs_to_assert env specs
+	in as1::ass2 end
+      | specs_to_assert env nil = nil
 
     (* anno_to_assert env anno = ass, see spec to assert.
      * This is only called on explicit @assert or @loop_invariant *)
     fun anno_to_assert env (A.Anno(specs)) =
-	let val (nil, nil, ass1) = specs_to_assert env specs
-	(* no \old permitted in loop invariants or assert *)
-	in ass1 end
+        List.map (fn spec => spec_to_assert env spec) specs
 
     (* dc_stm env s post = s'
      * Assumes env |- s stmt and env0, _result : rtp |- post stmt
@@ -138,8 +124,7 @@ struct
       | dc_stm env (A.If(e, s1, s2)) post =
 	  A.If(e, dc_stm env s1 post, dc_stm env s2 post)
       | dc_stm env (A.While(e, invs, s)) post =
-	let val (nil, nil, ass) = specs_to_assert env invs
-        (* no \old permitted in loop invariants, so ds and ss are empty *)   
+	let val ass = specs_to_assert env invs
 	(* ass is loop invariant in the form of assert statements *)
 	in
 	  A.While(A.True, nil, (* eliminate invariants here, correct? *)
@@ -157,8 +142,7 @@ struct
       | dc_stm env (s as A.Assert _) post = s
       | dc_stm env (s as A.Error _) post = s
       | dc_stm env (A.Anno(specs)) post =
-	let val ([], [], ass) = specs_to_assert env specs
-	(* no \old allowed in assertions, only postconditions *)
+	let val ass = specs_to_assert env specs
 	in
 	    A.Seq(nil, ass)
 	end 
@@ -169,18 +153,18 @@ struct
 	  List.map (fn s => dc_stm env s post) ss
 
     fun extract_pre env ((spec as A.Requires _)::specs) =
-	let val (ds1, ss1, as1) = spec_to_assert env spec
-	    val (ds2, ss2, ass2) = extract_pre env specs
-	in (ds1 @ ds2, ss1 @ ss2, [as1] @ ass2) end
+	let val as1 = spec_to_assert env spec
+	    val ass2 = extract_pre env specs
+	in as1 :: ass2 end
       | extract_pre env (_::specs) = extract_pre env specs
-      | extract_pre env nil = ([], [], [])
+      | extract_pre env nil = nil
 
     fun extract_post env ((spec as A.Ensures _)::specs) =
-	let val (ds1, ss1, as1) = spec_to_assert env spec
-	    val (ds2, ss2, ass2) = extract_post env specs
-	in (ds1 @ ds2, ss1 @ ss2, [as1] @ ass2) end
+	let val as1 = spec_to_assert env spec
+	    val ass2 = extract_post env specs
+	in as1 :: ass2 end
       | extract_post env (_::specs) = extract_post env specs
-      | extract_post env nil = ([], [], [])
+      | extract_post env nil = nil
 
     fun is_main_fn g = EQUAL = Symbol.compare (g, Symbol.symbol "main")
 
@@ -219,7 +203,17 @@ struct
 	    A.FunCall(g_last, if is_extern orelse is_main_fn g_last
 			      then es'
 			      else es' @ [A.StringConst(location(ext))])
-	end 
+	end
+      | fv_exp (A.AddrOf(g)) ext =
+        let val (g_last, i_last, is_extern) =
+                case Funversiontab.lookup g
+                 of NONE => (g, 0, is_external_fun g)
+                  | SOME(g_i, i) => (g_i, i, false) (* versioned functions are not external *)
+        in A.AddrOf(g_last) end
+      | fv_exp (A.Invoke(e, es)) ext =
+        let val (e'::es') = List.map (fn e => fv_exp e ext) (e::es)
+        (* external functions are wrapped; 'main' cannot be invoked *)
+        in A.Invoke(e', es' @ [A.StringConst(location(ext))]) end
       | fv_exp (e as A.Alloc _) ext = e
       | fv_exp (A.AllocArray(t, e)) ext =
 	  A.AllocArray(t, fv_exp e ext)
@@ -291,6 +285,19 @@ struct
 	    gdecl
 	end
 
+    (* coercion_wrapper g funtp g' = gdecl
+     * where gdecl defines g' to call g and add specs from funtp *)
+    fun coercion_wrapper g (A.FunTypeDef(fid, rtp, params, specs, ext)) g' =
+        let val args = List.map param_to_arg params
+            val body = case rtp
+                        of A.Void => A.Seq([], [A.Exp(A.FunCall(g, args)), A.Return(NONE)])
+                         | _ => A.Seq([], [A.Return(SOME(A.FunCall(g, args)))])
+            (* wrapper is never external; therefore 'false' below *)
+            val gdecl = A.Function(g', rtp, params, SOME(body), specs, false, ext)
+        in
+            gdecl
+        end
+
     (* contracts_interpreter env stm = stm'
      * called by coin *)
     fun contracts_interpreter env stm = 
@@ -313,21 +320,177 @@ struct
 	    val env0 = Syn.syn_decls Symbol.empty params1
 	    (* val env1 = Symbol.bind env0 (Symbol.symbol "\\result", rtp) *)
 	    val env1 = Symbol.bind env0 (result_id, rtp) (* replaced "\\result" -fp *)
-	    val (ds1, ss1, ass1) = extract_pre env1 specs (* ds1 = ss1 = [] *)
-	    val (ds2, ss2, ass2) = extract_post env1 specs (* ss2 = computations of \old(e) *)
+	    val ass1 = extract_pre env1 specs
+	    val ass2 = extract_post env1 specs
             (* ass2 = postcondition; insert before return *)
 	    val body' = dc_stm env1 body ass2
             (* add possibly redundant (dead-code) post-condition *)
 	    (* to make sure it is checked in case there is no return in body s *)
 	    val body'' = case rtp
-			 of A.Void => A.Seq(ds0 @ ds1 @ ds2 @ dresult,
-					    ss1 @ ss2 @ ass1 @ [body'] @ ass2)
-			  | _ => A.Seq(ds0 @ ds1 @ ds2 @ dresult,
-				       ss1 @ ss2 @ ass1 @ [body'])
+			 of A.Void => A.Seq(ds0 @ dresult,
+					    ass1 @ [body'] @ ass2)
+			  | _ => A.Seq(ds0 @ dresult, ass1 @ [body'])
 	    val body''' = fv_stm body'' ext
 	in
 	    A.Function(g, rtp, params1, SOME(body'''), specs, is_external, ext)
 	end
+
+    (* defining and insertion coercions at function pointer types *)
+    (* should this use internal names?  Aug 19, 2014 -fp *)
+    fun coercion_name g fid =
+        Symbol.symbol ("_" ^ Symbol.name g ^ "_" ^ Symbol.name fid ^ "_")
+
+    (* elaborate non-trivial coercions *)
+    fun ec_exp env (e as A.Var _) = e
+      | ec_exp env (e as A.IntConst _) = e
+      | ec_exp env (e as A.StringConst _) = e
+      | ec_exp env (e as A.CharConst _) = e
+      | ec_exp env (e as A.True) = e
+      | ec_exp env (e as A.False) = e
+      | ec_exp env (e as A.Null) = e
+      | ec_exp env (e as A.OpExp(A.COND, [e1,e2,e3])) =
+        let val e1' = ec_exp env e1
+            val tp' = Syn.syn_exp env e (* type of the whole conditional *)
+            val e2' = ec_exp env e2
+            val e2'' = coerce_exp env e2' tp'
+            val e3' = ec_exp env e3
+            val e3'' = coerce_exp env e3' tp'
+        in A.OpExp(A.COND, [e1', e2'', e3'']) end
+      | ec_exp env (A.OpExp(opr, es)) =
+          A.OpExp(opr, List.map (fn e => ec_exp env e) es)
+      | ec_exp env (A.Select(e, f)) =
+          A.Select(ec_exp env e, f)
+      | ec_exp env (A.FunCall(g, es)) =
+        let val A.FunType(rtp, params) = fun_type g
+            val es' = List.map (fn e => ec_exp env e) es
+            val es'' = coerce_exps env es' (List.map (fn A.VarDecl(_,tp',_,_) => tp') params)
+        in
+            A.FunCall(g, es'')
+        end
+      | ec_exp env (e as A.AddrOf(g)) = e
+      | ec_exp env (A.Invoke(e, es)) =
+        let val e' = ec_exp env e
+            val A.FunType(rtp, params) = Syn.expand_fdef (Syn.syn_exp env e)
+            val es' = List.map (fn e => ec_exp env e) es
+            val es'' = coerce_exps env es' (List.map (fn A.VarDecl(_,tp',_,_) => tp') params)
+        in
+            A.Invoke(e', es'')
+        end
+      | ec_exp env (e as A.Alloc _) = e
+      | ec_exp env (A.AllocArray(tp, e)) = A.AllocArray(tp, ec_exp env e)
+      | ec_exp env (A.Cast(tp, e)) = (* Aug 17, 2014 should this be a possible coercion site? -fp *)
+          A.Cast(tp, ec_exp env e)
+      | ec_exp env (e as A.Result) = e
+      | ec_exp env (A.Length(e)) = A.Length(ec_exp env e)
+      | ec_exp env (A.Hastag(tp,e)) = A.Hastag(tp, ec_exp env e)
+      | ec_exp env (A.Marked(marked_exp)) =
+        let val e' = ec_exp env (Mark.data marked_exp)
+        in A.Marked(Mark.mark'(e', Mark.ext marked_exp)) end
+
+    and coerce_exp env e tp' =
+        let val tp = Syn.syn_exp env e
+        in
+            if TypeChecker.tp_equal tp tp' (* function type names are nominal here *)
+            then e                         (* identity coercion *)
+            else coerce2_exp env e (Syn.expand_all tp) (Syn.expand_all tp')
+        end
+
+    and coerce_exps env nil nil = nil
+      | coerce_exps env (e::es) (tp::tps) =
+        coerce_exp env e tp::coerce_exps env es tps
+
+    (* coerce2_exp env e tp tp' = e', requires e : tp, ensures e' : tp' *)
+    and coerce2_exp env (A.OpExp(A.COND, [e1, e2, e3])) tp tp' =
+        let val e2' = coerce2_exp env e2 tp tp'
+            val e3' = coerce2_exp env e3 tp tp'
+        in A.OpExp(A.COND, [e1, e2', e3']) end
+      | coerce2_exp env (A.Marked(marked_exp)) tp tp' =
+        let val e' = coerce2_exp env (Mark.data marked_exp) tp tp'
+        in A.Marked(Mark.mark'(e', Mark.ext marked_exp)) end
+      | coerce2_exp env (e as A.AddrOf(g)) (A.Pointer(A.FunType(rtp, params))) (A.Pointer(A.FunTypeName(fid))) =
+        ( case Symtab.lookup fid
+           of SOME(A.FunTypeDef(fid', rtp', params', nil, ext)) =>
+              (* no additional specs; do not coerce *)
+              e
+            | SOME(ftpdef as A.FunTypeDef(fid', rtp', params', specs', ext)) =>
+              (* specs' <> nil *)
+              let val g' = coercion_name g fid
+              (* 
+                  val () = TextIO.print("% Coercing function '" ^ Symbol.name g ^ "' to type '" ^ Symbol.name fid ^ "'\n")
+               *)
+              in
+                  case Symtab.lookup g'
+                   of SOME(A.Function _) => A.AddrOf(g')  (* already needed the same coercion *)
+                    | NONE => let val d' = coercion_wrapper g ftpdef g'
+                                  val d'' = tfm_fundef d' (* translate contracts into asserts *)
+                                  val () = Symtab.bind(g', d'') (* enter into symbol table *)
+                                  val () = Coerciontab.bind(g', ()) (* newly defined coercion *)
+                              in
+                                  A.AddrOf(g')
+                              end
+              end
+        )
+      | coerce2_exp env e tp tp' =
+        (* must come from NULL : any* <: t* *)
+        (* coercion is the identity *)
+        e
+
+    (* ec_stm env s rtp = s', where rtp is the return type
+     * of the function we are in the body of
+     *)
+    fun ec_stm env (A.Assign(NONE, lv, e)) rtp =
+        let val lv' = ec_exp env lv
+            val e' = ec_exp env e
+            val tp' = Syn.syn_exp env lv
+            val e'' = coerce_exp env e' tp'
+        in A.Assign(NONE, lv', e'') end
+      | ec_stm env (A.Assign(SOME(opr), lv, e)) rtp =
+        (* compound assignments, all on type int *)
+        A.Assign(SOME(opr), ec_exp env lv, ec_exp env e)
+      | ec_stm env (A.Exp(e)) rtp = A.Exp(ec_exp env e)
+      | ec_stm env (A.Return(SOME(e))) rtp =
+        A.Return(SOME(coerce_exp env e rtp))
+      | ec_stm env (s as A.Return(NONE)) rtp = s
+      | ec_stm env (A.Assert(e1, e2s)) rtp =
+        A.Assert(ec_exp env e1, e2s)
+      | ec_stm env (A.Error(e)) rtp =
+        A.Error(ec_exp env e)
+      | ec_stm env (A.Anno(specs)) rtp =
+        A.Anno(List.map (fn spec => ec_spec env spec) specs)
+      | ec_stm env (A.Seq(ds,ss)) rtp =
+        let val (env', ds') = ec_decls env ds nil
+        in A.Seq(ds', List.map (fn s => ec_stm env' s rtp) ss) end
+      | ec_stm env (A.StmDecl(d)) rtp = (* used where? *)
+        let val (env', [d']) = ec_decls env [d] nil (* ignore env'? *)
+        in A.StmDecl(d') end
+      | ec_stm env (A.If(e, s1, s2)) rtp =
+        A.If(ec_exp env e, ec_stm env s1 rtp,
+                           ec_stm env s2 rtp)
+      | ec_stm env (A.While(e, invs, s)) rtp =
+        A.While(ec_exp env e, List.map (fn spec => ec_spec env spec) invs,
+                ec_stm env s rtp)
+      | ec_stm env (s as A.Continue) rtp = s
+      | ec_stm env (s as A.Break) rtp = s
+      | ec_stm env (A.Markeds(marked_stm)) rtp =
+        let val s' = ec_stm env (Mark.data marked_stm) rtp
+        in A.Markeds(Mark.mark'(s', Mark.ext marked_stm)) end
+      (* A.For should be impossible *)
+
+    and ec_decls env nil ds' = (env, List.rev ds')
+      | ec_decls env ((d as A.VarDecl(id, tp, NONE, ext))::ds) ds' =
+          ec_decls (Symbol.bind env (id, tp)) ds (d::ds')
+      | ec_decls env (A.VarDecl(id, tp, SOME(e), ext)::ds) ds' =
+        let val e' = ec_exp env e
+            val e'' = coerce_exp env e' tp
+            val d' = A.VarDecl(id, tp, SOME(e''), ext)
+        in
+            ec_decls (Symbol.bind env (id, tp)) ds (d'::ds')
+        end
+
+    and ec_spec env (A.Requires(e, ext)) = A.Requires(ec_exp env e, ext)
+      | ec_spec env (A.Ensures(e, ext)) = A.Ensures(ec_exp env (tfm_test env e), ext) (* elim \result *)
+      | ec_spec env (A.LoopInvariant(e, ext)) = A.LoopInvariant(ec_exp env e, ext)
+      | ec_spec env (A.Assertion(e, ext)) = A.Assertion(ec_exp env e, ext)
 
     fun next_name (fun_name, fun_index) =
         (* create new internal function version name *)
@@ -339,18 +502,36 @@ struct
 	      | SOME _ => next_name (fun_name, fun_index+1)
 	end
 
+    fun elab_coercions (A.Function(g, rtp, params, SOME(s), specs, is_external, ext)) =
+        let val env0 = Syn.syn_decls Symbol.empty params
+            val env1 = Symbol.bind env0 (result_id, rtp)
+            val specs' = List.map (fn spec => ec_spec env1 spec) specs
+            val s' = ec_stm env1 s rtp
+        in
+            A.Function(g, rtp, params, SOME(s'), specs', is_external, ext)
+        end
+      | elab_coercions d = d
+
     (* dc_gdecl gdecl = gdecls' transforms global declaration to add
      * function versioning and turn contract annotations into asserts.
      * Sometimes we need to split a declaration in two *)
     fun dc_gdecl (d as A.Function(g, rtp, params, SOME(s), specs, is_external, ext)) =
         (* Symbol instance remains the same for definition; no new function environment *)
 	(* Add caller id argument to function *)
-	[tfm_fundef d]
+        let val () = Coerciontab.reset() (* track new coercion functions *)
+            val d' = elab_coercions d    (* now Coerciontab has new function symbols, if any *)
+            val d'' = tfm_fundef d'
+            (* val () = Symtab.bind(g, d'') *) (* replace old definition? *)
+            val ds = List.map (fn g => Option.valOf (Symtab.lookup g)) (Coerciontab.list ())
+        (* coercions have already be transformed when entered into symbol table *)
+        in (* coercion function ds come before use in d'' *)
+            ds @ [d'']
+        end
       | dc_gdecl (d as A.Function(g, rtp, params, NONE, nil, true, ext)) =
 	(* external function declaration remains identical, if no contracts *)
 	[d]
       | dc_gdecl (d as A.Function(g, rtp, params, NONE, nil, false, ext)) =
-	(* no specifications (specs = ni); transform to add argument *)
+	(* no specifications (specs = nil); transform to add argument *)
 	[A.Function(g, rtp, params @ [caller_decl], NONE, nil, false, ext)]
       | dc_gdecl (d as A.Function(g, rtp, params, NONE, specs as (_::_), is_external, ext)) =
 	(* specifications; create new wrapper for g *)
@@ -370,6 +551,10 @@ struct
 	    (* preserve first decl, if present, as forward declaration *)
 	    case g_opt of NONE => [d1,d''] | SOME _ => [d'']
 	end
+      | dc_gdecl (A.FunTypeDef(fid, rtp, params, specs, ext)) =
+        (* specs are transformed wherever this function type definition
+         * is used as a coercion *)
+        [A.FunTypeDef(fid, rtp, params @ [caller_decl], specs, ext)]
       (* struct and type definitions *)
       | dc_gdecl d = [d]
 

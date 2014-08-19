@@ -1,0 +1,13 @@
+/* //test return 5 */
+
+/* can take address of library function */
+
+#use <string>
+
+typedef
+int string_fn(string s);
+
+int main() {
+  string_fn* slen = &string_length;
+  return (*slen)("abcde");
+}
