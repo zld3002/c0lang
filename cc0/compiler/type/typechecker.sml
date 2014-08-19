@@ -896,6 +896,10 @@ struct
           of (A.Pointer(A.Void), A.Pointer(A.Void)) =>
              ( ErrorMsg.error ext ("casting a void* as a void* not permitted\n")
              ; raise ErrorMsg.Error )
+           | (A.Pointer(A.Void), A.Pointer(A.FunType _)) =>
+             ( ErrorMsg.error ext ("function pointer '" ^ P.pp_exp e ^"' cannot be cast to 'void*'\n"
+                                   ^ "[Hint: assign '" ^ P.pp_exp e ^ "' to a variable and cast the variable to 'void*']")
+             ; raise ErrorMsg.Error )
            | (A.Pointer(A.Void), A.Pointer _) => tp
            | (A.Pointer _, A.Pointer(A.Void)) => tp
            | (tp1 as A.Pointer _, tp2 as A.Pointer _) =>
