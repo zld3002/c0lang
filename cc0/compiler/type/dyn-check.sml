@@ -338,7 +338,7 @@ struct
     (* defining and insertion coercions at function pointer types *)
     (* should this use internal names?  Aug 19, 2014 -fp *)
     fun coercion_name g fid =
-        Symbol.symbol ("_" ^ Symbol.name g ^ "_" ^ Symbol.name fid ^ "_")
+        Symbol.nsymbol Symbol.Internal (Symbol.name g ^ "__" ^ Symbol.name fid)
 
     (* elaborate non-trivial coercions *)
     fun ec_exp env (e as A.Var _) = e
