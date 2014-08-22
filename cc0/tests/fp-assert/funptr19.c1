@@ -1,0 +1,32 @@
+typedef
+bool cmp(void* p, void* q)
+//@requires p != NULL && q != NULL;
+  ;
+
+bool is_sorted(cmp* pred, void*[] A, int lower, int upper)
+//@requires 0 <= lower && lower <= upper && upper <= \length(A);
+//@requires pred != NULL;
+{
+  for (int i = lower; i < upper-1; i++)
+    //@loop_invariant lower <= i;
+    if (!(*pred)(A[i], A[i+1]))
+      return false;
+  return true;
+}
+
+bool leq(void* p, void* q)
+//@requires p != NULL && q != NULL;
+//@requires \hastag(int*, p) && \hastag(int*, q);
+{
+  return *(int*)q <= *(int*)q;
+}
+
+int main() {
+  int n = 10;
+  void*[] A = alloc_array(void*, n);
+  for (int i = 0; i < n; i++) {
+    int* p = alloc(int); *p = i;
+    A[i] = (void*)p;
+  }
+  return is_sorted(&leq, A, 0, n) ? 1 : 0;
+}

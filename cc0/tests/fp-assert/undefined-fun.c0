@@ -1,0 +1,15 @@
+/* testing if functions declared but not
+ * defined raise an error during compilation
+ * with gcc
+ */
+
+int dbl(int x)
+//@requires x >= 0;
+//@ensures \result >= 0;
+  ;
+
+int junk(int x);
+
+int main() {
+  return 0;
+}

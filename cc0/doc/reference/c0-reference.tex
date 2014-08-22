@@ -892,7 +892,7 @@ as whitespace.
 
 The additional reserved keywords are
 \begin{verbatim}
-requires ensures loop_invariant \result \length
+requires ensures loop_invariant \result \length \hastag
 \end{verbatim}
 The grammar is modified by adding the following cases.  The
 restrictions on annotations are detailed in
@@ -961,7 +961,7 @@ innermost loop that contains it and proceeds with the exit test (in a
 
 \subsection{Generic Pointers}
 
-As of August 21, 2014 (svn revision ???), the C1 language standard
+As of August 21, 2014 (svn revision 384), the C1 language standard
 supports generic pointers of type \verb'void*'.  The syntax is
 extended by allowing a cast prefix operator of the same precedence as
 the other prefix operators in the grammar
@@ -997,7 +997,7 @@ $t$ different from \tvoid.
 
 \subsection{Function Pointers}
 
-As of August 21, 2014 (svn revision ???), the C1 language standard
+As of August 21, 2014 (svn revision 384), the C1 language standard
 also supports a limited form of function pointer.  We add a new unary
 prefix operator \verb'&' pronounced ``\emph{address of}'', which can
 only be applied to functions and has the same precedence as other
