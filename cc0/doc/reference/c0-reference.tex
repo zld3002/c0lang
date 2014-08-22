@@ -1044,6 +1044,7 @@ data.
 
 \begin{small}
 \begin{verbatim}
+/*** generic section ***/
 /* define function type 'cmp' */
 typedef
 bool cmp(void* p, void* q)
@@ -1062,11 +1063,12 @@ bool is_sorted(cmp* pred, void*[] A, int lower, int upper)
   return true;
 }
 
+/*** specific instance ***/
 bool leq(void* p, void* q)
 //@requires p != NULL && q != NULL;
 //@requires \hastag(int*, p) && \hastag(int*, q);
 {
-  return *(int*)q <= *(int*)q;
+  return *(int*)p <= *(int*)q;
 }
 
 int main() {
@@ -1081,6 +1083,7 @@ int main() {
 \end{verbatim}
 \end{small}
 
+\clearpage
 \section{Static Semantics Reference}
 
 The static semantics enforces the following conditions.

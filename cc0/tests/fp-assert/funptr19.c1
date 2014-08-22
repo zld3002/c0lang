@@ -18,7 +18,7 @@ bool leq(void* p, void* q)
 //@requires p != NULL && q != NULL;
 //@requires \hastag(int*, p) && \hastag(int*, q);
 {
-  return *(int*)q <= *(int*)q;
+  return *(int*)p <= *(int*)q;
 }
 
 int main() {
