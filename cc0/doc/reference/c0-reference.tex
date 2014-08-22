@@ -21,7 +21,7 @@
 
 \title{C0 Reference}
 \author{15-122: Principles of Imperative Computation \\ Frank Pfenning}
-\date{September 1, 2013\\Compiler revision 350\\
+\date{August 21, 2014\\Compiler revision 350\\
   (\hyperlink{sec:updates}{updates} since January 30, 2011)}
 
 \usepackage{fancyhdr}
@@ -646,13 +646,10 @@ where a contract is one of the following
 The expression $e$, which must have type \tbool\ can mention the
 parameters $x_1, \ldots, x_n$.  It can also mention the special
 function \verb'\length(e)' mentioned above, the special variable
-\verb'\result' in \verb'@ensures' clauses.  Finally, contracts have
-the special expression \verb'\old(e)' in \verb'@ensures' clauses which
-refers to the value of the expression $e$ at the time of the function
-invocation.  The body of a function may not assign to any variable
-that occurs in an \verb'@ensures' clause outside of an \verb'\old'
-expression.  This means that the function contract can be correctly
-interpreted without knowing the body of the function.
+\verb'\result' in \verb'@ensures' clauses.  The body of a function may
+not assign to any variable that occurs in an \verb'@ensures' clause.
+This means that the function contract can be correctly interpreted
+without knowing the body of the function.
 
 Contracts must be in single-line or multi-line comments, as in the
 following example.\footnote{For modular arithmetic as specified
@@ -677,10 +674,6 @@ When dynamic checking of contracts is enabled,
 before the function body and \verb'@ensures e;'
 are checked just before the return, with the special
 variable \verb'\result' bound to the return value.
-Any subexpressions \verb'\old(e)' in \verb'@ensures' clauses
-are computed after the \verb'@requires' annotations
-but before the function body and bound to unique
-new variables.
 
 \subsection{Loop Invariants}
 
@@ -849,7 +842,7 @@ can be reused.
         | <exp> ? <exp> : <exp>
         | <vid> ( [<exp> (, <exp>)*] )
         | <exp> . <fid> | <exp> -> <fid>
-        | <exp> [ <exp> ] | * <exp>
+        | <exp> [ <exp> ]
         | alloc ( <tp> ) | alloc_array ( <tp> , <exp> )
 \end{verbatim}
 \end{small}
@@ -899,7 +892,7 @@ as whitespace.
 
 The additional reserved keywords are
 \begin{verbatim}
-requires ensures loop_invariant \result \length \old
+requires ensures loop_invariant \result \length
 \end{verbatim}
 The grammar is modified by adding the following cases.  The
 restrictions on annotations are detailed in
@@ -925,7 +918,7 @@ Section~\ref{sec:contracts}.
 
 <stmt> ::= ... | <anno>+ <stmt> | { <stmt>* <anno>+ }
 
-<exp> ::= ... | \result | \length ( <exp> ) | \old ( <exp> )
+<exp> ::= ... | \result | \length ( <exp> )
 \end{verbatim}
 \end{small}
 \caption{C0 grammar extensions for annotations}
@@ -940,10 +933,15 @@ multiple annotations in the general case.
 \section{C1 Language Extension}
 \label{sec:c1}
 
-As of September 1, 2013 (svn revision 350), the C0 compiler supports a
-new language standard C1, invoked on files with the \verb'.c1' file
-extension.  Currently, the only change is support for the \verb'break'
-and \verb'continue' control constructs, previously available in C0.
+The C1 language extension of C0 contains some experimental features,
+which are automatically permitted when the compiler is invoked on
+files with the \verb'.c1' file extension.
+
+\subsection{Advanced Control Constructs}
+
+As of September 1, 2013 (svn revision 350), the C1 language standard
+supports the \verb'break' and \verb'continue' control constructs,
+previously available in C0.
 
 \begin{small}
 \begin{verbatim}
@@ -960,6 +958,128 @@ it and proceeds with the statement following the loop.
 innermost loop that contains it and proceeds with the exit test (in a
 \verb'while' loop) or the step command followed by the exit test
 (in a \verb'for' loop).
+
+\subsection{Generic Pointers}
+
+As of August 21, 2014 (svn revision ???), the C1 language standard
+supports generic pointers of type \verb'void*'.  The syntax is
+extended by allowing a cast prefix operator of the same precedence as
+the other prefix operators in the grammar
+(see~Figure\ref{fig:precedence}).  For use in contracts, we have the
+additional construct \verb'\hastag(<tp>, <exp>)'.
+
+\begin{small}
+\begin{verbatim}
+<exp> ::= ... | (<tp> *) <exp> | \hastag ( <tp> * , <exp> )
+\end{verbatim}
+\end{small}
+
+The form \verb'(void*)e' casts the expression $e$ of type $t$\,\tstar\
+to be of type \verb'(void*)'.  Operationally, this new pointer
+references a pair consisting of a runtime representation of the type
+$t$\,\tstar\ (the \emph{tag}) and the pointer value of $e$.
+
+The second form \verb'(t*)e' where $t \not= \tvoid$ casts an
+expression $e$ of type \verb'void*' to have type $t$\,\tstar.  If the
+tag agrees with the type $t$\,\tstar, it strips off the tag and
+returns the underlying pointer of type $t$\,\tstar.  If the tags do
+not agree, an appropriate runtime exception is raised and the program
+is terminated.
+
+In contracts, we can verify the value of a tag with the boolean
+expression \verb'\hastag(t*,e)' which is true if $e$ (which must be of
+type \verb'void*') has tag $t$\,\tstar\ and false otherwise.
+
+Casting does not affect the null pointer, which remains \vnull\ and
+serves as the default value of type \verb'void*'.  Therefere, we
+consider \verb'\hastag(t*,NULL)' to be true for any permissible type
+$t$ different from \tvoid.
+
+\subsection{Function Pointers}
+
+As of August 21, 2014 (svn revision ???), the C1 language standard
+also supports a limited form of function pointer.  We add a new unary
+prefix operator \verb'&' pronounced ``\emph{address of}'', which can
+only be applied to functions and has the same precedence as other
+unary prefix operators such as \verb'*'.  We can dereference a
+function pointer and apply it to a sequence of arguments with a new
+form of function call.
+
+\begin{small}
+\begin{verbatim}
+<unop> ::= ... | &
+<exp> ::= ... | (* <exp>) ( [<exp> (, <exp>)*] )
+\end{verbatim}
+\end{small}
+
+In order to use function pointers we need to be able to assign them
+types.  For this purpose, we allow a particular idiomatic use of
+\verb'typedef' which is consistent with but much more restrictive than
+C and declares a \emph{function type name} \verb'<fid>' which occupies
+the same name space as (ordinary) type names.
+
+\begin{small}
+\begin{verbatim}
+<gdefn> ::= ...
+          | typedef <tp> <fid> ( [<tp> <vid> (, <tp> <vid>)*] ) <anno>* ;
+\end{verbatim}
+\end{small}
+
+Note that this is exactly the same form as a function declaration
+(also called a \emph{function prototype}) preceded by the
+\verb'typedef' keyword.  In particular, it also allows type
+annotations which can be used to impose contracts on functions of type
+\verb'<fid>'.
+
+Function types, named by a \verb'<fid>' are large types and, moreover,
+function values cannot be allocated on the stack or heap.  That is, we
+store and pass only pointers to functions, not functions themselves.
+Function type names are treated \emph{nominally}, which means that two
+distinct function type names are considered different, even if their
+definitions happen to be the same.
+
+Here is a small example of the use of function pointers and generic
+pointers to specify sortedness of an array segment of non-null generic
+data.
+
+\begin{small}
+\begin{verbatim}
+/* define function type 'cmp' */
+typedef
+bool cmp(void* p, void* q)
+//@requires p != NULL && q != NULL;
+  ;
+
+/* 'pred' is a pointer to a comparison function */
+bool is_sorted(cmp* pred, void*[] A, int lower, int upper)
+//@requires 0 <= lower && lower <= upper && upper <= \length(A);
+//@requires pred != NULL;
+{
+  for (int i = lower; i < upper-1; i++)
+    //@loop_invariant lower <= i;
+    if (!(*pred)(A[i], A[i+1])) /* call function 'pred' */
+     return false;
+  return true;
+}
+
+bool leq(void* p, void* q)
+//@requires p != NULL && q != NULL;
+//@requires \hastag(int*, p) && \hastag(int*, q);
+{
+  return *(int*)q <= *(int*)q;
+}
+
+int main() {
+  int n = 10;
+  void*[] A = alloc_array(void*, n);
+  for (int i = 0; i < n; i++) {
+    int* p = alloc(int); *p = i;
+    A[i] = (void*)p;
+  }
+  return is_sorted(&leq, A, 0, n) ? 1 : 0;
+}
+\end{verbatim}
+\end{small}
 
 \section{Static Semantics Reference}
 
@@ -1030,16 +1150,14 @@ The static semantics enforces the following conditions.
 In addition we check in annotations:
 \begin{itemize}
 \item \verb'\result' is only legal in \verb'@ensures' clauses.
-\item \verb'\old' is only legal in \verb'@ensures' clauses.
 \item \verb'@requires' and \verb'@ensures' can only annotate functions.
 \item \verb'@loop_invariant' can only precede loop bodies.
 \item \verb'@assert' can not annotate functions
 \item Expressions occurring in function annotations can only refer to
   the functions parameters.  Expressions in loop invariants and
   assertions can also use other local variables in whose scope they
-  occur.  Variables in \verb'@ensures' clauses outside \verb'\old'
-  expressions cannot be assigned to in the body of the function they
-  annotate.
+  occur.  Variables in \verb'@ensures' clauses cannot be assigned to
+  in the body of the function they annotate.
 \end{itemize}
 
 \section{Updates}
@@ -1067,6 +1185,10 @@ In addition we check in annotations:
 \item[Sep 1 2013.] Moved \verb'break' and \verb'continue' from
   C0 to an extended language standard C1.  They remain reserved
   keywords in C0.
+\item[Aug 21 2014.] Removed support for \verb'\old(e)' in contracts,
+  specifically \verb'@ensures' clauses.
+\item[Aug 21 2014.] Added generic pointers (\verb'void*') and function
+  pointers to C1 to permit generic implementations of data structures.
 \end{description}
 
 \end{document}

@@ -747,7 +747,10 @@ struct
 		    ; raise ErrorMsg.Error )
 	  | SOME(A.Function(g', rtp, params, bodyOpt, _, _, _)) =>
 	    (* if bodyOpt = NONE, then g has been used, but is not yet defined *)
-	    ( case bodyOpt of NONE => Symset.add g | SOME _ => ()
+	    ( case bodyOpt of NONE => ( if UndefUnused.member g (* external functions will not be in this set *)
+                                        then ( UndefUnused.remove g ; UndefUsed.add g )
+                                        else () )
+                            | SOME _ => ()
             ; A.FunType(rtp, params) )
           | SOME(A.TypeDef(aid, tp, ext')) =>
 	    ( ErrorMsg.error ext ("cannot use type name '" ^ Symbol.name aid ^ "' as function name")
@@ -767,8 +770,7 @@ struct
   (* functions syn_<cat> synthesize the type of an exp or exps.
    * functions chk_<cat> check that a <cat> is well-typed.
    * Both raise Error if not well-typed
-   * As a side-effect, we Symset.add any function name that is used
-   * and declared, but not yet defined.
+   * As a side-effect, maintain the sets of undefined, but used symbols
    * The functions use Symtab to look up function and type names
    *)
 
@@ -921,11 +923,11 @@ struct
       ( chk_tp tp ext ;
         case (expand_def tp, syn_exp_expd env e ext)
          of (A.Pointer(A.Void), _) =>
-            ( ErrorMsg.error ext ("tag can never be void*")
+            ( ErrorMsg.error ext ("tag can never be 'void*'")
             ; raise ErrorMsg.Error )
           | (A.Pointer _, A.Pointer(A.Void)) => A.Bool
           | (tp1, A.Pointer(A.Void)) =>
-            ( ErrorMsg.error ext ("tag " ^ P.pp_tp tp1 ^ " must be a pointer type")
+            ( ErrorMsg.error ext ("tag '" ^ P.pp_tp tp1 ^ "' must be a pointer type")
             ; raise ErrorMsg.Error )
           | (_, tp2) =>
             ( ErrorMsg.error ext ("tagged expression must have type void*\n"
@@ -1379,7 +1381,9 @@ struct
       let val was_extern = is_extern_fun g
           val fdecl = A.Function(g, rtp, params, NONE, specs, was_extern orelse is_library, ext) 
 	  val () = case Symtab.lookup g
-		    of NONE => Symtab.bind (g, fdecl)
+		    of NONE => ( (* not previously encountered: add to undefined and unused set *)
+                                 if (not is_library) then UndefUnused.add g else ()
+                               ; Symtab.bind (g, fdecl) )
 		     | SOME(A.Function(g', rtp', params', NONE, specs', is_extern', ext')) =>
 		       (* already declared: check if types are compatible *)
 		       ( chk_conv rtp rtp' ext
@@ -1414,8 +1418,8 @@ struct
     | tc_gdecl (A.Function(g, rtp, params, SOME(s), specs, _, ext)) is_library =
       (* function definition, override is_extern with current context is_library *)
       let val fdecl = A.Function(g, rtp, params, SOME(s), specs, is_library, ext)
-	  (* remove from list of undefined, but used function symbols, because is now defined *)
-	  val () = Symset.remove g handle NotFound => ();
+	  (* remove from sets of undefined symbols *)
+          val () = ( UndefUsed.remove g ; UndefUnused.remove g )
 	  val () = case Symtab.lookup g
 		    of NONE => Symtab.bind (g, fdecl) (* bind first to allow recursion *)
 		     | SOME(A.Function(g', rtp', params', NONE, specs', is_library', ext')) =>
@@ -1474,14 +1478,16 @@ struct
         Symbol.name id ^ " " ^ symbol_names ids
 
   (* check_all_defined () = (), raises Error if not all used functions are defined.
-   * Uses the global Symset to track function names that have been used, but
-   * not yet defined.  Symset is created by the typechecker (functions tc_<cat>).
+   * Uses the global UndefUnused set to track function names that have been used, but
+   * not yet defined.
    *)
   fun check_all_defined () =
-      let val undefineds = Symset.list ()
+      let val missing = UndefUsed.list ()
+      (* 
 	  fun isNotLibrary (SOME(A.Function(_, _, _, _, _, false, _))) = true
 	    | isNotLibrary _ = false
 	  val missing = List.filter (isNotLibrary o Symtab.lookup) undefineds
+       *)
       in
 	  case missing
 	   of (_ :: _) => ( ErrorMsg.error NONE ("undefined functions: " ^ symbol_names missing) ;

@@ -113,7 +113,8 @@ struct
       Funversiontab.reset (); (* reset function version table *)
       Libtab.reset ();        (* reset library and file loaded table *)
       Filetab.reset ();       (* reset file loaded table *)
-      Symset.reset ();        (* reset set of undefined, but used functions *)
+      UndefUsed.reset ();     (* reset set of undefined, but used functions *)
+      UndefUnused.reset ();   (* reset set of undefined and unused functions *)
       let val sources = Flags.reset_flags options errfn args in
         if Flag.isset Flags.flag_version
         then (say versioninfo ; raise EXIT)
@@ -332,7 +333,7 @@ struct
         (* Declare main before loading any libraries *)
 	val main = Symbol.symbol "main"
 	val _ = Symtab.bind(main, Ast.Function(main, Ast.Int, nil, NONE, nil, false, NONE))
-	val _ = Symset.add main; (* main is implicitly used *)
+	val _ = UndefUsed.add main; (* main is implicitly used *)
 
         (* Load the program into memory *)
         val {library_wrappers, library_headers, program} = 

@@ -59,6 +59,10 @@ fun chk_exp (A.Var _) ext = ()  (* L1 *)
     ( ErrorMsg.error ext ("selecting struct components not supported in L2") ; raise ErrorMsg.Error )
   | chk_exp (A.FunCall _) ext =
     ( ErrorMsg.error ext ("function calls not supported in L2") ; raise ErrorMsg.Error )
+  | chk_exp (A.AddrOf _) ext =
+    ( ErrorMsg.error ext ("address-of operator not supported in L2") ; raise ErrorMsg.Error )
+  | chk_exp (A.Invoke _) ext =
+    ( ErrorMsg.error ext ("function pointers not supported in L2") ; raise ErrorMsg.Error )
   | chk_exp (A.Alloc _) ext =
     ( ErrorMsg.error ext ("cell allocation not supported in L2") ; raise ErrorMsg.Error )
   | chk_exp (A.AllocArray _) ext =
@@ -68,7 +72,7 @@ fun chk_exp (A.Var _) ext = ()  (* L1 *)
   | chk_exp (A.Marked(marked_exp)) ext =
       chk_exp (Mark.data marked_exp) (Mark.ext marked_exp)
   | chk_exp e ext = (* impossible? *)
-    ( ErrorMsg.error ext ("special identifiers \\result, \\length, \\old not supported in L2")
+    ( ErrorMsg.error ext ("special identifiers \\result, \\length, \\hastag not supported in L2")
     ; raise ErrorMsg.Error )
 
 and chk_exps es ext = List.app (fn e => chk_exp e ext) es
@@ -133,6 +137,8 @@ and chk_specs nil = ()
 
 fun chk_gdecl (A.TypeDef(_, _, ext)) =
     ( ErrorMsg.error ext ("type definitions not supported in L2") ; raise ErrorMsg.Error )
+  | chk_gdecl (A.FunTypeDef(_, _, _, _, ext)) =
+    ( ErrorMsg.error ext ("function type definitions not supported in L2") ; raise ErrorMsg.Error )
   | chk_gdecl (A.Struct(_, _, _, ext)) =
     ( ErrorMsg.error ext ("structs not supported in L2") ; raise ErrorMsg.Error )
   | chk_gdecl (A.Function(g, rtp, params, NONE, specs, _, ext)) =

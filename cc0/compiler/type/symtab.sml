@@ -29,15 +29,17 @@ sig
     val reset : unit -> unit
     val add : Symbol.symbol -> unit
     val remove : Symbol.symbol -> unit
+    val member : Symbol.symbol -> bool
     val list : unit -> Symbol.symbol list
 end
 
-structure Symset :> SYMSET =
+functor Symset() :> SYMSET =
 struct
     val symset = ref (Symbol.null)
     fun reset () = ( symset := Symbol.null )
     fun add (id) = ( symset := Symbol.add (!symset) id )
-    fun remove (id) = ( symset := Symbol.remove (!symset) id )
+    fun remove (id) = ( symset := Symbol.remove (!symset) id handle NotFound => () )
+    fun member (id) = ( Symbol.member (!symset) id )
     fun list () = Symbol.listmems (!symset)
 end
 
@@ -59,3 +61,9 @@ structure Libtab = Symtab (type entrytp = bool)
 
 (* Filetab - loaded files (with #use "file") *)
 structure Filetab = Symtab (type entrytp = unit)
+
+(* UndefUsed - function symbols declared and used, but not yet defined *)
+structure UndefUsed = Symset()
+
+(* UndefUnused - function symbols declared, but not yet defined or used *)
+structure UndefUnused = Symset()

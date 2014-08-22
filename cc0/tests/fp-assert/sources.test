@@ -58,3 +58,5 @@ safe => return 1            ~ funptr15.c1 -d
 safe => error               ~ funptr16.c1 -d
 safe => return 5            ~ funptr17.c1 -d
 safe => return 7            ~ funptr18.c1 -d
+safe => return 1            ~ funptr19.c1 -d
+safe => return 0            ~ undefined-fun.c0 -d

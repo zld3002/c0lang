@@ -8,6 +8,7 @@ sig
     (* Turn contracts into dynamic checks with A.Assert(...) *)
     val contracts : Ast.program -> Ast.program
     val contracts_interpreter : Ast.tp Symbol.table -> Ast.stm -> Ast.stm
+    val dummy_definitions : Symbol.symbol list -> Ast.gdecl list
 end
 
 structure Coerciontab = Symtab (type entrytp = unit)
@@ -521,7 +522,10 @@ struct
         let val () = Coerciontab.reset() (* track new coercion functions *)
             val d' = elab_coercions d    (* now Coerciontab has new function symbols, if any *)
             val d'' = tfm_fundef d'
-            (* val () = Symtab.bind(g, d'') *) (* replace old definition? *)
+            (* don't replace old definition so elab_coercions
+             * still sees the old types, which are correct for
+             * function definitions that have not yet been transformed *)
+            (* val () = Symtab.bind(g, d'') *)
             val ds = List.map (fn g => Option.valOf (Symtab.lookup g)) (Coerciontab.list ())
         (* coercions have already be transformed when entered into symbol table *)
         in (* coercion function ds come before use in d'' *)
@@ -541,19 +545,35 @@ struct
 	    val (g_next, i_next) = next_name (Symbol.name g, i_last+1)
 	    val d' = fun_wrapper d g_next
 	    val d'' = tfm_fundef d' (* embedded calls go to last version! *)
-	    val _ = Symtab.bind(g_next, d'') (* enter in symbol table so Syn.syn works *)
+            (* enter in symbol table so Syn.syn works on transformed program
+             * however, the transformed program is not well-typed according to
+             * the symbol table, since other functions retain their old types
+             * (see case for function definitions above)
+             * if this becomes an issue, a second pass over the symbol table
+             * may be necessary to restore typing invariants *)
+	    val _ = Symtab.bind(g_next, d'')
 	    val _ = Funversiontab.bind(g, (g_next, i_next)) (* bind latest version *)
             (* add caller id argument to forward declaration *)
 	    val d1 = if is_external
 		     then d
 		     else A.Function(g, rtp, params @ [caller_decl], NONE, specs, is_external, ext)
+            (* we cannot tell here if it will never be used, since multiple
+             * files are transformed in sequence
+             *)
+            (*
+            val d1' = if is_never_defined g
+                      then dummy_definition d1
+                      else d1
+             *)
 	in
 	    (* preserve first decl, if present, as forward declaration *)
+            (* or add in dummy definition if never defined *)
 	    case g_opt of NONE => [d1,d''] | SOME _ => [d'']
 	end
       | dc_gdecl (A.FunTypeDef(fid, rtp, params, specs, ext)) =
         (* specs are transformed wherever this function type definition
-         * is used as a coercion *)
+         * is used as a coercion
+         * should we keep or replace the old definition? *)
         [A.FunTypeDef(fid, rtp, params @ [caller_decl], specs, ext)]
       (* struct and type definitions *)
       | dc_gdecl d = [d]
@@ -563,5 +583,15 @@ struct
          dc_gdecl gdecl @ dc_gdecls gdecls
 
    fun contracts gdecls = dc_gdecls gdecls
+
+   (* dummy_def relies on the symbol table retaining the original declaration *)
+   fun dummy_def (SOME(A.Function(g, rtp, params, NONE, specs, false, ext))) =
+       (* only apply to non-external functions (false), with no definition (NONE) *)
+       let val body = A.Error(A.StringConst("function '" ^ Symbol.name g ^ "' declared but never defined"))
+       in
+           A.Function(g, rtp, params @ [caller_decl], SOME(A.Seq([], [body])), specs, false, ext)
+       end
+       (* all other cases should be impossible *)
+   fun dummy_definitions gs = List.map (dummy_def o Symtab.lookup) gs
 
 end

@@ -75,7 +75,13 @@ in
    structure Top
 
    functor Symtab
+   functor Symset
    structure Symtab
-   structure Symset
    structure Structtab
+   structure Typetab
+   structure Funversiontab
+   structure Libtab
+   structure Filetab
+   structure UndefUsed
+   structure UndefUnused
 end

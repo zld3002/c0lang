@@ -189,7 +189,9 @@ struct
       ; Funversiontab.reset ()	(* reset function version table *)
       ; Libtab.reset ()	        (* reset library and file loaded table *)
       ; Filetab.reset ()	(* reset file loaded table *)
-      ; Symset.reset () )       (* reset set of undefined, but used functions *)
+      ; UndefUsed.reset ()      (* reset set of undefined, but used functions *)
+      ; UndefUnused.reset ()    (* reset set of undefined and unused functions *)
+      )
 
   (* Read command line, get list of sources *)
   fun get_sources_set_flags {options, versioninfo, usageinfo, errfn, args} = 
@@ -340,11 +342,14 @@ struct
         val programs = (map process_program sources)
         (* extract the contract-transformed programs and the original programs *)
         val tprogram = List.concat (map #1 programs)
+        val tprogram' = if Flag.isset Flags.flag_dyn_check
+                        then tprogram @ DynCheck.dummy_definitions (UndefUnused.list())
+                        else tprogram
         val oprogram = List.concat (map #2 programs)
         val sprogram = List.concat (map #3 programs)
    in
       (* propagate original source program (sprogram) here? *)
-      {library_headers = library_headers, program = tprogram,
+      {library_headers = library_headers, program = tprogram',
        oprogram = oprogram, sprogram = sprogram}
    end
 
@@ -467,7 +472,7 @@ let
         (* Declare main before loading any libraries *)
 	val main = Symbol.symbol "main"
 	val () = Symtab.bind(main, Ast.Function(main, Ast.Int, nil, NONE, nil, false, NONE))
-	val () = Symset.add main; (* main is implicitly used *)
+	val () = UndefUsed.add main; (* main is implicitly used *)
 
         (* Load the program into memory *)
         val {library_headers, program, oprogram, sprogram} = typecheck_and_load sources
@@ -507,9 +512,10 @@ let
                                         ^ last_source ^ "\n"
 					^ "do not compile .h files") ;
 				   raise EXIT )
-		   | _ => () 
-        val cname = OS.Path.joinBaseExt {base = out_base, ext = SOME "c0.c"}
-        val hname = OS.Path.joinBaseExt {base = out_base, ext = SOME "c0.h"}
+		   | _ => ()
+        val sourceExt = case extOpt of SOME(ext) => ext | NONE => ""
+        val cname = OS.Path.joinBaseExt {base = out_base, ext = SOME (sourceExt ^ ".c")}
+        val hname = OS.Path.joinBaseExt {base = out_base, ext = SOME (sourceExt ^ ".h")}
 	val bcfile = if !Flags.a_out = "a.out" (* if no output specified with -o *)
 		    then path_concat (out_dir, OS.Path.joinBaseExt {base = out_base, ext = SOME "bc0"})
 		    else !Flags.a_out (* if specified with -o *)
