@@ -798,7 +798,7 @@ We present the grammar in a similarly abbreviated style in
 Figure~\ref{fig:grammar}.  Here, [brackets] surround optional
 constituents.  Identifiers occupy four name spaces: variables and
 function names \verb'<vid>', type names \verb'<aid>', struct names
-\verb'<sid>' and field names \verb'<fid>'.  Variable and function
+\verb'<sid>', field names \verb'<fid>'.  Variable and function
 names may not conflict with type names; otherwise the same identifiers
 can be reused.
 
@@ -951,13 +951,15 @@ previously available in C0.
 % \caption{C1 grammar extension of C0}
 % \label{fig:c1-grammar}
 
-\verb'break' immediately exits the innermost loop that contains
-it and proceeds with the statement following the loop.
+Execution of the \verb'break' statement immediately exits the
+innermost loop that contains it and proceeds with the statement
+following the loop. The loop invariant is not checked.
 
-\verb'continue' immediately short-circuits the body of the
-innermost loop that contains it and proceeds with the exit test (in a
-\verb'while' loop) or the step command followed by the exit test
-(in a \verb'for' loop).
+Execution of the \verb'continue' statement immediately short-circuits
+the body of the innermost loop that contains it and proceeds with the
+exit test (in a \verb'while' loop) or the step command followed by the
+exit test (in a \verb'for' loop). If contract checking is enabled, 
+the loop invariant is checked prior to the exit test.
 
 \subsection{Generic Pointers}
 
@@ -965,12 +967,12 @@ As of August 21, 2014 (svn revision 384), the C1 language standard
 supports generic pointers of type \verb'void*'.  The syntax is
 extended by allowing a cast prefix operator of the same precedence as
 the other prefix operators in the grammar
-(see~Figure\ref{fig:precedence}).  For use in contracts, we have the
+(see~Figure~\ref{fig:precedence}).  For use in contracts, we have the
 additional construct \verb'\hastag(<tp>, <exp>)'.
 
 \begin{small}
 \begin{verbatim}
-<exp> ::= ... | (<tp> *) <exp> | \hastag ( <tp> * , <exp> )
+<exp> ::= ... | (<tp>) <exp> | \hastag ( <tp> , <exp> )
 \end{verbatim}
 \end{small}
 
@@ -1015,13 +1017,14 @@ form of function call.
 In order to use function pointers we need to be able to assign them
 types.  For this purpose, we allow a particular idiomatic use of
 \verb'typedef' which is consistent with but much more restrictive than
-C and declares a \emph{function type name} \verb'<fid>' which occupies
+C and declares a \emph{function type name} \verb'<fnid>' which occupies
 the same name space as (ordinary) type names.
 
 \begin{small}
 \begin{verbatim}
 <gdefn> ::= ...
-          | typedef <tp> <fid> ( [<tp> <vid> (, <tp> <vid>)*] ) <anno>* ;
+          | typedef <tp> <fnid> ( [<tp> <vid> (, <tp> <vid>)*] ) <anno>* ;
+<tp> ::= <fnid>
 \end{verbatim}
 \end{small}
 
@@ -1029,9 +1032,9 @@ Note that this is exactly the same form as a function declaration
 (also called a \emph{function prototype}) preceded by the
 \verb'typedef' keyword.  In particular, it also allows type
 annotations which can be used to impose contracts on functions of type
-\verb'<fid>'.
+\verb'<fnid>'.
 
-Function types, named by a \verb'<fid>' are large types and, moreover,
+Function types, named by a \verb'<fnid>' are large types and, moreover,
 function values cannot be allocated on the stack or heap.  That is, we
 store and pass only pointers to functions, not functions themselves.
 Function type names are treated \emph{nominally}, which means that two
