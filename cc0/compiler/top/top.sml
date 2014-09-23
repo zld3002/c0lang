@@ -662,7 +662,12 @@ let
 		     val () = Flag.guard Flags.flag_verbose
 		              (fn () => say ("% " ^ exec_with_args)) ()
 		 in
-		     OS.Process.system exec_with_args
+                     (* Necessary because CC0 binaries can return statuses
+                      * that cause the MLton's exit command to raise an
+                      * uncatchable top-level exception *)
+		     if OS.Process.isSuccess (OS.Process.system exec_with_args)
+                     then OS.Process.success
+                     else OS.Process.failure 
 		 end
 	    else status
 
@@ -678,6 +683,7 @@ let
                     else OS.Process.failure)
            (* Above extra bits commented out by Rob, Nov 15 2012. 
             * The compiler needs to compile with MLton! - Rob *)
+          
 
   fun test s = main ("", String.tokens Char.isSpace s)
 
