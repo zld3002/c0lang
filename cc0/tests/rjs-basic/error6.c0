@@ -1,0 +1,5 @@
+#use <string>
+
+int main() {
+  error(string_join("A", string_join("B", "C")));
+}
