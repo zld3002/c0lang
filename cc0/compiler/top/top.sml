@@ -125,6 +125,7 @@ struct
             | SOME("l2") => StdL2.check ast
             | SOME("l3") => StdL3.check ast
             | SOME("l4") => StdL4.check ast
+            | SOME("l5") => StdL5.check ast
             | SOME("c0") => StdC0.check ast
             | SOME("h0") => StdC0.check ast
             | SOME("c1") => () (* nothing to check at the moment *)
@@ -135,6 +136,7 @@ struct
                  | "l2" => StdL2.check ast
                  | "l3" => StdL3.check ast
                  | "l4" => StdL4.check ast
+                 | "l5" => StdL5.check ast
                  | "c0" => StdC0.check ast
                  | "c1" => ()
                  | std => ( say ("Unknown language standard '" ^ std ^ "'")
