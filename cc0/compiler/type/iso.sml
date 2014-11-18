@@ -291,7 +291,7 @@ struct
       | iso_stm env (A.Error e) ext = 
         let val (ss1, p1) = iso_exp env e ext
         in
-            (ss1 @ [marks (A.Error e) ext])
+            (ss1 @ [marks (A.Error p1) ext])
         end
       | iso_stm env (A.Anno(specs)) ext = (* ignore specs here *)
 	  []
