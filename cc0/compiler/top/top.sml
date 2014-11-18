@@ -428,7 +428,7 @@ let
         val versioninfo = "C0 reference compiler (cc0) revision "
                         ^ BuildId.revision ^ " (built " ^ BuildId.date ^ ")"
 	val usageinfo = G.usageInfo {header = header, options = options}
-	val c0vm_version = 4
+	val c0vm_version = 5
 	fun errfn msg : unit = (say (msg ^ "\n" ^ usageinfo) ; raise EXIT)
 
         (* Reset state by reading argments; possibly display usage & exit. *) 
@@ -680,7 +680,7 @@ let
 	   | EXIT => OS.Process.failure
 	   | FINISHED => OS.Process.success
            | e => ( say ("Unexpected exception in cc0:\n" ^ exnMessage e ^ "\n")
-                  ; if true (* true: development mode, false: production *)
+                  ; if false (* true: development mode, false: production *)
                     then ((*say (String.concatWith "\n" (SMLofNJ.exnHistory e));*) raise e)
                     else OS.Process.failure)
            (* Above extra bits commented out by Rob, Nov 15 2012. 
