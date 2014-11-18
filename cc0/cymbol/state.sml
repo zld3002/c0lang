@@ -330,6 +330,8 @@ functor StateFn (structure Data : DATA
     | Ast.StructName st => 
       Heap.Struct (map (get_heap_ty structdefs o fst) (structdefs st))
     | Ast.Any        => raise Error.Dynamic "dyn types cannot live on heap"
+    | Ast.FunTypeName _ => raise Error.Dynamic "no support for C1 yet" 
+    | Ast.FunType _ => raise Error.Dynamic "no support for C1 yet" 
 
   fun offset_index (_, (loc, NONE, []), ndx) = (loc, SOME ndx, [])
     | offset_index (_, (_, SOME _, _), _) =
@@ -384,6 +386,8 @@ functor StateFn (structure Data : DATA
       let val loc = Heap.get_loc (heap, addr)
       in Array (ty, loc, Heap.size (heap, loc)) end
     | Ast.Any       => raise Error.Dynamic "dyn types cannot live on heap"
+    | Ast.FunTypeName _ => raise Error.Dynamic "no support for C1 yet" 
+    | Ast.FunType _ => raise Error.Dynamic "no support for C1 yet" 
 
   fun put_addr (S{heap, typedefs, ...}, (ty, addr), v) =
      case assert (v, typedefs ty) of 
