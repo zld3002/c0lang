@@ -28,6 +28,8 @@ fun string_of_type tp =
     | TypeName id => Symbol.name id
     | Void => "void"
     | Any => error "No name for 'any'"
+    | FunTypeName _ => error "Cannot cast function types"
+    | FunType _ => error "Cannot cast function types"
 
 fun cast_from_type tp = 
    case tp of 
@@ -41,6 +43,8 @@ fun cast_from_type tp =
     | TypeName id => "(void *)"
     | Void => error "No cast for void"
     | Any => error "No name for 'any'"
+    | FunTypeName _ => error "Cannot cast function types"
+    | FunType _ => error "Cannot cast function types"
 
 fun cast_into_type tp = 
    case tp of
@@ -54,6 +58,8 @@ fun cast_into_type tp =
     | TypeName id => "(" ^ Symbol.name id ^ ")"
     | Void => error "No cast for void"
     | Any => error "No name for 'any'"
+    | FunTypeName _ => error "Cannot cast function types"
+    | FunType _ => error "Cannot cast function types"
 
 (* Output the header information (if any) associated with a header *)
 fun output_header data = 
@@ -84,6 +90,7 @@ fun output_header data =
          print_endline (string_of_type result ^ " " ^ Symbol.name fun_name
                         ^ "(" ^ args ^ ");")
       end
+    | FunTypeDef _ => error "Cannot handle function type definitions" 
  
 (* Output the function body (if any) associated with a header *)
 fun output_wrapper data = 
@@ -120,6 +127,7 @@ fun output_wrapper data =
          ; print_endline "}"
 	 ; print_endline ""
       end
+    | FunTypeDef _ => error "Cannot handle function type definitions" 
 
 (* Filter out a header file to get the list of functions *)
 fun collect_funs (decl, set) = 
