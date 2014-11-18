@@ -79,6 +79,8 @@ and cExp (pos : Mark.ext option) exp =
     | Ast.Length exp => Length (cExp pos exp)
     | Ast.Hastag (tp, exp) => CheckTag (tp, cExp pos exp) 
     | Ast.Marked mrk => cExp (Mark.ext mrk) (Mark.data mrk)
+    | Ast.AddrOf _ => raise Error.Internal "No support for C1 yet"
+    | Ast.Invoke _ => raise Error.Internal "No support for C1 yet"
 
 fun cVarDecl (Ast.VarDecl (x, tp, e, pos)) = 
    Declare (tp, x, NONE) ::

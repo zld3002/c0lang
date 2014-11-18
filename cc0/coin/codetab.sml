@@ -116,6 +116,9 @@ fun process_ast pre current_lib =
   | Ast.Pragma (Ast.UseFile (pragma, NONE), pos) =>
     () (* Ignore empty #use "file.c0" pragmas *)
 
+  | Ast.FunTypeDef _ => 
+    raise Error.Internal "No support for C1 features yet"
+
 fun load_lib [] lib = print ("WARNING: failed to load library <" ^ lib ^ ">\n")
   | load_lib (libdir :: path) lib =
     let val lib_file = OS.Path.concat(libdir,("lib"^lib^".so")) in

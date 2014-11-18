@@ -45,10 +45,10 @@ let
    val {library_headers, program, oprogram, ...} = 
    let 
       val main = Symbol.symbol "main" 
-      val maindecl = Ast.Function (main, Ast.Int, [], NONE, nil, false, NONE)
+      val maindecl = Ast.Function (main, Ast.Int, [], NONE, [], false, NONE)
    in
       Symtab.bind (main, maindecl)
-    ; Symset.add main
+    ; UndefUsed.add main
     ; Top.typecheck_and_load sources
    end handle _ => die COMPILER_ERROR
 
