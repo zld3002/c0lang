@@ -160,6 +160,13 @@ end
         | (T (s, []))           => Impl.name () = s
         | (T (s, _))            => 
           raise Error ("Unexpected arguments to \"" ^ s ^ "\" in predicate")
+
+      fun did_run res = 
+         Impl.did_return NONE res 
+         orelse Impl.did_div_by_zero res
+         orelse Impl.did_abort res
+         orelse Impl.did_segfault res
+         orelse Impl.did_infloop res
           
       fun spec tree =
         case tree of
@@ -172,6 +179,7 @@ end
         | (T ("segfault", []))            => [ Impl.did_segfault ]
         | (T ("abort", []))               => [ Impl.did_abort ]
         | (T ("div-by-zero", []))         => [ Impl.did_div_by_zero ]
+        | (T ("runs", []))                => [ did_run ]
         | (T ("return", [ T ("*", []) ])) => [ Impl.did_return NONE ]
         | (T ("return", [ T (num, []) ])) => [ Impl.did_return (SOME (n num)) ]
         | (T (x, _)) => 

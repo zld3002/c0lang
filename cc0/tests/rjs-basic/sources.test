@@ -18,6 +18,7 @@ failure              ~ error3.c0
 failure              ~ error4.c0
 failure              ~ error5.c0
 safe => failure      ~ error5.c0 -d
+failure              ~ error6.c0
 return 1             ~ evil-name1.c0
 return 1             ~ evil-name2.c0
 safe => return 2     ~ evil-name3.c0 -d

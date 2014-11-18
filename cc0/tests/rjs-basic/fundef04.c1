@@ -1,3 +1,4 @@
+// Expected the name of this function type, got a '('
 typedef bool (int, int);
 
 bool eq(int x, int y) { return 0; }

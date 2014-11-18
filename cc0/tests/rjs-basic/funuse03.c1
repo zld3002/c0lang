@@ -1,5 +1,5 @@
 // Good error message would look like:
-// 'f' is a function pointer but it is not dereferenced (try '*f')
+// 'f' is a function pointer but it is not dereferenced (try '(*f)')
 
 typedef bool fn(int x, int y);
 
