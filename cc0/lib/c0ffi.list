@@ -84,7 +84,6 @@ lib img
 image_clone
 image_create
 image_data
-image_destroy
 image_height
 image_load
 image_save
@@ -92,8 +91,12 @@ image_subimage
 image_width
 
 lib parse
+int_tokens
+num_tokens
 parse_bool
 parse_int
+parse_ints
+parse_tokens
 
 lib string
 char_chr

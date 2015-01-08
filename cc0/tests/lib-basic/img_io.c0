@@ -22,7 +22,6 @@ int main() {
       imgdata[y*width+x] = x*height+y;
   hash = compute_hash(imgdata, width, height);
   image_save(img, "test.png");
-  image_destroy(img);
   img = image_load("test.png");
   imgdata = image_data(img);
 

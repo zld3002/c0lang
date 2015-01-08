@@ -17,7 +17,6 @@ int image_width(image_t image);
 int image_height(image_t image);
 image_t image_create(int width, int height);
 image_t image_clone(image_t image);
-void image_destroy(image_t image);
 image_t image_subimage(image_t image, int x, int y, int width, int height);
 image_t image_load(c0_string path);
 void image_save(image_t image, c0_string path);
@@ -39,11 +38,6 @@ void *__c0ffi_image_create(void **args) {
 
 void *__c0ffi_image_clone(void **args) {
   return (void *) image_clone((image_t) args[0]);
-}
-
-void *__c0ffi_image_destroy(void **args) {
-  image_destroy((image_t) args[0]);
-  return NULL;
 }
 
 void *__c0ffi_image_subimage(void **args) {

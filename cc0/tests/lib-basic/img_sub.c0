@@ -18,8 +18,5 @@ int main() {
   assert(compute_hash(image_data(img2), 3, 3) == compute_hash(imgdata, 3, 3));
   // "hashes did not match"
 
-  image_destroy(img2);
-  image_destroy(img);
-
   return 0;
 }

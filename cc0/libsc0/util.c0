@@ -9,6 +9,21 @@ int int_size() { return 4; }         /* size of ints, in bytes */
 int int_max() { return 0x7FFFFFFF; } /* maximal integer */
 int int_min() { return 0x80000000; } /* minimal integer */
 
+int max(int x, int y)
+/*@ensures \result == x || \result == y; @*/
+/*@ensures \result >= x && \result >= y; @*/ 
+{
+  return x > y ? x : y;
+}
+
+/* Minimum of two integers */
+int min(int x, int y)
+/*@ensures \result == x || \result == y; @*/ 
+/*@ensures \result <= x && \result <= y; @*/ 
+{
+  return x > y ? y : x;
+}
+
 /* Absolute value */
 int abs(int x)
 //@requires x > int_min();

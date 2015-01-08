@@ -13,6 +13,10 @@
 
 bool * parse_bool(c0_string s);
 int * parse_int(c0_string s, int base);
+int num_tokens(c0_string s);
+bool int_tokens(c0_string s, int base);
+c0_array * parse_tokens(c0_string s);
+c0_array * parse_ints(c0_string s, int base);
 
 /* Wrappers */
 
@@ -22,5 +26,21 @@ void *__c0ffi_parse_bool(void **args) {
 
 void *__c0ffi_parse_int(void **args) {
   return (void *) parse_int((c0_string) args[0], (int) (intptr_t) args[1]);
+}
+
+void *__c0ffi_num_tokens(void **args) {
+  return (void *) (intptr_t) num_tokens((c0_string) args[0]);
+}
+
+void *__c0ffi_int_tokens(void **args) {
+  return (void *) (intptr_t) int_tokens((c0_string) args[0], (int) (intptr_t) args[1]);
+}
+
+void *__c0ffi_parse_tokens(void **args) {
+  return (void *) parse_tokens((c0_string) args[0]);
+}
+
+void *__c0ffi_parse_ints(void **args) {
+  return (void *) parse_ints((c0_string) args[0], (int) (intptr_t) args[1]);
 }
 

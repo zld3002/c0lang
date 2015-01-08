@@ -107,7 +107,6 @@ val lib_img = List.foldr Map.insert' Map.empty (mapN (
 ("image_clone",          _import "__c0ffi_image_clone" public: fnptr;) ::
 ("image_create",         _import "__c0ffi_image_create" public: fnptr;) ::
 ("image_data",           _import "__c0ffi_image_data" public: fnptr;) ::
-("image_destroy",        _import "__c0ffi_image_destroy" public: fnptr;) ::
 ("image_height",         _import "__c0ffi_image_height" public: fnptr;) ::
 ("image_load",           _import "__c0ffi_image_load" public: fnptr;) ::
 ("image_save",           _import "__c0ffi_image_save" public: fnptr;) ::
@@ -117,8 +116,12 @@ val lib_img = List.foldr Map.insert' Map.empty (mapN (
 
 (* Library parse *)
 val lib_parse = List.foldr Map.insert' Map.empty (mapN (
+("int_tokens",           _import "__c0ffi_int_tokens" public: fnptr;) ::
+("num_tokens",           _import "__c0ffi_num_tokens" public: fnptr;) ::
 ("parse_bool",           _import "__c0ffi_parse_bool" public: fnptr;) ::
 ("parse_int",            _import "__c0ffi_parse_int" public: fnptr;) ::
+("parse_ints",           _import "__c0ffi_parse_ints" public: fnptr;) ::
+("parse_tokens",         _import "__c0ffi_parse_tokens" public: fnptr;) ::
 []))
 
 (* Library string *)

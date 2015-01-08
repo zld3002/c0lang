@@ -1,4 +1,6 @@
 lib => return 0          ~ parse.c0 -lparse -lstring
+lib => return 0          ~ parses0.c0 
+lib => return 0          ~ parses0.c0 -d
 lib => return 0          ~ string.c0 -lstring
 lib => return 0          ~ string_charat.c0 -lstring
 lib => return 0          ~ string_format.c0 -lparse -lstring

@@ -20,9 +20,6 @@ int main() {
   imgdata[7] = 18;
   assert(imgdata[7] != imgdata2[1]); // "subimage data should not be shared"
 
-  image_destroy(img);
-  image_destroy(img2);
-
   return 0;
 }
 

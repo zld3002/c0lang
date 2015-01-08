@@ -1,0 +1,100 @@
+#use <parse>
+#use <conio>
+#use <string>
+#use <util>
+
+int main() {
+  string[] A;
+  int[] B;
+  assert(num_tokens("") == 0);
+  A =  parse_tokens("");
+  B =    parse_ints("", 10);
+  assert(num_tokens("    ") == 0);
+  A =  parse_tokens("    ");
+  B =    parse_ints("    ", 10);
+  assert(num_tokens(" \n \t ") == 0);
+  A =  parse_tokens(" \n \t ");
+  B =    parse_ints(" \n \t ", 10);
+  assert(num_tokens("  \r \v \f ") == 0);
+  A =  parse_tokens("  \r \v \f ");
+  B =    parse_ints("  \r \v \f ", 10);
+  
+  assert(num_tokens("1") == 1);
+  A =  parse_tokens("1");
+  B =    parse_ints("1", 10);
+  assert(num_tokens("1    ") == 1);
+  A =  parse_tokens("1    ");
+  B =    parse_ints("1    ", 10);
+  assert(num_tokens("  1  ") == 1);
+  A =  parse_tokens("  1  ");
+  B =    parse_ints("  1  ", 10);
+  assert(num_tokens("    1") == 1);
+  A =  parse_tokens("    1");
+  B =    parse_ints("    1", 10);
+  assert(num_tokens("1  \n \t ") == 1);
+  A =  parse_tokens("1  \n \t ");
+  B =    parse_ints("1  \n \t ", 10);
+  assert(num_tokens(" 1 \n \t ") == 1);
+  A =  parse_tokens(" 1 \n \t ");
+  B =    parse_ints(" 1 \n \t ", 10);
+   assert(num_tokens("  1\n \t ") == 1);
+  A =  parse_tokens("  1\n \t ");
+  B =    parse_ints("  1\n \t ", 10);
+  assert(num_tokens("  \n1 \t ") == 1);
+  A =  parse_tokens("  \n1 \t ");
+  B =    parse_ints("  \n1 \t ", 10);
+  assert(num_tokens("  \n 1\t ") == 1);
+  A =  parse_tokens("  \n 1\t ");
+  B =    parse_ints("  \n 1\t ", 10);
+  assert(num_tokens("  \n \t1 ") == 1);
+  A =  parse_tokens("  \n \t1 ");
+  B =    parse_ints("  \n \t1 ", 10);
+  assert(num_tokens("1  \r \v \f ") == 1);
+  A =  parse_tokens("1  \r \v \f ");
+  B =    parse_ints("1  \r \v \f ", 10);
+  assert(num_tokens(" 1 \r \v \f ") == 1);
+  A =  parse_tokens(" 1 \r \v \f ");
+  B =    parse_ints(" 1 \r \v \f ", 10);
+  assert(num_tokens("  1\r \v \f ") == 1);
+  A =  parse_tokens("  1\r \v \f ");
+  B =    parse_ints("  1\r \v \f ", 10);
+  assert(num_tokens("  \r1 \v \f ") == 1);
+  A =  parse_tokens("  \r1 \v \f ");
+  B =    parse_ints("  \r1 \v \f ", 10);
+  assert(num_tokens("  \r 1\v \f ") == 1);
+  A =  parse_tokens("  \r 1\v \f ");
+  B =    parse_ints("  \r 1\v \f ", 10);
+  assert(num_tokens("  \r \v1 \f ") == 1);
+  A =  parse_tokens("  \r \v1 \f ");
+  B =    parse_ints("  \r \v1 \f ", 10);
+  assert(num_tokens("  \r \v 1\f ") == 1);
+  A =  parse_tokens("  \r \v 1\f ");
+  B =    parse_ints("  \r \v 1\f ", 10);
+  
+  assert(num_tokens("1 2 3") == 3);
+  B = parse_ints("1 2 3", 10);
+  assert(B[0] == 1 && B[1] == 2 && B[2] == 3);
+  B = parse_ints("    1 2 3", 10);
+  assert(B[0] == 1 && B[1] == 2 && B[2] == 3);
+  B = parse_ints("1 2 3    ", 10);
+  assert(B[0] == 1 && B[1] == 2 && B[2] == 3);
+  B = parse_ints(" 1  2 3 ", 10);
+  assert(B[0] == 1 && B[1] == 2 && B[2] == 3);
+  B = parse_ints("  1 2  3", 10);
+  assert(B[0] == 1 && B[1] == 2 && B[2] == 3);
+
+  string s = "  ";
+  for (int i = 0; i < 1000; i++) {
+    s = string_join(s, string_join(" ", int2hex(i + 0xC0CAFE)));
+  }
+
+  assert(num_tokens(s) == 1000);
+  A = parse_tokens(s);
+  B = parse_ints(s, 16);
+  for (int i = 0; i < 1000; i++) {
+    assert(string_equal(A[i], int2hex(i + 0xC0CAFE)));
+    assert(B[i] == 0xC0CAFE + i);
+  }
+  
+  return 0;
+}

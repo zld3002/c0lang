@@ -5,9 +5,13 @@
 // rand_t init_rand(int seed);
 // int rand(rand_t gen);
 
+// typedef ______* rand_t;
 typedef struct rand* rand_t;
+
 rand_t init_rand (int seed)
-//@requires seed != 0;
-  ;
-int rand(rand_t gen);
+  /*@requires seed != 0; @*/ 
+  /*@ensures \result != NULL @*/ ;
+
+int rand(rand_t gen)
+  /*@requires gen != NULL; @*/ ;
 
