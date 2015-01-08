@@ -115,7 +115,7 @@ Binary distro (pristine Ubuntu distro):
 
   # Prerequisites
   apt-get update
-  apt-get install subversion make g++ libpng-dev libncurses-dev texlive-latex-base texlive-fonts-recommended mlton
+  apt-get install subversion make g++ libpng-dev libncurses-dev texlive-latex-base texlive-latex-recommended texlive-fonts-recommended mlton
   svn co https://svn.concert.cs.cmu.edu/c0
 
   # Configuration
