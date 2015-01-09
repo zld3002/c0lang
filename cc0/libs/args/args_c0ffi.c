@@ -18,28 +18,27 @@ struct args{
   int argc;
   c0_array * argv;
 };
-typedef struct args * args_t;
-args_t args_parse();
+struct args * args_parse();
 
 /* Wrappers */
 
-void *__c0ffi_args_flag(void **args) {
-  args_flag((c0_string) args[0], (bool *) args[1]);
-  return NULL;
+c0_value __c0ffi_args_flag(c0_value *args) {
+  args_flag((c0_string)val2ptr(args[0]), (bool *)val2ptr(args[1]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_args_int(void **args) {
-  args_int((c0_string) args[0], (int *) args[1]);
-  return NULL;
+c0_value __c0ffi_args_int(c0_value *args) {
+  args_int((c0_string)val2ptr(args[0]), (int *)val2ptr(args[1]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_args_string(void **args) {
-  args_string((c0_string) args[0], (c0_string *) args[1]);
-  return NULL;
+c0_value __c0ffi_args_string(c0_value *args) {
+  args_string((c0_string)val2ptr(args[0]), (c0_string *)val2ptr(args[1]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_args_parse(void **args) {
+c0_value __c0ffi_args_parse(c0_value *args) {
   (void) args; /* suppress error */
-  return (void *) args_parse();
+  return ptr2val((void *)args_parse());
 }
 

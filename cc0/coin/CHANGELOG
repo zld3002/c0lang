@@ -121,3 +121,6 @@ Dec 26, 2012: Fix depth-tracking bug
 Dec 28, 2012: Add arguments with -a, args library
 Dec 29, 2012: Fix most of the problems causing library aborts to abort Coin at
               runtime.
+
+0.3.2 --> 0.3.3
+Jan 8, 2014:  Mark C1 features as non-supported, update FFI

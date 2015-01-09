@@ -12,48 +12,47 @@
 /* Headers */
 
 struct image;
-typedef struct image * image_t;
-int image_width(image_t image);
-int image_height(image_t image);
-image_t image_create(int width, int height);
-image_t image_clone(image_t image);
-image_t image_subimage(image_t image, int x, int y, int width, int height);
-image_t image_load(c0_string path);
-void image_save(image_t image, c0_string path);
-c0_array * image_data(image_t image);
+int image_width(struct image * image);
+int image_height(struct image * image);
+struct image * image_create(int width, int height);
+struct image * image_clone(struct image * image);
+struct image * image_subimage(struct image * image, int x, int y, int width, int height);
+struct image * image_load(c0_string path);
+void image_save(struct image * image, c0_string path);
+c0_array * image_data(struct image * image);
 
 /* Wrappers */
 
-void *__c0ffi_image_width(void **args) {
-  return (void *) (intptr_t) image_width((image_t) args[0]);
+c0_value __c0ffi_image_width(c0_value *args) {
+  return int2val(image_width((struct image *)val2ptr(args[0])));
 }
 
-void *__c0ffi_image_height(void **args) {
-  return (void *) (intptr_t) image_height((image_t) args[0]);
+c0_value __c0ffi_image_height(c0_value *args) {
+  return int2val(image_height((struct image *)val2ptr(args[0])));
 }
 
-void *__c0ffi_image_create(void **args) {
-  return (void *) image_create((int) (intptr_t) args[0], (int) (intptr_t) args[1]);
+c0_value __c0ffi_image_create(c0_value *args) {
+  return ptr2val((void *)image_create(val2int(args[0]), val2int(args[1])));
 }
 
-void *__c0ffi_image_clone(void **args) {
-  return (void *) image_clone((image_t) args[0]);
+c0_value __c0ffi_image_clone(c0_value *args) {
+  return ptr2val((void *)image_clone((struct image *)val2ptr(args[0])));
 }
 
-void *__c0ffi_image_subimage(void **args) {
-  return (void *) image_subimage((image_t) args[0], (int) (intptr_t) args[1], (int) (intptr_t) args[2], (int) (intptr_t) args[3], (int) (intptr_t) args[4]);
+c0_value __c0ffi_image_subimage(c0_value *args) {
+  return ptr2val((void *)image_subimage((struct image *)val2ptr(args[0]), val2int(args[1]), val2int(args[2]), val2int(args[3]), val2int(args[4])));
 }
 
-void *__c0ffi_image_load(void **args) {
-  return (void *) image_load((c0_string) args[0]);
+c0_value __c0ffi_image_load(c0_value *args) {
+  return ptr2val((void *)image_load((c0_string)val2ptr(args[0])));
 }
 
-void *__c0ffi_image_save(void **args) {
-  image_save((image_t) args[0], (c0_string) args[1]);
-  return NULL;
+c0_value __c0ffi_image_save(c0_value *args) {
+  image_save((struct image *)val2ptr(args[0]), (c0_string)val2ptr(args[1]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_image_data(void **args) {
-  return (void *) image_data((image_t) args[0]);
+c0_value __c0ffi_image_data(c0_value *args) {
+  return ptr2val((void *)image_data((struct image *)val2ptr(args[0])));
 }
 

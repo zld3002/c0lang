@@ -73,14 +73,14 @@ and cExp (pos : Mark.ext option) exp =
         Call (f, map (cExp pos) es, valOf pos "No mark for call")
     | Ast.Alloc tp => Alloc tp
     | Ast.AllocArray (tp, exp) => AllocArray (tp, cExp pos exp)
-    | Ast.Cast (Ast.Pointer Ast.Void, exp) => AddTag (cExp pos exp)
-    | Ast.Cast (tp, exp) => RequireTag (tp, cExp pos exp)
+    | Ast.Cast (Ast.Pointer Ast.Void, exp) => raise Error.Internal "No support for C1 yet (ignore the 'please report') bit" (* AddTag (cExp pos exp) *)
+    | Ast.Cast (tp, exp) => raise Error.Internal "No support for C1 yet (ignore the 'please report') bit" (* RequireTag (tp, cExp pos exp) *)
     | Ast.Result => raise Error.Internal "No '\\result' action"
     | Ast.Length exp => Length (cExp pos exp)
-    | Ast.Hastag (tp, exp) => CheckTag (tp, cExp pos exp) 
+    | Ast.Hastag (tp, exp) => raise Error.Internal "No support for C1 yet (ignore the 'please report') bit" (* CheckTag (tp, cExp pos exp) *)
     | Ast.Marked mrk => cExp (Mark.ext mrk) (Mark.data mrk)
-    | Ast.AddrOf _ => raise Error.Internal "No support for C1 yet"
-    | Ast.Invoke _ => raise Error.Internal "No support for C1 yet"
+    | Ast.AddrOf _ => raise Error.Internal "No support for C1 yet (ignore the 'please report') bit"
+    | Ast.Invoke _ => raise Error.Internal "No support for C1 yet (ignore the 'please report') bit"
 
 fun cVarDecl (Ast.VarDecl (x, tp, e, pos)) = 
    Declare (tp, x, NONE) ::

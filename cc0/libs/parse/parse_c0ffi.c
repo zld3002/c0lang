@@ -20,27 +20,27 @@ c0_array * parse_ints(c0_string s, int base);
 
 /* Wrappers */
 
-void *__c0ffi_parse_bool(void **args) {
-  return (void *) parse_bool((c0_string) args[0]);
+c0_value __c0ffi_parse_bool(c0_value *args) {
+  return ptr2val((void *)parse_bool((c0_string)val2ptr(args[0])));
 }
 
-void *__c0ffi_parse_int(void **args) {
-  return (void *) parse_int((c0_string) args[0], (int) (intptr_t) args[1]);
+c0_value __c0ffi_parse_int(c0_value *args) {
+  return ptr2val((void *)parse_int((c0_string)val2ptr(args[0]), val2int(args[1])));
 }
 
-void *__c0ffi_num_tokens(void **args) {
-  return (void *) (intptr_t) num_tokens((c0_string) args[0]);
+c0_value __c0ffi_num_tokens(c0_value *args) {
+  return int2val(num_tokens((c0_string)val2ptr(args[0])));
 }
 
-void *__c0ffi_int_tokens(void **args) {
-  return (void *) (intptr_t) int_tokens((c0_string) args[0], (int) (intptr_t) args[1]);
+c0_value __c0ffi_int_tokens(c0_value *args) {
+  return int2val((c0_int)int_tokens((c0_string)val2ptr(args[0]), val2int(args[1])));
 }
 
-void *__c0ffi_parse_tokens(void **args) {
-  return (void *) parse_tokens((c0_string) args[0]);
+c0_value __c0ffi_parse_tokens(c0_value *args) {
+  return ptr2val((void *)parse_tokens((c0_string)val2ptr(args[0])));
 }
 
-void *__c0ffi_parse_ints(void **args) {
-  return (void *) parse_ints((c0_string) args[0], (int) (intptr_t) args[1]);
+c0_value __c0ffi_parse_ints(c0_value *args) {
+  return ptr2val((void *)parse_ints((c0_string)val2ptr(args[0]), val2int(args[1])));
 }
 

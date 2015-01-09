@@ -12,33 +12,32 @@
 /* Headers */
 
 struct file;
-typedef struct file * file_t;
-bool file_closed(file_t f);
-file_t file_read(c0_string path);
-void file_close(file_t f);
-bool file_eof(file_t f);
-c0_string file_readline(file_t f);
+bool file_closed(struct file * f);
+struct file * file_read(c0_string path);
+void file_close(struct file * f);
+bool file_eof(struct file * f);
+c0_string file_readline(struct file * f);
 
 /* Wrappers */
 
-void *__c0ffi_file_closed(void **args) {
-  return (void *) (intptr_t) file_closed((file_t) args[0]);
+c0_value __c0ffi_file_closed(c0_value *args) {
+  return int2val((c0_int)file_closed((struct file *)val2ptr(args[0])));
 }
 
-void *__c0ffi_file_read(void **args) {
-  return (void *) file_read((c0_string) args[0]);
+c0_value __c0ffi_file_read(c0_value *args) {
+  return ptr2val((void *)file_read((c0_string)val2ptr(args[0])));
 }
 
-void *__c0ffi_file_close(void **args) {
-  file_close((file_t) args[0]);
-  return NULL;
+c0_value __c0ffi_file_close(c0_value *args) {
+  file_close((struct file *)val2ptr(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_file_eof(void **args) {
-  return (void *) (intptr_t) file_eof((file_t) args[0]);
+c0_value __c0ffi_file_eof(c0_value *args) {
+  return int2val((c0_int)file_eof((struct file *)val2ptr(args[0])));
 }
 
-void *__c0ffi_file_readline(void **args) {
-  return (void *) file_readline((file_t) args[0]);
+c0_value __c0ffi_file_readline(c0_value *args) {
+  return ptr2val((void *)file_readline((struct file *)val2ptr(args[0])));
 }
 

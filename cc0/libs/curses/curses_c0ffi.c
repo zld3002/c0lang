@@ -12,43 +12,42 @@
 /* Headers */
 
 struct _win_st;
-typedef struct _win_st WINDOW;
-WINDOW * c_initscr();
+struct _win_st * c_initscr();
 void c_cbreak();
 void c_noecho();
-void c_keypad(WINDOW * w, bool b);
+void c_keypad(struct _win_st * w, bool b);
 int c_getch();
 void c_addch(int c);
-void c_waddch(WINDOW * w, int c);
-void c_waddstr(WINDOW * w, c0_string s);
-void c_wstandout(WINDOW * w);
-void c_wstandend(WINDOW * w);
+void c_waddch(struct _win_st * w, int c);
+void c_waddstr(struct _win_st * w, c0_string s);
+void c_wstandout(struct _win_st * w);
+void c_wstandend(struct _win_st * w);
 void c_delch();
 void c_erase();
-void c_werase(WINDOW * w);
-void c_wclear(WINDOW * w);
+void c_werase(struct _win_st * w);
+void c_wclear(struct _win_st * w);
 void c_move(int y, int x);
-void c_wmove(WINDOW * w, int y, int x);
+void c_wmove(struct _win_st * w, int y, int x);
 void c_refresh();
-void c_wrefresh(WINDOW * w);
+void c_wrefresh(struct _win_st * w);
 int c_endwin();
 int c_curs_set(int visibility);
-WINDOW * c_subwin(WINDOW * orig, int nlines, int ncols, int begin_y, int begin_x);
-void cc_wboldon(WINDOW * w);
-void cc_wboldoff(WINDOW * w);
-void cc_wdimon(WINDOW * w);
-void cc_wdimoff(WINDOW * w);
-void cc_wreverseon(WINDOW * w);
-void cc_wreverseoff(WINDOW * w);
-void cc_wunderon(WINDOW * w);
-void cc_wunderoff(WINDOW * w);
+struct _win_st * c_subwin(struct _win_st * orig, int nlines, int ncols, int begin_y, int begin_x);
+void cc_wboldon(struct _win_st * w);
+void cc_wboldoff(struct _win_st * w);
+void cc_wdimon(struct _win_st * w);
+void cc_wdimoff(struct _win_st * w);
+void cc_wreverseon(struct _win_st * w);
+void cc_wreverseoff(struct _win_st * w);
+void cc_wunderon(struct _win_st * w);
+void cc_wunderoff(struct _win_st * w);
 int cc_highlight(int c);
-int cc_getx(WINDOW * w);
-int cc_gety(WINDOW * w);
-int cc_getmaxx(WINDOW * w);
-int cc_getmaxy(WINDOW * w);
-int cc_getbegx(WINDOW * w);
-int cc_getbegy(WINDOW * w);
+int cc_getx(struct _win_st * w);
+int cc_gety(struct _win_st * w);
+int cc_getmaxx(struct _win_st * w);
+int cc_getmaxy(struct _win_st * w);
+int cc_getbegx(struct _win_st * w);
+int cc_getbegy(struct _win_st * w);
 bool cc_key_is_enter(int key);
 bool cc_key_is_backspace(int key);
 bool cc_key_is_left(int key);
@@ -58,203 +57,203 @@ bool cc_key_is_down(int key);
 
 /* Wrappers */
 
-void *__c0ffi_c_initscr(void **args) {
+c0_value __c0ffi_c_initscr(c0_value *args) {
   (void) args; /* suppress error */
-  return (void *) c_initscr();
+  return ptr2val((void *)c_initscr());
 }
 
-void *__c0ffi_c_cbreak(void **args) {
+c0_value __c0ffi_c_cbreak(c0_value *args) {
   (void) args; /* suppress error */
   c_cbreak();
-  return NULL;
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_c_noecho(void **args) {
+c0_value __c0ffi_c_noecho(c0_value *args) {
   (void) args; /* suppress error */
   c_noecho();
-  return NULL;
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_c_keypad(void **args) {
-  c_keypad((WINDOW *) args[0], (bool) (intptr_t) args[1]);
-  return NULL;
+c0_value __c0ffi_c_keypad(c0_value *args) {
+  c_keypad((struct _win_st *)val2ptr(args[0]), (bool)val2int(args[1]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_c_getch(void **args) {
+c0_value __c0ffi_c_getch(c0_value *args) {
   (void) args; /* suppress error */
-  return (void *) (intptr_t) c_getch();
+  return int2val(c_getch());
 }
 
-void *__c0ffi_c_addch(void **args) {
-  c_addch((int) (intptr_t) args[0]);
-  return NULL;
+c0_value __c0ffi_c_addch(c0_value *args) {
+  c_addch(val2int(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_c_waddch(void **args) {
-  c_waddch((WINDOW *) args[0], (int) (intptr_t) args[1]);
-  return NULL;
+c0_value __c0ffi_c_waddch(c0_value *args) {
+  c_waddch((struct _win_st *)val2ptr(args[0]), val2int(args[1]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_c_waddstr(void **args) {
-  c_waddstr((WINDOW *) args[0], (c0_string) args[1]);
-  return NULL;
+c0_value __c0ffi_c_waddstr(c0_value *args) {
+  c_waddstr((struct _win_st *)val2ptr(args[0]), (c0_string)val2ptr(args[1]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_c_wstandout(void **args) {
-  c_wstandout((WINDOW *) args[0]);
-  return NULL;
+c0_value __c0ffi_c_wstandout(c0_value *args) {
+  c_wstandout((struct _win_st *)val2ptr(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_c_wstandend(void **args) {
-  c_wstandend((WINDOW *) args[0]);
-  return NULL;
+c0_value __c0ffi_c_wstandend(c0_value *args) {
+  c_wstandend((struct _win_st *)val2ptr(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_c_delch(void **args) {
+c0_value __c0ffi_c_delch(c0_value *args) {
   (void) args; /* suppress error */
   c_delch();
-  return NULL;
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_c_erase(void **args) {
+c0_value __c0ffi_c_erase(c0_value *args) {
   (void) args; /* suppress error */
   c_erase();
-  return NULL;
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_c_werase(void **args) {
-  c_werase((WINDOW *) args[0]);
-  return NULL;
+c0_value __c0ffi_c_werase(c0_value *args) {
+  c_werase((struct _win_st *)val2ptr(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_c_wclear(void **args) {
-  c_wclear((WINDOW *) args[0]);
-  return NULL;
+c0_value __c0ffi_c_wclear(c0_value *args) {
+  c_wclear((struct _win_st *)val2ptr(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_c_move(void **args) {
-  c_move((int) (intptr_t) args[0], (int) (intptr_t) args[1]);
-  return NULL;
+c0_value __c0ffi_c_move(c0_value *args) {
+  c_move(val2int(args[0]), val2int(args[1]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_c_wmove(void **args) {
-  c_wmove((WINDOW *) args[0], (int) (intptr_t) args[1], (int) (intptr_t) args[2]);
-  return NULL;
+c0_value __c0ffi_c_wmove(c0_value *args) {
+  c_wmove((struct _win_st *)val2ptr(args[0]), val2int(args[1]), val2int(args[2]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_c_refresh(void **args) {
+c0_value __c0ffi_c_refresh(c0_value *args) {
   (void) args; /* suppress error */
   c_refresh();
-  return NULL;
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_c_wrefresh(void **args) {
-  c_wrefresh((WINDOW *) args[0]);
-  return NULL;
+c0_value __c0ffi_c_wrefresh(c0_value *args) {
+  c_wrefresh((struct _win_st *)val2ptr(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_c_endwin(void **args) {
+c0_value __c0ffi_c_endwin(c0_value *args) {
   (void) args; /* suppress error */
-  return (void *) (intptr_t) c_endwin();
+  return int2val(c_endwin());
 }
 
-void *__c0ffi_c_curs_set(void **args) {
-  return (void *) (intptr_t) c_curs_set((int) (intptr_t) args[0]);
+c0_value __c0ffi_c_curs_set(c0_value *args) {
+  return int2val(c_curs_set(val2int(args[0])));
 }
 
-void *__c0ffi_c_subwin(void **args) {
-  return (void *) c_subwin((WINDOW *) args[0], (int) (intptr_t) args[1], (int) (intptr_t) args[2], (int) (intptr_t) args[3], (int) (intptr_t) args[4]);
+c0_value __c0ffi_c_subwin(c0_value *args) {
+  return ptr2val((void *)c_subwin((struct _win_st *)val2ptr(args[0]), val2int(args[1]), val2int(args[2]), val2int(args[3]), val2int(args[4])));
 }
 
-void *__c0ffi_cc_wboldon(void **args) {
-  cc_wboldon((WINDOW *) args[0]);
-  return NULL;
+c0_value __c0ffi_cc_wboldon(c0_value *args) {
+  cc_wboldon((struct _win_st *)val2ptr(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_cc_wboldoff(void **args) {
-  cc_wboldoff((WINDOW *) args[0]);
-  return NULL;
+c0_value __c0ffi_cc_wboldoff(c0_value *args) {
+  cc_wboldoff((struct _win_st *)val2ptr(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_cc_wdimon(void **args) {
-  cc_wdimon((WINDOW *) args[0]);
-  return NULL;
+c0_value __c0ffi_cc_wdimon(c0_value *args) {
+  cc_wdimon((struct _win_st *)val2ptr(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_cc_wdimoff(void **args) {
-  cc_wdimoff((WINDOW *) args[0]);
-  return NULL;
+c0_value __c0ffi_cc_wdimoff(c0_value *args) {
+  cc_wdimoff((struct _win_st *)val2ptr(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_cc_wreverseon(void **args) {
-  cc_wreverseon((WINDOW *) args[0]);
-  return NULL;
+c0_value __c0ffi_cc_wreverseon(c0_value *args) {
+  cc_wreverseon((struct _win_st *)val2ptr(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_cc_wreverseoff(void **args) {
-  cc_wreverseoff((WINDOW *) args[0]);
-  return NULL;
+c0_value __c0ffi_cc_wreverseoff(c0_value *args) {
+  cc_wreverseoff((struct _win_st *)val2ptr(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_cc_wunderon(void **args) {
-  cc_wunderon((WINDOW *) args[0]);
-  return NULL;
+c0_value __c0ffi_cc_wunderon(c0_value *args) {
+  cc_wunderon((struct _win_st *)val2ptr(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_cc_wunderoff(void **args) {
-  cc_wunderoff((WINDOW *) args[0]);
-  return NULL;
+c0_value __c0ffi_cc_wunderoff(c0_value *args) {
+  cc_wunderoff((struct _win_st *)val2ptr(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_cc_highlight(void **args) {
-  return (void *) (intptr_t) cc_highlight((int) (intptr_t) args[0]);
+c0_value __c0ffi_cc_highlight(c0_value *args) {
+  return int2val(cc_highlight(val2int(args[0])));
 }
 
-void *__c0ffi_cc_getx(void **args) {
-  return (void *) (intptr_t) cc_getx((WINDOW *) args[0]);
+c0_value __c0ffi_cc_getx(c0_value *args) {
+  return int2val(cc_getx((struct _win_st *)val2ptr(args[0])));
 }
 
-void *__c0ffi_cc_gety(void **args) {
-  return (void *) (intptr_t) cc_gety((WINDOW *) args[0]);
+c0_value __c0ffi_cc_gety(c0_value *args) {
+  return int2val(cc_gety((struct _win_st *)val2ptr(args[0])));
 }
 
-void *__c0ffi_cc_getmaxx(void **args) {
-  return (void *) (intptr_t) cc_getmaxx((WINDOW *) args[0]);
+c0_value __c0ffi_cc_getmaxx(c0_value *args) {
+  return int2val(cc_getmaxx((struct _win_st *)val2ptr(args[0])));
 }
 
-void *__c0ffi_cc_getmaxy(void **args) {
-  return (void *) (intptr_t) cc_getmaxy((WINDOW *) args[0]);
+c0_value __c0ffi_cc_getmaxy(c0_value *args) {
+  return int2val(cc_getmaxy((struct _win_st *)val2ptr(args[0])));
 }
 
-void *__c0ffi_cc_getbegx(void **args) {
-  return (void *) (intptr_t) cc_getbegx((WINDOW *) args[0]);
+c0_value __c0ffi_cc_getbegx(c0_value *args) {
+  return int2val(cc_getbegx((struct _win_st *)val2ptr(args[0])));
 }
 
-void *__c0ffi_cc_getbegy(void **args) {
-  return (void *) (intptr_t) cc_getbegy((WINDOW *) args[0]);
+c0_value __c0ffi_cc_getbegy(c0_value *args) {
+  return int2val(cc_getbegy((struct _win_st *)val2ptr(args[0])));
 }
 
-void *__c0ffi_cc_key_is_enter(void **args) {
-  return (void *) (intptr_t) cc_key_is_enter((int) (intptr_t) args[0]);
+c0_value __c0ffi_cc_key_is_enter(c0_value *args) {
+  return int2val((c0_int)cc_key_is_enter(val2int(args[0])));
 }
 
-void *__c0ffi_cc_key_is_backspace(void **args) {
-  return (void *) (intptr_t) cc_key_is_backspace((int) (intptr_t) args[0]);
+c0_value __c0ffi_cc_key_is_backspace(c0_value *args) {
+  return int2val((c0_int)cc_key_is_backspace(val2int(args[0])));
 }
 
-void *__c0ffi_cc_key_is_left(void **args) {
-  return (void *) (intptr_t) cc_key_is_left((int) (intptr_t) args[0]);
+c0_value __c0ffi_cc_key_is_left(c0_value *args) {
+  return int2val((c0_int)cc_key_is_left(val2int(args[0])));
 }
 
-void *__c0ffi_cc_key_is_right(void **args) {
-  return (void *) (intptr_t) cc_key_is_right((int) (intptr_t) args[0]);
+c0_value __c0ffi_cc_key_is_right(c0_value *args) {
+  return int2val((c0_int)cc_key_is_right(val2int(args[0])));
 }
 
-void *__c0ffi_cc_key_is_up(void **args) {
-  return (void *) (intptr_t) cc_key_is_up((int) (intptr_t) args[0]);
+c0_value __c0ffi_cc_key_is_up(c0_value *args) {
+  return int2val((c0_int)cc_key_is_up(val2int(args[0])));
 }
 
-void *__c0ffi_cc_key_is_down(void **args) {
-  return (void *) (intptr_t) cc_key_is_down((int) (intptr_t) args[0]);
+c0_value __c0ffi_cc_key_is_down(c0_value *args) {
+  return int2val((c0_int)cc_key_is_down(val2int(args[0])));
 }
 

@@ -108,5 +108,39 @@ c0_string c0_string_fromliteral(const char *s);
 const char *c0_string_tocstr(c0_string s);
 void c0_string_freecstr(const char *s);
 
+// Interpreter FFI
+enum c0_val_kind { C0_INTEGER, C0_POINTER };
+
+typedef struct c0_value {
+  enum c0_val_kind kind; 
+  union {
+    c0_int i;
+    void *p;
+  } payload;
+} c0_value;
+
+static inline c0_value int2val(c0_int i) {
+  c0_value v;
+  v.kind = C0_INTEGER;
+  v.payload.i = i;
+  return v;
+}
+
+static inline c0_int val2int(c0_value v) {
+  if (v.kind != C0_INTEGER ) c0_abort("Invalid cast from c0_value to integer");
+  return v.payload.i;
+}
+
+static inline c0_value ptr2val(c0_pointer p) {
+  c0_value v;
+  v.kind = C0_POINTER;
+  v.payload.p = p;
+  return v;
+}
+
+static inline c0_pointer val2ptr(c0_value v) {
+  if (v.kind != C0_POINTER) c0_abort("Invalid cast from c0_value to integer");
+  return v.payload.p;
+}
 
 #endif // __C0RUNTIME_H__

@@ -22,44 +22,44 @@ c0_string readline();
 
 /* Wrappers */
 
-void *__c0ffi_print(void **args) {
-  print((c0_string) args[0]);
-  return NULL;
+c0_value __c0ffi_print(c0_value *args) {
+  print((c0_string)val2ptr(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_println(void **args) {
-  println((c0_string) args[0]);
-  return NULL;
+c0_value __c0ffi_println(c0_value *args) {
+  println((c0_string)val2ptr(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_printint(void **args) {
-  printint((int) (intptr_t) args[0]);
-  return NULL;
+c0_value __c0ffi_printint(c0_value *args) {
+  printint(val2int(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_printbool(void **args) {
-  printbool((bool) (intptr_t) args[0]);
-  return NULL;
+c0_value __c0ffi_printbool(c0_value *args) {
+  printbool((bool)val2int(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_printchar(void **args) {
-  printchar((c0_char) (intptr_t) args[0]);
-  return NULL;
+c0_value __c0ffi_printchar(c0_value *args) {
+  printchar((c0_char)val2int(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_flush(void **args) {
+c0_value __c0ffi_flush(c0_value *args) {
   (void) args; /* suppress error */
   flush();
-  return NULL;
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_eof(void **args) {
+c0_value __c0ffi_eof(c0_value *args) {
   (void) args; /* suppress error */
-  return (void *) (intptr_t) eof();
+  return int2val((c0_int)eof());
 }
 
-void *__c0ffi_readline(void **args) {
+c0_value __c0ffi_readline(c0_value *args) {
   (void) args; /* suppress error */
-  return (void *) readline();
+  return ptr2val((void *)readline());
 }
 

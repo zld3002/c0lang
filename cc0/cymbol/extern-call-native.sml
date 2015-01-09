@@ -25,8 +25,8 @@ struct
   val to_bool = _import "cast_bool" public: MLton.Pointer.t -> bool;
   val to_int  = _import "cast_int" public:  MLton.Pointer.t -> Word32.word;
   val to_char = _import "cast_char" public: MLton.Pointer.t -> char;
-  val to_ptr  = fn x => x
-  val to_void = fn x => ()
+  val to_ptr  = _import "cast_ptr" public: MLton.Pointer.t -> MLton.Pointer.t;
+  val to_void = ignore o to_ptr
 
   datatype arg
     = Bool   of bool

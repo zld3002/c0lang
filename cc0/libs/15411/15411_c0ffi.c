@@ -11,60 +11,59 @@
 
 /* Headers */
 
-typedef int fpt;
-fpt fadd(fpt x, fpt y);
-fpt fsub(fpt x, fpt y);
-fpt fmul(fpt x, fpt y);
-fpt fdiv(fpt x, fpt y);
-bool fless(fpt x, fpt y);
-fpt itof(int n);
-int ftoi(fpt x);
-void print_fpt(fpt x);
+int fadd(int x, int y);
+int fsub(int x, int y);
+int fmul(int x, int y);
+int fdiv(int x, int y);
+bool fless(int x, int y);
+int itof(int n);
+int ftoi(int x);
+void print_fpt(int x);
 void print_int(int n);
 void print_hex(int n);
 
 /* Wrappers */
 
-void *__c0ffi_fadd(void **args) {
-  return (void *) fadd((fpt) args[0], (fpt) args[1]);
+c0_value __c0ffi_fadd(c0_value *args) {
+  return int2val(fadd(val2int(args[0]), val2int(args[1])));
 }
 
-void *__c0ffi_fsub(void **args) {
-  return (void *) fsub((fpt) args[0], (fpt) args[1]);
+c0_value __c0ffi_fsub(c0_value *args) {
+  return int2val(fsub(val2int(args[0]), val2int(args[1])));
 }
 
-void *__c0ffi_fmul(void **args) {
-  return (void *) fmul((fpt) args[0], (fpt) args[1]);
+c0_value __c0ffi_fmul(c0_value *args) {
+  return int2val(fmul(val2int(args[0]), val2int(args[1])));
 }
 
-void *__c0ffi_fdiv(void **args) {
-  return (void *) fdiv((fpt) args[0], (fpt) args[1]);
+c0_value __c0ffi_fdiv(c0_value *args) {
+  return int2val(fdiv(val2int(args[0]), val2int(args[1])));
 }
 
-void *__c0ffi_fless(void **args) {
-  return (void *) (intptr_t) fless((fpt) args[0], (fpt) args[1]);
+c0_value __c0ffi_fless(c0_value *args) {
+  return int2val((c0_int)fless(val2int(args[0]), val2int(args[1])));
 }
 
-void *__c0ffi_itof(void **args) {
-  return (void *) itof((int) (intptr_t) args[0]);
+c0_value __c0ffi_itof(c0_value *args) {
+  return int2val(itof(val2int(args[0])));
 }
 
-void *__c0ffi_ftoi(void **args) {
-  return (void *) (intptr_t) ftoi((fpt) args[0]);
+c0_value __c0ffi_ftoi(c0_value *args) {
+  return int2val(ftoi(val2int(args[0])));
 }
 
-void *__c0ffi_print_fpt(void **args) {
-  print_fpt((fpt) args[0]);
-  return NULL;
+c0_value __c0ffi_print_fpt(c0_value *args) {
+  print_fpt(val2int(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_print_int(void **args) {
-  print_int((int) (intptr_t) args[0]);
-  return NULL;
+c0_value __c0ffi_print_int(c0_value *args) {
+  print_int(val2int(args[0]));
+  return ptr2val(NULL);
 }
 
-void *__c0ffi_print_hex(void **args) {
-  print_hex((int) (intptr_t) args[0]);
-  return NULL;
+c0_value __c0ffi_print_hex(c0_value *args) {
+  print_hex(val2int(args[0]));
+  return ptr2val(NULL);
 }
 

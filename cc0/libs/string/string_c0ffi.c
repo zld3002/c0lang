@@ -29,63 +29,63 @@ c0_char char_chr(int n);
 
 /* Wrappers */
 
-void *__c0ffi_string_length(void **args) {
-  return (void *) (intptr_t) string_length((c0_string) args[0]);
+c0_value __c0ffi_string_length(c0_value *args) {
+  return int2val(string_length((c0_string)val2ptr(args[0])));
 }
 
-void *__c0ffi_string_charat(void **args) {
-  return (void *) (intptr_t) string_charat((c0_string) args[0], (int) (intptr_t) args[1]);
+c0_value __c0ffi_string_charat(c0_value *args) {
+  return int2val((c0_int)string_charat((c0_string)val2ptr(args[0]), val2int(args[1])));
 }
 
-void *__c0ffi_string_join(void **args) {
-  return (void *) string_join((c0_string) args[0], (c0_string) args[1]);
+c0_value __c0ffi_string_join(c0_value *args) {
+  return ptr2val((void *)string_join((c0_string)val2ptr(args[0]), (c0_string)val2ptr(args[1])));
 }
 
-void *__c0ffi_string_sub(void **args) {
-  return (void *) string_sub((c0_string) args[0], (int) (intptr_t) args[1], (int) (intptr_t) args[2]);
+c0_value __c0ffi_string_sub(c0_value *args) {
+  return ptr2val((void *)string_sub((c0_string)val2ptr(args[0]), val2int(args[1]), val2int(args[2])));
 }
 
-void *__c0ffi_string_equal(void **args) {
-  return (void *) (intptr_t) string_equal((c0_string) args[0], (c0_string) args[1]);
+c0_value __c0ffi_string_equal(c0_value *args) {
+  return int2val((c0_int)string_equal((c0_string)val2ptr(args[0]), (c0_string)val2ptr(args[1])));
 }
 
-void *__c0ffi_string_compare(void **args) {
-  return (void *) (intptr_t) string_compare((c0_string) args[0], (c0_string) args[1]);
+c0_value __c0ffi_string_compare(c0_value *args) {
+  return int2val(string_compare((c0_string)val2ptr(args[0]), (c0_string)val2ptr(args[1])));
 }
 
-void *__c0ffi_string_fromint(void **args) {
-  return (void *) string_fromint((int) (intptr_t) args[0]);
+c0_value __c0ffi_string_fromint(c0_value *args) {
+  return ptr2val((void *)string_fromint(val2int(args[0])));
 }
 
-void *__c0ffi_string_frombool(void **args) {
-  return (void *) string_frombool((bool) (intptr_t) args[0]);
+c0_value __c0ffi_string_frombool(c0_value *args) {
+  return ptr2val((void *)string_frombool((bool)val2int(args[0])));
 }
 
-void *__c0ffi_string_fromchar(void **args) {
-  return (void *) string_fromchar((c0_char) (intptr_t) args[0]);
+c0_value __c0ffi_string_fromchar(c0_value *args) {
+  return ptr2val((void *)string_fromchar((c0_char)val2int(args[0])));
 }
 
-void *__c0ffi_string_tolower(void **args) {
-  return (void *) string_tolower((c0_string) args[0]);
+c0_value __c0ffi_string_tolower(c0_value *args) {
+  return ptr2val((void *)string_tolower((c0_string)val2ptr(args[0])));
 }
 
-void *__c0ffi_string_terminated(void **args) {
-  return (void *) (intptr_t) string_terminated((c0_array *) args[0], (int) (intptr_t) args[1]);
+c0_value __c0ffi_string_terminated(c0_value *args) {
+  return int2val((c0_int)string_terminated((c0_array *)val2ptr(args[0]), val2int(args[1])));
 }
 
-void *__c0ffi_string_to_chararray(void **args) {
-  return (void *) string_to_chararray((c0_string) args[0]);
+c0_value __c0ffi_string_to_chararray(c0_value *args) {
+  return ptr2val((void *)string_to_chararray((c0_string)val2ptr(args[0])));
 }
 
-void *__c0ffi_string_from_chararray(void **args) {
-  return (void *) string_from_chararray((c0_array *) args[0]);
+c0_value __c0ffi_string_from_chararray(c0_value *args) {
+  return ptr2val((void *)string_from_chararray((c0_array *)val2ptr(args[0])));
 }
 
-void *__c0ffi_char_ord(void **args) {
-  return (void *) (intptr_t) char_ord((c0_char) (intptr_t) args[0]);
+c0_value __c0ffi_char_ord(c0_value *args) {
+  return int2val(char_ord((c0_char)val2int(args[0])));
 }
 
-void *__c0ffi_char_chr(void **args) {
-  return (void *) (intptr_t) char_chr((int) (intptr_t) args[0]);
+c0_value __c0ffi_char_chr(c0_value *args) {
+  return int2val((c0_int)char_chr(val2int(args[0])));
 }
 
