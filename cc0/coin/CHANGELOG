@@ -123,4 +123,5 @@ Dec 29, 2012: Fix most of the problems causing library aborts to abort Coin at
               runtime.
 
 0.3.2 --> 0.3.3
-Jan 8, 2014:  Mark C1 features as non-supported, update FFI
+Jan 8, 2015:  Mark C1 features as non-supported, update FFI
+Jan 20, 2015: Fix long-standing bug with for loops
