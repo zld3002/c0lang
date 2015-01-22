@@ -22,9 +22,15 @@ fun cAOp NONE = NONE
      | Ast.AND => BitAnd | Ast.XOR => BitXor | Ast.OR => BitOr | Ast.DEREF => Addr
      | _ => raise Error.Internal "Bad assign operation")
 
-fun mExp pos exp = 
+fun mExp tag pos exp = 
    case exp of
-      Ast.Marked mrk => valOf (Mark.ext mrk) "No mark for mExp"
+      Ast.Marked mrk => 
+      (* I hate this, but I can't figure out how to get for loops as
+       * they're output by the -d transformer to work correctly. 
+       * - rjs Jan 21, 2014 *)
+      (case Mark.ext mrk of
+          NONE => ((0,0),(0,0),"<NO MARK AVAILABLE>") 
+        | SOME ext => ext)
     | _ => valOf pos "No position information available"
 
 fun cOpExp (pos : Mark.ext option) opexp = 
@@ -123,7 +129,7 @@ fun cStms stms pos =
             let 
                val l = next()
             in 
-               [ CondJump (cExp pos e1, mExp pos e1, l) ]
+               [ CondJump (cExp pos e1, mExp "ifthen" pos e1, l) ]
                @ [ PushScope ] @ cStm (d, b, c) pos stmT
                @ [ PopScope 1, Label (l, "end 'if'") ]
             end
@@ -134,7 +140,7 @@ fun cStms stms pos =
                val cT = cStm (d, b, c) pos stmT
                val cF = cStm (d, b, c) pos stmF
             in 
-               [ CondJump (cExp pos e1, mExp pos e1, lFalse) ] 
+               [ CondJump (cExp pos e1, mExp "ifthenelse" pos e1, lFalse) ] 
                @ [ PushScope ] @ cT @ [ PopScope 1 ]
                @ [ Jump lTrue, Label (lFalse, "'else' branch") ] 
                @ [ PushScope ] @ cF @ [ PopScope 1 ]
@@ -147,8 +153,9 @@ fun cStms stms pos =
                val cmd = cStm (0, SOME lEnd, SOME lStart) pos stm
             in
                [ Label (lStart, "loop") ]
-               @ [ CondJump (cExp pos e1, mExp pos e1, lEnd) ] 
-               @ cmd @ [ Jump lStart, Label (lEnd, "loop end") ]
+               @ [ CondJump (cExp pos e1, mExp "while" pos e1, lEnd) ] 
+               @ cmd 
+               @ [ Jump lStart, Label (lEnd, "loop end") ]
             end
           | Ast.For (s1, e2, s3, invs, stm) => 
             raise Error.Internal "For loop encountered"
@@ -159,15 +166,15 @@ fun cStms stms pos =
             if d = 0 then [ Jump (valOf b "No loop to break") ] 
             else [ PopScope d, Jump (valOf b "No loop to break") ]
           | Ast.Return (SOME(e1)) => 
-            [ Return (SOME(cExp pos e1), mExp pos e1)]
+            [ Return (SOME(cExp pos e1), mExp "return" pos e1)]
           | Ast.Return (NONE) =>
             [ Return (NONE, valOf pos "No mark for return") ]
           | Ast.Assert (e1, (Ast.StringConst s)::_) => 
 	    (* fix: allow other strings.  5/16/11 -fp *)
-            [ Assert (cExp pos e1, s, mExp pos e1) ]
+            [ Assert (cExp pos e1, s, mExp "assert" pos e1) ]
           | Ast.Assert _ => raise Error.Internal "Unexpected assertion arg"
           | Ast.Error e1 => 
-            [ Error (cExp pos e1, mExp pos e1) ]
+            [ Error (cExp pos e1, mExp "error" pos e1) ]
           | Ast.Anno _ => []
           | Ast.Markeds mrk => 
             (case Mark.ext mrk of 

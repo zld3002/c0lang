@@ -115,6 +115,7 @@ Binary distro (pristine Ubuntu distro):
 
   # Prerequisites
   apt-get update
+  apt-get upgrade
   apt-get install subversion make g++ libpng-dev libncurses-dev texlive-latex-base texlive-latex-recommended texlive-fonts-recommended mlton
   svn co https://svn.concert.cs.cmu.edu/c0
 
@@ -129,6 +130,8 @@ Binary distro (pristine Ubuntu distro):
   # Make docs
   cd doc/reference ; pdflatex c0-reference.tex ; pdflatex c0-reference.tex
   pdflatex c0-libraries.tex ; pdflatex c0-libraries.tex
+  [ scp c0-reference.pdf c0.typesafety.net:/home/www/c0/doc ]
+  [ scp c0-libraries.pdf c0.typesafety.net:/home/www/c0/doc ]
   cd ../../..
 
   # Package
@@ -136,10 +139,10 @@ Binary distro (pristine Ubuntu distro):
   scp cc0-v${REV}-${VERS}-bin.tgz c0.typesafety.net:/home/www/c0/dist/
   
   ** ${REV} is the four-digit revision number (0214, for instance)
-  ** ${VERS} explains the build setup:
+  ** ${VERS} explains the build setup (uname -a will help):
      - osx10.5.8 (Leapord)
      - osx10.6.8 (Snow Leapord)
-     - osx10.8.2 (Mountain Lion)
+     - osx10.8.2 (Mountain Lion).
      - linux3.6.5-32bit (32 bit Ubuntu Precise on Linode)
      - linux3.6.5-64bit (64 bit Ubuntu Precise on Linode)
 
@@ -166,7 +169,7 @@ OSX notes:
 
 Windows notes:
  - replace all instances of "make" with "make STATIC=true"
- - Clients need the "libgmp3" and probably "libgmp-devel" Cygwin
+ - Clients need the "libgmp10" and probably "libgmp-devel" Cygwin
    packages, as well as "libpng-dev" "libncurses-dev"
  - run "make libs STATIC=true" before "make STATIC=true" on Windows,
    as there's an extra dependency (coin and codex require libs to
@@ -176,6 +179,15 @@ Windows notes:
    replaced by extern-lib-static.sml, and extern-lib-static needs to
    have the args library commented out. (This should probably be
    standardized.)
+
+Windows from scratch:
+ - Cygwin.com, get 32 bit cygwin
+ - Not sure what we need... subversion, gcc-core, gcc-g++, libgmp-devel, libgmp3, libpng-devel, libncurses, make
+ - Most recent mlton cygwin binary is currently 20100608
+ - cd /
+ - mv ...../mlton....tgz .
+ - tar xzvf mlton....tgz 
+
 
 Older versions:
 
