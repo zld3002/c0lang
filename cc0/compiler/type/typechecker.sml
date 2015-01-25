@@ -724,6 +724,12 @@ struct
 	of NONE => ( case Symtab.lookup id
                       of NONE => ( ErrorMsg.error ext ("undeclared variable '" ^ Symbol.name id ^ "'")
                                  ; raise ErrorMsg.Error )
+                       | SOME(A.TypeDef _) => 
+                         ( ErrorMsg.error ext ("cannot use type name '" ^ Symbol.name id ^ "' like a variable\n")
+                         ; raise ErrorMsg.Error ) 
+                       | SOME(A.FunTypeDef _) => 
+                         ( ErrorMsg.error ext ("cannot use function type name '" ^ Symbol.name id ^ "' like a variable\n")
+                         ; raise ErrorMsg.Error ) 
                        | SOME(A.Function _) =>
                          ( ErrorMsg.error ext ("cannot use function '" ^ Symbol.name id ^ "' like a variable\n"
                                                ^ "[Hint: use '&" ^ Symbol.name id ^ "' to obtain a function pointer]")
