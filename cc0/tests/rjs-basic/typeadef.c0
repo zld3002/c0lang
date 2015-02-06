@@ -1,0 +1,6 @@
+typedef int pixel;
+
+int main() {
+  int pixel = 4;
+  return pixel;
+}

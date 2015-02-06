@@ -90,6 +90,7 @@ return 1             ~ struct3.c0 struct3use.c0
 return 1             ~ struct3use2.c0
 typecheck => error   ~ syntax-alloc.c0
 typecheck => error   ~ syntax.c0
+error                ~ typeadef.c0
 typecheck => error   ~ voidmain1.c0
 typecheck => error   ~ voidmain2.c0
 typecheck => error   ~ voidmain3.c0

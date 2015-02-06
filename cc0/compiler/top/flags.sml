@@ -178,7 +178,10 @@ structure Flags :> FLAGS = struct
       help="Select a language standard (default 'c0')"},
      {short = "V", long=["version"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_version),
-      help="Print version number and compile info"}]
+      help="Print version number and compile info"},
+     {short = "n", long=["no-log"],
+      desc=GetOpt.NoArg (fn () => Flag.set flag_no_log),
+      help="Disable logging for this compile"}]
 
   val coin_options : unit GetOpt.opt_descr list = 
     [{short = "t", long=["trace"],
@@ -222,9 +225,6 @@ structure Flags :> FLAGS = struct
       desc=GetOpt.ReqArg 
               ((fn (s) => (gcc_args := s :: !gcc_args)), "<arg>"),
       help="Pass an argument to the C compiler"},
-     {short = "n", long=["no-log"],
-      desc=GetOpt.NoArg (fn () => Flag.set flag_no_log),
-      help="Disable logging for this compile"},
      {short = "w", long=["warn"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_warn),
       help="Warn about style issues in the code"},

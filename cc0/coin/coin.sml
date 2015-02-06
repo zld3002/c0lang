@@ -28,6 +28,7 @@ datatype status = CONTINUE | EXIT of OS.Process.status
 fun args (_, _) = CONTINUE
 
 val name = ref "coin"
+val fullname = ref "coin"
 val args = ref [ "--verbose" ]
 val options = Flags.core_options @ Flags.coin_options
 val versioninfo = 
@@ -51,13 +52,39 @@ let
        , versioninfo = versioninfo
        , usageinfo = usageinfo
        , args = !args}
-    val {library_headers, program, oprogram, sprogram} = Top.typecheck_and_load sources
+
+   (* Added Coin tracking information - RJS Feb 6, 2015 *)
+   val () = 
+   if Flag.isset Flags.flag_no_log orelse null sources then ()
+   else let fun sanitize_char #"'" = #"#"
+              | sanitize_char c = c
+            fun shell_quote s = "'" ^ String.map sanitize_char s ^ "'"
+	    val cmd_name = OS.Path.mkAbsolute
+                               { path = !fullname
+                               , relativeTo = OS.FileSys.getDir () }
+            val {dir, ...} = OS.Path.splitDirFile (cmd_name)
+            val cpfiles_bin = OS.Path.mkCanonical 
+                                  (OS.Path.concat (dir, "cpfiles"))
+	    val cmd = (cpfiles_bin
+                       ^ " " ^ shell_quote (String.concatWith 
+                                                " " (!fullname :: !args))
+                       ^ " " ^ String.concatWith " " (map shell_quote sources))
+        in if OS.FileSys.access (cpfiles_bin, [OS.FileSys.A_READ,
+                                               OS.FileSys.A_EXEC])
+	   then ignore (OS.Process.system cmd)
+           else ()
+        end
+
+    val {library_headers, program, oprogram, sprogram} = 
+        Top.typecheck_and_load sources
     val {library_wrappers} = 
        Top.finalize {library_headers = library_headers}
     val () = Top.static_analysis oprogram
 in 
- ( (* Reset Coin's internal state *)
-   State.clear_locals Exec.state
+ (()
+
+ (* Reset Coin's internal state *)
+ ; State.clear_locals Exec.state
 
    (* Reload program *)
  ; Flag.guard Flags.flag_verbose
@@ -264,7 +291,7 @@ let
    (* XXX: this won't work if it's actually the parsing of args that breaks *)
    fun compilerDied () = Posix.Process.exit 0wx2 
 in
- ( () (* name := initial_name *) (* don't want full path - rjs Jan 3, 2013*)
+ ( fullname := initial_name (* don't want full path - rjs Jan 3, 2013*)
  ; args := initial_args
  ; reload ()
  ; print (versioninfo ^ "\n")
