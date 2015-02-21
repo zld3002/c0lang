@@ -63,7 +63,7 @@ let
          handle _ => raise FailedAt "0-loading"
       val {library_headers, program, ...} = 
          Top.typecheck_and_load sources
-         handle _ => raise FailedAt "1-typecheckandload"
+         handle _ => raise FailedAt "1-typecheck"
       
    in
       Program program
@@ -72,7 +72,7 @@ let
    val (status, analysis) = 
       case compiler_result of 
          Failure s => (s, "could_not_analyize")
-       | Program p => ("4-success", analyze_program p)
+       | Program p => ("2-success", analyze_program p)
 in
    output UUID;
    output ",";
