@@ -1,0 +1,281 @@
+/* Cons-pointer. */
+sortedlist* cp(int i, sortedlist* S) 
+//@requires S != NULL;
+{
+  list* l = alloc(list);
+  l->data = i;
+  l->next = S->start;
+  S->start = l;
+  return S;
+}
+
+/* Duplicate-pointer. */
+sortedlist* dp(sortedlist* S) 
+//@requires S != NULL;
+{
+  sortedlist* Q = alloc(sortedlist);
+  Q->start = S->start;
+  return Q;
+}
+
+/* Cons-check. */
+sortedlist* ck(sortedlist* S, int i) {
+  if (S == NULL) return NULL;
+  if (S->start == NULL) return NULL;
+  if (S->start->data != i) return NULL;
+  S->start = S->start->next;
+  return S;
+}
+
+/* Nil-check. */
+sortedlist* nk(sortedlist* S) {
+  if (S == NULL) return NULL;
+  if (S->start != NULL) return NULL;
+  return S;
+}
+
+bool singleton_test_delete(int i, int j) {
+  sortedlist* S = alloc(sortedlist);
+  S->start = alloc(list);
+  S->start->data = i;
+  delete(S, j);
+  if (i == j && S->start != NULL) return false;
+  if (i != j && (S->start == NULL || S->start->data != i)) return false;
+  return true;
+}
+
+bool singleton_tests_delete(int i) {
+  if (!singleton_test_delete(i, int_max())) return false;
+  if (!singleton_test_delete(i, int_min())) return false;
+  for (int j = -122; j <= 122; j++) {
+    if (!singleton_test_delete(i, j)) return false;
+  }
+  return true;
+}
+
+int insert_tests() {
+  sortedlist* S;
+  sortedlist* E = alloc(sortedlist);
+  int passed = 0;
+  
+  /* Insertion into empty list */
+  S = dp(E); insert(S, int_min()); 
+  if (nk(ck(S, int_min())) != NULL) passed |= 0x1000;
+  S = dp(E); insert(S, -12      ); 
+  if (nk(ck(S, -12)) != NULL) passed |= 0x800;
+  S = dp(E); insert(S, -1       ); 
+  if (nk(ck(S, -1)) != NULL) passed |= 0x400;
+  S = dp(E); insert(S, 0        ); 
+  if (nk(ck(S, 0)) != NULL) passed |= 0x200;
+  S = dp(E); insert(S, 1        ); 
+  if (nk(ck(S, 1)) != NULL) passed |= 0x100;
+  S = dp(E); insert(S, 122      ); 
+  if (nk(ck(S, 122)) != NULL) passed |= 0x80;
+  S = dp(E); insert(S, int_max()); 
+  if (nk(ck(S, int_max())) != NULL) passed |= 0x40;
+ 
+  /* Insertion into singleton list */
+  S = cp(int_min(), dp(E)); insert(S, int_min()); 
+  if (nk(ck(S, int_min())) != NULL) passed |= 0x20;
+
+  S = cp(int_min(), dp(E)); insert(S, 0); 
+  if (nk(ck(ck(S, int_min()), 0)) != NULL) passed |= 0x10;
+
+  S = cp(int_min(), dp(E)); insert(S, int_max()); 
+  if (nk(ck(ck(S, int_min()), int_max())) != NULL) passed |= 0x8;
+
+  S = cp(-12,       dp(E)); insert(S, int_min()); 
+  if (nk(ck(ck(S, int_min()), -12)) != NULL) passed |= 0x4;
+
+  S = cp(-12,       dp(E)); insert(S, 0); 
+  if (nk(ck(ck(S, -12), 0)) != NULL) passed |= 0x2;
+
+  S = cp(-12,       dp(E)); insert(S, int_max()); 
+  if (nk(ck(ck(S, -12), int_max())) != NULL) passed |= 0x1;
+
+  return passed;
+}
+
+int delete_tests() {
+  sortedlist* S = alloc(sortedlist);
+  int passed = 1;
+  
+  /* Deletion from the empty list */
+  delete(S, int_min()); if (S->start != NULL) passed = 0;
+  delete(S, -5       ); if (S->start != NULL) passed = 0;
+  delete(S, -1       ); if (S->start != NULL) passed = 0;
+  delete(S, 0        ); if (S->start != NULL) passed = 0;
+  delete(S, 1        ); if (S->start == NULL) passed += 2;
+  delete(S, 10       ); if (S->start == NULL) passed += 2;
+  delete(S, int_max()); if (S->start == NULL) passed += 2;
+
+  /* Check several singletons */
+  if (singleton_tests_delete(int_min())) passed += 2;
+  if (singleton_tests_delete(int_max())) passed += 2;
+  if (singleton_tests_delete(-1)) passed += 2;
+  if (singleton_tests_delete(0)) passed += 2;
+  if (singleton_tests_delete(1)) passed |= 0x80000000;
+  if (singleton_tests_delete(10)) passed |= 0x40000000;
+
+  /* Check several two-element lists */
+  S = cp(-12, cp(12, alloc(sortedlist)));
+  delete(S, int_min()); 
+  if (nk(ck(ck(dp(S), -12), 12)) != NULL) passed |= 0x20000000;
+  delete(S, -15);       
+  if (nk(ck(ck(dp(S), -12), 12)) != NULL) passed |= 0x10000000;
+  delete(S, -12);       
+  if (nk(ck(dp(S), 12)) != NULL) passed |= 0x8000000;
+  S = cp(-12, cp(12, alloc(sortedlist)));
+  delete(S, -1);        
+  if (nk(ck(ck(dp(S), -12), 12)) != NULL) passed |= 0x4000000;
+  delete(S, 0);         
+  if (nk(ck(ck(dp(S), -12), 12)) != NULL) passed |= 0x2000000;
+  delete(S, 1);         
+  if (nk(ck(ck(dp(S), -12), 12)) != NULL) passed |= 0x1000000;
+  delete(S, 12);        
+  if (nk(ck(dp(S), -12)) != NULL) passed |= 0x800000;
+  S = cp(-12, cp(12, alloc(sortedlist)));
+  delete(S, 122);       
+  if (nk(ck(ck(dp(S), -12), 12)) != NULL) passed |= 0x400000;
+  delete(S, int_max()); 
+  if (nk(ck(ck(dp(S), -12), 12)) != NULL) passed |= 0x200000;
+
+  int imi = int_min();
+  int ima = int_max();
+  S = cp(imi, cp(ima, alloc(sortedlist)));
+  delete(S, int_min()); 
+  if (nk(ck(dp(S), ima)) != NULL) passed |= 0x100000;
+  S = cp(imi, cp(ima, alloc(sortedlist)));
+  delete(S, -15);       
+  if (nk(ck(ck(dp(S), imi), ima)) != NULL) passed |= 0x80000;
+  delete(S, -1);        
+  if (nk(ck(ck(dp(S), imi), ima)) != NULL) passed |= 0x40000;
+  delete(S, 0);         
+  if (nk(ck(ck(dp(S), imi), ima)) != NULL) passed |= 0x20000;
+  delete(S, 1);         
+  if (nk(ck(ck(dp(S), imi), ima)) != NULL) passed |= 0x10000;
+  delete(S, 122);       
+  if (nk(ck(ck(dp(S), imi), ima)) != NULL) passed |= 0x8000;
+  delete(S, int_max()); 
+  if (nk(ck(dp(S), imi)) != NULL) passed |= 0x4000;
+
+  /* Longer list */
+  S = cp(0, cp(1, cp(2, cp(3, cp(4, cp(5, cp(6, alloc(sortedlist))))))));
+  delete(S, -1);
+  if (nk(ck(ck(ck(ck(ck(ck(ck(dp(S),0),1),2),3),4),5),6)) != NULL) 
+    passed |= 0x2000;
+  delete(S, 5);
+  if (nk(ck(ck(ck(ck(ck(ck(dp(S),0),1),2),3),4),6)) != NULL) passed |= 0x1000;
+  delete(S, 1);
+  if (nk(ck(ck(ck(ck(ck(dp(S),0),2),3),4),6)) != NULL) passed |= 0x800;
+  delete(S, 1);
+  if (nk(ck(ck(ck(ck(ck(dp(S),0),2),3),4),6)) != NULL) passed |= 0x400;
+  delete(S, 0);
+  if (nk(ck(ck(ck(ck(dp(S),2),3),4),6)) != NULL) passed |= 0x200;
+  delete(S, 6);
+  if (nk(ck(ck(ck(dp(S),2),3),4)) != NULL) passed |= 0x100;
+  delete(S, 3);
+  if (nk(ck(ck(dp(S),2),4)) != NULL) passed |= 0x80;
+  delete(S, 4);
+  if (nk(ck(dp(S),2)) != NULL) passed |= 0x40;
+  delete(S, 1);
+  if (nk(ck(dp(S),2)) != NULL) passed |= 0x20;
+  delete(S, 2);
+  if (nk(dp(S)) != NULL) passed |= 0x10;
+
+  return passed;
+}
+
+bool singleton_test(sortedlist* S, int i, int j) 
+//@requires is_sortedlist(S);
+//@requires S->start != NULL;
+//@requires S->start->next == NULL;
+{
+  S->start->data = i;
+  if (i == j && !is_in(S, j)) return false;
+  if (i != j && is_in(S, j)) return false;
+  if (S->start == NULL) return false;
+  if (S->start->data != i) return false;
+  if (S->start->next != NULL) return false;
+  return true;
+}
+
+bool singleton_tests(sortedlist* S, int i) 
+//@requires is_sortedlist(S);
+//@requires S->start != NULL;
+//@requires S->start->next == NULL;
+{
+  return singleton_test(S, i, int_min())
+    && singleton_test(S, i, int_max())
+    && singleton_test(S, i, -122)
+    && singleton_test(S, i, -112)
+    && singleton_test(S, i, -100)
+    && singleton_test(S, i, -3)
+    && singleton_test(S, i, -2)
+    && singleton_test(S, i, -1)
+    && singleton_test(S, i, 0)
+    && singleton_test(S, i, 1)
+    && singleton_test(S, i, 2)
+    && singleton_test(S, i, 3)
+    && singleton_test(S, i, 100);
+}
+
+int is_in_tests() {
+  int passed = 0;
+
+  /* Check the empty list */
+  sortedlist* S = alloc(sortedlist);
+  if (!is_in(S, int_min()) && S->start == NULL) passed |= 0x10000000;
+  if (!is_in(S, -5       ) && S->start == NULL) passed |= 0x8000000;
+  if (!is_in(S, -1       ) && S->start == NULL) passed |= 0x4000000;
+  if (!is_in(S, 0        ) && S->start == NULL) passed |= 0x2000000;
+  if (!is_in(S, 1        ) && S->start == NULL) passed |= 0x1000000;
+  if (!is_in(S, 10       ) && S->start == NULL) passed |= 0x800000;
+  if (!is_in(S, int_max()) && S->start == NULL) passed |= 0x400000;
+
+  /* Check several singletons */
+  S->start = alloc(list);
+  if (singleton_tests(S, int_min())) passed |= 0x200000;
+  if (singleton_tests(S, int_max())) passed |= 0x100000;
+  if (singleton_tests(S, -5))        passed |= 0x80000;
+  if (singleton_tests(S, -1))        passed |= 0x40000;
+  if (singleton_tests(S, 0))         passed |= 0x20000;
+  if (singleton_tests(S, 1))         passed |= 0x10000;
+  if (singleton_tests(S, 10))        passed |= 0x8000;
+
+  /* Check [-128,128) */
+  S->start->data = -128;
+  list* p = S->start;
+  p->data = -128;
+  for (int i = -127; i < 127; i++) 
+  //@loop_invariant p != NULL;
+  //@loop_invariant is_sortedlist(S);
+  {
+    p->next = alloc(list);
+    p->next->data = i;
+    p = p->next;
+  }
+
+  for (int i = -128 - 64; i < 127 + 63; i++) {
+    if (-128 <= i && i < 127) {
+      if (is_in(S, i)) passed += 0x80;
+    } else {
+      if (!is_in(S, i)) passed += 0x1;
+    }
+  }
+
+  /* Check odds */
+  p = S->start;
+  p->data = 1;
+  p->next = NULL;
+  for (int i = 3; i < 100; i += 2) 
+  //@loop_invariant p != NULL;
+  //@loop_invariant is_sortedlist(S);
+  {
+    p->next = alloc(list);
+    p->next->data = i;
+    p = p->next;
+  }
+  
+  return passed;
+}

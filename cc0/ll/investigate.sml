@@ -21,6 +21,15 @@ in
    "this_is_a_silly_analysis"
 end
 
+fun pad_zero n = String.implode (List.tabulate (n, fn _ => #"0"))
+
+fun pad_bitvector limit w = 
+let 
+   val s = (Word32.fmt StringCvt.BIN o ConcreteState.to_int) w
+in
+   pad_zero (limit - size s)^s
+end
+
 fun investigate_submission output dn needle =
 let
    (* Parse out time-of-day information from the directory's name *)
@@ -60,38 +69,41 @@ let
             versioninfo = "",
             usageinfo = "",
             args = [listlib, sortedlist, "ll/grader.c0"]}
-         handle _ => raise FailedAt "0,0"
+         handle _ => raise FailedAt "0000"
       val {library_headers, program, ...} = 
          Top.typecheck_and_load sources
-         handle _ => raise FailedAt "1,1"
+         handle _ => raise FailedAt "1000"
       val () = analysis_result := analyze_program program
 
       val {...} = 
          Top.finalize {library_headers = library_headers}
-         handle _ => raise FailedAt "2,2"
+         handle _ => raise FailedAt "1100"
 
-      fun runcode_1 f =
+      fun runcode_1 (f, limit) =
       let in
          ConcreteState.clear_locals Exec.state;
          CodeTab.reload_libs (!Flags.libraries);
          CodeTab.reload (library_headers @ program);
          Builtins.reset {argv = rev (!Flags.runtime_args)};
-         (Word32.toInt o ConcreteState.to_int)
+         "1111"^
+         pad_bitvector limit
             (Exec.call (Symbol.symbol f, [], ((0, 0), (0, 0), "_init_")))
-      end handle _ => 2
+      end handle _ => ("1100"^pad_zero limit)
 
-      fun runcode f = 
-         (6 - TimeLimit.timeLimit (Time.fromSeconds 5) runcode_1 f)
-         handle TimeLimit.TimeOut => 3
+      fun runcode f limit = 
+         (TimeLimit.timeLimit (Time.fromSeconds 3) runcode_1 (f, limit))
+         handle TimeLimit.TimeOut => ("1110"^pad_zero limit)
 
       val () = OS.FileSys.chDir "bin"
       val result = 
-         Int.toString (runcode "insert_tests")^","^
-         Int.toString (runcode "delete_tests")
+         (runcode "is_in_tests" 29)^","^
+         (runcode "insert_tests" 13)^","^
+         (runcode "delete_tests" 32)
       val () = OS.FileSys.chDir ".."
    in
       result
-   end handle FailedAt str => str
+   end handle FailedAt str => 
+              (str^pad_zero 29^","^str^pad_zero 13^","^str^pad_zero 32)
 
 in
    output UUID;
