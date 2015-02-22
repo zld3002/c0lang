@@ -46,8 +46,8 @@ let
    (* XXX Rob should modify this so that it still gets the
     * analyze_program function the code even if the code doesn't check *)
    exception FailedAt of string
-   datatype compiler_result = Failure of string | Program of Ast.gdecl list
-   val compiler_result: compiler_result = 
+   val analysis_result = ref "could_not_analyize"
+   val compiler_result: string = 
    let 
       val () = Top.reset ()
       val listlib = OS.Path.joinDirFile {dir = dn, file = "listlib.c0"}
@@ -56,23 +56,43 @@ let
       val sources = 
          Top.get_sources_set_flags
            {options = Flags.core_options,
-            errfn = (fn _ => raise FailedAt "0-loading"),
+            errfn = (fn _ => raise FailedAt "0,0"),
             versioninfo = "",
             usageinfo = "",
-            args = [listlib, sortedlist]}
-         handle _ => raise FailedAt "0-loading"
+            args = [listlib, sortedlist, "ll/grader.c0"]}
+         handle _ => raise FailedAt "0,0"
       val {library_headers, program, ...} = 
          Top.typecheck_and_load sources
-         handle _ => raise FailedAt "1-typecheck"
-      
-   in
-      Program program
-   end handle FailedAt str => Failure str
+         handle _ => raise FailedAt "1,1"
+      val () = analysis_result := analyze_program program
 
-   val (status, analysis) = 
-      case compiler_result of 
-         Failure s => (s, "could_not_analyize")
-       | Program p => ("2-success", analyze_program p)
+      val {...} = 
+         Top.finalize {library_headers = library_headers}
+         handle _ => raise FailedAt "2,2"
+
+      fun runcode_1 f =
+      let in
+         ConcreteState.clear_locals Exec.state;
+         CodeTab.reload_libs (!Flags.libraries);
+         CodeTab.reload (library_headers @ program);
+         Builtins.reset {argv = rev (!Flags.runtime_args)};
+         (Word32.toInt o ConcreteState.to_int)
+            (Exec.call (Symbol.symbol f, [], ((0, 0), (0, 0), "_init_")))
+      end handle _ => 2
+
+      fun runcode f = 
+         (6 - TimeLimit.timeLimit (Time.fromSeconds 5) runcode_1 f)
+         handle TimeLimit.TimeOut => 3
+
+      val () = OS.FileSys.chDir "bin"
+      val result = 
+         Int.toString (runcode "insert_tests")^","^
+         Int.toString (runcode "delete_tests")
+      val () = OS.FileSys.chDir ".."
+   in
+      result
+   end handle FailedAt str => str
+
 in
    output UUID;
    output ",";
@@ -80,9 +100,9 @@ in
    output ",";
    output (Int.toString day^":"^time);
    output ",";
-   output status;
+   output compiler_result;
    output ",";
-   output analysis;
+   output (!analysis_result);
    output "\n";
    ()
 end
