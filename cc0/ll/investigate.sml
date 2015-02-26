@@ -54,7 +54,8 @@ let
                          let
                            val (v, e) = (count_conds l)
                          in
-                           "," ^ Int.toString (e - v + 2)
+                           (* ignore if there is no code in the handout *)
+                           if e = 0 then ",-1" else "," ^ (Int.toString (e - v + 2))
                          end
                        | _ => "")
                     | _ => ""
