@@ -127,6 +127,27 @@ let
          Top.finalize {library_headers = library_headers}
          handle _ => raise FailedAt "1100"
 
+      fun run_from_input_1 (f, input) =
+      let val callarg = (Symbol.symbol f, [input], ((0, 0), (0, 0), "_init_"))
+      in
+         ConcreteState.clear_locals Exec.state;
+         CodeTab.reload_libs (!Flags.libraries);
+         CodeTab.reload (library_headers @ program);
+         if 0wx0 = ConcreteState.to_int (Exec.call callarg)
+            then #"0"
+         else #"1"
+      end handle Error.AssertionFailed _ => #"A"
+               | Error.Internal _ => #"X" 
+               | Error.NullPointer => #"M"
+               | _ => #"?" 
+
+      fun run_from_input f input =
+         (TimeLimit.timeLimit (Time.fromSeconds 1) run_from_input_1 (f, input))
+         handle TimeLimit.TimeOut => #"T"
+
+      fun run_from_inputs f inputs =
+         "111"^String.implode (map (run_from_input f) inputs)
+
       fun runcode_1 (f, limit) =
       let in
          ConcreteState.clear_locals Exec.state;
@@ -145,13 +166,14 @@ let
       val () = OS.FileSys.chDir "bin"
       val result =
          (runcode "is_in_tests" 29)^","^
-         (runcode "insert_tests" 13)^","^
+         (run_from_inputs "insert_tests" 
+            (List.tabulate (26, ConcreteState.int o Word32.fromInt)))^","^
          (runcode "delete_tests" 32)
       val () = OS.FileSys.chDir ".."
    in
       result
    end handle FailedAt str =>
-              (str^pad_zero 29^","^str^pad_zero 13^","^str^pad_zero 32)
+              (str^pad_zero 29^","^str^pad_zero 25^","^str^pad_zero 32)
 
 in
    output UUID;
