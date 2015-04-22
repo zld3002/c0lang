@@ -23,7 +23,11 @@ void printint(int i) {
 }
 
 void printbool(bool b) {
-  puts(b ? "true" : "false");
+  if (b) {
+    printf("true"); 
+  } else { 
+    printf("false");
+  }
 }
 
 void printchar(char c) {
