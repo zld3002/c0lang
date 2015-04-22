@@ -127,7 +127,8 @@ static inline c0_value int2val(c0_int i) {
 }
 
 static inline c0_int val2int(c0_value v) {
-  if (v.kind != C0_INTEGER ) c0_abort("Invalid cast from c0_value to integer");
+  if (v.kind != C0_INTEGER ) 
+    c0_abort("Invalid cast from a c0_value (a pointer) to an integer");
   return v.payload.i;
 }
 
@@ -139,7 +140,8 @@ static inline c0_value ptr2val(c0_pointer p) {
 }
 
 static inline c0_pointer val2ptr(c0_value v) {
-  if (v.kind != C0_POINTER) c0_abort("Invalid cast from c0_value to integer");
+  if (v.kind != C0_POINTER) 
+    c0_abort("Invalid cast from a c0_value (an integer) to a pointer");
   return v.payload.p;
 }
 

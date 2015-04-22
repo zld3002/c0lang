@@ -123,6 +123,7 @@ fun output_wrapper tmap data =
          val fun_name = Symbol.name fun_name
       in 
          print_endline ("c0_value __c0ffi_" ^ fun_name ^ "(c0_value *args) {") 
+         ; print_endline ("   //fprintf(stderr, \"Calling "^fun_name^"\\n\");")
          ; if null params 
            then print_endline "  (void) args; /* suppress error */" 
            else ()
@@ -169,6 +170,7 @@ fun load_and_output lib file =
       ; print_endline ""
       ; print_endline "#include <inttypes.h>"
       ; print_endline "#include <c0runtime.h>"
+      ; print_endline "#include <stdio.h>"
       ; print_endline ""
       ; print_endline "/* Headers */"
       ; print_endline ""

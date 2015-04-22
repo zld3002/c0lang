@@ -8,6 +8,7 @@
 
 #include <inttypes.h>
 #include <c0runtime.h>
+#include <stdio.h>
 
 /* Headers */
 
@@ -30,62 +31,77 @@ c0_char char_chr(int n);
 /* Wrappers */
 
 c0_value __c0ffi_string_length(c0_value *args) {
+   //fprintf(stderr, "Calling string_length\n");
   return int2val(string_length((c0_string)val2ptr(args[0])));
 }
 
 c0_value __c0ffi_string_charat(c0_value *args) {
+   //fprintf(stderr, "Calling string_charat\n");
   return int2val((c0_int)string_charat((c0_string)val2ptr(args[0]), val2int(args[1])));
 }
 
 c0_value __c0ffi_string_join(c0_value *args) {
+   //fprintf(stderr, "Calling string_join\n");
   return ptr2val((void *)string_join((c0_string)val2ptr(args[0]), (c0_string)val2ptr(args[1])));
 }
 
 c0_value __c0ffi_string_sub(c0_value *args) {
+   //fprintf(stderr, "Calling string_sub\n");
   return ptr2val((void *)string_sub((c0_string)val2ptr(args[0]), val2int(args[1]), val2int(args[2])));
 }
 
 c0_value __c0ffi_string_equal(c0_value *args) {
+   //fprintf(stderr, "Calling string_equal\n");
   return int2val((c0_int)string_equal((c0_string)val2ptr(args[0]), (c0_string)val2ptr(args[1])));
 }
 
 c0_value __c0ffi_string_compare(c0_value *args) {
+   //fprintf(stderr, "Calling string_compare\n");
   return int2val(string_compare((c0_string)val2ptr(args[0]), (c0_string)val2ptr(args[1])));
 }
 
 c0_value __c0ffi_string_fromint(c0_value *args) {
+   //fprintf(stderr, "Calling string_fromint\n");
   return ptr2val((void *)string_fromint(val2int(args[0])));
 }
 
 c0_value __c0ffi_string_frombool(c0_value *args) {
+   //fprintf(stderr, "Calling string_frombool\n");
   return ptr2val((void *)string_frombool((bool)val2int(args[0])));
 }
 
 c0_value __c0ffi_string_fromchar(c0_value *args) {
+   //fprintf(stderr, "Calling string_fromchar\n");
   return ptr2val((void *)string_fromchar((c0_char)val2int(args[0])));
 }
 
 c0_value __c0ffi_string_tolower(c0_value *args) {
+   //fprintf(stderr, "Calling string_tolower\n");
   return ptr2val((void *)string_tolower((c0_string)val2ptr(args[0])));
 }
 
 c0_value __c0ffi_string_terminated(c0_value *args) {
+   //fprintf(stderr, "Calling string_terminated\n");
   return int2val((c0_int)string_terminated((c0_array *)val2ptr(args[0]), val2int(args[1])));
 }
 
 c0_value __c0ffi_string_to_chararray(c0_value *args) {
+   //fprintf(stderr, "Calling string_to_chararray\n");
   return ptr2val((void *)string_to_chararray((c0_string)val2ptr(args[0])));
 }
 
 c0_value __c0ffi_string_from_chararray(c0_value *args) {
+   //fprintf(stderr, "Calling string_from_chararray\n");
   return ptr2val((void *)string_from_chararray((c0_array *)val2ptr(args[0])));
 }
 
 c0_value __c0ffi_char_ord(c0_value *args) {
+   //fprintf(stderr, "Calling char_ord\n");
   return int2val(char_ord((c0_char)val2int(args[0])));
 }
 
 c0_value __c0ffi_char_chr(c0_value *args) {
+   //fprintf(stderr, "Calling char_chr\n");
   return int2val((c0_int)char_chr(val2int(args[0])));
 }
 

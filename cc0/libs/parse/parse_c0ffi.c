@@ -8,6 +8,7 @@
 
 #include <inttypes.h>
 #include <c0runtime.h>
+#include <stdio.h>
 
 /* Headers */
 
@@ -21,26 +22,32 @@ c0_array * parse_ints(c0_string s, int base);
 /* Wrappers */
 
 c0_value __c0ffi_parse_bool(c0_value *args) {
+   //fprintf(stderr, "Calling parse_bool\n");
   return ptr2val((void *)parse_bool((c0_string)val2ptr(args[0])));
 }
 
 c0_value __c0ffi_parse_int(c0_value *args) {
+   //fprintf(stderr, "Calling parse_int\n");
   return ptr2val((void *)parse_int((c0_string)val2ptr(args[0]), val2int(args[1])));
 }
 
 c0_value __c0ffi_num_tokens(c0_value *args) {
+   //fprintf(stderr, "Calling num_tokens\n");
   return int2val(num_tokens((c0_string)val2ptr(args[0])));
 }
 
 c0_value __c0ffi_int_tokens(c0_value *args) {
+   //fprintf(stderr, "Calling int_tokens\n");
   return int2val((c0_int)int_tokens((c0_string)val2ptr(args[0]), val2int(args[1])));
 }
 
 c0_value __c0ffi_parse_tokens(c0_value *args) {
+   //fprintf(stderr, "Calling parse_tokens\n");
   return ptr2val((void *)parse_tokens((c0_string)val2ptr(args[0])));
 }
 
 c0_value __c0ffi_parse_ints(c0_value *args) {
+   //fprintf(stderr, "Calling parse_ints\n");
   return ptr2val((void *)parse_ints((c0_string)val2ptr(args[0]), val2int(args[1])));
 }
 

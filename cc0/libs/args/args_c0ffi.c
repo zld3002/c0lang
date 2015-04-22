@@ -8,6 +8,7 @@
 
 #include <inttypes.h>
 #include <c0runtime.h>
+#include <stdio.h>
 
 /* Headers */
 
@@ -23,21 +24,25 @@ struct args * args_parse();
 /* Wrappers */
 
 c0_value __c0ffi_args_flag(c0_value *args) {
+   //fprintf(stderr, "Calling args_flag\n");
   args_flag((c0_string)val2ptr(args[0]), (bool *)val2ptr(args[1]));
   return ptr2val(NULL);
 }
 
 c0_value __c0ffi_args_int(c0_value *args) {
+   //fprintf(stderr, "Calling args_int\n");
   args_int((c0_string)val2ptr(args[0]), (int *)val2ptr(args[1]));
   return ptr2val(NULL);
 }
 
 c0_value __c0ffi_args_string(c0_value *args) {
+   //fprintf(stderr, "Calling args_string\n");
   args_string((c0_string)val2ptr(args[0]), (c0_string *)val2ptr(args[1]));
   return ptr2val(NULL);
 }
 
 c0_value __c0ffi_args_parse(c0_value *args) {
+   //fprintf(stderr, "Calling args_parse\n");
   (void) args; /* suppress error */
   return ptr2val((void *)args_parse());
 }

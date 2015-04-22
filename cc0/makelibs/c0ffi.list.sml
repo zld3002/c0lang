@@ -88,10 +88,10 @@ fun write_c0vm_c0ffi_h rootdir c0ffi_list =
     ; output ""
     ; output "/* native_fn: the type of generic native functions taking"
     ; output " *            a variable-length array of generic arguments */"
-    ; output "typedef c0_value (*native_fn)(c0_value *);"
+    ; output "typedef c0_value native_fn(c0_value *);"
     ; output ""
     ; output ("#define NATIVE_FUNCTION_COUNT "^Int.toString (getCount ()))
-    ; output "extern native_fn native_function_table[NATIVE_FUNCTION_COUNT];"
+    ; output "extern native_fn *native_function_table[NATIVE_FUNCTION_COUNT];"
     ; Map.appi 
          (fn (lib, funcs) => 
            ( output ""
@@ -121,7 +121,7 @@ fun write_c0vm_c0ffi_c rootdir c0ffi_list =
     ; output "#include \"c0vm_c0ffi.h\""
     ; output ""
     ; output "/* The native function table */"
-    ; output "native_fn native_function_table[NATIVE_FUNCTION_COUNT] ="
+    ; output "native_fn *native_function_table[NATIVE_FUNCTION_COUNT] ="
     ; output "    {"
     ; Map.appi 
          (fn (lib, funcs) => 

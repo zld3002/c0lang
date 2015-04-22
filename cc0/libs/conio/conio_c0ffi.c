@@ -8,6 +8,7 @@
 
 #include <inttypes.h>
 #include <c0runtime.h>
+#include <stdio.h>
 
 /* Headers */
 
@@ -23,42 +24,50 @@ c0_string readline();
 /* Wrappers */
 
 c0_value __c0ffi_print(c0_value *args) {
+   //fprintf(stderr, "Calling print\n");
   print((c0_string)val2ptr(args[0]));
   return ptr2val(NULL);
 }
 
 c0_value __c0ffi_println(c0_value *args) {
+   //fprintf(stderr, "Calling println\n");
   println((c0_string)val2ptr(args[0]));
   return ptr2val(NULL);
 }
 
 c0_value __c0ffi_printint(c0_value *args) {
+   //fprintf(stderr, "Calling printint\n");
   printint(val2int(args[0]));
   return ptr2val(NULL);
 }
 
 c0_value __c0ffi_printbool(c0_value *args) {
+   //fprintf(stderr, "Calling printbool\n");
   printbool((bool)val2int(args[0]));
   return ptr2val(NULL);
 }
 
 c0_value __c0ffi_printchar(c0_value *args) {
+   //fprintf(stderr, "Calling printchar\n");
   printchar((c0_char)val2int(args[0]));
   return ptr2val(NULL);
 }
 
 c0_value __c0ffi_flush(c0_value *args) {
+   //fprintf(stderr, "Calling flush\n");
   (void) args; /* suppress error */
   flush();
   return ptr2val(NULL);
 }
 
 c0_value __c0ffi_eof(c0_value *args) {
+   //fprintf(stderr, "Calling eof\n");
   (void) args; /* suppress error */
   return int2val((c0_int)eof());
 }
 
 c0_value __c0ffi_readline(c0_value *args) {
+   //fprintf(stderr, "Calling readline\n");
   (void) args; /* suppress error */
   return ptr2val((void *)readline());
 }

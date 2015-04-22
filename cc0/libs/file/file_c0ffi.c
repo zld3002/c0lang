@@ -8,6 +8,7 @@
 
 #include <inttypes.h>
 #include <c0runtime.h>
+#include <stdio.h>
 
 /* Headers */
 
@@ -21,23 +22,28 @@ c0_string file_readline(struct file * f);
 /* Wrappers */
 
 c0_value __c0ffi_file_closed(c0_value *args) {
+   //fprintf(stderr, "Calling file_closed\n");
   return int2val((c0_int)file_closed((struct file *)val2ptr(args[0])));
 }
 
 c0_value __c0ffi_file_read(c0_value *args) {
+   //fprintf(stderr, "Calling file_read\n");
   return ptr2val((void *)file_read((c0_string)val2ptr(args[0])));
 }
 
 c0_value __c0ffi_file_close(c0_value *args) {
+   //fprintf(stderr, "Calling file_close\n");
   file_close((struct file *)val2ptr(args[0]));
   return ptr2val(NULL);
 }
 
 c0_value __c0ffi_file_eof(c0_value *args) {
+   //fprintf(stderr, "Calling file_eof\n");
   return int2val((c0_int)file_eof((struct file *)val2ptr(args[0])));
 }
 
 c0_value __c0ffi_file_readline(c0_value *args) {
+   //fprintf(stderr, "Calling file_readline\n");
   return ptr2val((void *)file_readline((struct file *)val2ptr(args[0])));
 }
 
