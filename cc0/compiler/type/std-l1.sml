@@ -98,8 +98,9 @@ fun chk_stm (A.Assign(NONE, lv, e)) ext =
       ("expressions not supported as statements in L1")
     ; raise ErrorMsg.Error )
   | chk_stm (A.Seq(ds, ss)) ext =
-    ( List.app (fn d => chk_decl d) ds
-    ; List.app (fn s => chk_stm s ext) ss )
+    ( ErrorMsg.error ext
+      ("nested scopes not supported in L1")
+    ; raise ErrorMsg.Error )
   | chk_stm (A.StmDecl(d)) ext = chk_decl d
   | chk_stm (A.If(e, s1, s2)) ext =
     ( ErrorMsg.error ext ("conditionals not supported in L1") ; raise ErrorMsg.Error )
