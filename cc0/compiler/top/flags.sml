@@ -25,7 +25,7 @@ signature FLAGS = sig
   val gcc_args : string list ref
   val runtime_args : string list ref
   val runtime : string ref
-  val standard : string ref
+  val standard : string option ref
   val a_out : string ref
   val bytecode_arch : int ref
 
@@ -74,7 +74,8 @@ structure Flags :> FLAGS = struct
   val runtime_args : string list ref = ref [] (* Arguments for runtime        *)
   val gcc_args : string list ref = ref []     (* Arguments for gcc            *)
   val runtime  = ref ""                       (* Runtime (bare, c0rt, unsafe) *)
-  val standard = ref "c0"                     (* Language standard (c0, c1)   *)
+  val standard : string option ref = ref NONE (* Language standard (l1, c0)   *)
+                                              (* Default is to use extension  *)
   val a_out = ref ""                          (* Output executable            *)
   val bytecode_arch = ref 64                  (* Architecture for bytecode    *)
 
@@ -128,7 +129,7 @@ structure Flags :> FLAGS = struct
 
           (* Set other defaults *)
           libraries := []; runtime := "c0rt"; a_out := "a.out";
-          standard := "c0";
+          standard := NONE;
           runtime_args := []; gcc_args := [];
 	  bytecode_arch := 64;
           SOME (#2 (GetOpt.getOpt {argOrder = GetOpt.Permute,
@@ -176,8 +177,8 @@ structure Flags :> FLAGS = struct
               ((fn (s) => (runtime_args := s :: !runtime_args)), "<arg>"),
       help="Pass an argument to the executing C0 program"},
      {short = "", long=["standard"],
-      desc=GetOpt.ReqArg ((fn (s) => (standard := s)), "<std>"),
-      help="Select a language standard (default 'c0')"},
+      desc=GetOpt.ReqArg ((fn (s) => (standard := SOME s)), "<std>"),
+      help="Force language std. (ie c0), ignoring extension"},
      {short = "V", long=["version"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_version),
       help="Print version number and compile info"},

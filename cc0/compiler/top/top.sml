@@ -116,57 +116,38 @@ struct
 	  List.find readable candidates
       end
 
+  fun standard filename = 
+     case (!Flags.standard, OS.Path.ext filename) of
+        (SOME std, _) => std (* Declared standard takes precedence *)
+      | (_, SOME std) => std
+      | (NONE, NONE) => "c0" (* Alternative: raise an error in this case *)
+
   fun check_language_standard filename ast =
-      let
-          val {base=_, ext=file_ext} = OS.Path.splitBaseExt filename
-      in
-          case file_ext
-           of SOME("l1") => StdL1.check ast
-            | SOME("l2") => StdL2.check ast
-            | SOME("l3") => StdL3.check ast
-            | SOME("l4") => StdL4.check ast
-            | SOME("l5") => StdL5.check ast
-            | SOME("c0") => StdC0.check ast
-            | SOME("h0") => StdC0.check ast
-            | SOME("c1") => () (* nothing to check at the moment *)
-            | SOME("h1") => () (* nothing to check at the moment *)
-            | _ => (* unknown or missing extension; apply default standard *)
-              (case !Flags.standard
-                of "l1" => StdL1.check ast
-                 | "l2" => StdL2.check ast
-                 | "l3" => StdL3.check ast
-                 | "l4" => StdL4.check ast
-                 | "l5" => StdL5.check ast
-                 | "c0" => StdC0.check ast
-                 | "c1" => ()
-                 | std => ( say ("Unknown language standard '" ^ std ^ "'")
-                          ; raise EXIT ))
-      end
+     case standard filename of
+        "l1" => StdL1.check ast
+      | "l2" => StdL2.check ast
+      | "l3" => StdL3.check ast
+      | "l4" => StdL4.check ast
+      | "l5" => StdL5.check ast
+      | "c0" => StdC0.check ast
+      | "h0" => StdC0.check ast
+      | "c1" => () (* nothing to check at the moment *)
+      | "h1" => () (* nothing to check at the moment *)
+      | std => ( say ("Unknown language standard '" ^ std ^ "'")
+               ; raise EXIT )
 
   fun lex_annos filename =
-      let
-          val {base=_, ext=file_ext} = OS.Path.splitBaseExt filename
-      in
-          case file_ext
-           of SOME("l1") => false
-            | SOME("l2") => false
-            | SOME("l3") => false
-            | SOME("l4") => false
-            | SOME("c0") => true
-            | SOME("h0") => true
-            | SOME("c1") => true
-            | SOME("h1") => true
-            | _ => (* unknown or missing extension; apply default standard *)
-              (case !Flags.standard
-                of "l1" => false
-                 | "l2" => false
-                 | "l3" => false
-                 | "l4" => false
-                 | "c0" => true
-                 | "c1" => true
-                 | std => ( say ("Unknown language standard '" ^ std ^ "'")
-                          ; raise EXIT ))
-      end
+     case standard filename of
+        "l1" => false
+      | "l2" => false
+      | "l3" => false
+      | "l4" => false
+      | "c0" => true
+      | "h0" => true
+      | "c1" => true
+      | "h1" => true
+      | std => ( say ("Unknown language standard '" ^ std ^ "'")
+               ; raise EXIT )
 
   fun is_fundef (Ast.Function(_, _, _, SOME(s), _, _, _)) = true
     | is_fundef _ = false
