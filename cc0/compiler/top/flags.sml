@@ -18,6 +18,7 @@ signature FLAGS = sig
   val flag_exec : Flag.flag
   val flag_bytecode : Flag.flag 
   val flag_static : Flag.flag
+  val flag_only_typecheck : Flag.flag
   val base_dir : string ref
   val search_path : string list ref
   val libraries : string list ref
@@ -65,6 +66,7 @@ structure Flags :> FLAGS = struct
   val flag_exec = Flag.flag "exec"
   val flag_bytecode = Flag.flag "bytecode"
   val flag_static = Flag.flag "static"
+  val flag_only_typecheck = Flag.flag "only-typecheck"
 
   val base_dir = ref ""                       (* see reset_flags ()           *)
   val search_path : string list ref = ref []  (* Search path for libraries    *)
@@ -230,7 +232,10 @@ structure Flags :> FLAGS = struct
       help="Warn about style issues in the code"},
      {short = "x", long=["exec"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_exec),
-      help="Execute compiled file"}]
+      help="Execute compiled file"},
+     {short = "", long=["only-typecheck"],
+      desc=GetOpt.NoArg (fn () => Flag.set flag_only_typecheck),
+      help="Stop after typechecking"}]
 
   end (* local *)
 

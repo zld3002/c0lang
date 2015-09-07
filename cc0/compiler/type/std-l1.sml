@@ -125,6 +125,19 @@ fun chk_stm (A.Assign(NONE, lv, e)) ext =
   | chk_stm (A.Markeds(marked_stm)) ext =
       chk_stm (Mark.data marked_stm) (Mark.ext marked_stm)
 
+and chk_stms [] ext = ()
+  | chk_stms [ s ] ext = chk_last_stm s ext
+  | chk_stms (s :: ss) ext =
+    ( chk_stm s ext ; chk_stms ss ext )
+
+(* The last statement is the only one that can have nesting *)
+and chk_last_stm (A.Seq(ds, ss)) ext = 
+    ( List.app (fn d => chk_decl d) ds
+    ; chk_stms ss ext )
+  | chk_last_stm (A.Markeds(marked_stm)) ext = 
+      chk_last_stm (Mark.data marked_stm) (Mark.ext marked_stm)
+  | chk_last_stm stm ext = chk_stm stm ext 
+
 and chk_decl (A.VarDecl(id, tp, NONE, ext)) = chk_tp tp ext
   | chk_decl (A.VarDecl(id, tp, SOME(e), ext)) =
     ( chk_tp tp ext ; chk_exp e ext )
@@ -144,7 +157,7 @@ fun chk_gdecl (A.TypeDef(_, _, ext)) =
   | chk_gdecl (A.Function(g, rtp, params, SOME(s), specs, _, ext)) =
     if Symbol.name g <> "main"
     then ( ErrorMsg.error ext ("only function 'main' may be defined in L1") ; raise ErrorMsg.Error )
-    else ( chk_specs specs ; chk_stm s ext )
+    else ( chk_specs specs ; chk_last_stm s ext )
   | chk_gdecl (A.Pragma(_, ext)) =
     ( ErrorMsg.error ext ("compiler directives not supported in L1") ; raise ErrorMsg.Error )
 

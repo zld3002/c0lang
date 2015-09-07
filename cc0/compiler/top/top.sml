@@ -515,6 +515,12 @@ let
 					^ "do not compile .h files") ;
 				   raise EXIT )
 		   | _ => ()
+
+        (* Any errors after this point are bugs in the compiler *)
+        val () = if Flag.isset Flags.flag_only_typecheck
+                then raise FINISHED
+                else ()
+
         val sourceExt = case extOpt of SOME(ext) => ext | NONE => ""
         val cname = OS.Path.joinBaseExt {base = out_base, ext = SOME (sourceExt ^ ".c")}
         val hname = OS.Path.joinBaseExt {base = out_base, ext = SOME (sourceExt ^ ".h")}
