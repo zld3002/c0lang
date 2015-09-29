@@ -39,8 +39,8 @@ static inline void *val2ptr(c0_value v) {
 }
 
 // Functions used by ML
-typedef c0_value(*native_fn)(argsbuilder);
 typedef c0_value* argsbuilder;
+typedef c0_value(*native_fn)(argsbuilder a);
 
 argsbuilder args_create(int32_t argc) {
   //printf("args_create (c)\n");
