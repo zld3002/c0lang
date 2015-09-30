@@ -698,7 +698,11 @@ and m_exp (e, r) = Exp(mark_exp(e,r),r)
 
 (* do not reduce to expression, because p_paren_exp is
  * used for 'if' and 'while', to be reduced with statement *)
-and p_paren_exp ST = (* ST |> p_terminal T.LPAREN >> p_exp >> p_terminal T.RPAREN *)
+and p_paren_exp ST =
+    ST |> p_terminal T.LPAREN >> p_exp >> p_terminal T.RPAREN
+
+(* needed for casts which may start an expression *)
+and p_paren_exp_or_tp ST =
     ST |> p_terminal T.LPAREN >> p_exp_or_tp
 
 and p_exp_or_tp ST =
@@ -741,7 +745,7 @@ and p_exp (ST as (S, ft)) = case (S, first ST) of
     (_, T.LPAREN) => if follows_exp ST
                      then (* possibly invoking function pointer *)
                          p_exp_var_or_call ST
-                     else ST |> c_follows_nonexp >> p_paren_exp >> reduce r_exp >> p_exp
+                     else ST |> c_follows_nonexp >> p_paren_exp_or_tp >> reduce r_exp >> p_exp
 
   (* for literal expressions, shift and reduce, after checking juxtaposition *)
   | (_, T.DECNUM(s)) => ST |> c_follows_nonexp >> shift >> reduce r_exp >> p_exp
