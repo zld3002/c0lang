@@ -181,10 +181,10 @@ struct
       let val sources = Flags.reset_flags options errfn args
       in
           ( if Flag.isset Flags.flag_version
-            then (say versioninfo ; raise EXIT)
+            then (say versioninfo ; raise FINISHED)
             else ()
 	  ; if Flag.isset Flags.flag_help orelse not (isSome sources)
-	    then (say versioninfo ; say usageinfo ; raise EXIT)
+	    then (say versioninfo ; say usageinfo ; raise FINISHED)
 	    else ()
           ; if Flag.isset Flags.flag_dyn_check andalso !Flags.runtime = "unsafe"
             then ( say "unsafe runtime (-runsafe) cannot be \
@@ -409,7 +409,7 @@ let
         val versioninfo = "C0 reference compiler (cc0) revision "
                         ^ BuildId.revision ^ " (built " ^ BuildId.date ^ ")"
 	val usageinfo = G.usageInfo {header = header, options = options}
-	val c0vm_version = 6
+	val c0vm_version = 7
 	fun errfn msg : unit = (say (msg ^ "\n" ^ usageinfo) ; raise EXIT)
 
         (* Reset state by reading argments; possibly display usage & exit. *) 

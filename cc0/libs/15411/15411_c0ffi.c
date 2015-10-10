@@ -19,7 +19,15 @@ int fdiv(int x, int y);
 bool fless(int x, int y);
 int itof(int n);
 int ftoi(int x);
+struct dub * dadd(struct dub * x, struct dub * y);
+struct dub * dsub(struct dub * x, struct dub * y);
+struct dub * dmul(struct dub * x, struct dub * y);
+struct dub * ddiv(struct dub * x, struct dub * y);
+bool dless(struct dub * x, struct dub * y);
+struct dub * itod(int n);
+int dtoi(struct dub * x);
 void print_fpt(int x);
+void print_dub(struct dub * x);
 void print_int(int n);
 void print_hex(int n);
 
@@ -60,9 +68,50 @@ c0_value __c0ffi_ftoi(c0_value *args) {
   return int2val(ftoi(val2int(args[0])));
 }
 
+c0_value __c0ffi_dadd(c0_value *args) {
+   //fprintf(stderr, "Calling dadd\n");
+  return ptr2val((void *)dadd((struct dub *)val2ptr(args[0]), (struct dub *)val2ptr(args[1])));
+}
+
+c0_value __c0ffi_dsub(c0_value *args) {
+   //fprintf(stderr, "Calling dsub\n");
+  return ptr2val((void *)dsub((struct dub *)val2ptr(args[0]), (struct dub *)val2ptr(args[1])));
+}
+
+c0_value __c0ffi_dmul(c0_value *args) {
+   //fprintf(stderr, "Calling dmul\n");
+  return ptr2val((void *)dmul((struct dub *)val2ptr(args[0]), (struct dub *)val2ptr(args[1])));
+}
+
+c0_value __c0ffi_ddiv(c0_value *args) {
+   //fprintf(stderr, "Calling ddiv\n");
+  return ptr2val((void *)ddiv((struct dub *)val2ptr(args[0]), (struct dub *)val2ptr(args[1])));
+}
+
+c0_value __c0ffi_dless(c0_value *args) {
+   //fprintf(stderr, "Calling dless\n");
+  return int2val((c0_int)dless((struct dub *)val2ptr(args[0]), (struct dub *)val2ptr(args[1])));
+}
+
+c0_value __c0ffi_itod(c0_value *args) {
+   //fprintf(stderr, "Calling itod\n");
+  return ptr2val((void *)itod(val2int(args[0])));
+}
+
+c0_value __c0ffi_dtoi(c0_value *args) {
+   //fprintf(stderr, "Calling dtoi\n");
+  return int2val(dtoi((struct dub *)val2ptr(args[0])));
+}
+
 c0_value __c0ffi_print_fpt(c0_value *args) {
    //fprintf(stderr, "Calling print_fpt\n");
   print_fpt(val2int(args[0]));
+  return ptr2val(NULL);
+}
+
+c0_value __c0ffi_print_dub(c0_value *args) {
+   //fprintf(stderr, "Calling print_dub\n");
+  print_dub((struct dub *)val2ptr(args[0]));
   return ptr2val(NULL);
 }
 

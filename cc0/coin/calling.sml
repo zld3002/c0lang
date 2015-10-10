@@ -26,8 +26,10 @@ fun mapArg (ty, v) =
       Ast.Bool => NativeCall.Bool (S.to_bool v)
     | Ast.Int => NativeCall.Int (S.to_int v)
     | Ast.Char => NativeCall.Char (S.to_char v)
-    | Ast.Pointer _ =>
-      NativeCall.Ptr (S.to_native (#2 (valOf (S.to_pointer v))))
+    | Ast.Pointer ty => 
+        (case S.to_pointer v of
+            NONE => NativeCall.Ptr MLton.Pointer.null
+          | SOME (_, ptr) => NativeCall.Ptr (S.to_native ptr))
     | Ast.Array _ => NativeCall.Ptr (S.to_native (#2 (S.to_array v)))
     | Ast.String => NativeCall.String (S.to_string v)
     | _ => raise Error.Internal ("Bad argument type " ^ Ast.Print.pp_tp ty)

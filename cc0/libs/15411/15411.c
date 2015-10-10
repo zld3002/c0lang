@@ -61,6 +61,65 @@ int print_fpt(c0_float a) {
   return 0;
 }
 
+typedef struct dub *c0_double;
+
+union double_or_ptr {
+  struct dub *as_ptr;
+  double as_double;
+};
+
+typedef union double_or_ptr double_or_ptr;
+
+c0_double dadd(c0_double a, c0_double b) {
+  double_or_ptr x; x.as_ptr = a;
+  double_or_ptr y; y.as_ptr = b;
+  double_or_ptr z; z.as_double = x.as_double + y.as_double;
+  return z.as_ptr;
+}
+
+c0_double dsub(c0_double a, c0_double b) {
+  double_or_ptr x; x.as_ptr = a;
+  double_or_ptr y; y.as_ptr = b;
+  double_or_ptr z; z.as_double = x.as_double - y.as_double;
+  return z.as_ptr;
+}
+
+c0_double dmul(c0_double a, c0_double b) {
+  double_or_ptr x; x.as_ptr = a;
+  double_or_ptr y; y.as_ptr = b;
+  double_or_ptr z; z.as_double = x.as_double * y.as_double;
+  return z.as_ptr;
+}
+
+c0_double ddiv(c0_double a, c0_double b) {
+  double_or_ptr x; x.as_ptr = a;
+  double_or_ptr y; y.as_ptr = b;
+  double_or_ptr z; z.as_double = x.as_double / y.as_double;
+  return z.as_ptr;
+}
+
+bool dless(c0_double a, c0_double b) {
+  double_or_ptr x; x.as_ptr = a;
+  double_or_ptr y; y.as_ptr = b;
+  return x.as_double < y.as_double;
+}
+
+c0_double itod(int a) {
+  double_or_ptr x; x.as_double = (float)a;
+  return x.as_ptr;
+}
+
+int dtoi(c0_double a) {
+  double_or_ptr x; x.as_ptr = a;
+  return (int)x.as_double;
+}
+
+int print_dub(c0_double a) {
+  double_or_ptr x; x.as_ptr = a;
+  fprintf(stderr, "%g\n", x.as_double);
+  return 0;
+}
+
 int print_int(int n) {
   fprintf(stderr, "%d\n", n);
   return 0;
