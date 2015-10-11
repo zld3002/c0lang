@@ -70,7 +70,7 @@ functor Server
                 serveTop())
 
   and serveTop() = 
-      (serve()) (* 
+      (serve()) 
       handle (Error.Uninitialized) => hstr ("Error: uninitialized value used")
            | (Error.NullPointer) => hstr ("Error: null pointer was accessed")
            | (Error.ArrayOutOfBounds (i,j)) => 
@@ -92,7 +92,7 @@ functor Server
                 hstr ("Error (DYNAMIC SEMANTICS, PLEASE REPORT): " ^ str)
            | (Error.Internal str) => 
                 hstr("Error (INTERNAL, PLEASE REPORT): " ^ str)
-           | exn => hstr("Uncaught exception: " ^ exnMessage exn ^ "\n") *)
+           | exn => hstr("Uncaught exception: " ^ exnMessage exn ^ "\n") 
  
   fun hstr s = (print (s ^ "\n"); OS.Process.failure)
 
