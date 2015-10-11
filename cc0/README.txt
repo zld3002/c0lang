@@ -138,7 +138,7 @@ Binary distro (pristine Ubuntu distro):
   tar --exclude .svn -p -T cc0/dist-bin.txt -cvzf cc0-v${REV}-${VERS}-bin.tgz
   scp cc0-v${REV}-${VERS}-bin.tgz c0.typesafety.net:/home/www/c0/dist/
   
-  ** ${REV} is the four-digit revision number (0214, for instance)
+  ** ${REV} is the FOUR-DIGIT revision number (0214, for instance)
   ** ${VERS} explains the build setup (uname -a will help):
      - osx10.5.8 (Leapord)
      - osx10.6.8 (Snow Leapord)

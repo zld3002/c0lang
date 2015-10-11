@@ -123,18 +123,23 @@ struct
       | (NONE, NONE) => "c0" (* Alternative: raise an error in this case *)
 
   fun check_language_standard filename ast =
-     case standard filename of
+  let val std = standard filename 
+  in 
+   ( Flag.guard Flags.flag_verbose
+     (fn () => say ("Standards checking " ^ filename ^ " against standard '" ^ std ^ "'")) ()
+   ; case standard filename of
         "l1" => StdL1.check ast
       | "l2" => StdL2.check ast
       | "l3" => StdL3.check ast
       | "l4" => StdL4.check ast
       | "l5" => StdL5.check ast
       | "c0" => StdC0.check ast
-      | "h0" => StdC0.check ast
+      | "h0" => StdH0.check ast
       | "c1" => () (* nothing to check at the moment *)
-      | "h1" => () (* nothing to check at the moment *)
+      | "h1" => StdH1.check ast
       | std => ( say ("Unknown language standard '" ^ std ^ "'")
-               ; raise EXIT )
+               ; raise EXIT ) )
+  end
 
   fun lex_annos filename =
      case standard filename of
