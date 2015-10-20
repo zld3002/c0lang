@@ -86,7 +86,7 @@ libpng: zlib lib $(LIBPNGDIR)/Makefile
 
 ### Runtimes
 
-RUNTIMES = bare c0rt unsafe
+RUNTIMES = alt bare c0rt unsafe
 all: $(RUNTIMES)
 
 define runtime_template
