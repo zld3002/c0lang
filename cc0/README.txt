@@ -142,7 +142,7 @@ Binary distro (pristine Ubuntu distro):
   ** ${VERS} explains the build setup (uname -a will help):
      - osx10.5.8 (Leapord)
      - osx10.6.8 (Snow Leapord)
-     - osx10.8.2 (Mountain Lion).
+     - osx10.8.5 (Mountain Lion).
      - linux3.6.5-32bit (32 bit Ubuntu Precise on Linode)
      - linux3.6.5-64bit (64 bit Ubuntu Precise on Linode)
 
