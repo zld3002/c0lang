@@ -1,2 +1,2 @@
-safe => return 0        ~ -d rbt.c0 bst-test.c1
-return 0                ~ rbt.c0 bst-time.c1
+safe => return 0        ~ -d bst.c0 rbt.c0 bst-test.c1
+return 0                ~ bst.c0 rbt.c0 bst-time.c1

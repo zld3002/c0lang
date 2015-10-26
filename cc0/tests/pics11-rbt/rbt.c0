@@ -5,7 +5,6 @@
 
 // include bst.h0
 #use <conio>
-#use "bst.h0"
 
 /* Implementation */
 typedef struct tree* tree;

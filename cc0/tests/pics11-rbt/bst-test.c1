@@ -8,8 +8,6 @@
 #use <conio>
 #use <rand>
 
-#use "bst.h0"
-
 elem elem_fromint(int k) {
   string s = string_fromint(k);
   elem e = alloc(struct elem);
