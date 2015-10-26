@@ -359,6 +359,15 @@ struct
       | pp_params (A.VarDecl(id,tp,NONE,ext)::params) =
 	  pp_param (id, tp) ^ ", " ^ pp_params params
 
+    (* pp_params ds = str, declaring any structs within ds *)
+    fun pp_param_structs nil = ""
+      | pp_param_structs (A.VarDecl(_,tp,_,_)::params) = 
+          pp_declare_structs tp ^ pp_param_structs params
+    and pp_declare_structs (A.StructName id) = pp_struct id ^ ";\n"
+      | pp_declare_structs (A.Pointer tp) = pp_declare_structs tp
+      | pp_declare_structs (A.Array tp) = pp_declare_structs tp 
+      | pp_declare_structs _ = "" 
+
     (* pp_fields n fields = str, converting list of fields to string *)
     fun pp_fields n nil = ""
       | pp_fields n (A.Field(f,tp,ext)::fields) =
@@ -373,14 +382,16 @@ struct
       | pp_gdecl (A.Struct(s, SOME(fields), is_external, ext)) =
 	  pp_struct s ^ " {\n" ^ pp_fields 2 fields ^ "};\n"
       | pp_gdecl (A.Function(g, result, params, NONE, specs, is_extern, ext)) =
-	  (if is_extern then "extern " else "")
+          pp_param_structs params
+	  ^ (if is_extern then "extern " else "")
 	  ^ pp_tp result ^ " " ^ pp_fun g ^ "(" ^ pp_params params ^ ");\n"
       | pp_gdecl (A.Function(g, rtp, params, SOME(s), _, _, ext)) =
 	let
 	    val env = Syn.syn_decls Symbol.empty params
 	    val ss = Isolate.iso_stm env s
-	in (* newline before function definitions *)
-	    "\n" ^ pp_tp rtp ^ " " ^ pp_fun g ^ "("
+	in  (* newline before function definitions *)
+            "\n" ^ pp_param_structs params
+	    ^ pp_tp rtp ^ " " ^ pp_fun g ^ "("
 	    ^ pp_params params ^ ") {\n"
 	    ^ pp_stms 2 env ss
 	    ^ "}\n"

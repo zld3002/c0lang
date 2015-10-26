@@ -57,6 +57,7 @@ error                ~ funuse14.c1
 typecheck => error   ~ goofy-typedef2.c0
 lib => return 400    ~ image.c0 -limg
 infloop              ~ infloop.c0 
+safe => segfault     ~ issue-57.c0 
 return 8             ~ mixed.c0
 safe => segfault     ~ nullpointer.c0
 safe => segfault     ~ nullpointer2.c0
