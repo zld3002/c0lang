@@ -116,8 +116,9 @@ struct
       | spec_ext (A.Assertion(e, ext)) = ext
 
     fun gdecl_ext (A.Struct(_, _, _, ext)) = ext
-      | gdecl_ext (A.Function(_, _, _, _, _, _, ext)) = ext
       | gdecl_ext (A.TypeDef(_, _, ext)) = ext
+      | gdecl_ext (A.FunTypeDef(_, _, _, _, ext)) = ext
+      | gdecl_ext (A.Function(_, _, _, _, _, _, ext)) = ext
       | gdecl_ext (A.Pragma(_, ext)) = ext 
 
     (* currently not checking types *)
@@ -165,6 +166,11 @@ struct
       | indent_exp' (A.FunCall(id, es)) left ext =
           (* here we do force an increase --- seems too odd without *)
           indent_exps es (left + min_indent, max_col) NONE ext (* force same line? *)
+      | indent_exp' (A.AddrOf(id)) left ext = (* force consecutive? *)
+          ()
+      | indent_exp' (A.Invoke(e, es)) left ext =
+        ( indent_exp' e left ext
+        ; indent_exps es (left + min_indent, max_col) NONE ext ) (* force same line? *)
       | indent_exp' (A.Alloc(tp)) left ext =
           ()
       | indent_exp' (A.AllocArray(tp, e)) left ext =
@@ -428,6 +434,11 @@ struct
     fun indent_gdecl' (A.Struct(s,NONE,_,ext)) = ()
       | indent_gdecl' (A.Struct(s,SOME(fields),_,ext)) =
           indent_fields fields (col1 ext + min_indent, max_col)
+      | indent_gdecl' (A.TypeDef(aid, tp, ext)) = ()
+      | indent_gdecl' (A.FunTypeDef(aid, tp, params, nil, ext)) = ()
+      | indent_gdecl' (A.FunTypeDef(aid, tp, params, specs, ext)) =
+        (* see A.Function with non-nil specs below *)
+          indent_specs specs (col1 ext + min_indent, max_col)
       | indent_gdecl' (A.Function(fun_name, result, params, NONE, nil, is_extern, ext)) =
 	(* no pre/postconditions, no body *)
         ()
@@ -444,7 +455,6 @@ struct
         in
             indent_seq s bounds ext
         end
-      | indent_gdecl' (A.TypeDef(aid, tp, ext)) = ()
       | indent_gdecl' (A.Pragma(A.UseLib(libname, _), ext)) = ()
       | indent_gdecl' (A.Pragma(A.UseFile(filename, _), ext)) = ()
       | indent_gdecl' (A.Pragma(A.Raw(pname, pargs), ext)) =
