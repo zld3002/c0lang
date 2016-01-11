@@ -295,11 +295,11 @@ struct
         labToOffsets n is (l::accum)
     | labToOffsets n ((c as V.Comment _)::is) accum =
         labToOffsets n is (c::accum)
-    | labToOffsets n (V.Inst(inst as V.if_icmp(cmp, (k, sym)), anno, ext)::is) accum =
+    | labToOffsets n (V.Inst(inst as V.if_cmp(cmp, (k, sym)), anno, ext)::is) accum =
       let val offset = Array.sub(label_map, k) - n
       in
           labToOffsets (n + V.il(inst)) is
-          (V.Inst(V.if_icmp(cmp, (offset, sym)), anno, ext)::accum)
+          (V.Inst(V.if_cmp(cmp, (offset, sym)), anno, ext)::accum)
       end
     | labToOffsets n (V.Inst(inst as V.goto(k,sym), anno, ext)::is) accum =
       let val offset = Array.sub(label_map, k) - n
@@ -555,7 +555,7 @@ struct
                val anno = A.Print.pp_exp e
            in
                is1 @ is2
-               @ [V.Inst(V.if_icmp(trel(opr), then_lab),
+               @ [V.Inst(V.if_cmp(trel(opr), then_lab),
                          "if " ^ anno ^ " goto " ^ labToString(then_lab), ext),
                   V.Inst(V.goto(else_lab),
                          "goto " ^ labToString(else_lab), ext)]
@@ -595,7 +595,7 @@ struct
       (* all other case: translate as expressions and compare result to 'true' *)
       let val is = trans_exp env vlist e ext
       in is @ [V.Inst(V.bipush(1), "true", ext),
-               V.Inst(V.if_icmp(V.eq, then_lab),
+               V.Inst(V.if_cmp(V.eq, then_lab),
                       "if (" ^ A.Print.pp_exp e ^ " == true) goto " ^ labToString(then_lab), ext),
                V.Inst(V.goto(else_lab),
                       "goto " ^ labToString(else_lab), ext)]

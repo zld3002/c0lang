@@ -8,7 +8,8 @@ sig
   type size = int (* 16 bits unsigned *)
   type field_offset = int (* 8 bits signed *)
   type pool_index = int (* 16 bits unsigned *)
-  type branch_offset = label (* 16 bits unsiged *)
+  type branch_offset = label (* 16 bits unsigned *)
+  type type_tag = int * Ast.tp (* 16 bits unsigned *)
 
   datatype comparison =
     eq | ne | lt | ge | gt | le
@@ -34,11 +35,12 @@ sig
    | aldc of pool_index
    (* control flow *)
    | nop
-   | if_icmp of comparison * branch_offset
+   | if_cmp of comparison * branch_offset
    | goto of branch_offset
    | athrow | assert
    (* functions *)
    | invokestatic of pool_index
+   | invokedynamic
    | return
    | invokenative of pool_index
    (* memory *)
@@ -53,6 +55,10 @@ sig
    | amstore
    | cmload
    | cmstore
+   (* generic pointers *)
+   | addtag of type_tag
+   | checktag of type_tag
+   | hastag of type_tag
 
   datatype bcline =
      Inst of inst * string * Mark.ext option
@@ -78,7 +84,10 @@ sig
 		  native_pool : native_info list
 		}
 
+  (* Length of a single instruction (in bytes) *)
   val il : inst -> int
+
+  (* Length of a series of instructions (in bytes) *)
   val code_length : bcline list -> int
 
 end (* signature C0VM *)
@@ -93,6 +102,7 @@ struct
   type field_offset = int
   type pool_index = int
   type branch_offset = int * string
+  type type_tag = int * Ast.tp
 
   datatype comparison =
     eq | ne | lt | ge | gt | le
@@ -118,11 +128,12 @@ struct
    | aldc of pool_index
    (* control flow *)
    | nop
-   | if_icmp of comparison * branch_offset
+   | if_cmp of comparison * branch_offset
    | goto of branch_offset
    | athrow | assert
    (* functions *)
    | invokestatic of pool_index
+   | invokedynamic
    | return
    | invokenative of pool_index
    (* memory *)
@@ -137,6 +148,10 @@ struct
    | amstore
    | cmload
    | cmstore
+   (* generic pointers *)
+   | addtag of type_tag
+   | checktag of type_tag
+   | hastag of type_tag
 
   datatype bcline =
      Inst of inst * string * Mark.ext option
@@ -176,7 +191,7 @@ struct
     | il (aldc(c)) = 3
      (* control flow *)
     | il (nop) = 1
-    | il (if_icmp(_,offset)) = 3
+    | il (if_cmp(_,offset)) = 3
     | il (goto(offset)) = 3
     | il athrow = 1
     | il assert = 1
