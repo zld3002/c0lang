@@ -113,13 +113,21 @@ Creating a binary distribution
 ----------------------------------------------------------------------
 Binary distro (pristine Ubuntu distro):
 
-  # Prerequisites
+  # Prerequisites [Ubuntu]
   apt-get update
   apt-get upgrade
   apt-get install subversion make g++ libpng-dev libncurses-dev texlive-latex-base texlive-latex-recommended texlive-fonts-recommended mlton
-  svn co https://svn.concert.cs.cmu.edu/c0
+
+  # Prerequisites [Red Hat]
+  yum update
+  yum install subversion make g++ libpng mlton texlive wget glibc gmp-devel gcc-c++ glibc-devel.i686 libpng-devel ncurses-devel
+  wget wget http://downloads.sourceforge.net/project/mlton/mlton/20130715/mlton-20130715-1.amd64-linux.tgz
+  sudo mv mlton-20130715-1.amd64-linux.tgz /
+  cd /
+  sudo tar xzvf mlton-20130715-1.amd64-linux.tgz
 
   # Configuration
+  svn co https://svn.concert.cs.cmu.edu/c0
   cd c0/cc0
   ./configure
   make
