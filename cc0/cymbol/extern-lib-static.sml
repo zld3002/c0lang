@@ -13,28 +13,6 @@ type library = function Map.map
 
 val mapN = List.map (fn (x, y) => (x, NativeFn.Native y))
 
-(* Library 15411 *)
-val lib_15411 = List.foldr Map.insert' Map.empty (mapN (
-("dadd",                 _import "__c0ffi_dadd" public: fnptr;) ::
-("ddiv",                 _import "__c0ffi_ddiv" public: fnptr;) ::
-("dless",                _import "__c0ffi_dless" public: fnptr;) ::
-("dmul",                 _import "__c0ffi_dmul" public: fnptr;) ::
-("dsub",                 _import "__c0ffi_dsub" public: fnptr;) ::
-("dtoi",                 _import "__c0ffi_dtoi" public: fnptr;) ::
-("fadd",                 _import "__c0ffi_fadd" public: fnptr;) ::
-("fdiv",                 _import "__c0ffi_fdiv" public: fnptr;) ::
-("fless",                _import "__c0ffi_fless" public: fnptr;) ::
-("fmul",                 _import "__c0ffi_fmul" public: fnptr;) ::
-("fsub",                 _import "__c0ffi_fsub" public: fnptr;) ::
-("ftoi",                 _import "__c0ffi_ftoi" public: fnptr;) ::
-("itod",                 _import "__c0ffi_itod" public: fnptr;) ::
-("itof",                 _import "__c0ffi_itof" public: fnptr;) ::
-("print_dub",            _import "__c0ffi_print_dub" public: fnptr;) ::
-("print_fpt",            _import "__c0ffi_print_fpt" public: fnptr;) ::
-("print_hex",            _import "__c0ffi_print_hex" public: fnptr;) ::
-("print_int",            _import "__c0ffi_print_int" public: fnptr;) ::
-[]))
-
 (* Library args *)
 val lib_args = List.foldr Map.insert' Map.empty (mapN (
 ("args_flag",            _import "__c0ffi_args_flag" public: fnptr;) ::
@@ -101,6 +79,18 @@ val lib_curses = List.foldr Map.insert' Map.empty (mapN (
 ("cc_wunderon",          _import "__c0ffi_cc_wunderon" public: fnptr;) ::
 []))
 
+(* Library dub *)
+val lib_dub = List.foldr Map.insert' Map.empty (mapN (
+("dadd",                 _import "__c0ffi_dadd" public: fnptr;) ::
+("ddiv",                 _import "__c0ffi_ddiv" public: fnptr;) ::
+("dless",                _import "__c0ffi_dless" public: fnptr;) ::
+("dmul",                 _import "__c0ffi_dmul" public: fnptr;) ::
+("dsub",                 _import "__c0ffi_dsub" public: fnptr;) ::
+("dtoi",                 _import "__c0ffi_dtoi" public: fnptr;) ::
+("itod",                 _import "__c0ffi_itod" public: fnptr;) ::
+("print_dub",            _import "__c0ffi_print_dub" public: fnptr;) ::
+[]))
+
 (* Library file *)
 val lib_file = List.foldr Map.insert' Map.empty (mapN (
 ("file_close",           _import "__c0ffi_file_close" public: fnptr;) ::
@@ -152,10 +142,10 @@ val lib_string = List.foldr Map.insert' Map.empty (mapN (
 []))
 
 fun load _ "" = NONE
-  | load _ "15411" = SOME (lib_15411)
   | load _ "args" = SOME (lib_args)
   | load _ "conio" = SOME (lib_conio)
   | load _ "curses" = SOME (lib_curses)
+  | load _ "dub" = SOME (lib_dub)
   | load _ "file" = SOME (lib_file)
   | load _ "img" = SOME (lib_img)
   | load _ "parse" = SOME (lib_parse)

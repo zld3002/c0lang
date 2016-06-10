@@ -11,127 +11,117 @@ struct
 
 fun native_index("") =                      ~1
 
-(* 15411 *)
-  | native_index("dadd") =                  0
-  | native_index("ddiv") =                  1
-  | native_index("dless") =                 2
-  | native_index("dmul") =                  3
-  | native_index("dsub") =                  4
-  | native_index("dtoi") =                  5
-  | native_index("fadd") =                  6
-  | native_index("fdiv") =                  7
-  | native_index("fless") =                 8
-  | native_index("fmul") =                  9
-  | native_index("fsub") =                  10
-  | native_index("ftoi") =                  11
-  | native_index("itod") =                  12
-  | native_index("itof") =                  13
-  | native_index("print_dub") =             14
-  | native_index("print_fpt") =             15
-  | native_index("print_hex") =             16
-  | native_index("print_int") =             17
-
 (* args *)
-  | native_index("args_flag") =             18
-  | native_index("args_int") =              19
-  | native_index("args_parse") =            20
-  | native_index("args_string") =           21
+  | native_index("args_flag") =             0
+  | native_index("args_int") =              1
+  | native_index("args_parse") =            2
+  | native_index("args_string") =           3
 
 (* conio *)
-  | native_index("eof") =                   22
-  | native_index("flush") =                 23
-  | native_index("print") =                 24
-  | native_index("printbool") =             25
-  | native_index("printchar") =             26
-  | native_index("printint") =              27
-  | native_index("println") =               28
-  | native_index("readline") =              29
+  | native_index("eof") =                   4
+  | native_index("flush") =                 5
+  | native_index("print") =                 6
+  | native_index("printbool") =             7
+  | native_index("printchar") =             8
+  | native_index("printint") =              9
+  | native_index("println") =               10
+  | native_index("readline") =              11
 
 (* curses *)
-  | native_index("c_addch") =               30
-  | native_index("c_cbreak") =              31
-  | native_index("c_curs_set") =            32
-  | native_index("c_delch") =               33
-  | native_index("c_endwin") =              34
-  | native_index("c_erase") =               35
-  | native_index("c_getch") =               36
-  | native_index("c_initscr") =             37
-  | native_index("c_keypad") =              38
-  | native_index("c_move") =                39
-  | native_index("c_noecho") =              40
-  | native_index("c_refresh") =             41
-  | native_index("c_subwin") =              42
-  | native_index("c_waddch") =              43
-  | native_index("c_waddstr") =             44
-  | native_index("c_wclear") =              45
-  | native_index("c_werase") =              46
-  | native_index("c_wmove") =               47
-  | native_index("c_wrefresh") =            48
-  | native_index("c_wstandend") =           49
-  | native_index("c_wstandout") =           50
-  | native_index("cc_getbegx") =            51
-  | native_index("cc_getbegy") =            52
-  | native_index("cc_getmaxx") =            53
-  | native_index("cc_getmaxy") =            54
-  | native_index("cc_getx") =               55
-  | native_index("cc_gety") =               56
-  | native_index("cc_highlight") =          57
-  | native_index("cc_key_is_backspace") =   58
-  | native_index("cc_key_is_down") =        59
-  | native_index("cc_key_is_enter") =       60
-  | native_index("cc_key_is_left") =        61
-  | native_index("cc_key_is_right") =       62
-  | native_index("cc_key_is_up") =          63
-  | native_index("cc_wboldoff") =           64
-  | native_index("cc_wboldon") =            65
-  | native_index("cc_wdimoff") =            66
-  | native_index("cc_wdimon") =             67
-  | native_index("cc_wreverseoff") =        68
-  | native_index("cc_wreverseon") =         69
-  | native_index("cc_wunderoff") =          70
-  | native_index("cc_wunderon") =           71
+  | native_index("c_addch") =               12
+  | native_index("c_cbreak") =              13
+  | native_index("c_curs_set") =            14
+  | native_index("c_delch") =               15
+  | native_index("c_endwin") =              16
+  | native_index("c_erase") =               17
+  | native_index("c_getch") =               18
+  | native_index("c_initscr") =             19
+  | native_index("c_keypad") =              20
+  | native_index("c_move") =                21
+  | native_index("c_noecho") =              22
+  | native_index("c_refresh") =             23
+  | native_index("c_subwin") =              24
+  | native_index("c_waddch") =              25
+  | native_index("c_waddstr") =             26
+  | native_index("c_wclear") =              27
+  | native_index("c_werase") =              28
+  | native_index("c_wmove") =               29
+  | native_index("c_wrefresh") =            30
+  | native_index("c_wstandend") =           31
+  | native_index("c_wstandout") =           32
+  | native_index("cc_getbegx") =            33
+  | native_index("cc_getbegy") =            34
+  | native_index("cc_getmaxx") =            35
+  | native_index("cc_getmaxy") =            36
+  | native_index("cc_getx") =               37
+  | native_index("cc_gety") =               38
+  | native_index("cc_highlight") =          39
+  | native_index("cc_key_is_backspace") =   40
+  | native_index("cc_key_is_down") =        41
+  | native_index("cc_key_is_enter") =       42
+  | native_index("cc_key_is_left") =        43
+  | native_index("cc_key_is_right") =       44
+  | native_index("cc_key_is_up") =          45
+  | native_index("cc_wboldoff") =           46
+  | native_index("cc_wboldon") =            47
+  | native_index("cc_wdimoff") =            48
+  | native_index("cc_wdimon") =             49
+  | native_index("cc_wreverseoff") =        50
+  | native_index("cc_wreverseon") =         51
+  | native_index("cc_wunderoff") =          52
+  | native_index("cc_wunderon") =           53
+
+(* dub *)
+  | native_index("dadd") =                  54
+  | native_index("ddiv") =                  55
+  | native_index("dless") =                 56
+  | native_index("dmul") =                  57
+  | native_index("dsub") =                  58
+  | native_index("dtoi") =                  59
+  | native_index("itod") =                  60
+  | native_index("print_dub") =             61
 
 (* file *)
-  | native_index("file_close") =            72
-  | native_index("file_closed") =           73
-  | native_index("file_eof") =              74
-  | native_index("file_read") =             75
-  | native_index("file_readline") =         76
+  | native_index("file_close") =            62
+  | native_index("file_closed") =           63
+  | native_index("file_eof") =              64
+  | native_index("file_read") =             65
+  | native_index("file_readline") =         66
 
 (* img *)
-  | native_index("image_clone") =           77
-  | native_index("image_create") =          78
-  | native_index("image_data") =            79
-  | native_index("image_height") =          80
-  | native_index("image_load") =            81
-  | native_index("image_save") =            82
-  | native_index("image_subimage") =        83
-  | native_index("image_width") =           84
+  | native_index("image_clone") =           67
+  | native_index("image_create") =          68
+  | native_index("image_data") =            69
+  | native_index("image_height") =          70
+  | native_index("image_load") =            71
+  | native_index("image_save") =            72
+  | native_index("image_subimage") =        73
+  | native_index("image_width") =           74
 
 (* parse *)
-  | native_index("int_tokens") =            85
-  | native_index("num_tokens") =            86
-  | native_index("parse_bool") =            87
-  | native_index("parse_int") =             88
-  | native_index("parse_ints") =            89
-  | native_index("parse_tokens") =          90
+  | native_index("int_tokens") =            75
+  | native_index("num_tokens") =            76
+  | native_index("parse_bool") =            77
+  | native_index("parse_int") =             78
+  | native_index("parse_ints") =            79
+  | native_index("parse_tokens") =          80
 
 (* string *)
-  | native_index("char_chr") =              91
-  | native_index("char_ord") =              92
-  | native_index("string_charat") =         93
-  | native_index("string_compare") =        94
-  | native_index("string_equal") =          95
-  | native_index("string_from_chararray") = 96
-  | native_index("string_frombool") =       97
-  | native_index("string_fromchar") =       98
-  | native_index("string_fromint") =        99
-  | native_index("string_join") =           100
-  | native_index("string_length") =         101
-  | native_index("string_sub") =            102
-  | native_index("string_terminated") =     103
-  | native_index("string_to_chararray") =   104
-  | native_index("string_tolower") =        105
+  | native_index("char_chr") =              81
+  | native_index("char_ord") =              82
+  | native_index("string_charat") =         83
+  | native_index("string_compare") =        84
+  | native_index("string_equal") =          85
+  | native_index("string_from_chararray") = 86
+  | native_index("string_frombool") =       87
+  | native_index("string_fromchar") =       88
+  | native_index("string_fromint") =        89
+  | native_index("string_join") =           90
+  | native_index("string_length") =         91
+  | native_index("string_sub") =            92
+  | native_index("string_terminated") =     93
+  | native_index("string_to_chararray") =   94
+  | native_index("string_tolower") =        95
 
 (* unknown *)
   | native_index(s) =                       ~1

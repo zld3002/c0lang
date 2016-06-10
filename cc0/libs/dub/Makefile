@@ -1,7 +1,7 @@
 # If copying, just change this variable
-LIBNAME = 15411
+LIBNAME = dub
 DEPTH = ../..
 REQUIRES =
-SOURCES = 15411.c
+SOURCES = dub.c
 
 include ../../lib.mk
