@@ -78,6 +78,18 @@ file_eof
 file_read
 file_readline
 
+lib fpt
+fadd
+fdiv
+fless
+fmul
+fsub
+ftoi
+itof
+print_fpt
+print_hex
+print_int
+
 lib img
 image_clone
 image_create

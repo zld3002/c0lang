@@ -414,7 +414,7 @@ let
         val versioninfo = "C0 reference compiler (cc0) revision "
                         ^ BuildId.revision ^ " (built " ^ BuildId.date ^ ")"
 	val usageinfo = G.usageInfo {header = header, options = options}
-	val c0vm_version = 8
+	val c0vm_version = 9
 	fun errfn msg : unit = (say (msg ^ "\n" ^ usageinfo) ; raise EXIT)
 
         (* Reset state by reading argments; possibly display usage & exit. *) 

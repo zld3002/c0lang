@@ -100,6 +100,20 @@ val lib_file = List.foldr Map.insert' Map.empty (mapN (
 ("file_readline",        _import "__c0ffi_file_readline" public: fnptr;) ::
 []))
 
+(* Library fpt *)
+val lib_fpt = List.foldr Map.insert' Map.empty (mapN (
+("fadd",                 _import "__c0ffi_fadd" public: fnptr;) ::
+("fdiv",                 _import "__c0ffi_fdiv" public: fnptr;) ::
+("fless",                _import "__c0ffi_fless" public: fnptr;) ::
+("fmul",                 _import "__c0ffi_fmul" public: fnptr;) ::
+("fsub",                 _import "__c0ffi_fsub" public: fnptr;) ::
+("ftoi",                 _import "__c0ffi_ftoi" public: fnptr;) ::
+("itof",                 _import "__c0ffi_itof" public: fnptr;) ::
+("print_fpt",            _import "__c0ffi_print_fpt" public: fnptr;) ::
+("print_hex",            _import "__c0ffi_print_hex" public: fnptr;) ::
+("print_int",            _import "__c0ffi_print_int" public: fnptr;) ::
+[]))
+
 (* Library img *)
 val lib_img = List.foldr Map.insert' Map.empty (mapN (
 ("image_clone",          _import "__c0ffi_image_clone" public: fnptr;) ::
@@ -147,6 +161,7 @@ fun load _ "" = NONE
   | load _ "curses" = SOME (lib_curses)
   | load _ "dub" = SOME (lib_dub)
   | load _ "file" = SOME (lib_file)
+  | load _ "fpt" = SOME (lib_fpt)
   | load _ "img" = SOME (lib_img)
   | load _ "parse" = SOME (lib_parse)
   | load _ "string" = SOME (lib_string)

@@ -88,40 +88,52 @@ fun native_index("") =                      ~1
   | native_index("file_read") =             65
   | native_index("file_readline") =         66
 
+(* fpt *)
+  | native_index("fadd") =                  67
+  | native_index("fdiv") =                  68
+  | native_index("fless") =                 69
+  | native_index("fmul") =                  70
+  | native_index("fsub") =                  71
+  | native_index("ftoi") =                  72
+  | native_index("itof") =                  73
+  | native_index("print_fpt") =             74
+  | native_index("print_hex") =             75
+  | native_index("print_int") =             76
+
 (* img *)
-  | native_index("image_clone") =           67
-  | native_index("image_create") =          68
-  | native_index("image_data") =            69
-  | native_index("image_height") =          70
-  | native_index("image_load") =            71
-  | native_index("image_save") =            72
-  | native_index("image_subimage") =        73
-  | native_index("image_width") =           74
+  | native_index("image_clone") =           77
+  | native_index("image_create") =          78
+  | native_index("image_data") =            79
+  | native_index("image_height") =          80
+  | native_index("image_load") =            81
+  | native_index("image_save") =            82
+  | native_index("image_subimage") =        83
+  | native_index("image_width") =           84
 
 (* parse *)
-  | native_index("int_tokens") =            75
-  | native_index("num_tokens") =            76
-  | native_index("parse_bool") =            77
-  | native_index("parse_int") =             78
-  | native_index("parse_ints") =            79
-  | native_index("parse_tokens") =          80
+  | native_index("int_tokens") =            85
+  | native_index("num_tokens") =            86
+  | native_index("parse_bool") =            87
+  | native_index("parse_int") =             88
+  | native_index("parse_ints") =            89
+  | native_index("parse_tokens") =          90
 
 (* string *)
-  | native_index("char_chr") =              81
-  | native_index("char_ord") =              82
-  | native_index("string_charat") =         83
-  | native_index("string_compare") =        84
-  | native_index("string_equal") =          85
-  | native_index("string_from_chararray") = 86
-  | native_index("string_frombool") =       87
-  | native_index("string_fromchar") =       88
-  | native_index("string_fromint") =        89
-  | native_index("string_join") =           90
-  | native_index("string_length") =         91
-  | native_index("string_sub") =            92
-  | native_index("string_terminated") =     93
-  | native_index("string_to_chararray") =   94
-  | native_index("string_tolower") =        95
+  | native_index("char_chr") =              91
+  | native_index("char_ord") =              92
+  | native_index("string_charat") =         93
+  | native_index("string_compare") =        94
+  | native_index("string_equal") =          95
+  | native_index("string_from_chararray") = 96
+  | native_index("string_frombool") =       97
+  | native_index("string_fromchar") =       98
+  | native_index("string_fromint") =        99
+  | native_index("string_join") =           100
+  | native_index("string_length") =         101
+  | native_index("string_sub") =            102
+  | native_index("string_terminated") =     103
+  | native_index("string_to_chararray") =   104
+  | native_index("string_tolower") =        105
 
 (* unknown *)
   | native_index(s) =                       ~1
