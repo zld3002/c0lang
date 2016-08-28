@@ -121,7 +121,8 @@ Binary distro (pristine Ubuntu distro):
   # Prerequisites [Red Hat]
   yum update
   yum install subversion make g++ libpng mlton texlive wget glibc gmp-devel gcc-c++ glibc-devel.i686 libpng-devel ncurses-devel
-  wget wget http://downloads.sourceforge.net/project/mlton/mlton/20130715/mlton-20130715-1.amd64-linux.tgz
+  wget http://downloads.sourceforge.net/project/mlton/mlton/20130715/mlton-20130715-1.amd64-linux.tgz
+  # I have also had luck with http://downloads.sourceforge.net/project/mlton/mlton/20100608/mlton-20100608-1.amd64-linux.static.tgz
   sudo mv mlton-20130715-1.amd64-linux.tgz /
   cd /
   sudo tar xzvf mlton-20130715-1.amd64-linux.tgz
@@ -153,6 +154,7 @@ Binary distro (pristine Ubuntu distro):
      - osx10.8.5 (Mountain Lion).
      - linux3.6.5-32bit (32 bit Ubuntu Precise on Linode)
      - linux3.6.5-64bit (64 bit Ubuntu Precise on Linode)
+     - EDIT: As of 550 all linux builds are 64bit, I leave that off
 
   ** If distributing a source distribution for compilation, at this
   ** point the file compiler/bin/buildid can be edited to hard-code
