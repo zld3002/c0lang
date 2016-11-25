@@ -117,7 +117,7 @@ structure Flags :> FLAGS = struct
           (* Unset all flags *)
           List.app Flag.unset [flag_verbose, flag_help,
                                flag_version, flag_no_log,
-                               flag_ast, flag_exec, flag_bytecode, 
+                               flag_ast, flag_dyn_check, flag_exec, flag_bytecode, 
                                flag_static_check, flag_verif_check,
                                flag_warn, flag_save_files,
                                flag_trace, flag_print_codes];
