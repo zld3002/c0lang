@@ -1,4 +1,6 @@
 \documentclass[11pt]{article}
+\usepackage{c0}
+\usepackage{datetime}
 
 % begin palatino.sty
 % copied from palatino.sty, except left ttdefault as CMTT
@@ -13,15 +15,12 @@
   linkcolor=blue,
   urlcolor=blue]{hyperref}
 
-% \usepackage{code}
-% \newcommand{\blankline}{\mbox{}} % for \begin{code}...\end{code}
-% \renewcommand{\_}{\char`\_}
-% \renewcommand{\{}{\char`\{}
-% \renewcommand{\}}{\char`\}}
+\newcommand{\rev}{590}
+\smalllistings
 
 \title{C0 Libraries}
 \author{15-122: Principles of Imperative Computation \\ Frank Pfenning}
-\date{January 8, 2015\\Compiler revision 440\\
+\date{\today\\Compiler revision \rev\\
   (\hyperlink{sec:updates}{updates} since September 2011)}
 
 \usepackage{fancyhdr}
@@ -59,14 +58,14 @@
 
 This document describes the standard libraries available for use
 in the C0 language implementation.  All libraries can be used
-with the \verb'cc0' compiler, and most can also be used with
-\verb'coin'.   Please consult the
+with the \lstinline'cc0' compiler, and most can also be used with
+\lstinline'coin'.   Please consult the
 \href{http://c0.typesafety.net/tutorial}{C0 Tutorial} and
 \href{http://c0.typesafety.net/doc/c0-reference.pdf}{C0 Language
 Reference} for more information on C0.
 
-Libraries can be include on the command line using \verb'-l lib' or in
-files with \verb'#use <lib>'.  The latter is recommended to make
+Libraries can be include on the command line using \lstinline'-l lib' or in
+files with \lstinline'#use <lib>'.  The latter is recommended to make
 source files less dependent on context.  Each library will be loaded
 at most once.
 
@@ -74,38 +73,35 @@ at most once.
 
 \subsection{\tt conio}
 
-The \verb'conio' library contains functions for performing basic
+The \lstinline'conio' library contains functions for performing basic
 console input and output.  Note that output may be \emph{buffered},
 which means output does not necessarily appear on the console
-until a newline character is printed or \verb'flush()' is called.
+until a newline character is printed or \lstinline'flush()' is called.
 
-\begin{small}
-\begin{verbatim}
-void print(string s);       /* print s to standard output */
-void println(string s);     /* print s with trailing newline */
-void printint(int i);       /* print i to standard output */
-void printbool(bool b);     /* print b to standard output */
-void printchar(char c);     /* print c to standard output */
-void flush();               /* flush standard output */
+\begin{lstlisting}
+void print(string s);       // print s to standard output
+void println(string s);     // print s with trailing newline
+void printint(int i);       // print i to standard output
+void printbool(bool b);     // print b to standard output
+void printchar(char c);     // print c to standard output
+void flush();               // flush standard output
 
-bool eof();                 /* test end-of-file on standard input  */
+bool eof();                 // test end-of-file on standard input
 
-string readline()           /* read a line from standard input */
-  /*@requires !eof(); @*/ ; /* do not include the trailing newline */
-\end{verbatim}
-\end{small}
+string readline()           // read a line from standard input
+  /*@requires !eof(); @*/ ; // do not include the trailing newline
+\end{lstlisting}
 
 \subsection{\tt file}
 
-The \verb'file' library contains functions for reading files, line by
-line.  File handles are represented with the \verb'file_t' type.  The
+The \lstinline'file' library contains functions for reading files, line by
+line.  File handles are represented with the \lstinline'file_t' type.  The
 handle contains an internal position which ranges from 0 to the
 logical size of the file in byes.  File handles should be closed
 explicitly when they are no longer needed to release system resources.
 
-\begin{small}
-\begin{verbatim}
-typedef ______* file_t; /* file handle or NULL */
+\begin{lstlisting}
+// typedef ______* file_t; /* file handle or NULL */
 
 /* Test whether the given file has been closed */
 bool file_closed(file_t f)
@@ -119,51 +115,50 @@ file_t file_read(string path)
 /* Release any resources associated with the file handle.  This
  * function should not be invoked twice on the same handle. */
 void file_close(file_t f)
-  /*@requires f != NULL; @*/
+  /*@requires f != NULL;       @*/
   /*@requires !file_closed(f); @*/
-  /*@ensures file_closed(f); @*/ ; 
+  /*@ensures file_closed(f);   @*/ ;
 
 /* Test if we have read the whole file. */
 bool file_eof(file_t f)
-  /*@requires f != NULL; @*/
-  /*@requires !file_closed(f); @*/ ; 
+  /*@requires f != NULL;       @*/
+  /*@requires !file_closed(f); @*/ ;
 
 /* Read a line from the given file (without the trailing newline)
  * and advance the handle's internal position by one line.  The
  * contract requires that the handle is not at the end-of-file,
  * so this must be checked before (with file_eof). */
 string file_readline(file_t f)
-  /*@requires f != NULL; @*/
+  /*@requires f != NULL;       @*/
   /*@requires !file_closed(f); @*/
-  /*@requires !file_eof(f); @*/ ;
-\end{verbatim}
-\end{small}
+  /*@requires !file_eof(f);    @*/ ;
+\end{lstlisting}
+
 
 \clearpage
 \subsection{\tt args}
 
-The \verb'args' library provides function for basic parsing of command
-line arguments provided to the executable provided by the \verb'cc0'
-compiler.  The \verb'args' library is not supported by \verb'coin'
+The \lstinline'args' library provides function for basic parsing of command
+line arguments provided to the executable provided by the \lstinline'cc0'
+compiler.  The \lstinline'args' library is not supported by \lstinline'coin'
 since it never produces an executable.
 
-\begin{small}
-\begin{verbatim}
-/* Add a flag with the given name. During parsing if that flag is set
- * (with -name on the command line), it writes the value true to the
- * location given by ptr. */
+\begin{lstlisting}
+/* Add a flag with the given name. During parsing if that flag is
+ * set (with -name on the command line), it writes the value true
+ * to the location given by ptr. */
 void args_flag(string name, bool *ptr)
   /*@requires ptr != NULL; @*/ ;
 
-/* Add an integer option with the given name. During parsing if that
- * option is given (with -name <int>) it attempts to parse it as an
- * integer and write it to the location given by ptr. */
+/* Add an integer option with the given name. During parsing if
+ * that option is given (with -name <int>) it attempts to parse
+ * it as an integer and write it to the location given by ptr. */
 void args_int(string name, int *ptr)
   /*@requires ptr != NULL; @*/ ;
 
-/* Add an string option with the given name. During parsing if that
- * option is given (with -name <string>) it write it to the location
- * given by ptr. */
+/* Add an string option with the given name. During parsing if
+ * that option is given (with -name <string>) it write it to the
+ * location given by ptr. */
 void args_string(string name, string *ptr)
   /*@requires ptr != NULL; @*/ ;
 
@@ -179,36 +174,38 @@ typedef struct args* args_t;
  *
  * If there is an error, args_parse will return NULL. */
 args_t args_parse()
-  /*@ensures \result == NULL || \result->argc == \length(\result->argv); @*/ ;
-\end{verbatim}
-\end{small}
+  /*@ensures \result == NULL
+          || \result->argc == \length(\result->argv); @*/ ;
+\end{lstlisting}
+
 
 \section{Strings}
 
 \subsection{\tt parse}
 
-The \verb'parse' library provides functions to convert strings to
+The \lstinline'parse' library provides functions to convert strings to
 booleans or integers and for whitespace-tokenizing a string.  This is
 useful, for example, if you want to convert strings read from a file
-into integers. The \verb'parse_ints' function is aimed more at unit
+into integers. The \lstinline'parse_ints' function is aimed more at unit
 tests than user input.
-\begin{small}
-\begin{verbatim}
+
+\begin{lstlisting}
 /* Attempt to parse "true" or "false from s and return a pointer to
  * the result or NULL if not of that form. */
 bool* parse_bool(string s);
 
-/* Attempt to parse an integer from the given string.  For base > 10,
- * the letters A-Z (case insignificant) are used as digits.  Return
- * NULL if s cannot be completely parsed to an int in the given
- * base. */
+/* Attempt to parse an integer from the given string.
+ * For base > 10, the letters A-Z (case insignificant) are used as
+ * digits.  Return NULL if s cannot be completely parsed to an int
+ * in the given base. */
 int* parse_int(string s, int base)
   /*@requires 2 <= base && base <= 36; @*/ ;
 
 /* Returns the number of whitespace-delimited tokens in a string */
 int num_tokens(string s);
 
-/* Returns true iff the string contains only whitespace separated ints */
+/* Returns true iff the string contains only whitespace separated
+ *  ints */
 bool int_tokens(string s, int base)
   /*@requires 2 <= base && base <= 36; @*/ ;
 
@@ -218,43 +215,43 @@ string[] parse_tokens(string s)
 
 /* Parses a string as list of whitespace-delimited integers */
 int[] parse_ints(string s, int base)
-  /*@requires int_tokens(s, base); @*/
+  /*@requires int_tokens(s, base);              @*/
   /*@ensures \length(\result) == num_tokens(s); @*/ ;
-\end{verbatim}
-\end{small}
+\end{lstlisting}
 
 \clearpage
 \subsection{\tt string}
 
-The \verb'string' library contains a few basic functions for working
+The \lstinline'string' library contains a few basic functions for working
 with strings consisting of ASCII characters.  For most nontrivial
 tasks, it is best to convert back and forth between characters arrays
-and strings, using the \verb'string_to_chararray' and
-\verb'string_from_chararray' functions.  The two are identified in C,
+and strings, using the functions \lstinline'string_to_chararray' and
+\lstinline'string_from_chararray'.  The two are identified in C,
 but distinguished in C0 to allow a type-safe and memory-safe
 implementation.  Note that character arrays should contain a trailing
-\verb"'\0'" character not present in the corresponding strings.
+\lstinline"'\0'" character not present in the corresponding strings.
 
-\begin{small}
-\begin{verbatim}
+\begin{lstlisting}
 /* Return length of s, in characters.
  * May be an O(n) operation. */
-int string_length(string s);  
-         
+int string_length(string s);
+
 /* Return s[idx] and abort if the idx is out of bound.
  * May be an O(n) operation. */
 char string_charat(string s, int idx)
   /*@requires 0 <= idx && idx < string_length(s); @*/ ;
 
-/* Return a new string that is the result of concatenating a and b. */
+/* Return a new string that is the result of concatenating a
+ * and b. */
 string string_join(string a, string b)
-  /*@ensures string_length(\result) 
+  /*@ensures string_length(\result)
                == string_length(a) + string_length(b); @*/ ;
 
-/* Returns the substring composed of the characters of s beginning at
- * the index given by start and continuing up to but not including the
- * index given by end.  If end == start, the empty string is returned.
- * Aborts if start or end are out of bounds, or end < start. */
+/* Returns the substring composed of the characters of s beginning
+ * at the index given by start and continuing up to but not
+ * including the index given by end.  If end == start, the empty
+ * string is returned. Aborts if start or end are out of bounds,
+ * or end < start. */
 string string_sub(string a, int start, int end)
   /*@requires 0 <= start && start <= end && end <= string_length(a); @*/
   /*@ensures string_length(\result) == end - start; @*/ ;
@@ -268,8 +265,8 @@ int string_compare(string a, string b)
 string string_fromint(int i);
 string string_frombool(bool b);
 string string_fromchar(char c)
-  /*@requires c != '\0'; @*/
-  /*@ensures string_length(\result) == 1; @*/ 
+  /*@requires c != '\0';                     @*/
+  /*@ensures string_length(\result) == 1;    @*/
   /*@ensures string_charat(\result, 0) == c; @*/ ;
 
 /* Convert every uppercase character A-Z to lowercase a-z */
@@ -281,13 +278,13 @@ bool string_terminated(char[] A, int n)
 
 /* Construct a '\0'-terminated character array from s */
 char[] string_to_chararray(string s)
-  /*@ensures \length(\result) >= string_length(s) + 1; @*/
+  /*@ensures \length(\result) >= string_length(s) + 1;         @*/
   /*@ensures string_terminated(\result, string_length(s) + 1); @*/ ;
 
-/* Construct a string from the the array A up to (but not including)
- * the terminating '\0' */
+/* Construct a string from the the array A up to (but not
+ * including) the terminating '\0' */
 string string_from_chararray(char[] A)
-  /*@requires string_terminated(A, \length(A)); @*/
+  /*@requires string_terminated(A, \length(A));        @*/
   /*@ensures string_length(\result) + 1 <= \length(A); @*/ ;
 
 /* Convert between characters and their ASCII value */
@@ -295,111 +292,107 @@ int char_ord(char c)
   /*@ensures 0 <= \result && \result <= 127; @*/ ;
 char char_chr(int n)
   /*@requires 0 <= n && n <= 127; @*/ ;
-\end{verbatim}
-\end{small}
+\end{lstlisting}
 
 \section{Images}
 
 \subsection{\tt img}
 
-The \verb'img' library defines a type for two-dimensional images
+The \lstinline'img' library defines a type for two-dimensional images
 represented with 4-channel color---alpha, red, green and blue---
-packed into one \verb'int'  It defines and image type \verb'image_t'.
+packed into one \lstinline'int'  It defines and image type \lstinline'image_t'.
 Like file handles, images must be explicitly destroyed when they
 are no longer needed; the garbage collector will not be able to
 free them.
 
-\begin{small}
-\begin{verbatim}
-typedef ______* image_t; /* image handle or NULL */
+\begin{lstlisting}
+// typedef ______* image_t; /* image handle or NULL */
 
 /* Retrieves the width of the given image */
 int image_width(image_t image)
   /*@requires image != NULL; @*/
-  /*@ensures \result > 0; @*/ ;
+  /*@ensures \result > 0;    @*/ ;
 
 /* Retrieves the height of the given image */
 int image_height(image_t image)
-  /*@requires image != NULL; @*/ 
-  /*@ensures \result > 0; @*/ ; 
+  /*@requires image != NULL; @*/
+  /*@ensures \result > 0;    @*/ ;
 
 /* Creates an ARGB image with dimensions width * height */
 image_t image_create(int width, int height)
-  /*@requires 0 < width && 0 < height; @*/
-  /*@ensures \result != NULL; @*/
-  /*@ensures image_width(\result) == width; @*/
-  /*@ensures image_height(\result) == height; @*/ ; 
+  /*@requires 0 < width && 0 < height;        @*/
+  /*@ensures \result != NULL;                 @*/
+  /*@ensures image_width(\result) == width;   @*/
+  /*@ensures image_height(\result) == height; @*/ ;
 
 /* Copies an existing image */
 image_t image_clone(image_t image)
-  /*@requires image != NULL; @*/
-  /*@ensures image_width(\result) == image_width(image); @*/
+  /*@requires image != NULL;                               @*/
+  /*@ensures image_width(\result) == image_width(image);   @*/
   /*@ensures image_height(\result) == image_height(image); @*/ ;
 
-/* Returns a copy of a subrectangle of the given image. The new image has
- * dimensions width * height. If part of the given rectangle is not contained
- * within the given image, those pixels are assumed to be transparent black.
- */
+/* Returns a copy of a subrectangle of the given image. The new
+ * image has dimensions width * height. If part of the given
+ * rectangle is not contained within the given image, those pixels
+ * are assumed to be transparent black.  */
 image_t image_subimage(image_t image, int x, int y, int width, int height)
-  /*@requires image != NULL; @*/
-  /*@ensures image_width(\result) == width; @*/
+  /*@requires image != NULL;                  @*/
+  /*@ensures image_width(\result) == width;   @*/
   /*@ensures image_height(\result) == height; @*/ ;
 
-/* Loads an image from the given path and convert it if need be to an
- * ARGB image.  If the file does not exist, it returns NULL.  Aborts
- * if the file has the wrong format. */
+/* Loads an image from the given path and convert it if need be
+ * to an ARGB image.  If the file does not exist, it returns NULL.
+ * Aborts if the file has the wrong format. */
 image_t image_load(string path);
 
-/* Saves the given image to disk, inferring the file type from the file
- * extension given in the path. */
+/* Saves the given image to disk, inferring the file type from the
+ * file extension given in the path. */
 void image_save(image_t image, string path)
   /*@requires image != NULL; @*/ ;
 
-/* Returns an array of pixels representing the image. The pixels are
- * given line by line so a pixel at (x,y) would be located at
- * y*image_width(image) + x. Any writes to the array will be reflected
- * in calls to image_save, image_clone and image_subimage. The
- * channels are encoded as 0xAARRGGBB. */
+/* Returns an array of pixels representing the image. The pixels
+ * are given line by line so a pixel at (x,y) would be located at
+ * y*image_width(image) + x. Any writes to the array will be
+ * reflected in calls to image_save, image_clone and image_subimage.
+ * The channels are encoded as 0xAARRGGBB. */
 int[] image_data(image_t image)
   /*@requires image != NULL; @*/
-  /*@ensures \length(\result) == image_width(image) * image_height(image); @*/ ;
-\end{verbatim}
-\end{small}
+  /*@ensures \length(\result)
+              == image_width(image) * image_height(image); @*/ ;
+\end{lstlisting}
+
 
 \section{C0-implemented libraries}
 
 A few libraries are included as part of the default C0 distribution
-but are implemented in C0, not in C. Both the interface (\verb'.h0')
-and the implementation (\verb'.c0') of these libraries are provided in
-the \verb'lib' directory.
+but are implemented in C0, not in C. Both the interface (\lstinline'.h0')
+and the implementation (\lstinline'.c0') of these libraries are provided in
+the \lstinline'lib' directory.
 
 \subsection{\tt rand}
 
-\begin{small}
-\begin{verbatim}
-typedef _____* rand_t;
+\begin{lstlisting}
+// typedef _____* rand_t;
 rand_t init_rand (int seed)
-  /*@requires seed != 0; @*/ 
+  /*@requires seed != 0;     @*/
   /*@ensures \result != NULL @*/ ;
 
 int rand(rand_t gen)
   /*@requires gen != NULL; @*/ ;
-\end{verbatim}
-\end{small}
+\end{lstlisting}
 
 \subsection{\tt util}
 
-\begin{small}
-\begin{verbatim}
+\begin{lstlisting}
 /* C0 constants */
-int int_size() /*@ensures \result == 4; @*/ ;
-int int_max()  /*@ensures \result == 2147483647; @*/ ;
+int int_size() /*@ensures \result == 4;           @*/ ;
+int int_max()  /*@ensures \result == 2147483647;  @*/ ;
 int int_min()  /*@ensures \result == -2147483648; @*/ ;
 
 /* Absolute value */
 int abs(int x)
-  /*@requires x > int_min(); @*/
-  /*@ensures \result >= 0; @*/
+  /*@requires x > int_min();              @*/
+  /*@ensures \result >= 0;                @*/
   /*@ensures \result == (x < 0 ? -x : x); @*/ ;
 
 /* Maximum of two integers */
@@ -409,39 +402,45 @@ int max(int x, int y)
 
 /* Minimum of two integers */
 int min(int x, int y)
-  /*@ensures \result == x || \result == y; @*/ 
+  /*@ensures \result == x || \result == y; @*/
   /*@ensures \result <= x && \result <= y; @*/ ;
 
-/* Returns the hexidecimal representation of the given integer as a
- * string (without the leading 0x) */ 
+/* Returns the hexidecimal representation of the given integer
+ * as a string (without the leading 0x) */
 string int2hex(int x);
-\end{verbatim}
-\end{small}
+\end{lstlisting}
 
 \section{Updates}
 \label{sec:updates}
 \hypertarget{sec:updates}{}
 
 \begin{description}
-\item[Rev. C0.0011, Jan 06, 2012.]  Image Library.
-  \verb'image_destroy' has been deprecated, since images are now
-  garbage collected.  Contracts on image functions have been sharpened
-  to require strictly positive height and width.  \verb'image_load'
-  returns \verb'NULL' if the file does not exist or is not readable.
-\item[Rev. C0.0113, Sep 27, 2012.]  Conio Library.
-  Function \verb'eof' has been added to test end-of-file along
-  standard input.  This fixes a problem with \verb'^D' during
-  \verb'readline' and end of stream for shell redirect to stdin.
-  \verb'readline' now requires \verb'!eof()'.
-\item[Rev. C0.0167, Dec 8, 2012.]  Conio Library.
-  Function \verb'error' has been removed from the conio library, since
-  it now exists as a language primitive.
-\item[Rev. C0.0273, Feb 1, 2013.]  Add \verb'util' and \verb'rand' libraries.
-\item[Rev. C0.0438, January 8, 2015.]  Remove deprecated
-  \verb'image_destroy' function, add \verb'max' and \verb'min' to
-  \verb'util' and add \verb'num_tokens', \verb'parse_tokens',
-  \verb'int_tokens', and \verb'parse_ints' to the \verb'parse'
-  library. Formatting changes.
+\item[Rev. C0.0011, Jan 06, 2012.]%
+  Image Library.  \lstinline'image_destroy' has been deprecated, since
+  images are now garbage collected.  Contracts on image functions have
+  been sharpened to require strictly positive height and width.
+  \lstinline'image_load' returns \lstinline'NULL' if the file does not
+  exist or is not readable.
+\item[Rev. C0.0113, Sep 27, 2012.]%
+  Conio Library.  Function \lstinline'eof' has been added to test
+  end-of-file along standard input.  This fixes a problem with
+  \lstinline'^D' during \lstinline'readline' and end of stream for
+  shell redirect to stdin.  \lstinline'readline' now requires
+  \lstinline'!eof()'.
+\item[Rev. C0.0167, Dec 8, 2012.]%
+  Conio Library.  Function \lstinline'error' has been removed from the
+  conio library, since it now exists as a language primitive.
+\item[Rev. C0.0273, Feb 1, 2013.]%
+  Add \lstinline'util' and \lstinline'rand' libraries.
+\item[Rev. C0.0438, January 8, 2015.]%
+  Remove deprecated \lstinline'image_destroy' function, add
+  \lstinline'max' and \lstinline'min' to \lstinline'util' and add
+  \lstinline'num_tokens', \lstinline'parse_tokens',
+  \lstinline'int_tokens', and \lstinline'parse_ints' to the
+  \lstinline'parse' library. Formatting changes.
+\item[Rev. C0.0590, March 30, 2018.]%
+  Reformatted documentation to use the \lstinline'listings' Latex
+  package.
 \end{description}
 
 \end{document}
