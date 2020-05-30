@@ -121,20 +121,19 @@ fun native_index("") =                      ~1
 (* string *)
   | native_index("char_chr") =              91
   | native_index("char_ord") =              92
-  | native_index("format") =                93
-  | native_index("string_charat") =         94
-  | native_index("string_compare") =        95
-  | native_index("string_equal") =          96
-  | native_index("string_from_chararray") = 97
-  | native_index("string_frombool") =       98
-  | native_index("string_fromchar") =       99
-  | native_index("string_fromint") =        100
-  | native_index("string_join") =           101
-  | native_index("string_length") =         102
-  | native_index("string_sub") =            103
-  | native_index("string_terminated") =     104
-  | native_index("string_to_chararray") =   105
-  | native_index("string_tolower") =        106
+  | native_index("string_charat") =         93
+  | native_index("string_compare") =        94
+  | native_index("string_equal") =          95
+  | native_index("string_from_chararray") = 96
+  | native_index("string_frombool") =       97
+  | native_index("string_fromchar") =       98
+  | native_index("string_fromint") =        99
+  | native_index("string_join") =           100
+  | native_index("string_length") =         101
+  | native_index("string_sub") =            102
+  | native_index("string_terminated") =     103
+  | native_index("string_to_chararray") =   104
+  | native_index("string_tolower") =        105
 
 (* unknown *)
   | native_index(s) =                       ~1
