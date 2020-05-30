@@ -427,7 +427,7 @@ struct
      | Op (oper, args) => (List.concat (map needspurityE args))
      | Call (f, args) =>
          [SymMap.insert(SymMap.empty, f,
-                    VError.VerificationNote (NONE, "function '" ^ Symbol.name f ^ "' must be pure because it is called in an annotation from here"))]
+                    VError.VerificationNote (NONE, "function '" ^ Symbol.name f ^ "' must be pure because it is called in a contract from here"))]
           @ (List.concat (map needspurityE args))
      | AddrOf (f) => [] (* do not track *)
      | Invoke (e, args) =>
@@ -461,7 +461,7 @@ struct
      | Expr _ => []
      | Break => []
      | Continue => []
-     | Return _ => []
+     | Return _ => [] 
      | If (e, a, b, p) => (needspurityS a) @ (needspurityS b)
      | While (p, a, invs, mods, b, p') =>
          (List.concat (map needspurityE invs)) @ (needspurityS b)
