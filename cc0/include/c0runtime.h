@@ -119,7 +119,7 @@ typedef struct c0_value {
   enum c0_val_kind kind; 
   union {
     c0_int i;
-    // If the lowest bit of p is 1, then this is
+    // If the highest bit of p is 1, then this is
     // actually a pointer to c0_tagged_ptr 
     void *p;
   } payload;
@@ -149,7 +149,7 @@ static inline c0_pointer val2ptr(c0_value v) {
   if (v.kind != C0_POINTER) 
     c0_abort("Invalid cast from a c0_value (an integer) to a pointer");
 
-  if ((uintptr_t)v.payload.p & 1)
+  if ((uintptr_t)v.payload.p & (1L << 63))
     c0_abort("Invalid cast from a c0_value (a tagged pointer) to a pointer");
 
   return v.payload.p;
