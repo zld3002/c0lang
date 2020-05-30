@@ -708,6 +708,8 @@ struct
           ()
       end
  
+
+
   (*****************)
   (* Type checking *)
   (*****************)
@@ -735,6 +737,15 @@ struct
                                                ^ "[Hint: use '&" ^ Symbol.name id ^ "' to obtain a function pointer]")
                          ; raise ErrorMsg.Error ) )
          | SOME(tp) => tp)
+
+  (* The only legal variadic functions are printf and format
+   * printf requires the conio library to be loaded 
+   * format requires the string library to be loaded *)
+  fun is_legal_variadic s = 
+    case Symbol.name s of 
+      "printf" => Option.getOpt (Libtab.lookup (Symbol.symbol "conio"), false)
+    | "format" => Option.getOpt (Libtab.lookup (Symbol.symbol "string"), false)
+    | _ => false 
 
   (* return the type of a function named g *)
   (* as a side effect, note a use of g in case it is not yet defined *)
@@ -866,12 +877,22 @@ struct
          | tp => ( ErrorMsg.error ext ("subject of '->' not a struct pointer, or of '.' not a struct\n"
                                        ^ "inferred type " ^ P.pp_tp tp)
                  ; raise ErrorMsg.Error ))
-    | syn_exp env (A.FunCall(g, es)) ext =
-      ( case fun_type env g ext
-         of A.FunType(rtp, params) => ( chk_exps env es params ext
-                                      ; rtp )
-            (* other cases should be impossible *)
-      )
+    | syn_exp env (A.FunCall(g, es)) ext = 
+      let 
+        val get_variadic_rtp = fn 
+          "format" => A.String 
+        | "printf" => A.Void 
+        | _ => raise Fail "Impossible case (BUG, PLEASE REPORT)"
+      in 
+        (* Changed to accomodate printf/format 
+         * - Ishan Nov 2019 *)
+        if is_legal_variadic g 
+          then (check_format_string es ext env ; 
+                get_variadic_rtp (Symbol.name g))
+          else case fun_type env g ext of 
+                 A.FunType(rtp, params) => ( chk_exps env es params ext; rtp )
+               | _ => raise Fail "Impossible case (BUG, PLEASE REPORT)" 
+      end 
     | syn_exp env (A.AddrOf(g)) ext =
       ( case Symbol.look env g
          of SOME _ => ( ErrorMsg.error ext ("cannot take address of local variable '" ^ Symbol.name g ^ "'\n"
@@ -880,7 +901,12 @@ struct
           | NONE => ( case Symbol.compare (g, Symbol.symbol "main")
                        of EQUAL => ( ErrorMsg.error ext ("cannot take address of function 'main'")
                                    ; raise ErrorMsg.Error )
-                        | _ => A.Pointer(fun_type env g ext) ) )
+                        | _ => if is_legal_variadic g 
+                                 then (ErrorMsg.error ext "cannot take address of printf or format" ; 
+                                       raise ErrorMsg.Error)
+                                 else A.Pointer(fun_type env g ext) 
+                    ) 
+      )
     | syn_exp env (A.Invoke(e, es)) ext =
       ( case expand_fdef (syn_exp env e ext)
          of A.FunType(rtp, params) => ( chk_exps env es params ext
@@ -1011,16 +1037,111 @@ struct
                  ; raise ErrorMsg.Error )
       end
 
+  (**************************)
+  (* Printf-family checkers *)
+  (**************************)
+
+  (* Takes a list of arguments (exp), function call position (ext),
+   * and current typechecking environment (env).
+   * Prints error messages if the format string is invalid *)
+  and check_format_string exps ext env = 
+    let val (fmt_exp, args_exps) = 
+          case exps of 
+            [] => (ErrorMsg.error ext ("format string required") ; 
+                   raise ErrorMsg.Error)
+          | e::es => (e, es)
+
+        (* Extract actual format string from AST *)
+        val (fmt_string, fmt_pos) = 
+          case fmt_exp of 
+            A.StringConst s => (s, NONE)
+          | A.Marked e => (
+              case Mark.data e of 
+                A.StringConst s => (s, Mark.ext e)
+              | _ => (ErrorMsg.error (Mark.ext e) "format string must be a string constant";
+                      raise ErrorMsg.Error))
+
+        (* Parse format string and get a list of types expected
+         * Raises error if format is not valid *) 
+        (* parse_fmt: A.tp list -> char list -> A.tp list *)
+        fun parse_fmt [] = []
+          | parse_fmt (#"%"::[]) = (
+              ErrorMsg.error fmt_pos ("expected a format specifier after %" ^^ "use %% to print out a %");
+              raise ErrorMsg.Error)
+          | parse_fmt ((#"%")::(#"%")::cs) = parse_fmt cs (* %% can't have anything in between *)
+          | parse_fmt (#"%"::fmt_char::rest) =
+              let val tps = parse_fmt rest 
+                  val tp = 
+                    case fmt_char of 
+                      #"s" => A.String 
+                    | #"c" => A.Char 
+                    | #"d" => A.Int 
+                    (* Removed since we would have to force inclusion of <util> to use these
+                    | #"x" => A.Int (* lowercase hex *)
+                    | #"X" => A.Int (* uppercase hex *)
+                    *)
+                    (* | #"p" => A.Pointer A.Any :: tps (* Should we allow printing pointers? *) *)
+                    | #"b" => (ErrorMsg.error fmt_pos ( 
+                                 "boolean format specifier %b does not exist"
+                                 ^^ "use %s and ternary operator instead");
+                               raise ErrorMsg.Error)
+                    | #"p" => (ErrorMsg.error fmt_pos 
+                                 "format specifier %p not allowed in C0/C1";
+                               raise ErrorMsg.Error)
+                    | c => (ErrorMsg.error fmt_pos (
+                                 "format specifier %" ^ Char.toString c ^ " does not exist"
+                                 ^^ "valid format specifiers are %s, %c, %d, %x, %X, or use %% to print %");
+                               raise ErrorMsg.Error)
+              in tp :: tps end 
+          | parse_fmt (c::cs) = parse_fmt cs (* ignore c as it is not a format char *)
+
+        val expected_types = parse_fmt (String.explode fmt_string)
+
+        val () = let val num_expected = List.length expected_types
+                     val num_actual = List.length args_exps 
+
+                 in if num_expected = num_actual then ()
+                      else (ErrorMsg.error ext (
+                             "format string specifies " ^ Int.toString num_expected ^ " argument(s), " ^
+                             "but found " ^ Int.toString num_actual);
+                           raise ErrorMsg.Error)
+                 end 
+
+        fun check_arg (expected_type, arg) = chk_exp env arg expected_type ext 
+
+    in List.app check_arg (ListPair.zip (expected_types, args_exps)) end 
+  
+
   (* chk_lval e ext = () if e is a legal lvalue, raises Error otherwise *)
   fun chk_lval (A.Var _) ext = ()
-    | chk_lval (A.OpExp(A.DEREF, [e])) ext = chk_lval e ext
+    | chk_lval (A.OpExp(A.DEREF, [e])) ext = 
+        (* e must be either a cast to not void* or another valid lvalue *)
+        let
+          (* returns true if the expression was a valid lvalue cast
+           * returns false if it was not a cast
+           * raises exception if the cast is invalid (i.e. to void*) *)
+          fun check_lval_cast e ext = case e of 
+            A.Marked marked_exp => check_lval_cast (Mark.data marked_exp) (Mark.ext marked_exp) 
+          | A.Cast (tp, e2) => (
+              case expand_def tp of 
+                A.Pointer A.Void => (
+                  ErrorMsg.error ext "cast to void* not allowed on left side of assignment" ; 
+                  raise ErrorMsg.Error
+                )
+              (* no need to check types here *)
+              | _ => (chk_lval e2 ext ; true)
+            )
+          | _ => false 
+        in 
+          if check_lval_cast e ext then () else chk_lval e ext
+        end 
     | chk_lval (A.OpExp(A.SUB, [e1,e2])) ext = chk_lval e1 ext
     | chk_lval (A.Select(e, f)) ext = chk_lval e ext
     | chk_lval (A.Marked(marked_exp)) ext =
         chk_lval (Mark.data marked_exp) (Mark.ext marked_exp)
     | chk_lval e ext = ( ErrorMsg.error ext
-                           ("left-hand side of assignment not a legal lvalue"
-                            ^^ "an lvalue l must be a variable or of the form *l, l[e], l.f, or l->f")
+                           ("illegal left-hand side of assignment"
+                            ^^ "an assignment must be a variable or of the form *l, l[e], l.f, l->f, or *(t*)l")
                        ; raise ErrorMsg.Error )
 
   (* chk_stm env s rtp loop ext = () if s is a well-typed statment
@@ -1263,8 +1384,9 @@ struct
           val fdecl' = elim_fors_fun fdecl (* elim for loops to simplify control *)
           val () = rc_fun fdecl' (* check valid returns *)
           val () = lv_fun fdecl' (* check initialization of variables *)
+          val fdecl'' = ExpandPrintf.expand_fdecl fdecl'
       in
-          fdecl'
+          fdecl''
       end
 
   (* add ext to this function? *)
@@ -1274,8 +1396,9 @@ struct
           val () = rt_stm stm NONE (* Check proper use of \length, etc. *)
           val () = chk_stm env stm Ast.Any false NONE (* Type check *)
           val stm' = elim_for stm nil NONE (* Eliminate for loops *)
+          val stm'' = ExpandPrintf.expand_stmnt NONE stm'
       in 
-          stm'
+          stm''
       end
 
   fun params_to_types (A.VarDecl(x, tp, e_opt, ext)::decls) = tp::params_to_types decls
@@ -1502,3 +1625,6 @@ struct
       end
 
 end
+
+
+
