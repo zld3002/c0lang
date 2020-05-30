@@ -89,9 +89,9 @@ structure Flags :> FLAGS = struct
   local
     fun parse_bytecode_arch s = case Int.fromString s of
            SOME(32) => 32
-	 | SOME(64) => 64
-	 | SOME(n) => raise Domain (* Domain ??? *)
-	 | NONE => raise Domain
+         | SOME(64) => 64
+         | SOME(n) => raise Domain (* Domain ??? *)
+         | NONE => raise Domain
 
   in
 
@@ -131,11 +131,11 @@ structure Flags :> FLAGS = struct
           libraries := []; runtime := "c0rt"; a_out := "a.out";
           standard := NONE;
           runtime_args := []; gcc_args := [];
-	  bytecode_arch := 64;
+          bytecode_arch := 64;
           SOME (#2 (GetOpt.getOpt {argOrder = GetOpt.Permute,
-		                   options = options,
-		                   errFn = errfn}
-		                  args))
+                                   options = options,
+                                   errFn = errfn}
+                                  args))
           handle Domain => 
                  (errfn "Integer option incorrect or out of range"; NONE)
                  (* re-raise EXIT exception from top.sml *)

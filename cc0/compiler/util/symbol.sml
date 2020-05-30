@@ -74,17 +74,17 @@ struct
     val ht = ref (initht ())
   in
     fun reset () = (nexts := 0;
-		    ht := initht ())
+                    ht := initht ())
     fun nsymbol namespace name =
-	(case HashTable.find (!ht) name
-	  of SOME i => (namespace, name, i)
-	   | NONE =>
-	     let
-		 val i = !nexts before nexts := !nexts + 1
+        (case HashTable.find (!ht) name
+          of SOME i => (namespace, name, i)
+           | NONE =>
+             let
+                 val i = !nexts before nexts := !nexts + 1
                  val () = HashTable.insert (!ht) (name, i)
-	     in
-		 (namespace, name, i)
-	     end)
+             in
+                 (namespace, name, i)
+             end)
     fun symbol name = nsymbol User name
     fun new name = 
         (* don't enter into hash table, which means that 'name'
@@ -99,9 +99,9 @@ struct
   fun nname (namespace, name, i) = (namespace, name)
 
   structure Map = BinaryMapFn (struct
-				 type ord_key = symbol
-				 val compare = compare
-			       end)
+                                 type ord_key = symbol
+                                 val compare = compare
+                               end)
 
   type 'a table = 'a Map.map
 
@@ -122,9 +122,9 @@ struct
   fun delimit l = delimit' l "[" ^ "]"
 
   structure Set = BinarySetFn (struct
-				 type ord_key = symbol
-				 val compare = compare
-			       end)
+                                 type ord_key = symbol
+                                 val compare = compare
+                               end)
 
   type set = Set.set
 

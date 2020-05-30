@@ -187,7 +187,7 @@ struct
           (* here we do force an increase --- seems too odd without *)
           indent_exp e (left +  min_indent, max_col) ext
       | indent_exp' (A.Marked(marked_exp)) left ext =
-	  indent_exp' (Mark.data marked_exp) left (Mark.ext marked_exp)
+          indent_exp' (Mark.data marked_exp) left (Mark.ext marked_exp)
 
     and indent_exps nil bounds prev_ext ext = ()
       | indent_exps (e::es) bounds prev_ext ext =
@@ -315,7 +315,7 @@ struct
       | indent_stm' (A.Anno(specs)) left ext =
           indent_specs specs (left + min_indent, max_col)
       | indent_stm' (A.Markeds(marked_stm)) left ext =
-	  indent_stm' (Mark.data marked_stm) left (Mark.ext marked_stm)
+          indent_stm' (Mark.data marked_stm) left (Mark.ext marked_stm)
 
     (* indent_stms ss bounds prev_ext ext
      * check sequence 'ss' according to 'bounds'.
@@ -324,7 +324,7 @@ struct
      *)
     and indent_stms nil bounds prev_ext ext = ()
       | indent_stms (A.Anno(specs)::ss) (left, right) prev_ext ext =
-	let val loose_bounds = (left+3, max_col) (* '//@' is 3 characters *)
+        let val loose_bounds = (left+3, max_col) (* '//@' is 3 characters *)
             val () = indent_specs specs loose_bounds
         (* cannot reliably tell real indentation of specs *)
         (* use previous bounds *)
@@ -364,9 +364,9 @@ struct
             indent_stms ss bounds' last_ext ext
         end
       | indent_seq (A.Markeds(marked_stm)) bounds ext =
-	  indent_seq (Mark.data marked_stm) bounds (Mark.ext marked_stm)
+          indent_seq (Mark.data marked_stm) bounds (Mark.ext marked_stm)
       | indent_seq s bounds ext = (* should be impossible *)
-	  indent_stm s bounds ext
+          indent_stm s bounds ext
 
     (* indent_spec spec left
      * check indentation of subexpression of 'spec', where 'left'
@@ -440,7 +440,7 @@ struct
         (* see A.Function with non-nil specs below *)
           indent_specs specs (col1 ext + min_indent, max_col)
       | indent_gdecl' (A.Function(fun_name, result, params, NONE, nil, is_extern, ext)) =
-	(* no pre/postconditions, no body *)
+        (* no pre/postconditions, no body *)
         ()
       | indent_gdecl' (A.Function(fun_name, result, params, NONE, specs, is_extern, ext)) =
           (* col1 ext + min_indent works, because '//@' is 3 characters, >= min_indent *)

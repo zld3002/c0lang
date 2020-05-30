@@ -108,27 +108,27 @@ struct
   fun ext (x, ext_opt) = ext_opt
 
   fun extmin ((line1, col1), (line2, col2)) =
-	if line1 < line2 then (line1, col1)
-	else if line1 > line2 then (line2, col2)
-	else (* line1 = line2 *) 
-	    (line1, Int.min (col1, col2))
+        if line1 < line2 then (line1, col1)
+        else if line1 > line2 then (line2, col2)
+        else (* line1 = line2 *) 
+            (line1, Int.min (col1, col2))
 
   fun extmax ((line1, col1), (line2, col2)) =
-	if line1 > line2 then (line1, col1)
-	else if line1 > line2 then (line2, col2)
-	else (* line1 = line2 *)
-	    (line1, Int.min (col1, col2))
+        if line1 > line2 then (line1, col1)
+        else if line1 > line2 then (line2, col2)
+        else (* line1 = line2 *)
+            (line1, Int.min (col1, col2))
 
   fun wrap nil = NONE
     | wrap (ext_opt :: nil) = ext_opt
     | wrap (ext_opt :: ext_opts) =
       (case (ext_opt, wrap ext_opts) of
-	   (_, NONE) => NONE
-	 | (SOME (left1, right1, filename1), SOME (left, right, filename)) =>
-	   if filename1 = filename
-	   then SOME (extmin (left1, left), extmax (right1, right), filename)
-	   else NONE
-	 | (NONE, ext_opt') => ext_opt')
+           (_, NONE) => NONE
+         | (SOME (left1, right1, filename1), SOME (left, right, filename)) =>
+           if filename1 = filename
+           then SOME (extmin (left1, left), extmax (right1, right), filename)
+           else NONE
+         | (NONE, ext_opt') => ext_opt')
 
   fun map f (x, ext_opt) = (f x, ext_opt)
   fun map' f (m as (x, ext_opt)) = (f m, ext_opt)

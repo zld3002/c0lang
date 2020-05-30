@@ -18,9 +18,9 @@ sig
   val TMIN : Word32.word	(* smallest signed negative word -2^31 *)
   val ZERO : Word32.word	(* 0 *)
   val fromString : string -> Word32.word option	(* parse from string, no sign *)
-				(* raises Overflow if not 0 <= n < 2^32 *)
+                                (* raises Overflow if not 0 <= n < 2^32 *)
   val fromHexString : string -> Word32.word option (* parse from string, no sign *)
-				(* raises Overflow if not 0 <= n < 2^32 *)
+                                (* raises Overflow if not 0 <= n < 2^32 *)
   val toString : Word32.word -> string (* print to string, with sign *)
 
   (* the rest is needed only for evaluation or optimization *)
@@ -45,23 +45,23 @@ struct
   fun fromString (str) =
          (* scanString might also raise Overflow *)
       let
-	  val wOpt = StringCvt.scanString (Word32.scan StringCvt.DEC) str
-	  val _ = case wOpt
-		   of SOME(w) => if neg w andalso w <> TMIN
-				 then raise Overflow
-				 else ()
-		    | NONE => ()
+          val wOpt = StringCvt.scanString (Word32.scan StringCvt.DEC) str
+          val _ = case wOpt
+                   of SOME(w) => if neg w andalso w <> TMIN
+                                 then raise Overflow
+                                 else ()
+                    | NONE => ()
       in
-	  wOpt
+          wOpt
       end
 
   fun fromHexString (str) =
          (* scanString might also raise Overflow *)
-	 StringCvt.scanString (Word32.scan StringCvt.HEX) str
+         StringCvt.scanString (Word32.scan StringCvt.HEX) str
 
   fun toString (w) =
       if neg w
-	 then "-" ^ Word32.fmt StringCvt.DEC (Word32.~(w))
+         then "-" ^ Word32.fmt StringCvt.DEC (Word32.~(w))
       else Word32.fmt StringCvt.DEC w
 
   fun quot (w1, w2) =

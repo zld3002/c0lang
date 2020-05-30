@@ -16,11 +16,11 @@ sig
   val isset : flag -> bool	(* check if the flag is set *)
 
   val guard : flag -> ('a -> unit) -> 'a -> unit 
-				(* return a function that runs only if flag is set *)
+                                (* return a function that runs only if flag is set *)
   val guards : flag list -> ('a -> unit) -> 'a -> unit
-				(* return a function that runs only if all flags are set *)
+                                (* return a function that runs only if all flags are set *)
   val someguards : flag list -> ('a -> unit) -> 'a -> unit
-				(* return a func that runs if one of flags is set *)
+                                (* return a func that runs if one of flags is set *)
 
   (* get a function that runs the first one if flag is set, or second one if it is not *)
   val branch : flag -> ('a -> 'b) * ('a -> 'b) -> 'a -> 'b
@@ -37,7 +37,7 @@ struct
   fun set (FLAG f) = #value f := true
   fun unset (FLAG f) = #value f := false
   fun not (FLAG {name, value, post}) =
-	FLAG {name = name, value = value, post = fn b => Bool.not (post b)}
+        FLAG {name = name, value = value, post = fn b => Bool.not (post b)}
 
   fun isset (FLAG f) = (#post f) (! (#value f))
 

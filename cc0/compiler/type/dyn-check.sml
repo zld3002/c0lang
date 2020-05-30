@@ -71,38 +71,38 @@ struct
       | tfm_test env (A.Hastag(tp, e)) =
         A.Hastag(tp, tfm_test env e)
       | tfm_test env (A.Marked(marked_exp)) =
-	let 
-	    val e' = tfm_test env (Mark.data marked_exp)
-	in
-	    A.Marked(Mark.mark'(e', Mark.ext marked_exp))
-	end
+        let 
+            val e' = tfm_test env (Mark.data marked_exp)
+        in
+            A.Marked(Mark.mark'(e', Mark.ext marked_exp))
+        end
 
     fun m_assert(e, msg, ext) =
-	A.Markeds(Mark.mark'(A.Assert(e, msg), ext))
+        A.Markeds(Mark.mark'(A.Assert(e, msg), ext))
 
     (* spec_to_assert env spec = A.Assert(e, msgs), marked with a region,
      * where msgs is a list of exps that constitute the error message *)
     fun spec_to_assert env (A.Requires(e,ext)) =
-	let val e' = tfm_test env e
-	in m_assert(e', [A.StringConst(location ext ^ ": @requires annotation failed\n"),
-				  caller_var, A.StringConst(": caller location")],
-		    ext)
-	end
+        let val e' = tfm_test env e
+        in m_assert(e', [A.StringConst(location ext ^ ": @requires annotation failed\n"),
+                                  caller_var, A.StringConst(": caller location")],
+                    ext)
+        end
       | spec_to_assert env (A.Ensures(e,ext)) =
-	let val e' = tfm_test env e
-	in m_assert(e', [A.StringConst(location ext ^ ": @ensures annotation failed")], ext) end
+        let val e' = tfm_test env e
+        in m_assert(e', [A.StringConst(location ext ^ ": @ensures annotation failed")], ext) end
       | spec_to_assert env (A.LoopInvariant(e,ext)) =
-	let val e' = tfm_test env e
-	in m_assert(e', [A.StringConst(location ext ^ ": @loop_invariant annotation failed")], ext) end
+        let val e' = tfm_test env e
+        in m_assert(e', [A.StringConst(location ext ^ ": @loop_invariant annotation failed")], ext) end
       | spec_to_assert env (A.Assertion(e,ext)) =
-	let val e' = tfm_test env e
-	in m_assert(e', [A.StringConst(location ext ^ ": @assert annotation failed")], ext) end
+        let val e' = tfm_test env e
+        in m_assert(e', [A.StringConst(location ext ^ ": @assert annotation failed")], ext) end
 
     (* specs_to_assert env specs, see spec_to_assert *)
     fun specs_to_assert env (spec::specs) =
-	let val as1 = spec_to_assert env spec
-	    val ass2 = specs_to_assert env specs
-	in as1::ass2 end
+        let val as1 = spec_to_assert env spec
+            val ass2 = specs_to_assert env specs
+        in as1::ass2 end
       | specs_to_assert env nil = nil
 
     (* anno_to_assert env anno = ass, see spec to assert.
@@ -117,62 +117,62 @@ struct
     fun dc_stm env (s as A.Assign _) post = s
       | dc_stm env (s as A.Exp _) post = s
       | dc_stm env (A.Seq(ds, ss)) post =
-	let val env' = Syn.syn_decls env ds
-	in 
-	  A.Seq(ds, List.map (fn s => dc_stm env' s post) ss)
-	end 
+        let val env' = Syn.syn_decls env ds
+        in 
+          A.Seq(ds, List.map (fn s => dc_stm env' s post) ss)
+        end 
       | dc_stm env (s as A.StmDecl d) post = s 
       | dc_stm env (A.If(e, s1, s2)) post =
-	  A.If(e, dc_stm env s1 post, dc_stm env s2 post)
+          A.If(e, dc_stm env s1 post, dc_stm env s2 post)
       | dc_stm env (A.While(e, invs, s)) post =
-	let val ass = specs_to_assert env invs
-	(* ass is loop invariant in the form of assert statements *)
-	in
-	  A.While(A.True, nil, (* eliminate invariants here, correct? *)
-		  A.Seq(nil, ass @ [A.If(e, dc_stm env s post, A.Break)]))
-	end
+        let val ass = specs_to_assert env invs
+        (* ass is loop invariant in the form of assert statements *)
+        in
+          A.While(A.True, nil, (* eliminate invariants here, correct? *)
+                  A.Seq(nil, ass @ [A.If(e, dc_stm env s post, A.Break)]))
+        end
       (* A.For should be impossible *)
       | dc_stm env (A.Continue) post = A.Continue
       | dc_stm env (A.Break) post = A.Break
       | dc_stm env (A.Return(SOME(e))) post =
-	  A.Seq(nil, [A.Assign(NONE,result_var,e)]
-		     @ post
-		     @ [A.Return(SOME(result_var))])
+          A.Seq(nil, [A.Assign(NONE,result_var,e)]
+                     @ post
+                     @ [A.Return(SOME(result_var))])
       | dc_stm env (A.Return(NONE)) post =
-	  A.Seq(nil, post @ [A.Return(NONE)])
+          A.Seq(nil, post @ [A.Return(NONE)])
       | dc_stm env (s as A.Assert _) post = s
       | dc_stm env (s as A.Error _) post = s
       | dc_stm env (A.Anno(specs)) post =
-	let val ass = specs_to_assert env specs
-	in
-	    A.Seq(nil, ass)
-	end 
+        let val ass = specs_to_assert env specs
+        in
+            A.Seq(nil, ass)
+        end 
       | dc_stm env (A.Markeds(marked_stm)) post =
-	  A.Markeds(Mark.mark'(dc_stm env (Mark.data marked_stm) post,
+          A.Markeds(Mark.mark'(dc_stm env (Mark.data marked_stm) post,
                                Mark.ext marked_stm))
     and dc_stms env ss post =
-	  List.map (fn s => dc_stm env s post) ss
+          List.map (fn s => dc_stm env s post) ss
 
     fun extract_pre env ((spec as A.Requires _)::specs) =
-	let val as1 = spec_to_assert env spec
-	    val ass2 = extract_pre env specs
-	in as1 :: ass2 end
+        let val as1 = spec_to_assert env spec
+            val ass2 = extract_pre env specs
+        in as1 :: ass2 end
       | extract_pre env (_::specs) = extract_pre env specs
       | extract_pre env nil = nil
 
     fun extract_post env ((spec as A.Ensures _)::specs) =
-	let val as1 = spec_to_assert env spec
-	    val ass2 = extract_post env specs
-	in as1 :: ass2 end
+        let val as1 = spec_to_assert env spec
+            val ass2 = extract_post env specs
+        in as1 :: ass2 end
       | extract_post env (_::specs) = extract_post env specs
       | extract_post env nil = nil
 
     fun is_main_fn g = EQUAL = Symbol.compare (g, Symbol.symbol "main")
 
     fun is_external_fun g =
-	( case Symtab.lookup g
-	   of SOME(A.Function(g', rtp, params, bodyOpt, specs, is_extern, ext)) => is_extern
-	    | _ => false )
+        ( case Symtab.lookup g
+           of SOME(A.Function(g', rtp, params, bodyOpt, specs, is_extern, ext)) => is_extern
+            | _ => false )
 
     (* fv_stm and fv_exp redirect function calls to the instance
      * of a function currently in effect, according to the table
@@ -189,22 +189,22 @@ struct
       | fv_exp (e as A.False) ext = e
       | fv_exp (e as A.Null) ext = e
       | fv_exp (A.OpExp(oper,es)) ext =
-	  A.OpExp(oper, List.map (fn e => fv_exp e ext) es)
+          A.OpExp(oper, List.map (fn e => fv_exp e ext) es)
       | fv_exp (A.Select(e, f)) ext =
-	  A.Select(fv_exp e ext, f)
+          A.Select(fv_exp e ext, f)
       | fv_exp (A.FunCall(g, es)) ext =
-	let val es' = List.map (fn e => fv_exp e ext) es
-	    val (g_last, i_last, is_extern) =
-		case Funversiontab.lookup g
-		 of NONE => (g, 0, is_external_fun g)
-		  | SOME(g_i, i) => (g_i, i, false) (* versioned functions are not external *)
-	in
-	    (* if g is not an external function, we add the caller
+        let val es' = List.map (fn e => fv_exp e ext) es
+            val (g_last, i_last, is_extern) =
+                case Funversiontab.lookup g
+                 of NONE => (g, 0, is_external_fun g)
+                  | SOME(g_i, i) => (g_i, i, false) (* versioned functions are not external *)
+        in
+            (* if g is not an external function, we add the caller
              * location in the form of a string as an additional argument *)
-	    A.FunCall(g_last, if is_extern orelse is_main_fn g_last
-			      then es'
-			      else es' @ [A.StringConst(location(ext))])
-	end
+            A.FunCall(g_last, if is_extern orelse is_main_fn g_last
+                              then es'
+                              else es' @ [A.StringConst(location(ext))])
+        end
       | fv_exp (A.AddrOf(g)) ext =
         let val (g_last, i_last, is_extern) =
                 case Funversiontab.lookup g
@@ -217,51 +217,51 @@ struct
         in A.Invoke(e', es' @ [A.StringConst(location(ext))]) end
       | fv_exp (e as A.Alloc _) ext = e
       | fv_exp (A.AllocArray(t, e)) ext =
-	  A.AllocArray(t, fv_exp e ext)
+          A.AllocArray(t, fv_exp e ext)
       | fv_exp (A.Cast(t, e)) ext =
           A.Cast(t, fv_exp e ext)
       | fv_exp (e as A.Result) ext = e
       | fv_exp (A.Length(e)) ext =
-	  A.Length(fv_exp e ext)
+          A.Length(fv_exp e ext)
       | fv_exp (A.Hastag(tp, e)) ext =
           A.Hastag(tp, fv_exp e ext)
       (* A.Old should be impossible *)
       | fv_exp (A.Marked(marked_exp)) ext =
-	  A.Marked(Mark.mark'(fv_exp (Mark.data marked_exp) (Mark.ext marked_exp),
-			      Mark.ext marked_exp))
+          A.Marked(Mark.mark'(fv_exp (Mark.data marked_exp) (Mark.ext marked_exp),
+                              Mark.ext marked_exp))
 
     (* fv_stm s ext = s', translating functions calls in
      * to add source location argument.  Contracts have already
      * been translated away. *)
     fun fv_stm (A.Assign(oper_opt, lv, e)) ext =
-	  A.Assign(oper_opt, fv_exp lv ext, fv_exp e ext)
+          A.Assign(oper_opt, fv_exp lv ext, fv_exp e ext)
       | fv_stm (A.Exp(e)) ext = A.Exp(fv_exp e ext)
       | fv_stm (A.Seq(ds, ss)) ext = 
-	  A.Seq(List.map (fn d => fv_decl d) ds,
-		List.map (fn d => fv_stm d ext) ss)
+          A.Seq(List.map (fn d => fv_decl d) ds,
+                List.map (fn d => fv_stm d ext) ss)
       | fv_stm (A.StmDecl d) ext = A.StmDecl (fv_decl d)
       | fv_stm (A.If(e, s1, s2)) ext =
-	  A.If(fv_exp e ext, fv_stm s1 ext, fv_stm s2 ext)
+          A.If(fv_exp e ext, fv_stm s1 ext, fv_stm s2 ext)
       | fv_stm (A.While(e, invs, s)) ext = (* ignore invs *)
-	  A.While(fv_exp e ext, invs, fv_stm s ext)
+          A.While(fv_exp e ext, invs, fv_stm s ext)
       (* A.For should be impossible *)
       | fv_stm (s as A.Continue) ext = s
       | fv_stm (s as A.Break) ext = s
       | fv_stm (s as A.Return(NONE)) ext = s
       | fv_stm (A.Return(SOME(e))) ext =
-	  A.Return(SOME(fv_exp e ext))
+          A.Return(SOME(fv_exp e ext))
       | fv_stm (A.Assert(e1, e2s)) ext =
-	  A.Assert(fv_exp e1 ext, List.map (fn e => fv_exp e ext) e2s)
+          A.Assert(fv_exp e1 ext, List.map (fn e => fv_exp e ext) e2s)
       | fv_stm (A.Error e) ext = 
           A.Error(fv_exp e ext)
       (* A.Anno should be impossible *)
       | fv_stm (A.Markeds(marked_stm)) ext =
-	  A.Markeds(Mark.mark'(fv_stm (Mark.data marked_stm) (Mark.ext marked_stm),
-			       Mark.ext marked_stm))
+          A.Markeds(Mark.mark'(fv_stm (Mark.data marked_stm) (Mark.ext marked_stm),
+                               Mark.ext marked_stm))
 
     and fv_decl (d as A.VarDecl(x, t, NONE, ext)) = d
       | fv_decl (A.VarDecl(x, t, SOME(e), ext)) =
-	  A.VarDecl(x, t, SOME(fv_exp e ext), ext)
+          A.VarDecl(x, t, SOME(fv_exp e ext), ext)
 
     fun param_to_arg (A.VarDecl(x, t, NONE, ext)) = A.Var(x)
 
@@ -269,22 +269,22 @@ struct
     (* to fix: wrapper should pass caller_id through !!! -fp *)
     fun fun_wrapper (A.Function(g, A.Void, params, NONE, specs, is_external, ext)) g_next =
         (* return type is A.Void *)
-	let val args = List.map param_to_arg params
-	    val body = A.Seq([], [A.Exp(A.FunCall(g, args)), A.Return(NONE)])
+        let val args = List.map param_to_arg params
+            val body = A.Seq([], [A.Exp(A.FunCall(g, args)), A.Return(NONE)])
             (* wrapper is never external; therefore 'false' below *)
-	    val gdecl = A.Function(g_next, A.Void, params, SOME(body), specs, false, ext)
-	in
-	    gdecl
-	end
+            val gdecl = A.Function(g_next, A.Void, params, SOME(body), specs, false, ext)
+        in
+            gdecl
+        end
       | fun_wrapper (A.Function(g, rtp, params, NONE, specs, is_external, ext)) g_next =
-	(* rtp <> A.Void *)
-	let val args = List.map param_to_arg params
-	    val body = A.Seq([], [A.Return(SOME(A.FunCall(g, args)))])
+        (* rtp <> A.Void *)
+        let val args = List.map param_to_arg params
+            val body = A.Seq([], [A.Return(SOME(A.FunCall(g, args)))])
             (* wrapper is never external; therefore 'false' below *)
-	    val gdecl = A.Function(g_next, rtp, params, SOME(body), specs, false, ext)
-	in
-	    gdecl
-	end
+            val gdecl = A.Function(g_next, rtp, params, SOME(body), specs, false, ext)
+        in
+            gdecl
+        end
 
     (* coercion_wrapper g funtp g' = gdecl
      * where gdecl defines g' to call g and add specs from funtp *)
@@ -311,30 +311,30 @@ struct
     (* tfm_fundef fundef = fundef'
      * Translate contracts into appropriate asserts *)
     fun tfm_fundef (A.Function(g, rtp, params, SOME(body), specs, is_external, ext)) =
-	let val dresult = case rtp
-			   of A.Void => []
-			    | _ => [A.VarDecl (result_id, rtp, NONE, ext)]
+        let val dresult = case rtp
+                           of A.Void => []
+                            | _ => [A.VarDecl (result_id, rtp, NONE, ext)]
             (* params1 has caller_id as additional string argument *)
-	    val (params1, ds0) = if is_main_fn g
+            val (params1, ds0) = if is_main_fn g
                           then (params, [caller_decl_main]) 
                           else (params @ [caller_decl], [])
-	    val env0 = Syn.syn_decls Symbol.empty params1
-	    (* val env1 = Symbol.bind env0 (Symbol.symbol "\\result", rtp) *)
-	    val env1 = Symbol.bind env0 (result_id, rtp) (* replaced "\\result" -fp *)
-	    val ass1 = extract_pre env1 specs
-	    val ass2 = extract_post env1 specs
+            val env0 = Syn.syn_decls Symbol.empty params1
+            (* val env1 = Symbol.bind env0 (Symbol.symbol "\\result", rtp) *)
+            val env1 = Symbol.bind env0 (result_id, rtp) (* replaced "\\result" -fp *)
+            val ass1 = extract_pre env1 specs
+            val ass2 = extract_post env1 specs
             (* ass2 = postcondition; insert before return *)
-	    val body' = dc_stm env1 body ass2
+            val body' = dc_stm env1 body ass2
             (* add possibly redundant (dead-code) post-condition *)
-	    (* to make sure it is checked in case there is no return in body s *)
-	    val body'' = case rtp
-			 of A.Void => A.Seq(ds0 @ dresult,
-					    ass1 @ [body'] @ ass2)
-			  | _ => A.Seq(ds0 @ dresult, ass1 @ [body'])
-	    val body''' = fv_stm body'' ext
-	in
-	    A.Function(g, rtp, params1, SOME(body'''), specs, is_external, ext)
-	end
+            (* to make sure it is checked in case there is no return in body s *)
+            val body'' = case rtp
+                         of A.Void => A.Seq(ds0 @ dresult,
+                                            ass1 @ [body'] @ ass2)
+                          | _ => A.Seq(ds0 @ dresult, ass1 @ [body'])
+            val body''' = fv_stm body'' ext
+        in
+            A.Function(g, rtp, params1, SOME(body'''), specs, is_external, ext)
+        end
 
     (* defining and insertion coercions at function pointer types *)
     (* should this use internal names?  Aug 19, 2014 -fp *)
@@ -495,13 +495,13 @@ struct
 
     fun next_name (fun_name, fun_index) =
         (* create new internal function version name *)
-	let
+        let
             val g = Symbol.new (fun_name ^ "__" ^ Int.toString fun_index)
-	in
-	    case Symtab.lookup(g)
-	     of NONE => (g, fun_index)
-	      | SOME _ => next_name (fun_name, fun_index+1)
-	end
+        in
+            case Symtab.lookup(g)
+             of NONE => (g, fun_index)
+              | SOME _ => next_name (fun_name, fun_index+1)
+        end
 
     fun elab_coercions (A.Function(g, rtp, params, SOME(s), specs, is_external, ext)) =
         let val env0 = Syn.syn_decls Symbol.empty params
@@ -518,7 +518,7 @@ struct
      * Sometimes we need to split a declaration in two *)
     fun dc_gdecl (d as A.Function(g, rtp, params, SOME(s), specs, is_external, ext)) =
         (* Symbol instance remains the same for definition; no new function environment *)
-	(* Add caller id argument to function *)
+        (* Add caller id argument to function *)
         let val () = Coerciontab.reset() (* track new coercion functions *)
             val d' = elab_coercions d    (* now Coerciontab has new function symbols, if any *)
             val d'' = tfm_fundef d'
@@ -532,31 +532,31 @@ struct
             ds @ [d'']
         end
       | dc_gdecl (d as A.Function(g, rtp, params, NONE, nil, true, ext)) =
-	(* external function declaration remains identical, if no contracts *)
-	[d]
+        (* external function declaration remains identical, if no contracts *)
+        [d]
       | dc_gdecl (d as A.Function(g, rtp, params, NONE, nil, false, ext)) =
-	(* no specifications (specs = nil); transform to add argument *)
-	[A.Function(g, rtp, params @ [caller_decl], NONE, nil, false, ext)]
+        (* no specifications (specs = nil); transform to add argument *)
+        [A.Function(g, rtp, params @ [caller_decl], NONE, nil, false, ext)]
       | dc_gdecl (d as A.Function(g, rtp, params, NONE, specs as (_::_), is_external, ext)) =
-	(* specifications; create new wrapper for g *)
-	let 
-	    val g_opt = Funversiontab.lookup g
-	    val (g_last, i_last) = case g_opt of NONE => (g,0) | SOME(g_i,i) => (g_i,i)
-	    val (g_next, i_next) = next_name (Symbol.name g, i_last+1)
-	    val d' = fun_wrapper d g_next
-	    val d'' = tfm_fundef d' (* embedded calls go to last version! *)
+        (* specifications; create new wrapper for g *)
+        let 
+            val g_opt = Funversiontab.lookup g
+            val (g_last, i_last) = case g_opt of NONE => (g,0) | SOME(g_i,i) => (g_i,i)
+            val (g_next, i_next) = next_name (Symbol.name g, i_last+1)
+            val d' = fun_wrapper d g_next
+            val d'' = tfm_fundef d' (* embedded calls go to last version! *)
             (* enter in symbol table so Syn.syn works on transformed program
              * however, the transformed program is not well-typed according to
              * the symbol table, since other functions retain their old types
              * (see case for function definitions above)
              * if this becomes an issue, a second pass over the symbol table
              * may be necessary to restore typing invariants *)
-	    val _ = Symtab.bind(g_next, d'')
-	    val _ = Funversiontab.bind(g, (g_next, i_next)) (* bind latest version *)
+            val _ = Symtab.bind(g_next, d'')
+            val _ = Funversiontab.bind(g, (g_next, i_next)) (* bind latest version *)
             (* add caller id argument to forward declaration *)
-	    val d1 = if is_external
-		     then d
-		     else A.Function(g, rtp, params @ [caller_decl], NONE, specs, is_external, ext)
+            val d1 = if is_external
+                     then d
+                     else A.Function(g, rtp, params @ [caller_decl], NONE, specs, is_external, ext)
             (* we cannot tell here if it will never be used, since multiple
              * files are transformed in sequence
              *)
@@ -565,11 +565,11 @@ struct
                       then dummy_definition d1
                       else d1
              *)
-	in
-	    (* preserve first decl, if present, as forward declaration *)
+        in
+            (* preserve first decl, if present, as forward declaration *)
             (* or add in dummy definition if never defined *)
-	    case g_opt of NONE => [d1,d''] | SOME _ => [d'']
-	end
+            case g_opt of NONE => [d1,d''] | SOME _ => [d'']
+        end
       | dc_gdecl (A.FunTypeDef(fid, rtp, params, specs, ext)) =
         (* specs are transformed wherever this function type definition
          * is used as a coercion

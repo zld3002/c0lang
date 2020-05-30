@@ -91,7 +91,7 @@ sig
                                 (* typedef rtp ftpname(tp1 x1, ..., tpn xn); *)
                                 (* specs = pre/postconditions *)
     | Function of ident * tp * vardecl list * stm option
-		  * spec list * bool * ext
+                  * spec list * bool * ext
                                 (* rtp g(tp1 x1, ..., tpn xn); or *)
                                 (* rtp g(tp1 x1, ..., tpn xn) { body } *)
                                 (* specs = pre/postconditions, bool = is_external *)
@@ -217,7 +217,7 @@ struct
                                 (* typedef rtp ftpname(tp1 x1, ..., tpn xn); *)
                                 (* specs = pre/postconditions *)
     | Function of ident * tp * vardecl list * stm option
-		  * spec list * bool * ext
+                  * spec list * bool * ext
                                 (* rtp g(tp1 x1, ..., tpn xn); or *)
                                 (* rtp g(tp1 x1, ..., tpn xn) { body } *)
                                 (* specs = pre/postconditions, bool = is_external *)
@@ -293,22 +293,22 @@ struct
       | pp_exp (False) = "false"
       | pp_exp (Null) = "NULL"
       | pp_exp (OpExp(SUB, [e1,e2])) =
-	  pp_exp e1 ^ "[" ^ pp_exp e2 ^ "]"
+          pp_exp e1 ^ "[" ^ pp_exp e2 ^ "]"
       | pp_exp (OpExp(COND, [e1,e2,e3])) =
           "(" ^ pp_exp e1 ^ " ? " ^ pp_exp e2 ^ " : " ^ pp_exp e3 ^ ")"
       | pp_exp (OpExp(oper, [e])) =
-	  pp_oper oper ^ "(" ^ pp_exp e ^ ")"
+          pp_oper oper ^ "(" ^ pp_exp e ^ ")"
       | pp_exp (OpExp(oper, [e1,e2])) =
-	  "(" ^ pp_exp e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp e2 ^ ")"
+          "(" ^ pp_exp e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp e2 ^ ")"
       | pp_exp (Select(OpExp(DEREF, [e]),id)) = 
           (* ( *e).f ===> e->f *)
           (* Should always be safe, as -> is the lowest-precedence operator...
            * -rjs nov 16 2012 *)
-	  pp_exp e ^ "->" ^ pp_ident id
+          pp_exp e ^ "->" ^ pp_ident id
       | pp_exp (Select(e,id)) = 
-	  "(" ^ pp_exp e ^ ")" ^ "." ^ pp_ident id
+          "(" ^ pp_exp e ^ ")" ^ "." ^ pp_ident id
       | pp_exp (FunCall(id, es)) =
-	  pp_ident id ^ "(" ^ pp_exps es ^ ")"
+          pp_ident id ^ "(" ^ pp_exps es ^ ")"
       | pp_exp (AddrOf(id)) =
           "&" ^ pp_ident id
       | pp_exp (Invoke(e, es)) =
@@ -320,93 +320,93 @@ struct
       | pp_exp (Length(exp)) = "\\length" ^ "(" ^ pp_exp exp ^ ")"
       | pp_exp (Hastag(tp,exp)) = "\\hastag" ^ "(" ^ pp_tp tp ^ "," ^ pp_exp exp ^ ")"
       | pp_exp (Marked(marked_exp)) =
-	  pp_exp (Mark.data marked_exp)
+          pp_exp (Mark.data marked_exp)
 
     and pp_exps nil = ""
       | pp_exps (e::nil) = pp_exp e
       | pp_exps (e::es) = pp_exp e ^ ", " ^ pp_exps es
 
     fun pp_stm n (Assign (NONE, lv, e)) =
-	  indent n (pp_exp lv ^ " = " ^ pp_exp e ^ ";")
+          indent n (pp_exp lv ^ " = " ^ pp_exp e ^ ";")
       | pp_stm n (Assign (SOME(oper), lv, e)) =
-	  indent n (pp_exp lv ^ " " ^ pp_oper oper ^ "= " ^ pp_exp e ^ ";")
+          indent n (pp_exp lv ^ " " ^ pp_oper oper ^ "= " ^ pp_exp e ^ ";")
       | pp_stm n (Exp(e)) =
-	  indent n (pp_exp e ^ ";")
+          indent n (pp_exp e ^ ";")
       | pp_stm n (Seq([], [])) = (* eliminated special case? *)
-	  indent n "{ }"
+          indent n "{ }"
       | pp_stm n (Seq(ds, ss)) =
-	  indent n "{\n"
-	  ^ pp_decls (n+2) ds
-	  ^ pp_stms (n+2) ss
-	  ^ indent n "}"
+          indent n "{\n"
+          ^ pp_decls (n+2) ds
+          ^ pp_stms (n+2) ss
+          ^ indent n "}"
       | pp_stm n (StmDecl(d)) =
-	  pp_decls n [d]
+          pp_decls n [d]
       | pp_stm n (If(e, s1, s2)) =
         indent n ("if (" ^ pp_exp e ^ ") {\n")
-	^ pp_seq (n+2) s1
-	^ indent n "} else {\n"
-	^ pp_seq (n+2) s2
-	^ indent n "}"
+        ^ pp_seq (n+2) s1
+        ^ indent n "} else {\n"
+        ^ pp_seq (n+2) s2
+        ^ indent n "}"
       | pp_stm n (While(e, nil, s)) = (* no loop invariants *)
-	indent n ("while (" ^ pp_exp e ^ ") {\n")
-	^ pp_seq (n+2) s
-	^ indent n "}"
+        indent n ("while (" ^ pp_exp e ^ ") {\n")
+        ^ pp_seq (n+2) s
+        ^ indent n "}"
       | pp_stm n (While(e, invs, s)) =
-	indent n ("while (" ^ pp_exp e ^ ")\n")
-	^ pp_specs (n+2) invs
-	^ indent (n+2) "{\n"
-	^ pp_seq (n+4) s
-	^ indent (n+2) "}"
+        indent n ("while (" ^ pp_exp e ^ ")\n")
+        ^ pp_specs (n+2) invs
+        ^ indent (n+2) "{\n"
+        ^ pp_seq (n+4) s
+        ^ indent (n+2) "}"
       | pp_stm n (For(s1, e, s2, nil, s3)) = (* no loop invariants *)
-	indent n ("for (" ^ pp_simp_null s1 ^ "; " ^ pp_exp e ^ "; " ^ pp_simp_null s2 ^ ") {\n")
-	^ pp_seq (n+2) s3
-	^ indent n "}"
+        indent n ("for (" ^ pp_simp_null s1 ^ "; " ^ pp_exp e ^ "; " ^ pp_simp_null s2 ^ ") {\n")
+        ^ pp_seq (n+2) s3
+        ^ indent n "}"
       | pp_stm n (For(s1, e, s2, invs, s3)) =
-	indent n ("for (" ^ pp_simp_null s1 ^ "; " ^ pp_exp e ^ "; " ^ pp_simp_null s2 ^ ")\n")
-	^ pp_specs (n+2) invs
-	^ indent (n+2) "{\n"
-	^ pp_seq (n+4) s3
-	^ indent (n+2) "}"
+        indent n ("for (" ^ pp_simp_null s1 ^ "; " ^ pp_exp e ^ "; " ^ pp_simp_null s2 ^ ")\n")
+        ^ pp_specs (n+2) invs
+        ^ indent (n+2) "{\n"
+        ^ pp_seq (n+4) s3
+        ^ indent (n+2) "}"
       | pp_stm n (Continue) = indent n "continue;"
       | pp_stm n (Break) = indent n "break;"
       | pp_stm n (Return(SOME(e))) =
-	indent n "return " ^ pp_exp e ^ ";"
+        indent n "return " ^ pp_exp e ^ ";"
       | pp_stm n (Return(NONE)) =
-	indent n "return;"
+        indent n "return;"
       | pp_stm n (Assert(e1, e2s)) = (* drop error msgs *)
-	indent n "assert(" ^ pp_exp e1 ^ ");"
+        indent n "assert(" ^ pp_exp e1 ^ ");"
       | pp_stm n (Error(e)) = (* drop error msgs *)
-	indent n "error(" ^ pp_exp e ^ ");"
+        indent n "error(" ^ pp_exp e ^ ");"
       | pp_stm n (Anno(specs)) = pp_specs n specs
       | pp_stm n (Markeds(marked_stm)) =
-	  pp_stm n (Mark.data marked_stm)
+          pp_stm n (Mark.data marked_stm)
 
     and pp_simp_null (Seq(nil,nil)) = ""
       | pp_simp_null (Assign(NONE,lv,e)) =
-	   pp_exp lv ^ " = " ^ pp_exp e
+           pp_exp lv ^ " = " ^ pp_exp e
       | pp_simp_null (Assign (SOME(oper), lv,e)) =
-	  pp_exp lv ^ " " ^ pp_oper oper ^ "= " ^ pp_exp e
+          pp_exp lv ^ " " ^ pp_oper oper ^ "= " ^ pp_exp e
       | pp_simp_null (Exp(e)) = pp_exp e
       | pp_simp_null (StmDecl(d)) = pp_simp_decl d
       | pp_simp_null (Markeds(marked_stm)) =
-	  pp_simp_null (Mark.data marked_stm)
+          pp_simp_null (Mark.data marked_stm)
 
     and pp_stms n nil = ""
       | pp_stms n (Anno(specs)::ss) = (* specs are terminated in newline *)
-	  pp_specs n specs ^ pp_stms n ss
+          pp_specs n specs ^ pp_stms n ss
       | pp_stms n (Seq([],ss1)::nil) = (* avoid spurious blocks *)
-	  pp_stms n ss1
+          pp_stms n ss1
       | pp_stms n (Markeds(marked_stm)::ss) =
-	  pp_stms n (Mark.data marked_stm::ss)
+          pp_stms n (Mark.data marked_stm::ss)
       | pp_stms n (s::ss) = pp_stm n s ^ "\n" ^ pp_stms n ss
 
     (* printing sequences where outer braces are already present *)
     and pp_seq n (Seq(ds,ss)) =
-	  pp_decls n ds ^ pp_stms n ss
+          pp_decls n ds ^ pp_stms n ss
       | pp_seq n (Markeds(marked_stm)) =
-	  pp_seq n (Mark.data marked_stm)
+          pp_seq n (Mark.data marked_stm)
       | pp_seq n s =
-	  pp_stm n s ^ "\n"
+          pp_stm n s ^ "\n"
 
     and pp_spec n (Requires(e, _)) = indent n ("//@requires " ^ pp_exp e ^ ";\n")
       | pp_spec n (Ensures(e, _)) = indent n ("//@ensures " ^ pp_exp e ^ ";\n")
@@ -418,50 +418,50 @@ struct
 
     (* pp_simp_decl, no semicolon here *)
     and pp_simp_decl (VarDecl(id, tp, NONE, ext)) =
-	  pp_tp tp ^ " " ^ pp_ident id
+          pp_tp tp ^ " " ^ pp_ident id
       | pp_simp_decl (VarDecl(id, tp, SOME(e), ext)) =
-	  pp_tp tp ^ " " ^ pp_ident id ^ " = " ^ pp_exp e
+          pp_tp tp ^ " " ^ pp_ident id ^ " = " ^ pp_exp e
 
     and pp_decls n nil = ""
       | pp_decls n (d::decls) =
-	indent n (pp_simp_decl d ^ ";\n")
-	^ pp_decls n decls
+        indent n (pp_simp_decl d ^ ";\n")
+        ^ pp_decls n decls
 
     fun pp_params nil = ""
       | pp_params (d::nil) = pp_simp_decl d
       | pp_params (d::params) = (* params <> nil *)
-	  pp_simp_decl d ^ ", " ^ pp_params params
+          pp_simp_decl d ^ ", " ^ pp_params params
 
     fun pp_fields (nil) = ""
       | pp_fields (Field(f,tp,ext)::fields) =
-	indent 2 (pp_tp tp ^ " " ^ Symbol.name(f) ^ ";\n")
-	^ pp_fields fields
+        indent 2 (pp_tp tp ^ " " ^ Symbol.name(f) ^ ";\n")
+        ^ pp_fields fields
 
     fun pp_gdecl (Struct(s,NONE,_,ext)) =
-	"struct " ^ Symbol.name(s) ^ ";\n"
+        "struct " ^ Symbol.name(s) ^ ";\n"
       | pp_gdecl (Struct(s,SOME(fields),_,ext)) =
-	"struct " ^ Symbol.name(s) ^ " {\n"
-	^ pp_fields fields ^ "};\n"
+        "struct " ^ Symbol.name(s) ^ " {\n"
+        ^ pp_fields fields ^ "};\n"
       | pp_gdecl (Function(fun_name, result, params, NONE, nil, is_extern, ext)) =
-	(* no pre/postconditions *)
-	(* (if is_extern then "extern " else "") *)
-	pp_tp result ^ " " ^ pp_ident fun_name ^ "(" ^ pp_params params ^ ");\n"
+        (* no pre/postconditions *)
+        (* (if is_extern then "extern " else "") *)
+        pp_tp result ^ " " ^ pp_ident fun_name ^ "(" ^ pp_params params ^ ");\n"
       | pp_gdecl (Function(fun_name, result, params, NONE, specs, is_extern, ext)) =
-	(* (if is_extern then "extern " else "") *)
-	pp_tp result ^ " " ^ pp_ident fun_name ^ "(" ^ pp_params params ^ ")\n"
-	^ pp_specs 2 specs (* pre/postconditions, terminated by newline *)
-	^ indent 2 ";\n"
+        (* (if is_extern then "extern " else "") *)
+        pp_tp result ^ " " ^ pp_ident fun_name ^ "(" ^ pp_params params ^ ")\n"
+        ^ pp_specs 2 specs (* pre/postconditions, terminated by newline *)
+        ^ indent 2 ";\n"
       | pp_gdecl (Function(fun_name, result, params, SOME(s), nil, is_extern, ext)) =
-	"\n" ^ pp_tp result ^ " " ^ pp_ident fun_name ^ "("
-	^ pp_params params ^ ") {\n"
-	^ pp_seq 2 s
-	^ "}\n"
+        "\n" ^ pp_tp result ^ " " ^ pp_ident fun_name ^ "("
+        ^ pp_params params ^ ") {\n"
+        ^ pp_seq 2 s
+        ^ "}\n"
       | pp_gdecl (Function(fun_name, result, params, SOME(s), specs, is_extern, ext)) =
-	"\n" ^ pp_tp result ^ " " ^ pp_ident fun_name ^ "(" ^ pp_params params ^ ")\n"
-	^ pp_specs 0 specs
-	^ "{\n" ^ pp_seq 2 s ^ "}\n"
+        "\n" ^ pp_tp result ^ " " ^ pp_ident fun_name ^ "(" ^ pp_params params ^ ")\n"
+        ^ pp_specs 0 specs
+        ^ "{\n" ^ pp_seq 2 s ^ "}\n"
       | pp_gdecl (TypeDef(aid, tp, ext)) =
-	"typedef " ^ pp_tp tp ^ " " ^ Symbol.name aid ^ ";\n"
+        "typedef " ^ pp_tp tp ^ " " ^ Symbol.name aid ^ ";\n"
       | pp_gdecl (FunTypeDef(fid, rtp, params, nil, ext)) =
         "\n" ^ "typedef" ^ pp_tp rtp ^ " " ^ pp_ident fid ^ "(" ^ pp_params params ^ ");\n"
       | pp_gdecl (FunTypeDef(fid, rtp, params, specs, ext)) = (* specs <> nil *)
@@ -469,9 +469,9 @@ struct
         ^ pp_specs 0 specs
         ^ indent 2 ";\n"
       | pp_gdecl (Pragma(UseLib(libname, _), ext)) =
-	"#use <" ^ libname ^ ">\n"
+        "#use <" ^ libname ^ ">\n"
       | pp_gdecl (Pragma(UseFile(filename, _), ext)) =
-	"#use \"" ^ filename ^ "\"\n"
+        "#use \"" ^ filename ^ "\"\n"
       | pp_gdecl (Pragma(Raw(pname, pargs), ext)) =
         pname ^ pargs ^ "\n"
 
@@ -482,7 +482,7 @@ struct
     val pp_stm = fn s => pp_stm 0 s
 
     fun pp_program (gdecls) =
-	pp_gdecls gdecls
+        pp_gdecls gdecls
 
   end
 

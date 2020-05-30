@@ -89,18 +89,18 @@ struct
      | iso_exp env (e as A.Null) ext = ([], e)
      | iso_exp env (e as A.OpExp(A.SUB, [e1, e2])) ext =
        let val (ss1, p1) = iso_exp env e1 ext
-	   val (ss2, p2) = iso_exp env e2 ext
-	   val tp = Syn.syn_exp env e
-	   val (sd, t) = new_tmp_init (tp, A.OpExp(A.SUB, [p1, p2])) ext
+           val (ss2, p2) = iso_exp env e2 ext
+           val tp = Syn.syn_exp env e
+           val (sd, t) = new_tmp_init (tp, A.OpExp(A.SUB, [p1, p2])) ext
        in
-	   (ss1 @ ss2 @ [sd], t)
+           (ss1 @ ss2 @ [sd], t)
        end
      | iso_exp env (e as A.OpExp(A.DEREF, [e1])) ext =
        let val (ss1, p1) = iso_exp env e1 ext
-	   val tp = Syn.syn_exp env e
-	   val (sd, t) = new_tmp_init (tp, A.OpExp(A.DEREF, [p1])) ext
+           val tp = Syn.syn_exp env e
+           val (sd, t) = new_tmp_init (tp, A.OpExp(A.DEREF, [p1])) ext
        in
-	   (ss1 @ [sd], t)
+           (ss1 @ [sd], t)
        end
      | iso_exp env (A.OpExp(A.LOGAND, [e1, e2])) ext =
          iso_exp env (A.OpExp(A.COND, [e1, e2, A.False])) ext
@@ -110,21 +110,21 @@ struct
        let val (ss1, p1) = iso_exp env e1 ext
            val (ss2, p2) = iso_exp env e2 ext
            val (ss3, p3) = iso_exp env e3 ext
-	   val (d, t) = Syn.new_tmp (Syn.syn_exp env e) ext
+           val (d, t) = Syn.new_tmp (Syn.syn_exp env e) ext
            (* if e = (e1 ? NULL : NULL) then t has type void*
             * this is okay, because C will coerce to any type tp*,
             * and dereferencing at type void* is disallowed in C0 *)
         in
-	   case (ss2, ss3, p2, p3)
-	    of ([], [], _, A.False) => (ss1, A.OpExp(A.LOGAND, [p1, p2]))
-	     | ([], [], A.True, _) => (ss1, A.OpExp(A.LOGOR, [p1, p3]))
-	     | ([], [], _, _) => (ss1, A.OpExp(A.COND, [p1, p2, p3]))
-	     | _ => ([A.StmDecl(d)] @ ss1
-		     @ [marks
-			(A.If(p1, A.Seq(nil, ss2 @ [A.Assign(NONE, t, p2)]),
-			         A.Seq(nil, ss3 @ [A.Assign(NONE, t, p3)])))
-		       ext],
-		     t)
+           case (ss2, ss3, p2, p3)
+            of ([], [], _, A.False) => (ss1, A.OpExp(A.LOGAND, [p1, p2]))
+             | ([], [], A.True, _) => (ss1, A.OpExp(A.LOGOR, [p1, p3]))
+             | ([], [], _, _) => (ss1, A.OpExp(A.COND, [p1, p2, p3]))
+             | _ => ([A.StmDecl(d)] @ ss1
+                     @ [marks
+                        (A.If(p1, A.Seq(nil, ss2 @ [A.Assign(NONE, t, p2)]),
+                                 A.Seq(nil, ss3 @ [A.Assign(NONE, t, p3)])))
+                       ext],
+                     t)
        end
      | iso_exp env (A.OpExp(oper, [e1])) ext =
        let val (ss1, p1) = iso_exp env e1 ext
@@ -146,13 +146,13 @@ struct
        (* e1 could have large type; isolate as lval *)
        (* iso_select env (A.Select(e1, f)) *)
        let val (ss1, p1, ext1) = iso_lv env e1 ext (* ignore ext1 here *)
-	   val tp = Syn.syn_exp env e
+           val tp = Syn.syn_exp env e
            val (ds, t) = new_tmp_init (tp, A.Select(p1, f)) ext
         in (ss1 @ [ds], t) end
      | iso_exp env (e as A.FunCall(g, es)) ext =
        let val (ss, ps) = iso_exps env es ext
-	   val tp = Syn.syn_exp env e
-	   val (ds, t) = new_tmp_init (tp, A.FunCall(g, ps)) ext
+           val tp = Syn.syn_exp env e
+           val (ds, t) = new_tmp_init (tp, A.FunCall(g, ps)) ext
        in (ss @ [ds], t) end
      | iso_exp env (e as A.AddrOf(g)) ext = ([], e)
      | iso_exp env (e as A.Invoke(e1, es)) ext =
@@ -166,7 +166,7 @@ struct
        in ([ds], t) end
      | iso_exp env (e as A.AllocArray(tp, e1)) ext =
        let val (ss1, p1) = iso_exp env e1 ext
-	   val (ds,t) = new_tmp_init (Syn.syn_exp env e, A.AllocArray(tp, p1)) ext
+           val (ds,t) = new_tmp_init (Syn.syn_exp env e, A.AllocArray(tp, p1)) ext
        in (ss1 @ [ds], t) end
      | iso_exp env (e as A.Cast(tp, e1)) ext =
        let val (ss1, p1) = iso_exp env e1 ext
@@ -187,11 +187,11 @@ struct
 
     and iso_exps env nil ext = ([], [])
       | iso_exps env (e::es) ext =
-	let val (ss1, p) = iso_exp env e ext
-	    val (ss2, ps) = iso_exps env es ext
-	in
-	    (ss1 @ ss2, p::ps)
-	end
+        let val (ss1, p) = iso_exp env e ext
+            val (ss2, ps) = iso_exps env es ext
+        in
+            (ss1 @ ss2, p::ps)
+        end
     
     (* iso_lv env lv ext = (ss, p, ext') [see iso_exp above] is complicated
      * by the fact that some subexpressions e have large type tp, so they
@@ -201,27 +201,27 @@ struct
     and iso_lv env (e as A.Var(x)) ext = ([], e, ext)
       | iso_lv env (A.OpExp(A.SUB, [lv1, e2])) ext =
         (* lv1 has small type t[]; isolate as an expression *)
-	let val (ss1, lv1') = iso_exp env lv1 ext (* Dec 2010, -fp *)
-	    val (ss2, p2) = iso_exp env e2 ext
-	in
-	    (ss1 @ ss2, A.OpExp(A.SUB, [lv1', p2]), ext)
-	end
+        let val (ss1, lv1') = iso_exp env lv1 ext (* Dec 2010, -fp *)
+            val (ss2, p2) = iso_exp env e2 ext
+        in
+            (ss1 @ ss2, A.OpExp(A.SUB, [lv1', p2]), ext)
+        end
       | iso_lv env (A.OpExp(A.DEREF, [lv1])) ext =
         (* lv1 has small type t*; isolate as an expression *)
-	let val (ss1, lv1') = iso_exp env lv1 ext (* Dec 2010, -fp *)
-	in (ss1, A.OpExp(A.DEREF, [lv1']), ext) end
+        let val (ss1, lv1') = iso_exp env lv1 ext (* Dec 2010, -fp *)
+        in (ss1, A.OpExp(A.DEREF, [lv1']), ext) end
       | iso_lv env (A.Select(lv1, f2)) ext =
         (* lv1 could have large type; must isolate as an lval *)
-	let val (ss1, lv1', ext1) = iso_lv env lv1 ext
-	in (ss1, A.Select(lv1', f2), ext) end
+        let val (ss1, lv1', ext1) = iso_lv env lv1 ext
+        in (ss1, A.Select(lv1', f2), ext) end
       | iso_lv env (A.Marked(marked_exp)) ext =
-	(* do not preserve mark, since result is statement list + pure exp *)
-	iso_lv env (Mark.data marked_exp) (Mark.ext marked_exp)
+        (* do not preserve mark, since result is statement list + pure exp *)
+        iso_lv env (Mark.data marked_exp) (Mark.ext marked_exp)
       | iso_lv env e ext =
         (* any other form of expression has small type *)
-	(* this case is necessary for expressions such as g()->f *)
-	let val (ss, p) = iso_exp env e ext
-	in (ss, p, ext) end
+        (* this case is necessary for expressions such as g()->f *)
+        let val (ss, p) = iso_exp env e ext
+        in (ss, p, ext) end
     
     (* iso_stm env s = ss' where the effect of s is the same
      * as executing ss'.  Declarations d are turned into statements
@@ -229,111 +229,111 @@ struct
      * ordinary statements and initalize temporary variables
      * at the point they are declared *)
     fun iso_stm env (A.Assign(oper_opt, lv, e)) ext =
-	let val (ss1, lv1, ext1) = iso_lv env lv ext
-	    val tp1 = Syn.syn_exp env lv
-	in
-	    iso_assign env oper_opt (ss1, lv1) tp1 e ext1 ext
-	end
+        let val (ss1, lv1, ext1) = iso_lv env lv ext
+            val tp1 = Syn.syn_exp env lv
+        in
+            iso_assign env oper_opt (ss1, lv1) tp1 e ext1 ext
+        end
       | iso_stm env (A.Exp(e)) ext = iso_stmexp env e ext
       | iso_stm env (A.Seq(ds, ss)) ext =
-	let val (ss1, env') = iso_decls env ds
-	    val ss2 = iso_stms env' ss ext
-	in
+        let val (ss1, env') = iso_decls env ds
+            val ss2 = iso_stms env' ss ext
+        in
             (* preserve scope to avoid name clashes in the target code *)
-	    ([A.Seq([], ss1 @ ss2)])
-	end
+            ([A.Seq([], ss1 @ ss2)])
+        end
       | iso_stm env (A.StmDecl(d)) ext =
-	  (* StmDecl in source has empty scope at this point *)
+          (* StmDecl in source has empty scope at this point *)
           (* Does this case actually arise? Handling it this way
            * necessitates special-case treatment in Coin, where top-
            * level StmDecls behave differently. -rjs 8/20/2012 *)
           iso_stm env (A.Seq([d], [])) ext
       | iso_stm env (A.If(e, s1, s2)) ext =
-	let val (ss, p) = iso_exp env e ext
+        let val (ss, p) = iso_exp env e ext
             val ext1 = get_ext e ext
-	    val ss1 = iso_stm env s1 ext
-	    val ss2 = iso_stm env s2 ext
-	in
-	    (ss @ [A.If(mark p ext1, A.Seq([],ss1), A.Seq([],ss2))])
-	end
+            val ss1 = iso_stm env s1 ext
+            val ss2 = iso_stm env s2 ext
+        in
+            (ss @ [A.If(mark p ext1, A.Seq([],ss1), A.Seq([],ss2))])
+        end
       | iso_stm env (A.While(e1, invs, s2)) ext = (* ignore invariants here *)
-	let val (ss1, p1) = iso_exp env e1 ext
+        let val (ss1, p1) = iso_exp env e1 ext
             val ext1 = get_ext e1 ext
-	    val ss2 = iso_stm env s2 ext
+            val ss2 = iso_stm env s2 ext
             (* ss1 must be executed every time before testing the
-	     * exit condition. We simplify the case where e1 has
+             * exit condition. We simplify the case where e1 has
              * no effects (ss1 = []) *)
-	in
-	    case ss1
-	     of [] => [A.While(mark p1 ext1, invs, A.Seq([], ss2))]
-	      | _ => [A.While(A.True, invs,
-			      A.Seq([], ss1
-					@ [A.If(mark p1 ext1, A.Seq([],[]),
-						A.Seq([],[A.Break]))]
-					@ ss2))]
-	end
+        in
+            case ss1
+             of [] => [A.While(mark p1 ext1, invs, A.Seq([], ss2))]
+              | _ => [A.While(A.True, invs,
+                              A.Seq([], ss1
+                                        @ [A.If(mark p1 ext1, A.Seq([],[]),
+                                                A.Seq([],[A.Break]))]
+                                        @ ss2))]
+        end
       | iso_stm env (A.Continue) ext = [A.Continue]
       | iso_stm env (A.Break) ext = [A.Break]
       | iso_stm env (A.Return(SOME(e))) ext =
-	let val (ss, p) = iso_exp env e ext
-	in
-	    (ss @ [marks (A.Return(SOME(p))) ext])
-	end
+        let val (ss, p) = iso_exp env e ext
+        in
+            (ss @ [marks (A.Return(SOME(p))) ext])
+        end
       | iso_stm env (A.Return(NONE)) ext =
-	  (* mark, so that code debugger does not skip it *)
-	  [marks (A.Return(NONE)) ext]
+          (* mark, so that code debugger does not skip it *)
+          [marks (A.Return(NONE)) ext]
       | iso_stm env (A.Assert(e1, e2s)) ext =
-	let val (ss1, p1) = iso_exp env e1 ext
-	    val (ss2, p2s) = iso_exps env e2s ext
-	in
-	    (ss1 @ ss2 @ [marks (A.Assert(p1, p2s)) ext])
-	end
+        let val (ss1, p1) = iso_exp env e1 ext
+            val (ss2, p2s) = iso_exps env e2s ext
+        in
+            (ss1 @ ss2 @ [marks (A.Assert(p1, p2s)) ext])
+        end
       | iso_stm env (A.Error e) ext = 
         let val (ss1, p1) = iso_exp env e ext
         in
             (ss1 @ [marks (A.Error p1) ext])
         end
       | iso_stm env (A.Anno(specs)) ext = (* ignore specs here *)
-	  []
+          []
       | iso_stm env (A.Markeds(marked_stm)) ext =
-	(* do not preserve mark, since result is statement list *)
-	iso_stm env (Mark.data marked_stm) (Mark.ext marked_stm)
+        (* do not preserve mark, since result is statement list *)
+        iso_stm env (Mark.data marked_stm) (Mark.ext marked_stm)
 
     and iso_stms env nil ext = nil
       | iso_stms env (s::ss) ext =
-	let val ss1 = iso_stm env s ext
-	    val ss2 = iso_stms env ss ext
-	in ss1 @ ss2 end
+        let val ss1 = iso_stm env s ext
+            val ss2 = iso_stms env ss ext
+        in ss1 @ ss2 end
 
     (* iso_decls env ds = (ss', env'), where ss' has the same effect
      * as ds, and env' is the extension of env by declarations ds *)
     and iso_decls env (A.VarDecl(id, tp, NONE, ext)::ds) =
-	let val (ss', env') = iso_decls (Symbol.bind env (id, tp)) ds
-	in ([A.StmDecl(A.VarDecl(id, tp, NONE, ext))] @ ss', env') end
+        let val (ss', env') = iso_decls (Symbol.bind env (id, tp)) ds
+        in ([A.StmDecl(A.VarDecl(id, tp, NONE, ext))] @ ss', env') end
       | iso_decls env (A.VarDecl(id, tp, SOME(e), ext)::ds) =
-	let val (ss1, p1) = iso_exp env e ext
-	    val (ss2, env') = iso_decls (Symbol.bind env (id, tp)) ds
-	in (ss1 @ [A.StmDecl(A.VarDecl(id, tp, SOME(p1), ext))] @ ss2,
-	    env')
-	end
+        let val (ss1, p1) = iso_exp env e ext
+            val (ss2, env') = iso_decls (Symbol.bind env (id, tp)) ds
+        in (ss1 @ [A.StmDecl(A.VarDecl(id, tp, SOME(p1), ext))] @ ss2,
+            env')
+        end
       | iso_decls env nil = (nil, env)
 
     (* isolating a top-level function call is special
      * because if it has return type void we cannot bind
      * a temporary variable to its value *)
     and iso_stmexp env (A.FunCall(g, es)) ext =
-	let val (ss, ps) = iso_exps env es ext
-	in (ss @ [marks (A.Exp(A.FunCall(g, ps))) ext]) end
+        let val (ss, ps) = iso_exps env es ext
+        in (ss @ [marks (A.Exp(A.FunCall(g, ps))) ext]) end
       | iso_stmexp env (A.Invoke(e1, es)) ext =
         let val (ss1, p1, ext') = iso_lv env e1 ext
             val (ss, ps) = iso_exps env es ext
         in (ss1 @ ss @ [marks (A.Exp(A.Invoke(p1, ps))) ext]) end
       | iso_stmexp env (A.Marked(marked_exp)) ext =
-	(* do not preserve mark, since result is statement list *)
-	iso_stmexp env (Mark.data marked_exp) (Mark.ext marked_exp)
+        (* do not preserve mark, since result is statement list *)
+        iso_stmexp env (Mark.data marked_exp) (Mark.ext marked_exp)
       | iso_stmexp env e ext =
-	let val (ss, p) = iso_exp env e ext
-	in (ss @ [marks (A.Exp(p)) ext]) end
+        let val (ss, p) = iso_exp env e ext
+        in (ss @ [marks (A.Exp(p)) ext]) end
     
     (* iso_assign env oper_opt (ss1, lv1) tp1 e2 ext1 ext = ss
      * where ss has the same effect as ss1 ; lv1 = e2.

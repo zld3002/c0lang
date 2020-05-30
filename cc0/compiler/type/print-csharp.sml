@@ -391,9 +391,9 @@ struct
               indent ^ "return;\n"
          | A.Return (SOME(e)) =>
               indent ^ "return " ^ pp_exp e ^ ";\n"
-	 | A.Assert (e, e2s) =>
-	      indent ^ "assert(" ^ pp_exp e ^ ", " ^ pp_stringlist e2s ^ ");\n"
-	 (* 
+         | A.Assert (e, e2s) =>
+              indent ^ "assert(" ^ pp_exp e ^ ", " ^ pp_stringlist e2s ^ ");\n"
+         (* 
          | A.Assert (e, []) =>
               indent ^ "assert(" ^ pp_exp e ^ ", \"\");\n"
          | A.Assert (e, [e2]) =>
