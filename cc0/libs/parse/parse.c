@@ -28,6 +28,13 @@ int *parse_int(c0_string s, int base) {
   errno = 0;
   char *endptr;
   long int li = strtol(cstr, &endptr, base);
+
+  // If the upper 4 bytes are 0, then we should sign extend
+  // the number
+  if ((li >> 32) == 0) {
+    li = (li << 32) >> 32;
+  }
+
   if (!isspace(cstr[0]) && cstr[0] != '+' /* strtol allows leading space or +,
                                              we don't -wjl */
       && errno == 0 && li >= INT_MIN && li <= INT_MAX && endptr != cstr
