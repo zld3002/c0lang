@@ -31,15 +31,15 @@ struct
   *)
   fun withOpenIn (fileName) (scope) =
       let
-	val instream = TextIO.openIn fileName
-	(* val _ = fileOpenMsg (fileName) *)
-	val result = Value (scope instream) handle exn => Exception (exn)
-	(* val _ = fileCloseMsg (fileName) *)
-	val _ = TextIO.closeIn instream
+        val instream = TextIO.openIn fileName
+        (* val _ = fileOpenMsg (fileName) *)
+        val result = Value (scope instream) handle exn => Exception (exn)
+        (* val _ = fileCloseMsg (fileName) *)
+        val _ = TextIO.closeIn instream
       in
-	case result
-	  of Value (x) => x
-	   | Exception (exn) => raise exn
+        case result
+          of Value (x) => x
+           | Exception (exn) => raise exn
       end
 
   (* withOpenOut fileName (fn outstream => body) = result
@@ -48,14 +48,14 @@ struct
   *)
   fun withOpenOut (fileName) (scope) =
       let
-	val outstream = TextIO.openOut fileName
-	(* val _ = fileOpenMsg (fileName) *)
-	val result = Value (scope outstream) handle exn => Exception (exn)
-	(* val _ = fileCloseMsg (fileName) *)
-	val _ = TextIO.closeOut outstream
+        val outstream = TextIO.openOut fileName
+        (* val _ = fileOpenMsg (fileName) *)
+        val result = Value (scope outstream) handle exn => Exception (exn)
+        (* val _ = fileCloseMsg (fileName) *)
+        val _ = TextIO.closeOut outstream
       in
-	case result
-	  of Value (x) => x
-	   | Exception (exn) => raise exn
+        case result
+          of Value (x) => x
+           | Exception (exn) => raise exn
       end
 end

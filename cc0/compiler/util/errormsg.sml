@@ -7,7 +7,7 @@ signature ERRORMSG =
 sig
   (* clears out all errors from the system *)
   val reset : unit -> unit
-	
+        
   (* global flag that indicates whether there were errors *)
   val anyErrors : bool ref
 
@@ -24,7 +24,7 @@ structure ErrorMsg :> ERRORMSG =
 struct
   (* Initial values of compiler state variables *)
   val anyErrors = ref false
-		   
+                   
   fun reset () = ( anyErrors := false )
   
   (* We turn tabs into spaces because they are counted as a single character in
@@ -39,7 +39,7 @@ struct
     
   fun error ext note = (anyErrors := true; msg "error" ext note)
   fun warn ext note = msg "warning" ext note
-	       
+               
   (* Print the given error message and then abort compilation *)
   exception Error
 end

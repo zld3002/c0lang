@@ -80,9 +80,9 @@ struct
      * Printing, under the assumption that effects have been isolated
      *)
     fun is_external g =
-	( case Symtab.lookup g
-	   of SOME(A.Function(g', rtp, params, bodyOpt, specs, is_extern, ext)) => is_extern
-	    | _ => false )
+        ( case Symtab.lookup g
+           of SOME(A.Function(g', rtp, params, bodyOpt, specs, is_extern, ext)) => is_extern
+            | _ => false )
 
     (* add_stmdecl env s = env', adding declaration d to env in case
      * s is a declaration-as-statement d *)
@@ -165,28 +165,28 @@ struct
      * See c0/include/cc0lib.h and c0/include/c0rt.h *)
     fun pp_exp env (A.Var(id)) = pp_var id
       | pp_exp env (A.IntConst(w)) = (* bug workaround for gcc -fwrapv, Jan 22, 2012 *)
-	if (w = Word32Signed.TMIN) then "(-2147483647-1)" else Word32Signed.toString w
+        if (w = Word32Signed.TMIN) then "(-2147483647-1)" else Word32Signed.toString w
       | pp_exp env (A.StringConst(s)) = "c0_string_fromliteral(\"" ^ String.toCString s ^ "\")"
       | pp_exp env (A.CharConst(c)) = "'" ^ Char.toCString c ^ "'"
       | pp_exp env (A.True) = "true"
       | pp_exp env (A.False) = "false"
       | pp_exp env (A.Null) = "NULL"
       | pp_exp env (A.OpExp(oper as A.DIVIDEDBY, [e1, e2])) =
-	if is_safe_div e2
-	then "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
-	else "c0_idiv(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
+        if is_safe_div e2
+        then "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
+        else "c0_idiv(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
       | pp_exp env (A.OpExp(oper as A.MODULO, [e1, e2])) =
-	if is_safe_div e2
-	then "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
-	else "c0_imod(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
+        if is_safe_div e2
+        then "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
+        else "c0_imod(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
       | pp_exp env (A.OpExp(oper as A.SHIFTLEFT, [e1, e2])) =
-	if is_safe_shift e2
-	then "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
-	else "c0_sal(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
+        if is_safe_shift e2
+        then "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
+        else "c0_sal(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
       | pp_exp env (A.OpExp(oper as A.SHIFTRIGHT, [e1, e2])) =
-	if is_safe_shift e2
-	then "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
-	else "c0_sar(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
+        if is_safe_shift e2
+        then "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
+        else "c0_sar(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
       | pp_exp env (A.OpExp(oper as A.EQ, [e1, e2])) =
         if is_tagged_ptr env e1 andalso is_tagged_ptr env e2
         then "c0_tagged_eq(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
@@ -196,23 +196,23 @@ struct
         then "!c0_tagged_eq(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
         else "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
       | pp_exp env (A.OpExp(A.SUB, [e1,e2])) =
-	let val A.Array(tp) = Syn.syn_exp_expd env e1
-	in
-	    "cc0_array_sub(" ^ pp_tp tp ^ "," ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
-	end
+        let val A.Array(tp) = Syn.syn_exp_expd env e1
+        in
+            "cc0_array_sub(" ^ pp_tp tp ^ "," ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
+        end
       | pp_exp env (A.OpExp(A.DEREF, [e1])) =
-	let val A.Pointer(tp) = Syn.syn_exp_expd env e1
-	in "cc0_deref(" ^ pp_tp tp ^ ", " ^ pp_exp env e1 ^ ")" end
+        let val A.Pointer(tp) = Syn.syn_exp_expd env e1
+        in "cc0_deref(" ^ pp_tp tp ^ ", " ^ pp_exp env e1 ^ ")" end
       | pp_exp env (A.OpExp(A.COND, [e1, e2, e3])) =
         "(" ^ pp_exp env e1 ^ " ? " ^ pp_exp env e2 ^ " : " ^ pp_exp env e3 ^ ")"
       | pp_exp env (A.OpExp(oper, [e])) =
-	pp_oper oper ^ "(" ^ pp_exp env e ^ ")"
+        pp_oper oper ^ "(" ^ pp_exp env e ^ ")"
       | pp_exp env (A.OpExp(oper, [e1,e2])) =
-	"(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
+        "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
       | pp_exp env (A.Select(e, f)) =
-	"(" ^ pp_exp env e ^ ")." ^ pp_field f
+        "(" ^ pp_exp env e ^ ")." ^ pp_field f
       | pp_exp env (A.FunCall(id, es)) =
-	  pp_fun id ^ "(" ^ pp_exps env es ^ ")"
+          pp_fun id ^ "(" ^ pp_exps env es ^ ")"
       | pp_exp env (A.AddrOf(id)) =
          "&" ^ pp_fun id
       | pp_exp env (A.Invoke(e, es)) =
@@ -233,12 +233,12 @@ struct
                   "cc0_untag(" ^ tp_string ^ "," ^ "\"" ^ tp_string ^ "\"" ^ "," ^ pp_exp env e ^ ")"
               end )
       | pp_exp env (A.Result) = (* should be impossible, except in comment *)
-	  "\\result"
+          "\\result"
       | pp_exp env (A.Length(e)) = "c0_array_length(" ^ pp_exp env e ^ ")"
       | pp_exp env (A.Hastag(tp,e)) = "c0_hastag(" ^ "\"" ^ pp_tp (Syn.expand_all tp) ^ "\""
                                       ^ "," ^ pp_exp env e ^ ")"
       | pp_exp env (A.Marked(marked_exp)) =
-	  pp_exp env (Mark.data marked_exp)
+          pp_exp env (Mark.data marked_exp)
 
     and pp_exps env nil = ""
       | pp_exps env (e::nil) = pp_exp env e
@@ -247,13 +247,13 @@ struct
     and pp_stringlist env nil = "\"\""
       | pp_stringlist env (e::nil) = pp_exp env e
       | pp_stringlist env (e::es) =
-	"c0_string_join(" ^ pp_exp env e ^ ", " ^ pp_stringlist env es ^ ")"
+        "c0_string_join(" ^ pp_exp env e ^ ", " ^ pp_stringlist env es ^ ")"
 
     fun pp_assign env (A.Assign(NONE, lv, e)) =
-	  pp_exp env lv ^ " = " ^ pp_exp env e ^ ";"
+          pp_exp env lv ^ " = " ^ pp_exp env e ^ ";"
       | pp_assign env (A.Assign(SOME(A.DEREF), lv, e)) =
           (* hack: x <*>= e means x = &e *)
-	  pp_exp env lv ^ " = " ^ "&(" ^ pp_exp env e ^ ")" ^ ";"
+          pp_exp env lv ^ " = " ^ "&(" ^ pp_exp env e ^ ")" ^ ";"
       (* next four are effectful: call runtime function *)
       | pp_assign env (A.Assign(SOME(A.DIVIDEDBY), lv, e)) =
           pp_exp env lv ^ " = " ^ "c0_idiv(" ^ pp_exp env lv ^ "," ^ pp_exp env e ^ ");"
@@ -265,7 +265,7 @@ struct
           pp_exp env lv ^ " = " ^ "c0_sar(" ^ pp_exp env lv ^ "," ^ pp_exp env e ^ ");"
       (* remaining ones are pure: map to corresponding C construct *)
       | pp_assign env (A.Assign(SOME(oper), lv, e)) =
-	  pp_exp env lv ^ " " ^ pp_oper oper ^ "= " ^ pp_exp env e ^ ";"
+          pp_exp env lv ^ " " ^ pp_oper oper ^ "= " ^ pp_exp env e ^ ";"
 
     (* pp_stm n env s = str
      * pp_stms n env ss = str
@@ -279,85 +279,85 @@ struct
     fun pp_stm n env (s as A.Assign (oper_opt, lv, e)) =
           indent n (pp_assign env s)
       | pp_stm n env (A.Exp(e)) =
-	  (* effects have been isolated *)
-	  indent n (pp_exp env e ^ ";")
+          (* effects have been isolated *)
+          indent n (pp_exp env e ^ ";")
       | pp_stm n env (A.Seq(nil, nil)) =
-	  indent n "{ }"
+          indent n "{ }"
       | pp_stm n env (A.Seq(nil, [s' as A.Seq _])) =
-	  (* compress nested sequences *)
-	  pp_stm n env s'
+          (* compress nested sequences *)
+          pp_stm n env s'
       | pp_stm n env (A.Seq(ds, ss)) =
-	let val env' = Syn.syn_decls env ds
-	in
-	    indent n "{\n"
-	    ^ pp_decls (n+2) env ds
-	    ^ pp_stms (n+2) env' ss
-	    ^ indent n "}"
-	end
+        let val env' = Syn.syn_decls env ds
+        in
+            indent n "{\n"
+            ^ pp_decls (n+2) env ds
+            ^ pp_stms (n+2) env' ss
+            ^ indent n "}"
+        end
       | pp_stm n env (A.StmDecl(d)) =
-	let val env' = Syn.syn_decls env [d]
-	in
-	    pp_decl n env d
-	end
+        let val env' = Syn.syn_decls env [d]
+        in
+            pp_decl n env d
+        end
       | pp_stm n env (A.If(e, A.Seq([], ss1), A.Seq([], ss2))) =
-	indent n ("if (" ^ pp_exp env e ^ ") {\n")
-	^ pp_stms (n+2) env ss1
-	^ indent n "}"
+        indent n ("if (" ^ pp_exp env e ^ ") {\n")
+        ^ pp_stms (n+2) env ss1
+        ^ indent n "}"
         ^ (if is_nops ss2
-	   then "" (* ok, since braces delimit scope? *)
-	   else " else {\n" ^ pp_stms (n+2) env ss2
-		^ indent n "}")
+           then "" (* ok, since braces delimit scope? *)
+           else " else {\n" ^ pp_stms (n+2) env ss2
+                ^ indent n "}")
       | pp_stm n env (A.While(e, _, A.Seq([], ss))) =
-	indent n ("while (" ^ pp_exp env e ^ ") {\n")
-	^ pp_stms (n+2) env ss
-	^ indent n "}"
+        indent n ("while (" ^ pp_exp env e ^ ") {\n")
+        ^ pp_stms (n+2) env ss
+        ^ indent n "}"
       (* no A.For *)
       | pp_stm n env (A.Continue) = indent n "continue;"
       | pp_stm n env (A.Break) = indent n "break;"
       | pp_stm n env (A.Return(SOME(e))) =
-	  indent n ("return " ^ pp_exp env e ^ ";")
+          indent n ("return " ^ pp_exp env e ^ ";")
       | pp_stm n env (A.Return(NONE)) =
-	  indent n "return;"
+          indent n "return;"
       | pp_stm n env (A.Assert(e1, e2s)) =
           (* We reduce e2s to a single string by concatenation, to avoid
            * variadic functions or macros *)
-	  indent n ("cc0_assert(" ^ pp_exp env e1 ^ ", " ^ pp_stringlist env e2s ^ ");")
+          indent n ("cc0_assert(" ^ pp_exp env e1 ^ ", " ^ pp_stringlist env e2s ^ ");")
       | pp_stm n env (A.Error(e)) =
           indent n ("c0_error(" ^ pp_exp env e ^ ");\n") 
           ^ indent n ("exit(EXIT_FAILURE);")
       | pp_stm n env (A.Anno(specs)) = (* should not arise *)
-	  indent n ";"
+          indent n ";"
       | pp_stm n env (A.Markeds(marked_stm)) =
-	  pp_stm n env (Mark.data marked_stm)
+          pp_stm n env (Mark.data marked_stm)
 
     and pp_stms n env nil = ""
       | pp_stms n env (A.Seq([],ss1)::nil) =
-	  (* avoid spurious blocks, tail must be nil to avoid incorrect
+          (* avoid spurious blocks, tail must be nil to avoid incorrect
            * mixing of scopes *)
-	  pp_stms n env ss1
+          pp_stms n env ss1
       | pp_stms n env (s::ss) =
           (* update environment if s is declaration d *)
-	  pp_stm n env s ^ "\n"
-	  ^ pp_stms n (add_stmdecl env s) ss
+          pp_stm n env s ^ "\n"
+          ^ pp_stms n (add_stmdecl env s) ss
 
     and pp_decl n env (A.VarDecl(id, tp, NONE, ext)) =
-	  indent n (pp_tp tp ^ " " ^ pp_var id ^ ";")
+          indent n (pp_tp tp ^ " " ^ pp_var id ^ ";")
       | pp_decl n env (A.VarDecl(id, tp, SOME(e), ext)) =
-	  indent n (pp_tp tp ^ " " ^ pp_var id ^ " = " ^ pp_exp env e ^ ";")
+          indent n (pp_tp tp ^ " " ^ pp_var id ^ " = " ^ pp_exp env e ^ ";")
 
     and pp_decls n env nil = ""
       | pp_decls n env (d::ds) =
-	  pp_decl n env d ^ "\n"
-	  ^ pp_decls n (Syn.syn_decls env [d]) ds
+          pp_decl n env d ^ "\n"
+          ^ pp_decls n (Syn.syn_decls env [d]) ds
 
     fun pp_param (id, tp) =
-	  pp_tp tp ^ " " ^ pp_var id
+          pp_tp tp ^ " " ^ pp_var id
 
     (* pp_params ds = str, converting parameter list to string *)
     fun pp_params nil = ""
       | pp_params (A.VarDecl(id,tp,NONE,ext)::nil) = pp_param (id, tp)
       | pp_params (A.VarDecl(id,tp,NONE,ext)::params) =
-	  pp_param (id, tp) ^ ", " ^ pp_params params
+          pp_param (id, tp) ^ ", " ^ pp_params params
 
     (* pp_params ds = str, declaring any structs within ds *)
     fun pp_param_structs nil = ""
@@ -371,33 +371,33 @@ struct
     (* pp_fields n fields = str, converting list of fields to string *)
     fun pp_fields n nil = ""
       | pp_fields n (A.Field(f,tp,ext)::fields) =
-	  indent n (pp_tp tp ^ " " ^ pp_field f ^ ";\n")
-	  ^ pp_fields n fields
+          indent n (pp_tp tp ^ " " ^ pp_field f ^ ";\n")
+          ^ pp_fields n fields
 
     (* pp_gdecl gdecl = str
      * pp_gdecls gdecls = str
      * converting global declaration to string *)
     fun pp_gdecl (A.Struct(s, NONE, is_external, ext)) =
-	  pp_struct s ^ ";\n"
+          pp_struct s ^ ";\n"
       | pp_gdecl (A.Struct(s, SOME(fields), is_external, ext)) =
-	  pp_struct s ^ " {\n" ^ pp_fields 2 fields ^ "};\n"
+          pp_struct s ^ " {\n" ^ pp_fields 2 fields ^ "};\n"
       | pp_gdecl (A.Function(g, result, params, NONE, specs, is_extern, ext)) =
           pp_param_structs params
-	  ^ (if is_extern then "extern " else "")
-	  ^ pp_tp result ^ " " ^ pp_fun g ^ "(" ^ pp_params params ^ ");\n"
+          ^ (if is_extern then "extern " else "")
+          ^ pp_tp result ^ " " ^ pp_fun g ^ "(" ^ pp_params params ^ ");\n"
       | pp_gdecl (A.Function(g, rtp, params, SOME(s), _, _, ext)) =
-	let
-	    val env = Syn.syn_decls Symbol.empty params
-	    val ss = Isolate.iso_stm env s
-	in  (* newline before function definitions *)
+        let
+            val env = Syn.syn_decls Symbol.empty params
+            val ss = Isolate.iso_stm env s
+        in  (* newline before function definitions *)
             "\n" ^ pp_param_structs params
-	    ^ pp_tp rtp ^ " " ^ pp_fun g ^ "("
-	    ^ pp_params params ^ ") {\n"
-	    ^ pp_stms 2 env ss
-	    ^ "}\n"
-	end
+            ^ pp_tp rtp ^ " " ^ pp_fun g ^ "("
+            ^ pp_params params ^ ") {\n"
+            ^ pp_stms 2 env ss
+            ^ "}\n"
+        end
       | pp_gdecl (A.TypeDef(aid, tp, ext)) =
-	"typedef " ^ pp_tp tp ^ " " ^ pp_typename aid ^ ";\n"
+        "typedef " ^ pp_tp tp ^ " " ^ pp_typename aid ^ ";\n"
 
       | pp_gdecl (A.FunTypeDef(fid, rtp, params, specs, ext)) =
         "typedef " ^ pp_tp rtp ^ " " ^ pp_typename fid
@@ -405,15 +405,15 @@ struct
 
       (* pragmas are included as comments in C file *)
       | pp_gdecl (A.Pragma(A.UseLib(libname, SOME(gdecls)), ext)) =
-	"\n//#use <" ^ libname ^ ">\n"
-	^ pp_gdecls gdecls
-	^ "// end <" ^ libname ^ ">\n"
+        "\n//#use <" ^ libname ^ ">\n"
+        ^ pp_gdecls gdecls
+        ^ "// end <" ^ libname ^ ">\n"
       | pp_gdecl (A.Pragma(A.UseFile(filename, SOME(gdecls)), ext)) =
-	"\n//#use \"" ^ filename ^ "\"\n"
-	^ pp_gdecls gdecls
-	^ "// end \"" ^ filename ^ "\"\n"
+        "\n//#use \"" ^ filename ^ "\"\n"
+        ^ pp_gdecls gdecls
+        ^ "// end \"" ^ filename ^ "\"\n"
       | pp_gdecl (A.Pragma(A.Raw(pname, pargs), ext)) =
-	"\n//" ^ pname ^ pargs ^ "\n"
+        "\n//" ^ pname ^ pargs ^ "\n"
 
     and pp_gdecls nil = ""
       | pp_gdecls (gdecl::gdecls) =

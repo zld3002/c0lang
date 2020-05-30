@@ -286,7 +286,7 @@ fun lex_code (pos, charstream, code_state) =
                 then (T.ANNO_END, pos, pos+3, cs, CODE NORMAL)
                 else ((T.LEX_ERROR,   pos, pos+3, cs, s)
                       before error (pos, pos+3)
-		             "token '@*/' outside delimited annotation"))
+                             "token '@*/' outside delimited annotation"))
          end
 
        (* Escaped identifiers *)
@@ -502,23 +502,23 @@ type lexresult = T.terminal * (int * int)
 
 fun lexer (pos, charstream, state) =
     let val (tok, left_pos, right_pos, new_stream, new_state) = lex (pos, charstream, state)
-	fun check_eof T.EOF state = 
-	    (case state of 
-		  CODE NORMAL => ()
-		| CODE ANNO => error (left_pos, right_pos)
-		  "delimited annotation not terminated"
-		| CODE ANNO_LINE => error (left_pos, right_pos)
-		  ("single line annotation not terminated with newline " 
-		   ^ "at end of file")
-		| COMMENT _ => error (left_pos, right_pos)
-		  "comment not terminated"
-		| COMMENT_LINE _ => error (left_pos, right_pos)
-		  ("single line comment not terminated by newline " 
-		   ^ "at end of file")
-		| ESCAPE_PRAGMA _ => error (left_pos, right_pos)
-		  ("#pragma not terminated by newline at end of file")
-		| NORMAL_PRAGMA _ => error (left_pos, right_pos)
-		  ("#pragma not terminated by newline at end of file"))
+        fun check_eof T.EOF state = 
+            (case state of 
+                  CODE NORMAL => ()
+                | CODE ANNO => error (left_pos, right_pos)
+                  "delimited annotation not terminated"
+                | CODE ANNO_LINE => error (left_pos, right_pos)
+                  ("single line annotation not terminated with newline " 
+                   ^ "at end of file")
+                | COMMENT _ => error (left_pos, right_pos)
+                  "comment not terminated"
+                | COMMENT_LINE _ => error (left_pos, right_pos)
+                  ("single line comment not terminated by newline " 
+                   ^ "at end of file")
+                | ESCAPE_PRAGMA _ => error (left_pos, right_pos)
+                  ("#pragma not terminated by newline at end of file")
+                | NORMAL_PRAGMA _ => error (left_pos, right_pos)
+                  ("#pragma not terminated by newline at end of file"))
           | check_eof t state = ()
   in (* does the recursive call make sense if we are T.EOF ?  Or should it be M.Nil? *)
       check_eof tok new_state

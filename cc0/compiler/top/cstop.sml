@@ -87,11 +87,11 @@ struct
 
   fun get_library_source name =
       let
-	  val candidates =
-	      map (fn path => path_concat (path, name ^ ".c0"))
-	          (!Flags.search_path)
+          val candidates =
+              map (fn path => path_concat (path, name ^ ".c0"))
+                  (!Flags.search_path)
       in
-	  List.find readable candidates
+          List.find readable candidates
       end
 
   fun is_fundef (Ast.Function(_, _, _, SOME(s), _, _, _)) = true
@@ -120,9 +120,9 @@ struct
         then (say versioninfo ; raise EXIT)
         else ();
         
-	if Flag.isset Flags.flag_help orelse not (isSome sources)
-	then (say versioninfo ; say usageinfo ; raise EXIT)
-	else ();
+        if Flag.isset Flags.flag_help orelse not (isSome sources)
+        then (say versioninfo ; say usageinfo ; raise EXIT)
+        else ();
         
         valOf sources
       end)
@@ -133,97 +133,97 @@ struct
         (* For each library -lfoo find foo.h0, load, and typecheck.  *)
         fun process_library_header' library = 
             let 
-		val libsym = Symbol.symbol(library)
-	    in
-		case Libtab.lookup(libsym)
-		 of SOME(_) =>
-		    ( Flag.guard Flags.flag_verbose say
-		      ("Skipping library " ^ library ^ 
+                val libsym = Symbol.symbol(library)
+            in
+                case Libtab.lookup(libsym)
+                 of SOME(_) =>
+                    ( Flag.guard Flags.flag_verbose say
+                      ("Skipping library " ^ library ^ 
                        " - already loaded") ;
-		      NONE )
+                      NONE )
                   | NONE =>
-		    let 
-			val library_h0 = get_library_header library
-			val library_c0_opt = get_library_source library
-			val _ = Libtab.bind(libsym, case library_c0_opt of NONE => true | SOME _ => false)
-			val _ = Flag.guard Flags.flag_verbose say 
-				("Reading library header " ^ library_h0  ^
+                    let 
+                        val library_h0 = get_library_header library
+                        val library_c0_opt = get_library_source library
+                        val _ = Libtab.bind(libsym, case library_c0_opt of NONE => true | SOME _ => false)
+                        val _ = Flag.guard Flags.flag_verbose say 
+                                ("Reading library header " ^ library_h0  ^
                                  " ...") 
-			val ast = Parse.parse library_h0 process_library_header
+                        val ast = Parse.parse library_h0 process_library_header
                                               process_usefile
-			val _ = Flag.guard Flags.flag_ast
-				(fn () => say (Ast.Print.pp_program ast)) ()
-		    in
-			case library_c0_opt
-			 of NONE =>
-			    let val _ = Flag.guard Flags.flag_verbose say
-						   ("Checking library " ^ library_h0 ^ " ...")
-				(* true : is library *)
-				val ast' = TypeChecker.typecheck(ast, true) 
-				val _ = Flag.guards [Flags.flag_verbose,Flags.flag_dyn_check] say
-						    ("Transforming contracts on library " ^ 
-						     library_h0  ^ " ...")
-				val ast'' = if Flag.isset Flags.flag_dyn_check
-					    then DynCheck.contracts ast'
-					    else ast'
-			    in 
-				SOME ast''
-			    end
-			  | SOME(library_c0) =>
-			    let val _ = Flag.guard Flags.flag_verbose say
-					("Reading library implementation " ^ library_c0 ^ " ...")
-				val ast' = Parse.parse library_c0 process_library_header process_usefile
-				val _ = Flag.guard Flags.flag_ast
-					(fn () => say (Ast.Print.pp_program ast)) ()
-				(* false : do not treat as library, because functions are not external! *)
-				val _ = Flag.guard Flags.flag_verbose say
-						   ("Checking library " ^ library ^ " ...")
-				val ast'' = TypeChecker.typecheck(ast @ ast', false)
-				val _ = Flag.guards [Flags.flag_verbose, Flags.flag_dyn_check]
-					say ("Transforming contracts on library " ^ library ^ " ...")
-				val ast''' = if Flag.isset Flags.flag_dyn_check
-					     then DynCheck.contracts ast''
-					     else ast''
-			    in
-				SOME ast''
-			    end
-		    end 
-	    end
+                        val _ = Flag.guard Flags.flag_ast
+                                (fn () => say (Ast.Print.pp_program ast)) ()
+                    in
+                        case library_c0_opt
+                         of NONE =>
+                            let val _ = Flag.guard Flags.flag_verbose say
+                                                   ("Checking library " ^ library_h0 ^ " ...")
+                                (* true : is library *)
+                                val ast' = TypeChecker.typecheck(ast, true) 
+                                val _ = Flag.guards [Flags.flag_verbose,Flags.flag_dyn_check] say
+                                                    ("Transforming contracts on library " ^ 
+                                                     library_h0  ^ " ...")
+                                val ast'' = if Flag.isset Flags.flag_dyn_check
+                                            then DynCheck.contracts ast'
+                                            else ast'
+                            in 
+                                SOME ast''
+                            end
+                          | SOME(library_c0) =>
+                            let val _ = Flag.guard Flags.flag_verbose say
+                                        ("Reading library implementation " ^ library_c0 ^ " ...")
+                                val ast' = Parse.parse library_c0 process_library_header process_usefile
+                                val _ = Flag.guard Flags.flag_ast
+                                        (fn () => say (Ast.Print.pp_program ast)) ()
+                                (* false : do not treat as library, because functions are not external! *)
+                                val _ = Flag.guard Flags.flag_verbose say
+                                                   ("Checking library " ^ library ^ " ...")
+                                val ast'' = TypeChecker.typecheck(ast @ ast', false)
+                                val _ = Flag.guards [Flags.flag_verbose, Flags.flag_dyn_check]
+                                        say ("Transforming contracts on library " ^ library ^ " ...")
+                                val ast''' = if Flag.isset Flags.flag_dyn_check
+                                             then DynCheck.contracts ast''
+                                             else ast''
+                            in
+                                SOME ast''
+                            end
+                    end 
+            end
 
         and process_program' source_c0 = 
             let 
-		val filesym = Symbol.symbol(OS.Path.mkCanonical(source_c0))
-	    in
-		case Filetab.lookup(filesym)
-		 of SOME() =>
-		    ( Flag.guard Flags.flag_verbose say
-		      ("Skipping file " ^ source_c0 ^ " - already loaded") ;
-		      NONE )
-		  | NONE =>
-		    let val _ = Filetab.bind(filesym, ())
-			val _ = Flag.guard Flags.flag_verbose say
+                val filesym = Symbol.symbol(OS.Path.mkCanonical(source_c0))
+            in
+                case Filetab.lookup(filesym)
+                 of SOME() =>
+                    ( Flag.guard Flags.flag_verbose say
+                      ("Skipping file " ^ source_c0 ^ " - already loaded") ;
+                      NONE )
+                  | NONE =>
+                    let val _ = Filetab.bind(filesym, ())
+                        val _ = Flag.guard Flags.flag_verbose say
                                            ("Parsing file " ^ 
                                             source_c0 ^ " ...")
-			val ast = Parse.parse source_c0 process_library_header
+                        val ast = Parse.parse source_c0 process_library_header
                                               process_usefile
-			val _ = Flag.guard Flags.flag_ast
-		                 (fn () => say (Ast.Print.pp_program ast)) ()
-			val _ = Flag.guard Flags.flag_verbose say 
+                        val _ = Flag.guard Flags.flag_ast
+                                 (fn () => say (Ast.Print.pp_program ast)) ()
+                        val _ = Flag.guard Flags.flag_verbose say 
                                            ("Checking file " ^
                                             source_c0 ^ " ...")
                         (* false : is not library *)
-			val ast' = TypeChecker.typecheck(ast, false) 
-			val _ = Flag.guards [Flags.flag_verbose,
+                        val ast' = TypeChecker.typecheck(ast, false) 
+                        val _ = Flag.guards [Flags.flag_verbose,
                                              Flags.flag_dyn_check] say
-					    ("Transforming contracts on file "
+                                            ("Transforming contracts on file "
                                              ^ source_c0 ^ " ...")
-			val ast'' = if Flag.isset Flags.flag_dyn_check
-				    then DynCheck.contracts ast'
-				    else ast'
-		    in
-			SOME ast''
-		    end
-	    end
+                        val ast'' = if Flag.isset Flags.flag_dyn_check
+                                    then DynCheck.contracts ast'
+                                    else ast'
+                    in
+                        SOME ast''
+                    end
+            end
 
         and process_program source_c0 = 
             case process_program' source_c0 of
@@ -236,12 +236,12 @@ struct
              | SOME prog => prog
 
         and process_usefile source_c0 use_file =
-	    let
-		val {dir = src_dir, file = _} = OS.Path.splitDirFile source_c0
-		val use_source = OS.Path.concat (src_dir, use_file)
-	    in
-		process_program use_source
-	    end
+            let
+                val {dir = src_dir, file = _} = OS.Path.splitDirFile source_c0
+                val use_source = OS.Path.concat (src_dir, use_file)
+            in
+                process_program use_source
+            end
 
         fun pragmaify_library library = 
             Ast.Pragma 
@@ -250,21 +250,21 @@ struct
         val library_headers = 
             map pragmaify_library (!Flags.libraries)
         (* At this point, the declarations for all of the included libraries
-	 * are in the global symbol table, marked as extern *)
+         * are in the global symbol table, marked as extern *)
 
         (* process multiple programs in sequence, left-to-right *)
         val program = List.concat (map process_program sources)
 
         (* check all functions are defined *)
-	val _ = TypeChecker.check_all_defined () 
+        val _ = TypeChecker.check_all_defined () 
 
         (* at this point all libraries, aux files, and main files
          * have been loaded and processed
          *)
         (* create true list of loaded native libraries, including those from #use <lib> *)
         (* exclude source libraries here *)
-	val _ = ( Flags.libraries :=
-		  map Symbol.name (List.filter (fn libsym => valOf (Libtab.lookup libsym)) (Libtab.list())))
+        val _ = ( Flags.libraries :=
+                  map Symbol.name (List.filter (fn libsym => valOf (Libtab.lookup libsym)) (Libtab.list())))
 
         (* the wrappers are only for those libraries specified
          * one the command line with -l, #use <lib> are in-lined
@@ -272,7 +272,7 @@ struct
         (* library_wrappers are always empty because pragmaify_library? *)
         (* Fri 2/2/2011 -fp *)
         val library_wrappers =
-	    List.filter is_fundef library_headers
+            List.filter is_fundef library_headers
 
       in 
         {library_headers = library_headers,
@@ -286,12 +286,12 @@ struct
             if "sml" = #file (OS.Path.splitDirFile (CommandLine.name ())) 
             then ("Top.test \"[OPTION...] SOURCEFILE\";")
             else (CommandLine.name () ^ " [OPTION...] SOURCEFILE")
-	val header = "Usage: " ^ usage ^ "\nwhere OPTION is"
+        val header = "Usage: " ^ usage ^ "\nwhere OPTION is"
         val options = Flags.core_options @ Flags.compiler_options
         val versioninfo = "C0 reference compiler (cc0) revision "
                         ^ BuildId.revision ^ " (built " ^ BuildId.date ^ ")"
-	val usageinfo = G.usageInfo {header = header, options = options}
-	fun errfn msg : unit = (say (msg ^ "\n" ^ usageinfo) ; raise EXIT)
+        val usageinfo = G.usageInfo {header = header, options = options}
+        fun errfn msg : unit = (say (msg ^ "\n" ^ usageinfo) ; raise EXIT)
 
         (* Reset state by reading argments; possibly display usage & exit. *) 
         val () = 
@@ -304,7 +304,7 @@ struct
                            versioninfo = versioninfo,
                            usageinfo = usageinfo,
                            args = args}
-	val () = if null sources then errfn "Error: no input file" else ()
+        val () = if null sources then errfn "Error: no input file" else ()
 
         (* copy sources, record command line *)
         val () =
@@ -331,9 +331,9 @@ struct
                 end
 
         (* Declare main before loading any libraries *)
-	val main = Symbol.symbol "main"
-	val _ = Symtab.bind(main, Ast.Function(main, Ast.Int, nil, NONE, nil, false, NONE))
-	val _ = UndefUsed.add main; (* main is implicitly used *)
+        val main = Symbol.symbol "main"
+        val _ = Symtab.bind(main, Ast.Function(main, Ast.Int, nil, NONE, nil, false, NONE))
+        val _ = UndefUsed.add main; (* main is implicitly used *)
 
         (* Load the program into memory *)
         val {library_wrappers, library_headers, program} = 
@@ -341,50 +341,50 @@ struct
 
         (* Determine output files based on the initial files *)
         (* use last input file as name for intermediate .c and .h files *)
-	val last_source = List.last sources
+        val last_source = List.last sources
         val {dir = out_dir, file = out_file} = OS.Path.splitDirFile last_source
         val {base = out_base, ext = extOpt} = OS.Path.splitBaseExt out_file
-	val _ = case extOpt
-		 of SOME "c" => ( say ("Compilation would overwrite " ^ last_source ^ "\n"
-				       ^ "should source be " ^ out_file ^ ".c0 ?") ;
-				  raise EXIT )
-		  | SOME "h" => ( say ("Compilation would overwrite " ^ last_source ^ "\n"
-				       ^ "do not compile .h files") ;
-				  raise EXIT )
-		  | _ => ()
+        val _ = case extOpt
+                 of SOME "c" => ( say ("Compilation would overwrite " ^ last_source ^ "\n"
+                                       ^ "should source be " ^ out_file ^ ".c0 ?") ;
+                                  raise EXIT )
+                  | SOME "h" => ( say ("Compilation would overwrite " ^ last_source ^ "\n"
+                                       ^ "do not compile .h files") ;
+                                  raise EXIT )
+                  | _ => ()
         val cname = OS.Path.joinBaseExt {base = out_base, ext = SOME "cs"}
         val hname = OS.Path.joinBaseExt {base = out_base, ext = SOME "h"}
-	val bname = if !Flags.a_out = "a.out" (* if no output specified with -o *)
-		    then OS.Path.joinBaseExt {base = out_base, ext = SOME "bc0"}
-		    else !Flags.a_out (* if specified with -o *)
+        val bname = if !Flags.a_out = "a.out" (* if no output specified with -o *)
+                    then OS.Path.joinBaseExt {base = out_base, ext = SOME "bc0"}
+                    else !Flags.a_out (* if specified with -o *)
         val _ = if Flag.isset Flags.flag_bytecode
-		then let val bcfile = path_concat (out_dir, bname)
-			 val _ = Flag.guard Flags.flag_verbose say
-			         ("Writing bytecode file to " ^ bcfile ^ " ...")
-			 val all_program = library_wrappers @ program
-			 val bytecode = C0VMTrans.trans(all_program)
-			 val bcstring = C0VMPrint.pp_program(bytecode)
-			 val _ = SafeIO.withOpenOut bcfile
-				 (fn bstream => TextIO.output (bstream, bcstring))
-		     in
-			 (* do not perform rest of compilation *)
-			 raise FINISHED
-		     end
-		else ()
+                then let val bcfile = path_concat (out_dir, bname)
+                         val _ = Flag.guard Flags.flag_verbose say
+                                 ("Writing bytecode file to " ^ bcfile ^ " ...")
+                         val all_program = library_wrappers @ program
+                         val bytecode = C0VMTrans.trans(all_program)
+                         val bcstring = C0VMPrint.pp_program(bytecode)
+                         val _ = SafeIO.withOpenOut bcfile
+                                 (fn bstream => TextIO.output (bstream, bcstring))
+                     in
+                         (* do not perform rest of compilation *)
+                         raise FINISHED
+                     end
+                else ()
 
         (* Output C code *)
         (*
         val _ = Flag.guard Flags.flag_verbose say
-	        ("Writing library headers to " ^ path_concat (out_dir, hname) ^ " ...")
+                ("Writing library headers to " ^ path_concat (out_dir, hname) ^ " ...")
         val _ = SafeIO.withOpenOut
                  (path_concat (out_dir, hname))
                  (fn hstream =>
                   TextIO.output (hstream, PrintC.pp_program library_headers
-					 [] (!Flags.opt_level)))
+                                         [] (!Flags.opt_level)))
          *)
         val _ = Flag.guard Flags.flag_verbose say
-	        ("Writing C# code to " ^ path_concat (out_dir, cname) ^ " ...")
-	val _ = SafeIO.withOpenOut 
+                ("Writing C# code to " ^ path_concat (out_dir, cname) ^ " ...")
+        val _ = SafeIO.withOpenOut 
                  (path_concat (out_dir, cname))
                  (fn cstream =>
                   TextIO.output (cstream, PrintCSharp.pp_program (library_headers, program)))
@@ -413,30 +413,30 @@ struct
         val _ = Flag.guard Flags.flag_verbose say ("% " ^ compile_command)
         val status = OS.Process.system compile_command
         val _ = Flag.guard Flags.flag_verbose say
-	        (if OS.Process.isSuccess status then "succeeded" else "failed")
+                (if OS.Process.isSuccess status then "succeeded" else "failed")
 
         val _ = if Flag.isset Flags.flag_save_files then ()
                 else (Flag.guard Flags.flag_verbose say ("Deleting " ^ cname);
                       OS.FileSys.remove (path_concat (out_dir, cname)))
                     
         val status =
-	    if Flag.isset Flags.flag_exec
-	    then let val exec_command =
-			 OS.Path.joinDirFile {dir=OS.Path.currentArc,
-					      file=(!Flags.a_out)}
-		     val _ = Flag.guard Flags.flag_verbose say 
+            if Flag.isset Flags.flag_exec
+            then let val exec_command =
+                         OS.Path.joinDirFile {dir=OS.Path.currentArc,
+                                              file=(!Flags.a_out)}
+                     val _ = Flag.guard Flags.flag_verbose say 
                                         ("% " ^ exec_command)
-		 in
-		     OS.Process.system exec_command
-		 end
-	    else status
+                 in
+                     OS.Process.system exec_command
+                 end
+            else status
 
       in
-	  status
+          status
       end
       handle ErrorMsg.Error => ( say "Compilation failed" ; OS.Process.failure )
-	   | EXIT => OS.Process.failure
-	   | FINISHED => OS.Process.success
+           | EXIT => OS.Process.failure
+           | FINISHED => OS.Process.success
      | (PrintCSharp.Error(s)) => (print ("Print Error: " ^ s ^ "\n"); 
                                   OS.Process.failure)
      | e => ( say ("Unexpected exception in cc0:\n" ^ (exnMessage e)) ;

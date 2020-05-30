@@ -53,13 +53,13 @@ struct
    * constructed while parsing. *)
   fun chk_not_typedef id ext =
       (case Symtab.lookup id
-	of SOME(A.TypeDef(t, tp, ext')) =>
-	   ( ErrorMsg.error ext ("type name '" ^ Symbol.name id ^ "' used as variable name")
-	   ; raise ErrorMsg.Error )
-	 | SOME(A.FunTypeDef(fid, _, _, _, ext')) =>
-	   ( ErrorMsg.error ext ("function type '" ^ Symbol.name id ^ "' used as variable name")
-	   ; raise ErrorMsg.Error )
-	 | _ => () )
+        of SOME(A.TypeDef(t, tp, ext')) =>
+           ( ErrorMsg.error ext ("type name '" ^ Symbol.name id ^ "' used as variable name")
+           ; raise ErrorMsg.Error )
+         | SOME(A.FunTypeDef(fid, _, _, _, ext')) =>
+           ( ErrorMsg.error ext ("function type '" ^ Symbol.name id ^ "' used as variable name")
+           ; raise ErrorMsg.Error )
+         | _ => () )
 
   (* chk_tp tp ext = (), raises Error if tp contains A.Void.
    * Assumes it is not A.Any at the top level. *)
@@ -77,7 +77,7 @@ struct
     | chk_tp (A.FunType _) ext = () (* return and argument types checked before *)
     | chk_tp (A.Void) ext =
       ( ErrorMsg.error ext ("illegal use of type 'void'"
-			    ^^ "'void' can only be used as return type for functions")
+                            ^^ "'void' can only be used as return type for functions")
       ; raise ErrorMsg.Error )
     (* A.Any must be argument to Pointer *)
 
@@ -93,12 +93,12 @@ struct
     | chk_known_size (A.Array _) ext = () (* reference type! *)
     | chk_known_size (A.StructName(sid)) ext =
       (case Structtab.lookup sid
-	of NONE => 
-	     ( ErrorMsg.error ext ("'struct " ^ Symbol.name sid ^ "' not declared or defined")
-	     ; raise ErrorMsg.Error )
-	 | SOME (A.Struct(sid', NONE, _, ext')) =>
-	     ( ErrorMsg.error ext ("'struct " ^ Symbol.name sid ^ "' declared, but not defined")
-	     ; raise ErrorMsg.Error )
+        of NONE => 
+             ( ErrorMsg.error ext ("'struct " ^ Symbol.name sid ^ "' not declared or defined")
+             ; raise ErrorMsg.Error )
+         | SOME (A.Struct(sid', NONE, _, ext')) =>
+             ( ErrorMsg.error ext ("'struct " ^ Symbol.name sid ^ "' declared, but not defined")
+             ; raise ErrorMsg.Error )
          | SOME _ => () (* 'struct sid' is defined *)
       )
     | chk_known_size (A.TypeName(aid)) ext =
@@ -146,7 +146,7 @@ struct
     | chk_small (tp as A.StructName _) ext =
       ( ErrorMsg.error ext
           ("type " ^ P.pp_tp tp ^ " not small"
-	   ^^ "cannot pass or store structs in variables directly; use pointers\n")
+           ^^ "cannot pass or store structs in variables directly; use pointers\n")
       ; raise ErrorMsg.Error )
     | chk_small (A.TypeName(aid)) ext =
         chk_small (tp_expand aid) ext
@@ -160,7 +160,7 @@ struct
       ; raise ErrorMsg.Error )
     | chk_small (A.Void) ext = 
       ( ErrorMsg.error ext ("illegal use of type 'void'"
-		            ^^ "type void can only be used as return type for functions")
+                            ^^ "type void can only be used as return type for functions")
       ;	raise ErrorMsg.Error )
     (* for *NULL, should not be possible? *)
     | chk_small (A.Any) ext = ()
@@ -180,12 +180,12 @@ struct
     | tp_equal (A.Array(tp1)) (A.Array(tp2)) = tp_equal tp1 tp2
     | tp_equal (tp1 as A.StructName(sid1)) (tp2 as A.StructName(sid2)) =
       (case Symbol.compare(sid1,sid2)
-	of EQUAL => true
+        of EQUAL => true
          | _ => false)
     | tp_equal (A.TypeName(aid1)) (A.TypeName(aid2)) =
       (case Symbol.compare(aid1,aid2)
-	of EQUAL => true
-	 | _ => tp_equal (tp_expand aid1) (tp_expand aid2))
+        of EQUAL => true
+         | _ => tp_equal (tp_expand aid1) (tp_expand aid2))
     | tp_equal (A.TypeName(aid1)) tp2 = tp_equal (tp_expand aid1) tp2
     | tp_equal tp1 (A.TypeName(aid2)) = tp_equal tp1 (tp_expand aid2)
     | tp_equal (A.FunTypeName(fid1)) (A.FunTypeName(fid2)) =
@@ -234,8 +234,8 @@ struct
         if tp_conv tp2 tp1 then SOME(tp1) else NONE
     (* if both are function type definition, fall back on equality *)
     | lub tp1 tp2 = if tp_equal tp1 tp2
-		    then SOME(tp1)
-		    else NONE
+                    then SOME(tp1)
+                    else NONE
 
   (* tp_conv tp1 tp2 = true if tp1 <= tp2, false otherwise
    * The source of subtyping is NULL, which is of type A.Pointer(A.Any).
@@ -293,9 +293,9 @@ struct
       if tp_conv tp1 tp2 then ()
       else ( ErrorMsg.error ext
                (msg_fun () ^ "\n"
-		^ "expected: " ^ P.pp_tp tp2 ^ "\n"
-		^ "   found: " ^ P.pp_tp tp1)
-	   ; raise ErrorMsg.Error )
+                ^ "expected: " ^ P.pp_tp tp2 ^ "\n"
+                ^ "   found: " ^ P.pp_tp tp1)
+           ; raise ErrorMsg.Error )
 
   (* chk_convs tps tps' ext = (), raises Error if
    * it is not the case that tp <= tp', for each corresponding
@@ -326,9 +326,9 @@ struct
   (* is_init defs id ext = (), raises Error if id is not defined in defs *)
   fun is_init defs id ext =
       ( if not (Symbol.member defs id)
-	then ( ErrorMsg.error ext ("uninitialized variable '" ^ Symbol.name id ^ "'")
-	     ; raise ErrorMsg.Error )
-	else () )
+        then ( ErrorMsg.error ext ("uninitialized variable '" ^ Symbol.name id ^ "'")
+             ; raise ErrorMsg.Error )
+        else () )
 
   fun env_decls defs nil = defs
     | env_decls defs (A.VarDecl(id, tp, _, _)::decls) =
@@ -365,42 +365,42 @@ struct
     | lv_stm env defs (A.Assign(NONE, A.Var(id), e)) ext =
         (* 'id = e' *)
         ( lv_exp defs e ext	(* check e *)
-	; Symbol.add defs id )	(* define id *)
+        ; Symbol.add defs id )	(* define id *)
     | lv_stm env defs (A.Assign(operOpt, lv, e)) ext =
         (* 'lv <op>= e' or ('lv = e' for lv not a variable) *)
         ( lv_exp defs lv ext	(* check lv *)
-	; lv_exp defs e ext	(* check e *)
-	; defs )		(* nothing new defined *)
+        ; lv_exp defs e ext	(* check e *)
+        ; defs )		(* nothing new defined *)
     | lv_stm env defs (A.Exp(e)) ext =
         ( lv_exp defs e ext ; defs )
     | lv_stm env defs (A.Seq(ds,ss)) ext =
         (* assuming scoping already taken care of and not shadowing! *)
         let val defs1 = lv_stms (env_decls env ds) (lv_decls env defs ds) ss ext
-	in  (* remove symbols declared in ds from defs1 *)
-	    Symbol.intersection(defs1, env)
-	end
+        in  (* remove symbols declared in ds from defs1 *)
+            Symbol.intersection(defs1, env)
+        end
     | lv_stm env defs (A.StmDecl(d)) ext =
         (* assuming this has essentially no scope *)
         (* e.g. sole statement in then- or else-branch of conditional *)
-	let val _ = lv_decls env defs [d]
-	 (* ignore possible definition made by d *)
+        let val _ = lv_decls env defs [d]
+         (* ignore possible definition made by d *)
          in defs end
     | lv_stm env defs (A.If(e, s1, s2)) ext =
         ( lv_exp defs e ext ;
-	  let val defs1 = lv_stm env defs s1 ext
-	      val defs2 = lv_stm env defs s2 ext
+          let val defs1 = lv_stm env defs s1 ext
+              val defs2 = lv_stm env defs s2 ext
               (* defs1 and defs2 both include defs *)
-	  in
-	      (* return only those defined in both branches *)
-	      Symbol.intersection (defs1, defs2)
-	  end )
+          in
+              (* return only those defined in both branches *)
+              Symbol.intersection (defs1, defs2)
+          end )
     | lv_stm env defs (A.While(e, invs, s)) ext =
         ( lv_exp defs e ext ;	(* check e *)
-	  List.app (fn spec => lv_spec defs spec ext) invs ; (* check invs *)
-	  ignore (lv_stm env defs s ext) ; (* check body s *)
-	  (* ignore anything defined in body, because loop body
+          List.app (fn spec => lv_spec defs spec ext) invs ; (* check invs *)
+          ignore (lv_stm env defs s ext) ; (* check body s *)
+          (* ignore anything defined in body, because loop body
            * may not execute at all *)
-	  defs )
+          defs )
     (* No A.For ! *)
     | lv_stm env defs (A.Break) ext = env (* return Top = all vars in scope! *)
     | lv_stm env defs (A.Continue) ext = env (* Top *)
@@ -409,14 +409,14 @@ struct
     | lv_stm env defs (A.Return(NONE)) ext = env (* Top *)
     | lv_stm env defs (A.Assert(e1, e2s)) ext =
         ( lv_exp defs e1 ext
-	; List.app (fn e => lv_exp defs e ext) e2s 
-	; defs )
+        ; List.app (fn e => lv_exp defs e ext) e2s 
+        ; defs )
     | lv_stm env defs (A.Error e) ext = 
         ( lv_exp defs e ext
         ; defs)
     | lv_stm env defs (A.Anno(specs)) ext =
         ( List.app (fn spec => lv_spec defs spec ext) specs
-	; defs )
+        ; defs )
     | lv_stm env defs (A.Markeds(marked_stm)) ext =
         lv_stm env defs (Mark.data marked_stm) (Mark.ext marked_stm)
 
@@ -425,7 +425,7 @@ struct
     | lv_stms env defs (s::ss) ext =
       let val defs1 = lv_stm env defs s ext
       in
-	  lv_stms env defs1 ss ext
+          lv_stms env defs1 ss ext
       end
 
   (* lv_decls env defs ds = defs'
@@ -438,7 +438,7 @@ struct
         lv_decls (Symbol.add env id) defs decls
     | lv_decls env defs (A.VarDecl(id, tp, SOME(e), ext)::decls) =
         ( lv_exp defs e ext ;
-	  lv_decls (Symbol.add env id) (Symbol.add defs id) decls )
+          lv_decls (Symbol.add env id) (Symbol.add defs id) decls )
 
   (* lv_specs defs spec ext - like lv_exp *)
   and lv_spec defs (A.Requires(e, ext')) ext = lv_exp defs e ext'
@@ -456,12 +456,12 @@ struct
   fun lv_fun (A.Function(g, tp, params, SOME(s), _, _, ext)) =
       (* function definition *)
       let (* fun params are initialized, but not locals *)
-	  val defs0 = lv_params Symbol.null params
-	  val env0 = defs0 
-	  val _ = lv_stm env0 defs0 s ext
+          val defs0 = lv_params Symbol.null params
+          val env0 = defs0 
+          val _ = lv_stm env0 defs0 s ext
           (* could warn here: variables declared, but never initialized *)
       in
-	  ()
+          ()
       end
     | lv_fun (fdecl as A.Function _) =
       (* function declaration - nothing to check *)
@@ -548,13 +548,13 @@ struct
     | chk_unassigned pvars (A.StmDecl _) ext = ()
     | chk_unassigned pvars (A.If(e, s1, s2)) ext =
         ( chk_unassigned pvars s1 ext
-	; chk_unassigned pvars s2 ext )
+        ; chk_unassigned pvars s2 ext )
     | chk_unassigned pvars (A.While(e, _, s)) ext =
         chk_unassigned pvars s ext
     | chk_unassigned pvars (A.For(s1, e, s2, _, s3)) ext =
         ( chk_unassigned pvars s1 ext
-	; chk_unassigned pvars s2 ext
-	; chk_unassigned pvars s3 ext )
+        ; chk_unassigned pvars s2 ext
+        ; chk_unassigned pvars s3 ext )
     | chk_unassigned pvars (A.Continue) ext = ()
     | chk_unassigned pvars (A.Break) ext = ()
     | chk_unassigned pvars (A.Return _) ext = ()
@@ -580,7 +580,7 @@ struct
       | POSTCOND		(* in @ensures *)
 
     fun rt_error ext msg =
-	( ErrorMsg.error ext msg ; raise ErrorMsg.Error )
+        ( ErrorMsg.error ext msg ; raise ErrorMsg.Error )
   end
 
   (* rt_exp e cond ext = (), raises Error if the rtspec cond is violated
@@ -643,7 +643,7 @@ struct
     | rt_spec (A.LoopInvariant(e, ext')) (R.LOOPINV) ext =
         rt_exp e R.LOOPINV ext'
     | rt_spec (A.Assertion(e, ext')) (R.ASSERTION) ext =
-	rt_exp e R.ASSERTION ext'
+        rt_exp e R.ASSERTION ext'
     | rt_spec (A.Assertion(e, ext')) (R.FUNCONTRACT) ext =
         R.rt_error ext' ("@assert illegal in function contracts" ^^ "use only in statment annotations")
     | rt_spec (A.Assertion(e, ext')) (R.LOOPINV) ext =
@@ -653,24 +653,24 @@ struct
    * (\length, \hastag, \result) are used incorrectly in s *)
   fun rt_stm (A.Assign(operOpt, lv, e)) ext =
         ( rt_exp lv R.ORDINARY ext
-	; rt_exp e R.ORDINARY ext )
+        ; rt_exp e R.ORDINARY ext )
     | rt_stm (A.Exp(e)) ext =
         rt_exp e R.ORDINARY ext
     | rt_stm (A.Seq(ds, ss)) ext =
         ( List.app (fn d => rt_decl d ext) ds
-	; List.app (fn s => rt_stm s ext) ss )
+        ; List.app (fn s => rt_stm s ext) ss )
     | rt_stm (A.StmDecl(d)) ext =
         rt_decl d ext
     | rt_stm (A.If(e,s1,s2)) ext =
         ( rt_exp e R.ORDINARY ext ; rt_stm s1 ext ; rt_stm s2 ext )
     | rt_stm (A.While(e, invs, s)) ext =
         ( rt_exp e R.ORDINARY ext
-	; List.app (fn spec => rt_spec spec R.LOOPINV ext) invs
-	; rt_stm s ext )
+        ; List.app (fn spec => rt_spec spec R.LOOPINV ext) invs
+        ; rt_stm s ext )
     | rt_stm (A.For(s1, e, s2, invs, s3)) ext =
         ( rt_stm s1 ext ; rt_exp e R.ORDINARY ext
-	; rt_stm s2 ext ; List.app (fn spec => rt_spec spec R.LOOPINV ext) invs
-	; rt_stm s3 ext )
+        ; rt_stm s2 ext ; List.app (fn spec => rt_spec spec R.LOOPINV ext) invs
+        ; rt_stm s3 ext )
     | rt_stm (A.Continue) ext = ()
     | rt_stm (A.Break) ext = ()
     | rt_stm (A.Return(NONE)) ext = ()
@@ -678,7 +678,7 @@ struct
         rt_exp e R.ORDINARY ext
     | rt_stm (A.Assert(e1, e2s)) ext =
         ( rt_exp e1 R.ORDINARY ext
-	; List.app (fn e => rt_exp e R.ORDINARY ext) e2s )
+        ; List.app (fn e => rt_exp e R.ORDINARY ext) e2s )
     | rt_stm (A.Error e) ext = rt_exp e R.ORDINARY ext
     | rt_stm (A.Anno(specs)) ext =
         List.app (fn spec => rt_spec spec R.ASSERTION ext) specs
@@ -691,21 +691,21 @@ struct
 
   fun rt_fdecl (A.Function(g, rtp, params, SOME(s), specs, _, ext)) =
       let 
-	  val () = rt_stm s ext (* proper use of \length, \result, \hastag, and annotations *)
+          val () = rt_stm s ext (* proper use of \length, \result, \hastag, and annotations *)
           (* pvars = list of variables appearing unguarded in postconditions *)
-	  val pvars = pv_specs Symbol.null specs
-	  val () = chk_unassigned pvars s ext (* check no assignment to vars in postconditions *)
-	  val () = List.app (fn spec => rt_spec spec R.FUNCONTRACT ext) specs
-		  (* proper use of \result, \hastag, and annotations in function contracts *)
+          val pvars = pv_specs Symbol.null specs
+          val () = chk_unassigned pvars s ext (* check no assignment to vars in postconditions *)
+          val () = List.app (fn spec => rt_spec spec R.FUNCONTRACT ext) specs
+                  (* proper use of \result, \hastag, and annotations in function contracts *)
       in
-	  ()
+          ()
       end
     | rt_fdecl (A.Function(f, rtp, params, NONE, specs, _, ext)) =
       (* check function contracts *)
       let
-	  val () = List.app (fn spec => rt_spec spec R.FUNCONTRACT ext) specs
+          val () = List.app (fn spec => rt_spec spec R.FUNCONTRACT ext) specs
       in
-	  ()
+          ()
       end
  
   (*****************)
@@ -721,7 +721,7 @@ struct
 
   fun var_type env id ext =
       (case Symbol.look env id
-	of NONE => ( case Symtab.lookup id
+        of NONE => ( case Symtab.lookup id
                       of NONE => ( ErrorMsg.error ext ("undeclared variable '" ^ Symbol.name id ^ "'")
                                  ; raise ErrorMsg.Error )
                        | SOME(A.TypeDef _) => 
@@ -734,40 +734,40 @@ struct
                          ( ErrorMsg.error ext ("cannot use function '" ^ Symbol.name id ^ "' like a variable\n"
                                                ^ "[Hint: use '&" ^ Symbol.name id ^ "' to obtain a function pointer]")
                          ; raise ErrorMsg.Error ) )
-	 | SOME(tp) => tp)
+         | SOME(tp) => tp)
 
   (* return the type of a function named g *)
   (* as a side effect, note a use of g in case it is not yet defined *)
   fun fun_type env g ext =
       ( case Symbol.look env g
-	 of SOME _ => ( case Symtab.lookup g
+         of SOME _ => ( case Symtab.lookup g
                          of NONE => ( ErrorMsg.error ext ("variable '" ^ Symbol.name g ^ "' used as a function\n"
                                                           ^ "[Hint: try (*" ^ Symbol.name g ^ ")]")
                                     ; raise ErrorMsg.Error )
                           | SOME(A.Function _) => ( ErrorMsg.error ext ("function '" ^ Symbol.name g ^ "' shadowed by local variable")
                                       ; raise ErrorMsg.Error )
                           | _ => () (* error caught below *) )
-	  | _ => ()
+          | _ => ()
       ; case Symtab.lookup g
-	 of NONE => ( ErrorMsg.error ext ("undeclared function '" ^ Symbol.name g ^ "'")
-		    ; raise ErrorMsg.Error )
-	  | SOME(A.Function(g', rtp, params, bodyOpt, _, _, _)) =>
-	    (* if bodyOpt = NONE, then g has been used, but is not yet defined *)
-	    ( case bodyOpt of NONE => ( if UndefUnused.member g (* external functions will not be in this set *)
+         of NONE => ( ErrorMsg.error ext ("undeclared function '" ^ Symbol.name g ^ "'")
+                    ; raise ErrorMsg.Error )
+          | SOME(A.Function(g', rtp, params, bodyOpt, _, _, _)) =>
+            (* if bodyOpt = NONE, then g has been used, but is not yet defined *)
+            ( case bodyOpt of NONE => ( if UndefUnused.member g (* external functions will not be in this set *)
                                         then ( UndefUnused.remove g ; UndefUsed.add g )
                                         else () )
                             | SOME _ => ()
             ; A.FunType(rtp, params) )
           | SOME(A.TypeDef(aid, tp, ext')) =>
-	    ( ErrorMsg.error ext ("cannot use type name '" ^ Symbol.name aid ^ "' as function name")
-	    ; raise ErrorMsg.Error )
+            ( ErrorMsg.error ext ("cannot use type name '" ^ Symbol.name aid ^ "' as function name")
+            ; raise ErrorMsg.Error )
           | SOME(A.FunTypeDef(fid, _, _, _, ext')) =>
-	    ( ErrorMsg.error ext ("cannot use function type '" ^ Symbol.name fid ^ "' as function name")
-	    ; raise ErrorMsg.Error ) )
+            ( ErrorMsg.error ext ("cannot use function type '" ^ Symbol.name fid ^ "' as function name")
+            ; raise ErrorMsg.Error ) )
 
   fun syn_field nil f ext =
         ( ErrorMsg.error ext ("undeclared field '" ^ Symbol.name f ^ "'")
-	; raise ErrorMsg.Error )
+        ; raise ErrorMsg.Error )
     | syn_field (A.Field(f',tp,_)::fields) f ext =
       (case Symbol.compare (f',f)
          of EQUAL => tp
@@ -791,14 +791,14 @@ struct
     | syn_exp env (A.Null) ext = A.Pointer(A.Any)
     | syn_exp env (A.OpExp(A.SUB, [e1,e2])) ext =
       (case (syn_exp_expd env e1 ext)
-	 of A.Array(tp) => ( chk_exp env e2 A.Int ext ; tp )
+         of A.Array(tp) => ( chk_exp env e2 A.Int ext ; tp )
           | tp => ( ErrorMsg.error ext ("subject of indexing '[...]' not an array\n"
-					^ "inferred type " ^ P.pp_tp tp)
-		 ; raise ErrorMsg.Error ))
+                                        ^ "inferred type " ^ P.pp_tp tp)
+                 ; raise ErrorMsg.Error ))
     | syn_exp env (A.OpExp(A.DEREF, [e1])) ext =
       (case (syn_exp_expd env e1 ext)
          of A.Pointer(A.Any) => ( ErrorMsg.error ext ("cannot dereference NULL")
-				; raise ErrorMsg.Error )
+                                ; raise ErrorMsg.Error )
           | A.Pointer(A.FunType _) =>
             ( ErrorMsg.error ext ("dereferenced function pointer does not have a named type\n"
                                   ^ "[Hint: use direct function application or variable of function type]")
@@ -807,10 +807,10 @@ struct
             ( ErrorMsg.error ext ("cannot dereference value of type 'void*'\n"
                                   ^ "[Hint: cast to another pointer type with (t*)]")
             ; raise ErrorMsg.Error )
-	  | A.Pointer(tp) => tp
+          | A.Pointer(tp) => tp
           | tp => ( ErrorMsg.error ext ("subject of '*' or '->' not a pointer\n"
-					^ "inferred type " ^ P.pp_tp tp)
-		  ; raise ErrorMsg.Error ))
+                                        ^ "inferred type " ^ P.pp_tp tp)
+                  ; raise ErrorMsg.Error ))
     | syn_exp env (A.OpExp(A.EQ, [e1,e2])) ext =
         ( chk_comparison env e1 e2 ext ; A.Bool )
     | syn_exp env (A.OpExp(A.NOTEQ, [e1,e2])) ext =
@@ -827,23 +827,23 @@ struct
         ( chk_ordered env e1 e2 ext ; A.Bool)
     | syn_exp env (A.OpExp(A.LOGAND, [e1, e2])) ext =
         ( chk_exp env e1 A.Bool ext
-	; chk_exp env e2 A.Bool ext
-	; A.Bool )
+        ; chk_exp env e2 A.Bool ext
+        ; A.Bool )
     | syn_exp env (A.OpExp(A.LOGOR, [e1, e2])) ext =
         ( chk_exp env e1 A.Bool ext
-	; chk_exp env e2 A.Bool ext 
-	; A.Bool )
+        ; chk_exp env e2 A.Bool ext 
+        ; A.Bool )
     | syn_exp env (A.OpExp(A.COND, [e1, e2, e3])) ext =
       let val () = chk_exp env e1 A.Bool ext
-	  val tp2 = syn_exp env e2 ext
-	  val tp3 = syn_exp env e3 ext
+          val tp2 = syn_exp env e2 ext
+          val tp3 = syn_exp env e3 ext
       in
-	  case lub tp2 tp3
-	   of NONE => ( ErrorMsg.error ext ("branches of conditional expression have different types\n"
-					    ^ "then branch: " ^ P.pp_tp tp2 ^ "\n"
-					    ^ "else branch: " ^ P.pp_tp tp3)
-		      ; raise ErrorMsg.Error )
-	    | SOME(tp) => if is_small tp
+          case lub tp2 tp3
+           of NONE => ( ErrorMsg.error ext ("branches of conditional expression have different types\n"
+                                            ^ "then branch: " ^ P.pp_tp tp2 ^ "\n"
+                                            ^ "else branch: " ^ P.pp_tp tp3)
+                      ; raise ErrorMsg.Error )
+            | SOME(tp) => if is_small tp
                           then tp
                           else ( ErrorMsg.error ext ("conditional expression has large type")
                                ; raise ErrorMsg.Error )
@@ -854,18 +854,18 @@ struct
       ; A.Int )
     | syn_exp env (A.Select(e,f)) ext =
       (case (syn_exp_expd env e ext)
-	of A.StructName(sid) =>
-	   (case Structtab.lookup sid
+        of A.StructName(sid) =>
+           (case Structtab.lookup sid
              of SOME(A.Struct(sid', SOME(fields), _, ext')) => syn_field fields f ext
               | SOME(A.Struct(sid', NONE, _, ext')) =>
-		  ( ErrorMsg.error ext ("'struct " ^ Symbol.name sid ^ "' declared but not defined")
-		  ; raise ErrorMsg.Error )
+                  ( ErrorMsg.error ext ("'struct " ^ Symbol.name sid ^ "' declared but not defined")
+                  ; raise ErrorMsg.Error )
               | NONE => ( ErrorMsg.error ext ("'struct " ^ Symbol.name sid ^ "' not defined")
-			; raise ErrorMsg.Error )
+                        ; raise ErrorMsg.Error )
            )
-	 | tp => ( ErrorMsg.error ext ("subject of '->' not a struct pointer, or of '.' not a struct\n"
-				       ^ "inferred type " ^ P.pp_tp tp)
-		 ; raise ErrorMsg.Error ))
+         | tp => ( ErrorMsg.error ext ("subject of '->' not a struct pointer, or of '.' not a struct\n"
+                                       ^ "inferred type " ^ P.pp_tp tp)
+                 ; raise ErrorMsg.Error ))
     | syn_exp env (A.FunCall(g, es)) ext =
       ( case fun_type env g ext
          of A.FunType(rtp, params) => ( chk_exps env es params ext
@@ -921,9 +921,9 @@ struct
         var_type env (Symbol.symbol "\\result") ext
     | syn_exp env (A.Length(e)) ext =
       (case (syn_exp_expd env e ext)
-	of A.Array(tp) => A.Int
-	 | _ => ( ErrorMsg.error ext ("argument to \\length not an array")
-		 ; raise ErrorMsg.Error ))
+        of A.Array(tp) => A.Int
+         | _ => ( ErrorMsg.error ext ("argument to \\length not an array")
+                 ; raise ErrorMsg.Error ))
     | syn_exp env (A.Hastag(tp,e)) ext =
       (* check something about e here? *)
       ( chk_tp tp ext ;
@@ -955,11 +955,11 @@ struct
       let val tp1 = syn_exp env e ext
           val ext' = syn_ext e ext
       in
-	  if tp_conv tp1 tp then ()
-	  else ( ErrorMsg.error ext' ("type mismatch\n"
-				      ^ "expected: " ^ P.pp_tp tp ^ "\n"
-				      ^ "   found: " ^ P.pp_tp tp1)
-	       ; raise ErrorMsg.Error )
+          if tp_conv tp1 tp then ()
+          else ( ErrorMsg.error ext' ("type mismatch\n"
+                                      ^ "expected: " ^ P.pp_tp tp ^ "\n"
+                                      ^ "   found: " ^ P.pp_tp tp1)
+               ; raise ErrorMsg.Error )
       end 
 
   (* chk_exps env es ds ext = () if env |- es : ds, raises Error otherwise
@@ -980,17 +980,17 @@ struct
    * admit comparison with '==' or '!=" *)
   and chk_comparison env e1 e2 ext =
       let val tp1 = syn_exp env e1 ext
-	  val tp2 = syn_exp env e2 ext
+          val tp2 = syn_exp env e2 ext
       in
-	  if tp_comparable tp1 tp2 then ()
-	  else if tp_equal tp1 A.String andalso tp_equal tp2 A.String
-	  then ( ErrorMsg.error ext ("cannot compare strings with '==' or '!='"
-				     ^^ "use string_equal in library <string>" )
-		 ; raise ErrorMsg.Error )
-	  else ( ErrorMsg.error ext ("comparison with '==' or '!=' with incompatible types\n"
-				     ^ " left-hand side: " ^ P.pp_tp tp1 ^ "\n"
-				     ^ "right-hand side: " ^ P.pp_tp tp2)
-		 ; raise ErrorMsg.Error )
+          if tp_comparable tp1 tp2 then ()
+          else if tp_equal tp1 A.String andalso tp_equal tp2 A.String
+          then ( ErrorMsg.error ext ("cannot compare strings with '==' or '!='"
+                                     ^^ "use string_equal in library <string>" )
+                 ; raise ErrorMsg.Error )
+          else ( ErrorMsg.error ext ("comparison with '==' or '!=' with incompatible types\n"
+                                     ^ " left-hand side: " ^ P.pp_tp tp1 ^ "\n"
+                                     ^ "right-hand side: " ^ P.pp_tp tp2)
+                 ; raise ErrorMsg.Error )
       end
 
   (* chk_ordered env e1 e2 ext = (), raises error
@@ -998,17 +998,17 @@ struct
    * admit comparison with '<', '<=', '>=', or '>'" *)
   and chk_ordered env e1 e2 ext =
       let val tp1 = syn_exp env e1 ext
-	  val tp2 = syn_exp env e2 ext
+          val tp2 = syn_exp env e2 ext
       in
-	  if tp_ordered tp1 tp2 then ()
-	  else if tp_equal tp1 A.String andalso tp_equal tp2 A.String
-	  then ( ErrorMsg.error ext ("cannot compare strings with '<' '<=' '>=' '>'"
-				     ^^ "use string_compare in library <string>" )
-		 ; raise ErrorMsg.Error )
-	  else ( ErrorMsg.error ext ("comparison with '<' '<=' '>=' '>' with incomparable types\n"
-				     ^ " left-hand side: " ^ P.pp_tp tp1 ^ "\n"
-				     ^ "right-hand side: " ^ P.pp_tp tp2)
-		 ; raise ErrorMsg.Error )
+          if tp_ordered tp1 tp2 then ()
+          else if tp_equal tp1 A.String andalso tp_equal tp2 A.String
+          then ( ErrorMsg.error ext ("cannot compare strings with '<' '<=' '>=' '>'"
+                                     ^^ "use string_compare in library <string>" )
+                 ; raise ErrorMsg.Error )
+          else ( ErrorMsg.error ext ("comparison with '<' '<=' '>=' '>' with incomparable types\n"
+                                     ^ " left-hand side: " ^ P.pp_tp tp1 ^ "\n"
+                                     ^ "right-hand side: " ^ P.pp_tp tp2)
+                 ; raise ErrorMsg.Error )
       end
 
   (* chk_lval e ext = () if e is a legal lvalue, raises Error otherwise *)
@@ -1019,9 +1019,9 @@ struct
     | chk_lval (A.Marked(marked_exp)) ext =
         chk_lval (Mark.data marked_exp) (Mark.ext marked_exp)
     | chk_lval e ext = ( ErrorMsg.error ext
-		           ("left-hand side of assignment not a legal lvalue"
-			    ^^ "an lvalue l must be a variable or of the form *l, l[e], l.f, or l->f")
-		       ; raise ErrorMsg.Error )
+                           ("left-hand side of assignment not a legal lvalue"
+                            ^^ "an lvalue l must be a variable or of the form *l, l[e], l.f, or l->f")
+                       ; raise ErrorMsg.Error )
 
   (* chk_stm env s rtp loop ext = () if s is a well-typed statment
    * in a function body with return type rtp
@@ -1030,78 +1030,78 @@ struct
       let val () = chk_lval lv ext
           val tp1 = syn_exp env lv ext
           val () = chk_small tp1 ext (* must be small value *)
-	  val tp2 = syn_exp env e ext
+          val tp2 = syn_exp env e ext
       in
-	  if tp_conv tp2 tp1 then ()
-	  else ( ErrorMsg.error ext ("sides of assignment have different type\n"
-				     ^ " left-hand side: " ^ P.pp_tp tp1 ^ "\n"
-				     ^ "right-hand side: " ^ P.pp_tp tp2)
-	       ; raise ErrorMsg.Error )
+          if tp_conv tp2 tp1 then ()
+          else ( ErrorMsg.error ext ("sides of assignment have different type\n"
+                                     ^ " left-hand side: " ^ P.pp_tp tp1 ^ "\n"
+                                     ^ "right-hand side: " ^ P.pp_tp tp2)
+               ; raise ErrorMsg.Error )
       end
     | chk_stm env (A.Assign(SOME(oper),lv,e)) rtp loop ext =
       (* compound assignment operators all on type int *)
       let val () = chk_lval lv ext
           val () = chk_exp env lv A.Int ext
-	  val () = chk_exp env e A.Int ext
+          val () = chk_exp env e A.Int ext
       in
-	  ()
+          ()
       end
     | chk_stm env (A.Exp(e)) rtp loop ext =
       let val tp = syn_exp env e ext
-	  val () = chk_small_or_void tp ext (* must be of small type or void *)
+          val () = chk_small_or_void tp ext (* must be of small type or void *)
       in
-	  ()
+          ()
       end
     | chk_stm env (A.Return(SOME(e))) rtp loop ext =
       let val tp = syn_exp env e ext
       in if tp_conv A.Void rtp
-	 then ( ErrorMsg.error ext ("function returning void must invoke 'return', not 'return e'")
-	      ; raise ErrorMsg.Error )
-	 else if tp_conv tp rtp then ()
-	 else ( ErrorMsg.error ext ("type mismatch\n"
-				    ^ "expected return type: " ^ P.pp_tp rtp ^ "\n"
-				    ^ "   found return type: " ^ P.pp_tp tp)
-	      ; raise ErrorMsg.Error )
+         then ( ErrorMsg.error ext ("function returning void must invoke 'return', not 'return e'")
+              ; raise ErrorMsg.Error )
+         else if tp_conv tp rtp then ()
+         else ( ErrorMsg.error ext ("type mismatch\n"
+                                    ^ "expected return type: " ^ P.pp_tp rtp ^ "\n"
+                                    ^ "   found return type: " ^ P.pp_tp tp)
+              ; raise ErrorMsg.Error )
       end 
     | chk_stm env (A.Return(NONE)) rtp loop ext =
       if tp_conv A.Void rtp then ()
       else ( ErrorMsg.error ext ("type mismatch\n"
-				 ^ "expected return type: " ^ P.pp_tp rtp ^ "\n"
-				 ^ "   found return type: void")
-	   ; raise ErrorMsg.Error )
+                                 ^ "expected return type: " ^ P.pp_tp rtp ^ "\n"
+                                 ^ "   found return type: void")
+           ; raise ErrorMsg.Error )
     | chk_stm env (A.Assert(e1, e2s)) rtp loop ext =
         ( chk_exp env e1 A.Bool ext ;
-	  List.app (fn e => chk_exp env e A.String ext) e2s )
+          List.app (fn e => chk_exp env e A.String ext) e2s )
     | chk_stm env (A.Error(e)) rtp loop ext = 
         chk_exp env e A.String ext
     | chk_stm env (A.Anno(specs)) rtp loop ext =
         List.app (fn spec => chk_spec env spec ext) specs
     | chk_stm env (A.Seq(ds,ss)) rtp loop ext =
         let val env' = syn_decls env ds
-	in
+        in
             chk_stms env' ss rtp loop ext
-	end
+        end
     | chk_stm env (A.StmDecl(d)) rtp loop ext =
         ignore (syn_decls env [d]) (* Interpreter's toplevel only? *)
     | chk_stm env (A.If(e,s1,s2)) rtp loop ext =
       ( chk_exp env e A.Bool ext ;
-	chk_stm env s1 rtp loop ext ;
-	chk_stm env s2 rtp loop ext )
+        chk_stm env s1 rtp loop ext ;
+        chk_stm env s2 rtp loop ext )
     | chk_stm env (A.While(e, invs, s)) rtp loop ext =
       ( chk_exp env e A.Bool ext
       ; List.app (fn spec => chk_spec env spec ext) invs
       ; chk_stm env s rtp true ext )	(* this call always inside loop *)
     | chk_stm env (A.For(_, _, A.StmDecl(d), _, _)) rtp loop ext =
       ( ErrorMsg.error ext ("declaration not meaningful as step of for-loop") ;
-	raise ErrorMsg.Error )      
+        raise ErrorMsg.Error )      
     | chk_stm env (A.For(A.StmDecl(d), e, s2, invs, s3)) rtp loop ext =
       let val env' = syn_decls env [d]
-	  val () = chk_exp env' e A.Bool ext
-	  val () = chk_stm env' s2 rtp loop ext (* must be simple statement, not continue or break *)
-	  val () = List.app (fn spec => chk_spec env' spec ext) invs
-	  val () = chk_stm env' s3 rtp true ext (* this call always inside loop *)
+          val () = chk_exp env' e A.Bool ext
+          val () = chk_stm env' s2 rtp loop ext (* must be simple statement, not continue or break *)
+          val () = List.app (fn spec => chk_spec env' spec ext) invs
+          val () = chk_stm env' s3 rtp true ext (* this call always inside loop *)
       in
-	  ()
+          ()
       end
     | chk_stm env (A.For(s1, e, s2, invs, s3)) rtp loop ext =
       (* s1 not a declaration *)
@@ -1113,11 +1113,11 @@ struct
     | chk_stm env (A.Continue) rtp loop ext =
       if loop then ()
       else ( ErrorMsg.error ext ("continue statement not inside a for- or while-loop")
-	   ; raise ErrorMsg.Error )
+           ; raise ErrorMsg.Error )
     | chk_stm env (A.Break) rtp loop ext =
       if loop then ()
       else ( ErrorMsg.error ext ("break statement not inside a for- or while-loop")
-	   ; raise ErrorMsg.Error )
+           ; raise ErrorMsg.Error )
     | chk_stm env (A.Markeds(marked_stm)) rtp loop ext =
         chk_stm env (Mark.data marked_stm) rtp loop (Mark.ext marked_stm)
 
@@ -1133,17 +1133,17 @@ struct
       ( chk_not_typedef id ext	(* check that id is not a type name *)
       ; chk_small tp ext	(* check that type is well-formed and small *)
       ; case Symbol.look env id
-	 of NONE => syn_decls (Symbol.bind env (id, tp)) decls
+         of NONE => syn_decls (Symbol.bind env (id, tp)) decls
           | SOME _ => ( ErrorMsg.error ext ("variable '" ^ Symbol.name id ^ "' declared twice")
-		      ; raise ErrorMsg.Error ) )
+                      ; raise ErrorMsg.Error ) )
     | syn_decls env (A.VarDecl(id, tp, SOME(e), ext)::decls) =
       ( chk_not_typedef id ext	(* check that id is not a defined type symbol *)
       ; chk_small tp ext
       ; chk_exp env e tp ext
       ; case Symbol.look env id
-	 of NONE => syn_decls (Symbol.bind env (id, tp)) decls
-	  | SOME _ => ( ErrorMsg.error ext ("variable '" ^ Symbol.name id ^ "' declared twice")
-		      ; raise ErrorMsg.Error ) )
+         of NONE => syn_decls (Symbol.bind env (id, tp)) decls
+          | SOME _ => ( ErrorMsg.error ext ("variable '" ^ Symbol.name id ^ "' declared twice")
+                      ; raise ErrorMsg.Error ) )
 
   and chk_spec env (A.Requires(e, ext')) ext =
         chk_exp env e A.Bool ext'
@@ -1156,24 +1156,24 @@ struct
 
   fun chk_fun (A.Function(g, rtp, params, SOME(s), specs, _, ext)) =
       let 
-	  val () = chk_small_or_void rtp ext
-	  val env0 = syn_decls Symbol.empty params
-	  val () = chk_stm env0 s rtp false ext
-	  val result = Symbol.symbol "\\result" (* for type of A.Result; only in @ensures *)
-	  val env1 = Symbol.bind env0 (result, rtp)
-	  val () = List.app (fn spec => chk_spec env1 spec ext) specs
+          val () = chk_small_or_void rtp ext
+          val env0 = syn_decls Symbol.empty params
+          val () = chk_stm env0 s rtp false ext
+          val result = Symbol.symbol "\\result" (* for type of A.Result; only in @ensures *)
+          val env1 = Symbol.bind env0 (result, rtp)
+          val () = List.app (fn spec => chk_spec env1 spec ext) specs
       in
-	  ()
+          ()
       end
     | chk_fun (A.Function(f, rtp, params, NONE, specs, _, ext)) =
       let
-	  val () = chk_small_or_void rtp ext
-	  val env0 = syn_decls Symbol.empty params
-	  val result = Symbol.symbol "\\result" (* for type of A.Result; only in @ensures *)
-	  val env1 = Symbol.bind env0 (result, rtp)
-	  val () = List.app (fn spec => chk_spec env1 spec ext) specs
+          val () = chk_small_or_void rtp ext
+          val env0 = syn_decls Symbol.empty params
+          val result = Symbol.symbol "\\result" (* for type of A.Result; only in @ensures *)
+          val env1 = Symbol.bind env0 (result, rtp)
+          val () = List.app (fn spec => chk_spec env1 spec ext) specs
       in
-	  ()
+          ()
       end
 
   (* elim_for s step_opts ext = s', where for loops have been replace by while loops 
@@ -1194,7 +1194,7 @@ struct
     | elim_for (A.For(A.StmDecl(d), e, s2, invs, s3)) step_opts ext =
       let val s3' = elim_for s3 (SOME(s2)::step_opts) ext
       in
-	  A.Seq([d], [A.While(e, invs, A.Seq(nil, [s3',s2]))])
+          A.Seq([d], [A.While(e, invs, A.Seq(nil, [s3',s2]))])
       end
     | elim_for (A.For(s1, e, s2, invs, s3)) step_opts ext =
       let val s3' = elim_for s3 (SOME(s2)::step_opts) ext
@@ -1210,7 +1210,7 @@ struct
     | elim_for (s as A.Anno(specs)) step_opts ext = s
     | elim_for (A.Markeds(marked_stm)) step_opts ext = (* preserve marks *)
         A.Markeds(Mark.mark' (elim_for (Mark.data marked_stm) step_opts (Mark.ext marked_stm),
-			      Mark.ext marked_stm))
+                              Mark.ext marked_stm))
 
   and elim_fors nil step_opts ext = nil
     | elim_fors (s::ss) step_opts ext =
@@ -1248,23 +1248,23 @@ struct
 
   fun rc_fun (A.Function(f, rtp, params, SOME(s), specs, _, ext)) =
       (case rtp
-	of A.Void => () (* no return statements required *)
-	 | _ => if rc_stm s
-		then ()
-		else ( ErrorMsg.error ext 
+        of A.Void => () (* no return statements required *)
+         | _ => if rc_stm s
+                then ()
+                else ( ErrorMsg.error ext 
                          ("function '" ^ Symbol.name f ^ "' does not end in a return statement")
-		     ; raise ErrorMsg.Error ))
+                     ; raise ErrorMsg.Error ))
     | rc_fun (fdecl as A.Function _) = (* function declaration - nothing to check *)
       ()
 
   fun chk_fun_body (fdecl) =
       let val () = rt_fdecl fdecl (* check proper use of \length, \result, \hastag *)
-	  val () = chk_fun fdecl (* type-check *)
-	  val fdecl' = elim_fors_fun fdecl (* elim for loops to simplify control *)
-	  val () = rc_fun fdecl' (* check valid returns *)
-	  val () = lv_fun fdecl' (* check initialization of variables *)
+          val () = chk_fun fdecl (* type-check *)
+          val fdecl' = elim_fors_fun fdecl (* elim for loops to simplify control *)
+          val () = rc_fun fdecl' (* check valid returns *)
+          val () = lv_fun fdecl' (* check initialization of variables *)
       in
-	  fdecl'
+          fdecl'
       end
 
   (* add ext to this function? *)
@@ -1290,18 +1290,18 @@ struct
     | chk_diff_fields f (A.Field(f',tp,ext)::fields) =
       (case Symbol.compare(f,f')
          of EQUAL => ( ErrorMsg.error ext "field name used twice"
-		     ; raise ErrorMsg.Error )
+                     ; raise ErrorMsg.Error )
           | _ => chk_diff_fields f fields)
 
   (* chk_struct_filds fields = (), raise Error if not well-formed *)
   fun chk_struct_fields nil = ()
     | chk_struct_fields (A.Field(f, tp, ext)::fields) =
-	( chk_diff_fields f fields
-	; chk_tp tp ext
-	; chk_known_size tp ext
+        ( chk_diff_fields f fields
+        ; chk_tp tp ext
+        ; chk_known_size tp ext
         (* currently disabled, to allow more of the regression tests to compile *)
         (* ; chk_depth 3 tp ext *)    (* are at depth 1, allow 3 more *)
-	; chk_struct_fields fields )
+        ; chk_struct_fields fields )
 
   (********************************)
   (* Checking global declarations *)
@@ -1327,11 +1327,11 @@ struct
    *)
   fun tc_gdecl (tdef as A.TypeDef(aid, tp, ext)) is_library =
       ( case Symtab.lookup aid
-	 of NONE => ( chk_tp tp ext ; Symtab.bind(aid, tdef) )
-	  | SOME(A.TypeDef(aid', tp', ext')) =>
-	    ( ErrorMsg.error ext ("type name '" ^ Symbol.name aid ^ "' defined more than once\n"
-				  ^ "previous definition at " ^ Mark.show' ext')
-	    ; raise ErrorMsg.Error )
+         of NONE => ( chk_tp tp ext ; Symtab.bind(aid, tdef) )
+          | SOME(A.TypeDef(aid', tp', ext')) =>
+            ( ErrorMsg.error ext ("type name '" ^ Symbol.name aid ^ "' defined more than once\n"
+                                  ^ "previous definition at " ^ Mark.show' ext')
+            ; raise ErrorMsg.Error )
           | SOME(A.FunTypeDef(fid', _, _, _, ext')) =>
             ( ErrorMsg.error ext ("type name '" ^ Symbol.name aid ^ "' already defined as a function type\n"
                                   ^ "previous definition at " ^ Mark.show' ext)
@@ -1361,103 +1361,103 @@ struct
       ; ftdef )
     | tc_gdecl (sdecl as A.Struct(sid, NONE, is_extern, ext)) is_library =
       ( case Structtab.lookup sid
-	 of NONE => Structtab.bind (sid, sdecl)
-	  | SOME _ => () (* declared or defined before; now declared is ok *)
+         of NONE => Structtab.bind (sid, sdecl)
+          | SOME _ => () (* declared or defined before; now declared is ok *)
       ; sdecl )
     | tc_gdecl (sdecl as A.Struct(sid, SOME(fields), _, ext)) is_library =
       (case Structtab.lookup sid
-	of NONE => ( chk_struct_fields fields ;
-		     Structtab.bind(sid, sdecl) )
-	 | SOME(A.Struct(sid', NONE, is_extern', ext')) => (* previously declared *)
-	   ( if (not is_library) andalso is_extern'
-	     then ( ErrorMsg.error ext
-		      ("'struct " ^ Symbol.name sid ^ "' declared in library cannot be defined\n"
-		       ^ "library declaration at " ^ Mark.show' ext')
-		    ; raise ErrorMsg.Error )
-	     else ()
-	   ; chk_struct_fields fields
-	   ; Structtab.bind(sid, sdecl) )
-	 | SOME(A.Struct(sid', SOME _, _, ext')) => (* previously defined *)
-	   ( ErrorMsg.error ext ("'struct " ^ Symbol.name sid ^ "' defined more than once\n"
-				 ^ "previous definition at " ^ Mark.show' ext')
-	   ; raise ErrorMsg.Error )
+        of NONE => ( chk_struct_fields fields ;
+                     Structtab.bind(sid, sdecl) )
+         | SOME(A.Struct(sid', NONE, is_extern', ext')) => (* previously declared *)
+           ( if (not is_library) andalso is_extern'
+             then ( ErrorMsg.error ext
+                      ("'struct " ^ Symbol.name sid ^ "' declared in library cannot be defined\n"
+                       ^ "library declaration at " ^ Mark.show' ext')
+                    ; raise ErrorMsg.Error )
+             else ()
+           ; chk_struct_fields fields
+           ; Structtab.bind(sid, sdecl) )
+         | SOME(A.Struct(sid', SOME _, _, ext')) => (* previously defined *)
+           ( ErrorMsg.error ext ("'struct " ^ Symbol.name sid ^ "' defined more than once\n"
+                                 ^ "previous definition at " ^ Mark.show' ext')
+           ; raise ErrorMsg.Error )
      ; sdecl )
     | tc_gdecl (A.Function(g, rtp, params, NONE, specs, _, ext)) is_library =
       (* function declaration, override is_extern with current context is_library *)
       let val was_extern = is_extern_fun g
           val fdecl = A.Function(g, rtp, params, NONE, specs, was_extern orelse is_library, ext) 
-	  val () = case Symtab.lookup g
-		    of NONE => ( (* not previously encountered: add to undefined and unused set *)
+          val () = case Symtab.lookup g
+                    of NONE => ( (* not previously encountered: add to undefined and unused set *)
                                  if (not is_library) then UndefUnused.add g else ()
                                ; Symtab.bind (g, fdecl) )
-		     | SOME(A.Function(g', rtp', params', NONE, specs', is_extern', ext')) =>
-		       (* already declared: check if types are compatible *)
-		       ( chk_conv rtp rtp' ext
-		         (fn () => "mismatching return types for multiple declarations of function '"
-				   ^ Symbol.name g ^ "'")
-		       ; chk_convs (params_to_types params) (params_to_types params') ext
-			 (fn () => "mismatching parameter types for multiple declarations of function '"
-				   ^ Symbol.name g ^ "'")
-		       ; if is_extern'
-			 then () (* leave the original library declaration in place *)
-			 else Symtab.bind (g, fdecl) ) (* correct with subtyping? *)
-		     | SOME(A.Function(g', rtp', params', SOME _, specs', _, ext')) =>
-		       (* already defined: check if types are compatible, otherwise ignore *)
-		       ( chk_conv rtp rtp' ext
-			 (fn () => "mismatched return types for definition and declaration of function '"
-				   ^ Symbol.name g ^ "'")
-		       ; chk_convs (params_to_types params) (params_to_types params') ext
-			 (fn () => "mismatched parameter types for multiple declarations of function '"
-				   ^ Symbol.name g ^ "'")
-		       (* ignore declaration after previous definition *)
+                     | SOME(A.Function(g', rtp', params', NONE, specs', is_extern', ext')) =>
+                       (* already declared: check if types are compatible *)
+                       ( chk_conv rtp rtp' ext
+                         (fn () => "mismatching return types for multiple declarations of function '"
+                                   ^ Symbol.name g ^ "'")
+                       ; chk_convs (params_to_types params) (params_to_types params') ext
+                         (fn () => "mismatching parameter types for multiple declarations of function '"
+                                   ^ Symbol.name g ^ "'")
+                       ; if is_extern'
+                         then () (* leave the original library declaration in place *)
+                         else Symtab.bind (g, fdecl) ) (* correct with subtyping? *)
+                     | SOME(A.Function(g', rtp', params', SOME _, specs', _, ext')) =>
+                       (* already defined: check if types are compatible, otherwise ignore *)
+                       ( chk_conv rtp rtp' ext
+                         (fn () => "mismatched return types for definition and declaration of function '"
+                                   ^ Symbol.name g ^ "'")
+                       ; chk_convs (params_to_types params) (params_to_types params') ext
+                         (fn () => "mismatched parameter types for multiple declarations of function '"
+                                   ^ Symbol.name g ^ "'")
+                       (* ignore declaration after previous definition *)
                        (* correct with subtyping? *)
-		       ; () )
-		     | SOME(A.TypeDef(aid, tp, ext')) =>
-		       ( ErrorMsg.error ext ("cannot use type name '" ^ Symbol.name aid ^ "' as function name")
-		       ; raise ErrorMsg.Error )
+                       ; () )
+                     | SOME(A.TypeDef(aid, tp, ext')) =>
+                       ( ErrorMsg.error ext ("cannot use type name '" ^ Symbol.name aid ^ "' as function name")
+                       ; raise ErrorMsg.Error )
                      | SOME(A.FunTypeDef(fid, _, _, _, _)) =>
                        ( ErrorMsg.error ext ("cannot use function type name '" ^ Symbol.name fid ^ "' as a function name")
                        ; raise ErrorMsg.Error )
       in
-	  chk_fun_body fdecl
+          chk_fun_body fdecl
       end
     | tc_gdecl (A.Function(g, rtp, params, SOME(s), specs, _, ext)) is_library =
       (* function definition, override is_extern with current context is_library *)
       let val fdecl = A.Function(g, rtp, params, SOME(s), specs, is_library, ext)
-	  (* remove from sets of undefined symbols *)
+          (* remove from sets of undefined symbols *)
           val () = ( UndefUsed.remove g ; UndefUnused.remove g )
-	  val () = case Symtab.lookup g
-		    of NONE => Symtab.bind (g, fdecl) (* bind first to allow recursion *)
-		     | SOME(A.Function(g', rtp', params', NONE, specs', is_library', ext')) =>
-		       (* previously declared *)
-		       ( if (not is_library) andalso is_library'
-			 then (* function previously declared in a library cannot be defined outside of it *)
-			     ( ErrorMsg.error ext
-			        ("cannot define function declared in a library\n"
-				 ^ "previous declaration at " ^ Mark.show' ext')
-			     ; raise ErrorMsg.Error )
-			 else ()
+          val () = case Symtab.lookup g
+                    of NONE => Symtab.bind (g, fdecl) (* bind first to allow recursion *)
+                     | SOME(A.Function(g', rtp', params', NONE, specs', is_library', ext')) =>
+                       (* previously declared *)
+                       ( if (not is_library) andalso is_library'
+                         then (* function previously declared in a library cannot be defined outside of it *)
+                             ( ErrorMsg.error ext
+                                ("cannot define function declared in a library\n"
+                                 ^ "previous declaration at " ^ Mark.show' ext')
+                             ; raise ErrorMsg.Error )
+                         else ()
                        (* check compatibility of types *)
-		       ; chk_conv rtp rtp' ext
-		         (fn () => "mismatching return types for multiple declarations of function '"
-				   ^ Symbol.name g ^ "'")
+                       ; chk_conv rtp rtp' ext
+                         (fn () => "mismatching return types for multiple declarations of function '"
+                                   ^ Symbol.name g ^ "'")
                        (* need to change order below if subtyping is introduced *)
-		       ; chk_convs (params_to_types params) (params_to_types params') ext
-			 (fn () => "mismatched parameter types for declaration and definition of function '"
-				   ^ Symbol.name g ^ "'")
-		       ; Symtab.bind (g, fdecl) )
-		    | SOME(A.Function(g', rtp', params', SOME _, _, _, ext')) =>
-		      ( ErrorMsg.error ext ("function '" ^ Symbol.name g ^ "' defined more than once\n"
-					    ^ "previous definition at " ^ Mark.show' ext')
-		      ; raise ErrorMsg.Error )
-		    | SOME(A.TypeDef(aid, tp, ext')) =>
-		      ( ErrorMsg.error ext ("cannot define type name '" ^ Symbol.name aid ^ "' as function name")
-		      ; raise ErrorMsg.Error )
+                       ; chk_convs (params_to_types params) (params_to_types params') ext
+                         (fn () => "mismatched parameter types for declaration and definition of function '"
+                                   ^ Symbol.name g ^ "'")
+                       ; Symtab.bind (g, fdecl) )
+                    | SOME(A.Function(g', rtp', params', SOME _, _, _, ext')) =>
+                      ( ErrorMsg.error ext ("function '" ^ Symbol.name g ^ "' defined more than once\n"
+                                            ^ "previous definition at " ^ Mark.show' ext')
+                      ; raise ErrorMsg.Error )
+                    | SOME(A.TypeDef(aid, tp, ext')) =>
+                      ( ErrorMsg.error ext ("cannot define type name '" ^ Symbol.name aid ^ "' as function name")
+                      ; raise ErrorMsg.Error )
                     | SOME(A.FunTypeDef(fid, _, _, _, _)) =>
                       ( ErrorMsg.error ext ("cannot use function type name '" ^ Symbol.name fid ^ "' as a function name")
                       ; raise ErrorMsg.Error )
       in
-	  chk_fun_body fdecl
+          chk_fun_body fdecl
       end
     | tc_gdecl (gdecl as A.Pragma(A.Raw(pname, pargs), ext)) is_library =
       ( ErrorMsg.warn ext ("ignoring pragma " ^ pname)
@@ -1474,9 +1474,9 @@ struct
 
   fun typecheck (gdecls, is_library) =
       let 
-	  val gdecls' = tc_gdecls gdecls is_library
+          val gdecls' = tc_gdecls gdecls is_library
       in
-	  gdecls' (* return rewritten program *)
+          gdecls' (* return rewritten program *)
       end
 
   fun symbol_names nil = ""
@@ -1490,15 +1490,15 @@ struct
   fun check_all_defined () =
       let val missing = UndefUsed.list ()
       (* 
-	  fun isNotLibrary (SOME(A.Function(_, _, _, _, _, false, _))) = true
-	    | isNotLibrary _ = false
-	  val missing = List.filter (isNotLibrary o Symtab.lookup) undefineds
+          fun isNotLibrary (SOME(A.Function(_, _, _, _, _, false, _))) = true
+            | isNotLibrary _ = false
+          val missing = List.filter (isNotLibrary o Symtab.lookup) undefineds
        *)
       in
-	  case missing
-	   of (_ :: _) => ( ErrorMsg.error NONE ("undefined functions: " ^ symbol_names missing) ;
-			    raise ErrorMsg.Error )
-	    | nil => ()
+          case missing
+           of (_ :: _) => ( ErrorMsg.error NONE ("undefined functions: " ^ symbol_names missing) ;
+                            raise ErrorMsg.Error )
+            | nil => ()
       end
 
 end

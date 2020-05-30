@@ -24,7 +24,7 @@ sig
    * Any annotations are already folded into the statement s.
    *)
   val parse_stm : C0Lex.lexresult Stream.front
-		  -> (Ast.stm * C0Lex.lexresult Stream.front) option
+                  -> (Ast.stm * C0Lex.lexresult Stream.front) option
 
 end
 
@@ -88,8 +88,8 @@ fun mark_exp (e, (left, right)) = A.Marked (Mark.mark' (e, PS.ext (left, right))
 fun mark_stm (A.Assert(exp, nil), (left, right)) =
     let val ext = PS.ext (left, right)
     in
-	A.Markeds (Mark.mark' (A.Assert(exp, [A.StringConst(location ext ^ ": assert failed")]),
-			       ext))
+        A.Markeds (Mark.mark' (A.Assert(exp, [A.StringConst(location ext ^ ": assert failed")]),
+                               ext))
     end 
   | mark_stm (A.StmDecl(d), r) = A.StmDecl(d) (* do not mark, so we can pattern match! *)
   (* mark sequences, because we no longer pattern match against them? *)
@@ -200,11 +200,11 @@ fun opr (S, t, r) = case t of
     T.EXCL =>         Prefix(13, t, r, A.LOGNOT)
   | T.TILDE =>        Prefix(13, t, r, A.COMPLEMENT)
   | T.MINUS => if precedes_infix S
-	       then   Infix(11, t, r, A.MINUS)
-	       else   Prefix(13, t, r, A.NEGATIVE)
+               then   Infix(11, t, r, A.MINUS)
+               else   Prefix(13, t, r, A.NEGATIVE)
   | T.STAR => if precedes_infix S
-	      then    Infix(12, t, r, A.TIMES)
-	      else    Prefix(13, t, r, A.DEREF)
+              then    Infix(12, t, r, A.TIMES)
+              else    Prefix(13, t, r, A.DEREF)
   (* T.STAR =>        Infix(12, t, r, A.TIMES) see above *)
   | T.SLASH =>        Infix(12, t, r, A.DIVIDEDBY)
   | T.PERCENT =>      Infix(12, t, r, A.MODULO)
@@ -366,7 +366,7 @@ fun resolve_scope (A.StmDecl(d)::ss, (ds_rev, nil)) =
   | resolve_scope (A.Anno(specs as (_::_))::nil, (ds_rev, scope_rev)) =
       (* non-empty annotation cannot be last stmt in block, allow? *)
       ( ErrorMsg.error (spec_ext (List.last specs))
-		       ("annotation must precede statement" ^^ "use '{}' after annotation if necessary")
+                       ("annotation must precede statement" ^^ "use '{}' after annotation if necessary")
       ; raise ErrorMsg.Error )
   *)
   | resolve_scope (s::ss, (ds_rev, scope_rev)) =
@@ -385,21 +385,21 @@ fun p_gdecl ST = case first ST of
   | T.TYPEDEF => ST |> shift >> p_typedef
   | T.EOF => ST
   | t => if type_start t
-	 then ST |> p_fun
-	 else ST |> e_gdecl
+         then ST |> p_fun
+         else ST |> e_gdecl
 
 and e_gdecl ST = case first ST of
     t as T.IDENT(s) => parse_error (here ST, "identifier " ^ t_toString t ^ " at top level "
-		                    ^^ "is " ^ s ^ " an undefined type name?")
+                                    ^^ "is " ^ s ^ " an undefined type name?")
   | t as T.SEMI => parse_error (here ST, "unexpected token " ^ t_toString t ^ " at top level"
-			        ^^ "function definitions should not be terminated by ';'")
+                                ^^ "function definitions should not be terminated by ';'")
   | t => parse_error (here ST, "unexpected token " ^ t_toString t ^ " at top level")
 
 and r_gdecl S = r_gdecl_1 S    (* mlton performance bug work-around *)
 and r_gdecl_1 (S $ Tok(T.STRUCT,r1) $ Ident(sid,_) $ Tok(T.SEMI,r2)) =
       S $ GDecl(A.Struct(sid, NONE, false, PS.ext(join r1 r2)))
   | r_gdecl_1 (S $ Tok(T.STRUCT,r1) $ Ident(sid,_)
-	       $ Tok(T.LBRACE,_) $ Fields(fields) $ Tok(T.RBRACE,_) $ Tok(T.SEMI,r2)) =
+               $ Tok(T.LBRACE,_) $ Fields(fields) $ Tok(T.RBRACE,_) $ Tok(T.SEMI,r2)) =
       S $ GDecl(A.Struct(sid, SOME(fields), false, PS.ext(join r1 r2)))
   | r_gdecl_1 (S $ Tok(T.TYPEDEF,r1) $ Tp(tp,_) $ Ident(aid,_) $ Tok(T.SEMI,r2)) =
       S $ GDecl(A.TypeDef(aid, tp, PS.ext(join r1 r2)))
@@ -461,9 +461,9 @@ and p_struct_or_fun ST = case first ST of
 (* Structs *)
 and p_struct_body ST = case first ST of
     T.RBRACE => ST |> shift >> p_terminal_h T.SEMI "terminate preceding struct definition with ';'"
-		   >> reduce r_gdecl
+                   >> reduce r_gdecl
   | _ => ST |> p_tp >> p_ident >> p_terminal_h T.SEMI "terminate all struct fields with ';'"
-	    >> reduce r_fields >> p_struct_body
+            >> reduce r_fields >> p_struct_body
 
 and r_fields (S $ Fields(fs) $ Tp(tp,r1) $ Ident(fid,_) $ Tok(T.SEMI,r2)) =
       S $ Fields(fs @ [A.Field(fid, tp, PS.ext(join r1 r2))])
@@ -489,7 +489,7 @@ and r_anno (S $ Tok(T.ANNO_BEGIN,_) $ Annos(specs) $ Tok(T.ANNO_END,_)) =
 
 (* S = _ $ 'requires' | 'ensures' | 'loop_invariant' | 'assert' *)
 and p_specs ST = ST |> p_exp >> p_terminal_h T.SEMI "terminate annotations with ';'"
-		    >> reduce r_spec >> p_anno
+                    >> reduce r_spec >> p_anno
 
 and r_spec (S $ Annos(specs) $ Tok(T.REQUIRES,r1) $ Exp(e,_) $ Tok(T.SEMI,r2)) =
       S $ Annos(specs @ [A.Requires(e, PS.ext(join r1 r2))])
@@ -534,20 +534,20 @@ and p_stmt ST = case first ST of
     T.IF => ST |> shift >> p_paren_exp >> p_stmt >> p_stmt_if_then
   | T.WHILE => ST |> shift >> p_paren_exp >> p_loopbody >> reduce r_stmt
   | T.FOR => ST |> shift >> p_terminal T.LPAREN
-		>> p_simple_opt >> p_terminal T.SEMI
-		>> p_exp >> p_terminal T.SEMI
-		>> p_simple_opt >> p_terminal T.RPAREN
-		>> p_loopbody >> reduce r_stmt
+                >> p_simple_opt >> p_terminal T.SEMI
+                >> p_exp >> p_terminal T.SEMI
+                >> p_simple_opt >> p_terminal T.RPAREN
+                >> p_loopbody >> reduce r_stmt
   | T.CONTINUE => ST |> shift >> p_terminal T.SEMI >> reduce r_stmt
   | T.BREAK => ST |> shift >> p_terminal T.SEMI >> reduce r_stmt
   | T.RETURN => ST |> shift >> p_stmt_return
   | T.LBRACE => ST |> p_stmt_block (* don't shift *)
   | T.ASSERT => ST |> shift >> p_terminal T.LPAREN >> p_exp >> p_terminal T.RPAREN >> p_terminal T.SEMI
-		   >> reduce r_stmt
+                   >> reduce r_stmt
   | T.ERROR => ST |> shift >> p_terminal T.LPAREN >> p_exp >> p_terminal T.RPAREN >> p_terminal T.SEMI
-		   >> reduce r_stmt
+                   >> reduce r_stmt
   | T.ANNO_BEGIN => ST |> push (Annos []) (* do not shift! *)
-		       >> p_annos >> p_stmt >> reduce r_stmt
+                       >> p_annos >> p_stmt >> reduce r_stmt
   | _ => ST |> p_simple >> p_terminal T.SEMI >> reduce r_stmt
 
 and p_simple_opt ST = case first ST of
@@ -569,9 +569,9 @@ and p_assign1 ST = case first ST of
     T.PLUSPLUS => ST |> shift >> reduce r_decl_or_assign
   | T.MINUSMINUS => ST |> shift >> reduce r_decl_or_assign
   | t => if is_asnop t
-	 then ST |> shift >> p_exp >> reduce r_decl_or_assign
-	 else (* exp as stmt, already on stack *)
-	     ST |> reduce r_simple_exp
+         then ST |> shift >> p_exp >> reduce r_decl_or_assign
+         else (* exp as stmt, already on stack *)
+             ST |> reduce r_simple_exp
 
 and p_stmt_block ST =
     ST |> p_terminal T.LBRACE >> push (Stms []) >> p_stmtlist
@@ -604,16 +604,16 @@ and m_simple(s,r) = Simple(mark_stm(s,r), r)
 
 and r_stmt S = r_stmt_1 S     (* mlton performance bug work-around *)
 and r_stmt_1 (S $ Tok(T.IF,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_) $ Stm(s1,_)
-	      $ Tok(T.ELSE,_) $ Stm(s2,r2)) =
+              $ Tok(T.ELSE,_) $ Stm(s2,r2)) =
       S $ m_stm(A.If(e, s1, s2),join r1 r2)
   | r_stmt_1 (S $ Tok(T.IF,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_) $ Stm(s1,r2)) =
       S $ m_stm(A.If(e, s1, Nop),join r1 r2)
   | r_stmt_1 (S $ Tok(T.WHILE,r1) $ Tok(T.LPAREN,_) $ Exp(e,_) $ Tok(T.RPAREN,_)
-	      $ Annos(invs) $ Stm(s,r2)) =
+              $ Annos(invs) $ Stm(s,r2)) =
       S $ m_stm(A.While(e, invs, s),join r1 r2)
   | r_stmt_1 (S $ Tok(T.FOR,r1) $ Tok(T.LPAREN,_) $ Simple(s1,_) $ Tok(T.SEMI,_)
-	      $ Exp(e2,_) $ Tok(T.SEMI,_) $ Simple(s3,_) $ Tok(T.RPAREN,_)
-	      $ Annos(invs) $ Stm(s4,r2)) =
+              $ Exp(e2,_) $ Tok(T.SEMI,_) $ Simple(s3,_) $ Tok(T.RPAREN,_)
+              $ Annos(invs) $ Stm(s4,r2)) =
       S $ m_stm(A.For(s1, e2, s3, invs, s4),join r1 r2)
   | r_stmt_1 S = r_stmt_2 S
 and r_stmt_2 (S $ Tok(T.CONTINUE,r1) $ Tok(T.SEMI,r2)) = S $ m_stm(A.Continue,join r1 r2)
@@ -676,7 +676,7 @@ and p_tp ST = case first ST of
 and p_tp1 ST = case first ST of (* postfix operators; always shift and reduce *)
     T.STAR => ST |> shift >> reduce r_tp >> p_tp1
   | T.LBRACKET => ST |> shift >> p_terminal_h T.RBRACKET "array length cannot be specified in type; use '[]'?"
-		     >> reduce r_tp >> p_tp1
+                     >> reduce r_tp >> p_tp1
   | _ => ST (* no postifx operator: return since already reduced *)
 
 and r_tp (S $ Tok(T.INT,r)) = S $ Tp(A.Int,r)
@@ -715,13 +715,13 @@ and c_follows_nonexp (ST as (S,_)) = case (S, first ST) of
     (S $ Stms _ $ Exp(e,r), T.IDENT(s)) =>
     (case var_name e
       of SOME(id) => parse_error (join r (here ST), "consecutive expressions"
-				  ^^ "undeclared type name '" ^ id ^ "'?")
+                                  ^^ "undeclared type name '" ^ id ^ "'?")
        | NONE => e_follows_nonexp r ST)
   | (Bot $ Exp(e,r), T.IDENT(s)) =>
     (* when called from coin, where stms are at top level *)
     (case var_name e
       of SOME(id) => parse_error (join r (here ST), "consecutive expressions"
-				  ^^ "undeclared type name '" ^ id ^ "'?")
+                                  ^^ "undeclared type name '" ^ id ^ "'?")
        | NONE => e_follows_nonexp r ST)
   | (S $ Exp(e,r), _) => e_follows_nonexp r ST
   | (S, t) => ST
@@ -734,7 +734,7 @@ and e_follows_nonexp r ST =
 and c_follows_exp msg (ST as ((S $ Exp _), _)) = ST
   | c_follows_exp msg ST =
       parse_error (here ST, msg ^ " operator " ^ t_toString (first ST)
-			    ^ " not preceeded by expression")
+                            ^ " not preceeded by expression")
 
 and follows_exp (ST as (_ $ Exp(e,r), _)) = true
   | follows_exp _ = false
@@ -761,21 +761,21 @@ and p_exp (ST as (S, ft)) = case (S, first ST) of
 
   (* pseudo function calls *)
   | (_, T.BS_LENGTH) => ST |> c_follows_nonexp >> shift >> p_terminal T.LPAREN >> p_exp >> p_terminal T.RPAREN
-			   >> reduce r_exp >> p_exp
+                           >> reduce r_exp >> p_exp
 
   (* postfix operators, highest precedence *)
   | (_, T.DOT) => ST |> c_follows_exp "field selection"
-		     >> shift >> p_ident >> reduce r_exp >> p_exp
+                     >> shift >> p_ident >> reduce r_exp >> p_exp
   | (_, T.ARROW) => ST |> c_follows_exp "field dereference"
-		       >> shift >> p_ident >> reduce r_exp >> p_exp
+                       >> shift >> p_ident >> reduce r_exp >> p_exp
   | (_, T.LBRACKET) => ST |> c_follows_exp "array indexing" 
-			  >> shift >> p_exp >> p_terminal T.RBRACKET >> reduce r_exp >> p_exp
+                          >> shift >> p_exp >> p_terminal T.RBRACKET >> reduce r_exp >> p_exp
 
   (* pseudo function calls involving types *)
   | (_, T.ALLOC) => ST |> c_follows_nonexp >> shift >> p_terminal T.LPAREN >> p_tp >> p_terminal T.RPAREN
-		       >> reduce r_exp >> p_exp
+                       >> reduce r_exp >> p_exp
   | (_, T.ALLOC_ARRAY) => ST |> c_follows_nonexp >> shift >> p_terminal T.LPAREN >> p_tp >> p_terminal T.COMMA
-			     >> p_exp >> p_terminal T.RPAREN >> reduce r_exp >> p_exp
+                             >> p_exp >> p_terminal T.RPAREN >> reduce r_exp >> p_exp
   | (_, T.BS_HASTAG) => ST |> c_follows_nonexp >> shift >> p_terminal T.LPAREN >> p_tp >> p_terminal T.COMMA
                            >> p_exp >> p_terminal T.RPAREN >> reduce r_exp >> p_exp
 
@@ -788,10 +788,10 @@ and p_exp (ST as (S, ft)) = case (S, first ST) of
                            ST |> shift >> p_fun_ident >> reduce r_exp >> p_exp
   (* end of expression *)
   | (S, t) => (case opr (S, t, here ST)
-		of Nonfix(t', r) => (* nonfix: do not consume token *)
-		     ST |> p_exp_prec (Nonfix(t', r))
-		 | subject => (* infix or prefix: oper consumes token, use oper.prec. *)
-		     ST |> drop >> p_exp_prec subject)
+                of Nonfix(t', r) => (* nonfix: do not consume token *)
+                     ST |> p_exp_prec (Nonfix(t', r))
+                 | subject => (* infix or prefix: oper consumes token, use oper.prec. *)
+                     ST |> drop >> p_exp_prec subject)
 
 (* operator precedence parsing *)
 (* p_exp_prec subject (S, ft) compares precedence of subject to ft
@@ -859,18 +859,18 @@ and e_exp_empty (ST as (S,_)) = case (S, first ST) of
     (S $ Stms _ $ Exp(e,r1) $ Tok(T.LBRACKET,r2), T.RBRACKET) =>
     (case var_name e
       of SOME(id) => parse_error (join r2 (here ST), "empty index expression"
-				  ^^ "undeclared type name '" ^ id ^ "'?")
+                                  ^^ "undeclared type name '" ^ id ^ "'?")
        | NONE => parse_error (join r2 (here ST), "empty index expression"))
   | (S $ Stms _, T.SEMI) =>
     parse_error (here ST, "extraneous semicolon ';' following statement"
-		 ^^ "conditionals, loops, and blocks are not terminated by ';'")
+                 ^^ "conditionals, loops, and blocks are not terminated by ';'")
   | (S $ Stms _, t) => parse_error (here ST, "expected statement, found " ^ t_toString t)
   | (S, t) => parse_error (here ST, "expected expression, found " ^ t_toString t)
 
 (* S = _ $ Ident _ or S = _ $ Exp _ if first ST = T.LPAREN *)
 and p_exp_var_or_call ST = case first ST of
     T.LPAREN => ST |> shift >> push (Exps []) >> p_explist
-		   >> p_terminal T.RPAREN >> reduce r_exp >> p_exp
+                   >> p_terminal T.RPAREN >> reduce r_exp >> p_exp
   | _ => (* not a call; identifier must be a variable (already shifted) *)
     ST |> reduce r_exp >> p_exp
 
@@ -965,13 +965,13 @@ and p_fun_ident ST = case first ST of
 
 and p_terminal t_needed ST = case first ST of
     t => if t_needed = t
-	 then ST |> shift
-	 else e_terminal (here ST, t_needed, t)
+         then ST |> shift
+         else e_terminal (here ST, t_needed, t)
 
 and p_terminal_h t_needed error_hint ST = case first ST of
     t => if t_needed = t
-	 then ST |> shift
-	 else error_expected_h (here ST, t_needed, t, error_hint)
+         then ST |> shift
+         else error_expected_h (here ST, t_needed, t, error_hint)
 
 (* error function for parsing terminal *)
 and e_terminal (r, t_needed, t) = case t of
@@ -983,17 +983,17 @@ and e_terminal (r, t_needed, t) = case t of
 (* Top-level functions *)
 fun parse_gdecls filename process_library process_file prelude token_front =
     let
-	(* During initial parse, the second argument in A.UseLib
+        (* During initial parse, the second argument in A.UseLib
          * or A.UseFile will be NONE.  Once the library or filename
          * is processed (that is, parsed, checked, etc.) with the
-	 * process_library or process_file function, these resulting
+         * process_library or process_file function, these resulting
          * global declarations are filled in.  Other pragmas are passed
          * through in raw form. *)
-	fun process_pragma true (A.Pragma(A.UseLib(libname, NONE), ext)) =
-	      (A.Pragma(A.UseLib(libname, SOME(process_library libname)), ext),
+        fun process_pragma true (A.Pragma(A.UseLib(libname, NONE), ext)) =
+              (A.Pragma(A.UseLib(libname, SOME(process_library libname)), ext),
                true)
-	  | process_pragma true (A.Pragma(A.UseFile(usefile, NONE), ext)) =
-	      (A.Pragma(A.UseFile(usefile, SOME(process_file filename usefile)), ext),
+          | process_pragma true (A.Pragma(A.UseFile(usefile, NONE), ext)) =
+              (A.Pragma(A.UseFile(usefile, SOME(process_file filename usefile)), ext),
                true)
           | process_pragma true (gdecl as A.Pragma(_, _)) =
               (* unknown pragma; continue in prelude mode *)
@@ -1004,21 +1004,21 @@ fun parse_gdecls filename process_library process_file prelude token_front =
           | process_pragma false (A.Pragma(A.UseFile _, ext)) =
               ( ErrorMsg.error ext ("#use directives must precede all other declarations")
               ; raise ErrorMsg.Error )
-	  | process_pragma prelude gdecl =
+          | process_pragma prelude gdecl =
               (* not a pragma, return prelude' = false *)
               (gdecl, false)
-	val ST as (S, token_front') = p_gdecl (Bot, token_front)
-	val () = if !ErrorMsg.anyErrors then raise ErrorMsg.Error else ()
+        val ST as (S, token_front') = p_gdecl (Bot, token_front)
+        val () = if !ErrorMsg.anyErrors then raise ErrorMsg.Error else ()
     in  (* do not call 'first ST' below, because we do not want to look past EOL *)
-	case ST
-	 of (Bot, M.Cons((T.EOF, r), ts')) => []
-	    (* nothing parsed, e.g., whole file already processed *)
-	  | (Bot $ GDecl(gdecl), _) =>
-	    let val _ = update_typetab gdecl (* update table of type names *)
-		val (gdecl', prelude') = process_pragma prelude gdecl (* process #use pragmas *)
-	    in
-		gdecl' :: parse_gdecls filename process_library process_file prelude' token_front'
-	    end
+        case ST
+         of (Bot, M.Cons((T.EOF, r), ts')) => []
+            (* nothing parsed, e.g., whole file already processed *)
+          | (Bot $ GDecl(gdecl), _) =>
+            let val _ = update_typetab gdecl (* update table of type names *)
+                val (gdecl', prelude') = process_pragma prelude gdecl (* process #use pragmas *)
+            in
+                gdecl' :: parse_gdecls filename process_library process_file prelude' token_front'
+            end
     end
 
 (* parse filename process_library process_file = gdecls
@@ -1071,11 +1071,11 @@ fun parse filename process_library process_file =
  *)
 fun parse_stm token_front =
     let
-	val ST = p_stmt (Bot, token_front)
-	val () = if !ErrorMsg.anyErrors then raise ErrorMsg.Error else ()
+        val ST = p_stmt (Bot, token_front)
+        val () = if !ErrorMsg.anyErrors then raise ErrorMsg.Error else ()
     in
-	case ST (* do not use 'first ST', which might raise EOL *)
-	 of (Bot $ Stm(s,_), token_front') => SOME(s, token_front')
+        case ST (* do not use 'first ST', which might raise EOL *)
+         of (Bot $ Stm(s,_), token_front') => SOME(s, token_front')
             (* tf' = M.Cons((t,_), ts') *)
             (* if t = T.EOL then there is no pending input, otherwise more can be parsed *)
             (* Nothing else should be possible *)

@@ -71,12 +71,12 @@ struct
   fun sizeof 32 tp = M32.sizeof tp
     | sizeof 64 tp = M64.sizeof tp
     | sizeof n tp = ( ErrorMsg.error NONE ("machine word size " ^ Int.toString n ^ " not implemented")
-		    ; raise ErrorMsg.Error )
+                    ; raise ErrorMsg.Error )
 
   fun align 32 tp = M32.align tp
     | align 64 tp = M64.sizeof tp
     | align n tp = ( ErrorMsg.error NONE ("machine word size " ^ Int.toString n ^ " not implemented")
-		   ; raise ErrorMsg.Error )
+                   ; raise ErrorMsg.Error )
 
 end
 
@@ -96,7 +96,7 @@ struct
     | location (SOME(mark)) = Mark.show(mark)
 
   fun nyi msg ext = ( ErrorMsg.error ext ("unimplemented feature: " ^ msg) ;
-		      raise ErrorMsg.Error )
+                      raise ErrorMsg.Error )
 
   val maxint16 = 65536
   val maxint15 = 32768
@@ -121,46 +121,46 @@ struct
     | sizeof tp = Arch.sizeof (!wsize) tp
   and comp_size (SOME(A.Struct(s, SOME(fields), library, ext))) =
       (case Structsizetab.lookup(s)
-	of SOME(size, offsets) => size
-	 | NONE => let val (raw_size, offsets) = comp_offsets (0, nil) fields
-		       val salign = align(A.StructName(s))
-		       val padded_size = (((raw_size-1) div salign)+1)*salign
-		       val _ = Structsizetab.bind(s, (padded_size, offsets))
-		   in
-		       padded_size
-		   end)
+        of SOME(size, offsets) => size
+         | NONE => let val (raw_size, offsets) = comp_offsets (0, nil) fields
+                       val salign = align(A.StructName(s))
+                       val padded_size = (((raw_size-1) div salign)+1)*salign
+                       val _ = Structsizetab.bind(s, (padded_size, offsets))
+                   in
+                       padded_size
+                   end)
   and comp_offsets (n, offsets) nil = (n, offsets)
     | comp_offsets (n, offsets) (A.Field(f, t, ext)::fields) =
       let val fsize = sizeof(t)
-	  val falign = align(t)
-	  val foffset = (((n-1) div falign)+1)*falign
+          val falign = align(t)
+          val foffset = (((n-1) div falign)+1)*falign
       in
-	  comp_offsets (foffset+fsize, offsets @ [(f, t, foffset)]) fields
+          comp_offsets (foffset+fsize, offsets @ [(f, t, foffset)]) fields
       end
 
   fun get_field_offset ((f', t, f'offset)::offsets) f =
       (case Symbol.compare(f, f')
-	of EQUAL => f'offset
+        of EQUAL => f'offset
          | _ => get_field_offset offsets f)
 
   fun get_offset (A.StructName(s)) f ext =
       let val SOME(size, offsets) =
-	      (case Structsizetab.lookup(s)
-		of NONE => ( ignore(comp_size(Structtab.lookup(s)))
+              (case Structsizetab.lookup(s)
+                of NONE => ( ignore(comp_size(Structtab.lookup(s)))
                            ; Structsizetab.lookup(s) )
-		 | so => so)
-	  val offset = get_field_offset offsets f
-	  val _ = if offset >= maxint8
-		  then ( ErrorMsg.error ext ("field offset too big")
-		       ; raise ErrorMsg.Error )
-		  else ()
+                 | so => so)
+          val offset = get_field_offset offsets f
+          val _ = if offset >= maxint8
+                  then ( ErrorMsg.error ext ("field offset too big")
+                       ; raise ErrorMsg.Error )
+                  else ()
       in
-	  offset
+          offset
       end
 
   fun pad2z(s) = if String.size(s) < 2
-		then "0" ^ s
-		else s
+                then "0" ^ s
+                else s
 
   local 
       val cindex = ref 0
@@ -173,103 +173,103 @@ struct
   in
       val int_pool = Array.array(maxint16, Word32.fromInt(0))
       fun next_cindex () =
-	  let val i = !cindex
-	      val _ = if !cindex >= maxint16
-		      then ( ErrorMsg.error NONE ("too many constants") ;
-			     raise ErrorMsg.Error )
-		      else ()
-	      val _ = ( cindex := !cindex+1 )
-	  in
-	      i
-	  end
+          let val i = !cindex
+              val _ = if !cindex >= maxint16
+                      then ( ErrorMsg.error NONE ("too many constants") ;
+                             raise ErrorMsg.Error )
+                      else ()
+              val _ = ( cindex := !cindex+1 )
+          in
+              i
+          end
       val string_pool = Array.array(maxint16, "")
       fun next_sindex () =
-	  let val i = !sindex
-	      val _ = if !sindex >= maxint16
-		      then ( ErrorMsg.error NONE ("too many strings") ;
-			     raise ErrorMsg.Error )
-		      else ()
-	      val _ = ( sindex := !sindex+1 )
-	  in
-	      i
-	  end
+          let val i = !sindex
+              val _ = if !sindex >= maxint16
+                      then ( ErrorMsg.error NONE ("too many strings") ;
+                             raise ErrorMsg.Error )
+                      else ()
+              val _ = ( sindex := !sindex+1 )
+          in
+              i
+          end
       fun inc_slength (n) = ( slength := !slength+n )
       fun get_slength () = !slength
 
       val function_pool : V.function_info option array = Array.array(maxint16, NONE)
       fun track_num_vars(vlist) =
-	  if List.length(vlist) > !num_vars
-	  then num_vars := List.length(vlist)
-	  else ()
+          if List.length(vlist) > !num_vars
+          then num_vars := List.length(vlist)
+          else ()
       fun get_num_vars() = !num_vars
       fun next_findex() =
-	  let val i = !findex
-	      val _ = if !findex >= maxint16
-		      then ( ErrorMsg.error NONE ("too many functions") ;
-			     raise ErrorMsg.Error )
-		      else ()
-	      val _ = ( findex := !findex+1 )
-	  in
-	      i
-	  end
+          let val i = !findex
+              val _ = if !findex >= maxint16
+                      then ( ErrorMsg.error NONE ("too many functions") ;
+                             raise ErrorMsg.Error )
+                      else ()
+              val _ = ( findex := !findex+1 )
+          in
+              i
+          end
 
       val label_map = Array.array(maxint16, 0)
       fun next_glabel(s) =
-	  let val lab = (!glabel, "<" ^ pad2z(Int.toString(!glabel)) ^ ":" ^ s ^ ">")
-	      val _ = ( glabel := !glabel+1 )
-	  in
-	      lab
-	  end
+          let val lab = (!glabel, "<" ^ pad2z(Int.toString(!glabel)) ^ ":" ^ s ^ ">")
+              val _ = ( glabel := !glabel+1 )
+          in
+              lab
+          end
       fun num_labels() = !glabel
 
       val native_pool = ref (nil:V.native_info list)
       fun new_native(g, num_args, ext) =
-	  let val n = !nindex
-	      val ntindex = C0VMNative.native_index(Symbol.name(g))
-	      val _ = if ntindex < 0 orelse ntindex >= maxint16 orelse
+          let val n = !nindex
+              val ntindex = C0VMNative.native_index(Symbol.name(g))
+              val _ = if ntindex < 0 orelse ntindex >= maxint16 orelse
                    n < 0 orelse n >= maxint16
-		      then ( ErrorMsg.error ext ("unsupported native function " ^ Symbol.name(g)) ;
-			     raise ErrorMsg.Error )
-		      else ()
-	      val ni = V.NI { name = Symbol.name(g),
-			      num_args = num_args,
-			      function_table_index = ntindex }
-	      val _ = ( native_pool := !native_pool @ [ni] )
-	      val _ = ( nindex := n+1 )
-	      val _ = Nativetab.bind(g, n)
-	  in
-	      n
-	  end
+                      then ( ErrorMsg.error ext ("unsupported native function " ^ Symbol.name(g)) ;
+                             raise ErrorMsg.Error )
+                      else ()
+              val ni = V.NI { name = Symbol.name(g),
+                              num_args = num_args,
+                              function_table_index = ntindex }
+              val _ = ( native_pool := !native_pool @ [ni] )
+              val _ = ( nindex := n+1 )
+              val _ = Nativetab.bind(g, n)
+          in
+              n
+          end
       fun native_index(g, ext) =
-	  (case (Nativetab.lookup(g), Symtab.lookup(g))
+          (case (Nativetab.lookup(g), Symtab.lookup(g))
             of (SOME(c), _) => c (* native function seen before *)
-	     | (NONE, SOME(A.Function(g', rtp, params, NONE, specs, true, ext'))) =>
-	       (* new native function *)
-	       new_native(g, length(params), ext)
+             | (NONE, SOME(A.Function(g', rtp, params, NONE, specs, true, ext'))) =>
+               (* new native function *)
+               new_native(g, length(params), ext)
             | (NONE, SOME(A.Function(g', rtp, params, _, specs, _, ext'))) =>
-	      (* intermediary, due to dynamic assertion checking *)
-	      (* hack alert!! ignoring wrapper!! *)
-	      new_native(g, length(params), ext)
+              (* intermediary, due to dynamic assertion checking *)
+              (* hack alert!! ignoring wrapper!! *)
+              new_native(g, length(params), ext)
             | (NONE, NONE) =>
-	      case Symbol.name(g)
-	       of "string_join" => new_native(g, 2, ext)
-		| _ => ( ErrorMsg.error ext ("undefined function " ^ Symbol.name(g))
-		       ; raise ErrorMsg.Error ))
+              case Symbol.name(g)
+               of "string_join" => new_native(g, 2, ext)
+                | _ => ( ErrorMsg.error ext ("undefined function " ^ Symbol.name(g))
+                       ; raise ErrorMsg.Error ))
 
       fun reset () =
-	  ( cindex := 0 ;
-	    num_vars := 0 ;
-	    findex := 1 ;
-	    sindex := 0 ;
-	    slength := 0 ;
-	    nindex := 0 ;
-	    native_pool := nil ;
-	    glabel := 0 ;
-	    Funtab.reset() ;
+          ( cindex := 0 ;
+            num_vars := 0 ;
+            findex := 1 ;
+            sindex := 0 ;
+            slength := 0 ;
+            nindex := 0 ;
+            native_pool := nil ;
+            glabel := 0 ;
+            Funtab.reset() ;
             Funtab.bind(Symbol.symbol "main", 0) ;
-	    Nativetab.reset() ;
-	    Structsizetab.reset()
-	  )
+            Nativetab.reset() ;
+            Structsizetab.reset()
+          )
   end
 
   fun labToString (n, lab) = lab
@@ -819,13 +819,13 @@ struct
 
   fun trans arch_wsize gdecls =
       let val () = reset()  (* reset pools, struct size tab *)
-	  val () = ( wsize := arch_wsize )
-	  val () = trans_gdecls gdecls   (* also initialize Funtab, function pool *)
+          val () = ( wsize := arch_wsize )
+          val () = trans_gdecls gdecls   (* also initialize Funtab, function pool *)
       in
-	  V.BC0File { int_pool = (next_cindex(), int_pool),
-		      string_pool = (next_sindex(), get_slength(), string_pool),
-		      function_pool = (next_findex(), function_pool),
-		      native_pool = !native_pool }
+          V.BC0File { int_pool = (next_cindex(), int_pool),
+                      string_pool = (next_sindex(), get_slength(), string_pool),
+                      function_pool = (next_findex(), function_pool),
+                      native_pool = !native_pool }
       end
 
 end (* structure C0VMTrans *)

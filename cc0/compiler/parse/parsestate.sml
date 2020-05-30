@@ -75,7 +75,7 @@ struct
       SOME (last (), last (), hd (!currFilenames))
     | ext (left, right) =
       SOME (look (left, hd (!currLiness), List.length (hd (!currLiness))),
-	    look (right, hd (!currLiness), List.length (hd (!currLiness))),
-	    hd (!currFilenames))
+            look (right, hd (!currLiness), List.length (hd (!currLiness))),
+            hd (!currFilenames))
 
 end

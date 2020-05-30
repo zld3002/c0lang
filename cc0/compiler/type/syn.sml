@@ -92,7 +92,7 @@ struct
   (* syn_field fields f = tp, where f : tp in fields *)
   fun syn_field (A.Field(f',tp,_)::fields) f =
       (case Symbol.compare(f',f)
-	of EQUAL => tp
+        of EQUAL => tp
          | _ => syn_field fields f)
 
   (* syn_exp env e = tp, where env |- e : tp *)
@@ -105,7 +105,7 @@ struct
     | syn_exp env (A.Null) = A.Pointer(A.Any)
     | syn_exp env (A.OpExp(A.SUB, [e1,e2])) =
       (case (syn_exp_expd env e1)
-	 of A.Array(tp) => tp)
+         of A.Array(tp) => tp)
     | syn_exp env (A.OpExp(A.DEREF, [e1])) =
       (case (syn_exp_expd env e1)
          of A.Pointer(tp) => tp)
@@ -125,7 +125,7 @@ struct
         A.Int
     | syn_exp env (A.FunCall(g, es)) =
       (case Symtab.lookup g
-	 of SOME(A.Function(g', rtp, params, _, _, _, _)) => rtp)
+         of SOME(A.Function(g', rtp, params, _, _, _, _)) => rtp)
     | syn_exp env (A.AddrOf(g)) =
         A.Pointer(fun_type g)
     | syn_exp env (A.Invoke(e, es)) =
@@ -133,8 +133,8 @@ struct
         of A.FunType(rtp, params) => rtp )
     | syn_exp env (A.Select(e,f)) =
       (case (syn_exp_expd env e)
-	of A.StructName(s) =>
-	   (case Structtab.lookup s
+        of A.StructName(s) =>
+           (case Structtab.lookup s
              of SOME(A.Struct(s', SOME(fields), _, _)) => syn_field fields f))
     | syn_exp env (A.Alloc(tp)) = A.Pointer(tp)
     | syn_exp env (A.AllocArray(tp,e)) = A.Array(tp)
@@ -164,17 +164,17 @@ struct
   local 
       val next = ref 0
       fun next_t () =
-	  let val _ = next := !next+1
+          let val _ = next := !next+1
           (* create new internal symbol *)
-	  in Symbol.new ("_tmp_" ^ Int.toString (!next)) end
+          in Symbol.new ("_tmp_" ^ Int.toString (!next)) end
   in
     fun new_tmp (tp) ext =
-	let val t = next_t ()
-	in (A.VarDecl(t, tp, NONE, ext), A.Var(t)) end
+        let val t = next_t ()
+        in (A.VarDecl(t, tp, NONE, ext), A.Var(t)) end
 
     fun new_tmp_init (tp, e) ext =
-	let val t = next_t ()
-	in (A.VarDecl(t, tp, SOME(e), ext), A.Var(t)) end
+        let val t = next_t ()
+        in (A.VarDecl(t, tp, SOME(e), ext), A.Var(t)) end
   end
 
 end

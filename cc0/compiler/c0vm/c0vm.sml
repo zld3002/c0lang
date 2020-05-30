@@ -67,22 +67,22 @@ sig
 
   datatype function_info =
      FI of {name : string,
-	    num_args : int,
-	    num_vars : int,
-	    code_length : int,
-	    code : bcline list}
+            num_args : int,
+            num_vars : int,
+            code_length : int,
+            code : bcline list}
 
   datatype native_info =
-	   NI of {name : string,
-		  num_args : int,
-		  function_table_index : int}
+           NI of {name : string,
+                  num_args : int,
+                  function_table_index : int}
 
   datatype program =
      BC0File of { int_pool : int * Word32.word array,
-		  string_pool : int * int * string array,
-		  function_pool : int * function_info option array,
-		  native_pool : native_info list
-		}
+                  string_pool : int * int * string array,
+                  function_pool : int * function_info option array,
+                  native_pool : native_info list
+                }
 
   (* Length of a single instruction (in bytes) *)
   val il : inst -> int
@@ -160,22 +160,22 @@ struct
 
   datatype function_info =
      FI of {name : string,
-	    num_args : int,
-	    num_vars : int,
-	    code_length : int,
-	    code : bcline list}
+            num_args : int,
+            num_vars : int,
+            code_length : int,
+            code : bcline list}
 
   datatype native_info =
-	   NI of {name : string,
-		  num_args : int,
-		  function_table_index : int}
+           NI of {name : string,
+                  num_args : int,
+                  function_table_index : int}
 
   datatype program =
      BC0File of { int_pool : int * Word32.word array,
-		  string_pool : int * int * string array,
-		  function_pool : int * function_info option array,
-		  native_pool : native_info list
-		}
+                  string_pool : int * int * string array,
+                  function_pool : int * function_info option array,
+                  native_pool : native_info list
+                }
 
   fun il (dup) = 1
     | il (pop) = 1

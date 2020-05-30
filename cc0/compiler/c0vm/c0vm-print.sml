@@ -12,7 +12,7 @@ struct
   structure V = C0VM
 
   fun pad8(s) = if String.size(s) < 2
-		then "0" ^ s else s
+                then "0" ^ s else s
 
   fun u8(i) = (* 0 <= i < 256 *)
       if i < 0 orelse i >= 256 then raise Fail ("Invalid bytecode: u8: " ^ (Int.toString i))
@@ -38,8 +38,8 @@ struct
       then "-" ^ Int.toString(~b)
       else Int.toString(b)
   fun pad(s,n) = if String.size(s) < n
-		 then pad(s ^ " ",n)
-		 else s
+                 then pad(s ^ " ",n)
+                 else s
   fun pad9(s) = pad(s,9)
   fun pad18(s) = pad(s,18)
   fun pad27(s) = pad(s,27)
@@ -98,14 +98,14 @@ struct
     | pp_bclines n (V.Inst(inst, anno, ext)::bcs) =
       (* "/" ^ pad(Int.toString(n),3) ^ "/ " ^ *)
         pad27(pp_inst inst) ^ "# " ^ anno ^ "\n"
-	^ pp_bclines (n+V.il(inst)) bcs
+        ^ pp_bclines (n+V.il(inst)) bcs
     | pp_bclines n (nil) = ""
 
   fun pp_function_info (SOME(V.FI {name = name,
-			     	   num_args = num_args,
-			      	   num_vars = num_vars,
-			      	   code_length = code_length,
-			      	   code = is})) =
+                                   num_args = num_args,
+                                   num_vars = num_vars,
+                                   code_length = code_length,
+                                   code = is})) =
       "\n#<" ^ name ^ ">\n"
       ^ pad18(u16(num_args)) ^ "# number of arguments = " ^ Int.toString(num_args) ^ "\n"
       ^ pad18(u16(num_vars)) ^ "# number of local variables = " ^ Int.toString(num_vars) ^ "\n"
@@ -127,8 +127,8 @@ struct
       ppfp function_pool_array 0 n
 
   fun pp_native_info (V.NI {name = name,
-			    num_args = num_args,
-			    function_table_index = nindex}) =
+                            num_args = num_args,
+                            function_table_index = nindex}) =
       pad18(u16(num_args) ^ " " ^ u16(nindex)) ^ "# " ^ name ^ "\n"
 
   fun pp_magic () = "C0 C0 FF EE"
@@ -139,7 +139,7 @@ struct
   fun ppip int_pool_array i n =
       if i < n
       then u32(Array.sub(int_pool_array, i)) ^ "\n"
-	   ^ ppip int_pool_array (i+1) n
+           ^ ppip int_pool_array (i+1) n
       else "\n"
 
   fun pp_int_pool (n, int_pool_array) =
@@ -151,18 +151,18 @@ struct
   fun ppsp string_pool_array i n =
       if i < n
       then charsToHex(String.explode(Array.sub(string_pool_array, i)))
-	   ^ "  # \"" ^ String.toCString(Array.sub(string_pool_array, i)) ^ "\"\n"
-	   ^ ppsp string_pool_array (i+1) n
+           ^ "  # \"" ^ String.toCString(Array.sub(string_pool_array, i)) ^ "\"\n"
+           ^ ppsp string_pool_array (i+1) n
       else "\n"
 
   fun pp_string_pool (n, string_pool_array) =
       ppsp string_pool_array 0 n
 
   fun pp_program c0vm_version bytecode_arch
-		 (V.BC0File {int_pool = (int_pool_length, int_pool_array),
-			     string_pool = (string_pool_length, string_pool_size, string_pool_array),
-			     function_pool = (function_pool_length, function_pool_array),
-			     native_pool = nilist}) =
+                 (V.BC0File {int_pool = (int_pool_length, int_pool_array),
+                             string_pool = (string_pool_length, string_pool_size, string_pool_array),
+                             function_pool = (function_pool_length, function_pool_array),
+                             native_pool = nilist}) =
       pad18(pp_magic()) ^ "# magic number\n"
       ^ pad18(pp_version c0vm_version bytecode_arch)
       ^ "# version " ^ Int.toString(c0vm_version)
