@@ -36,7 +36,7 @@ struct
   fun pos (line, 0) = Int.toString line
     | pos (line, col) = Int.toString line ^ "." ^ Int.toString col
 
-  fun show (left, right, file) = file ^ ":" ^ pos left ^ "-" ^ pos right
+  fun show (left, right, file) = file ^ ": " ^ pos left ^ "-" ^ pos right
 
   fun show' (SOME(ext)) = show ext
     | show' (NONE) = "<unknown location>"
@@ -78,7 +78,18 @@ struct
   fun count_whitespace i s =
       if i < String.size(s) andalso Char.isSpace(String.sub(s,i))
       then count_whitespace (i+1) s
-      else i
+      else i 
+
+  fun format_line (line: int) text indicator = 
+    let val line_text = Int.toString line 
+        val line_text_length = String.size line_text 
+        val spaces = 
+          String.implode (List.tabulate (line_text_length, fn _ => #" ")) ^ " | "
+    in 
+      Color.green ^ spaces ^ "\n" ^
+      Color.green ^ line_text ^ " | " ^ Color.white ^ text ^ "\n" ^
+      Color.green ^ spaces ^ indicator ^ Color.reset ^ "\n"
+    end  
 
   fun show_source (left as (line1,col1), right as (line2,col2), file) =
       SafeIO.withOpenIn file (fn instream =>
@@ -86,7 +97,8 @@ struct
          of NONE => "[location at end of file]\n"
           | SOME(first_line) =>
             if line1 = line2
-            then first_line ^ "\n" ^ createLine col1 col2 ^ "\n"
+            then 
+              format_line line1 first_line (createLine col1 col2)
             else let val second_line = case inputLines (line2-line1) instream
                                         of NONE => "<eof>"
                                          | SOME(line) => line
@@ -95,7 +107,7 @@ struct
                                       ^ String.extract(second_line, ws_count, NONE)
                      val indicator = createLine col1 (String.size first_line + 5 + col2 - ws_count)
                  in
-                     error_line ^ "\n" ^ indicator ^ "\n"
+                   format_line line1 error_line indicator
                  end)
       handle IO.Io _ => "" (* no source file *)
 

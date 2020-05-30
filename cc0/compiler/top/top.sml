@@ -43,6 +43,11 @@ struct
   fun say s = TextIO.output (TextIO.stdErr, s ^ "\n")
   fun newline () = TextIO.output (TextIO.stdErr, "\n")
 
+  fun verbose_say m = Flag.guard Flags.flag_verbose (fn () => say m) 
+
+  val sayError = ErrorMsg.error NONE
+  val sayWarning = ErrorMsg.warn NONE  
+
   (* path concatenation, make result canonical *)
   fun path_concat (x, y) = OS.Path.mkCanonical (OS.Path.concat (x, y))
   fun path_concat3 (x, y, z) = 
@@ -137,8 +142,8 @@ struct
       | "h0" => StdH0.check ast
       | "c1" => () (* nothing to check at the moment *)
       | "h1" => StdH1.check ast
-      | std => ( say ("Unknown language standard '" ^ std ^ "'")
-               ; raise EXIT ) )
+      | std => ( sayError ("unknown language standard '" ^ std ^ "'")
+               ; raise EXIT ))
   end
 
   fun lex_annos filename =
@@ -151,16 +156,23 @@ struct
       | "h0" => true
       | "c1" => true
       | "h1" => true
-      | std => ( say ("Unknown language standard '" ^ std ^ "'")
+      | std => ( sayError ("unknown language standard '" ^ std ^ "'")
                ; raise EXIT )
 
   fun is_fundef (Ast.Function(_, _, _, SOME(s), _, _, _)) = true
     | is_fundef _ = false
-
-  fun extract_wrappers (Ast.Pragma (Ast.UseLib (library, SOME(gdecls)), _)::libs) =
-        List.filter is_fundef gdecls @ extract_wrappers libs
-    | extract_wrappers (_::libs) = raise Fail("internal error: library misconfiguration")
-    | extract_wrappers nil = nil
+  
+  fun extract_wrappers ((p as (Ast.Pragma (Ast.UseLib (library, SOME(gdecls)), _)))::libs) = (
+        verbose_say "Got to the SOME case" () ;
+        print (Ast.Print.pp_program [p]) ;
+        List.filter is_fundef gdecls @ extract_wrappers libs)
+    | extract_wrappers (Ast.Pragma (Ast.UseLib (library, NONE), _)::libs) = (
+        verbose_say "Got to the NONE case" () ; 
+        raise Fail "library error")
+    (* | extract_wrappers (_::libs) = raise Fail("internal error: library misconfiguration") *)
+    | extract_wrappers nil = (
+        verbose_say "Got to the [] case " () ;
+        nil) 
 
   val lib_file = "stdc0.h0"
   val cc0_lib = "cc0lib.h"	(* using .h *)
@@ -237,6 +249,20 @@ struct
                                 val ast'' = if Flag.isset Flags.flag_dyn_check
                                             then DynCheck.contracts ast'
                                             else ast'
+
+                                (* Insert printf or format into the symbol table if conio
+                                * or string are loaded. Otherwise they could get shadowed *)
+                                val () = 
+                                    case library of 
+                                      "string" => Symtab.bind (Symbol.symbol "format", 
+                                                              Ast.Function(Symbol.symbol "format", Ast.String, 
+                                                                            [Ast.VarDecl (Symbol.symbol "fmt", Ast.String, NONE, NONE)], 
+                                                                            NONE, [], true, NONE))
+                                    | "conio" => Symtab.bind (Symbol.symbol "printf", 
+                                                              Ast.Function(Symbol.symbol "printf", Ast.String, 
+                                                                          [Ast.VarDecl (Symbol.symbol "fmt", Ast.String, NONE, NONE)], 
+                                                                          NONE, [], true, NONE))
+                                    | _ => ()                                                 
                             in 
                                 SOME ast''
                             end
@@ -333,8 +359,8 @@ struct
         val tprogram' = if Flag.isset Flags.flag_dyn_check
                         then tprogram @ DynCheck.dummy_definitions (UndefUnused.list())
                         else tprogram
-        val oprogram = List.concat (map #2 programs)
-        val sprogram = List.concat (map #3 programs)
+      val oprogram = List.concat (map #2 programs)
+      val sprogram = List.concat (map #3 programs)
    in
       (* propagate original source program (sprogram) here? *)
       {library_headers = library_headers, program = tprogram',
@@ -360,7 +386,7 @@ fun finalize {library_headers} =
         (* the wrappers are only for those libraries specified
          * one the command line with -l, #use <lib> are in-lined
          *)
-        val library_wrappers = extract_wrappers library_headers
+         val library_wrappers = extract_wrappers library_headers
       in 
         { library_wrappers = library_wrappers } 
       end
@@ -371,7 +397,7 @@ let
         val _ = Flag.guard Flags.flag_purity_check 
                    (fn () => 
                      let val verrors = AnalysisTop.purityCheck oprogram
-                         val _ = map (say o VError.pp_error) verrors
+                         val () = List.app VError.pp_error verrors
                      in 
                          case verrors of
                             [] => ()
@@ -381,7 +407,7 @@ let
         val _ = Flag.guard Flags.flag_static_check 
                    (fn () => 
                      let val verrors = AnalysisTop.staticCheck oprogram
-                         val _ = map (say o VError.pp_error) verrors
+                         val () = List.app VError.pp_error verrors
                          val _ = (*case verrors of
                                     [] => say "No static errors."
                                   | _ => ()*)()
@@ -393,7 +419,7 @@ let
         val _ = Flag.guard Flags.flag_verif_check 
                    (fn () => 
                      let val verrors = AnalysisTop.verifCheck oprogram
-                         val _ = map (say o VError.pp_error) verrors
+                         val () = List.app VError.pp_error verrors
                          val _ = case verrors of
                                     [] => say "No verification condition errors could be found."
                                   | _ => ()
@@ -415,23 +441,29 @@ let
                         ^ BuildId.revision ^ " (built " ^ BuildId.date ^ ")"
         val usageinfo = G.usageInfo {header = header, options = options}
         val c0vm_version = 9
-        fun errfn msg : unit = (say (msg ^ "\n" ^ usageinfo) ; raise EXIT)
+        fun errfn msg = (sayError msg ; raise EXIT)
 
         (* Reset state by reading argments; possibly display usage & exit. *) 
         val () = if List.length args = 0
-                 then (say versioninfo; say usageinfo; raise EXIT)
-                 else reset ()
+                   then (say versioninfo; say usageinfo; raise EXIT)
+                   else reset ()
+
         val sources = get_sources_set_flags
                           {options = options,
                            errfn = errfn,
                            versioninfo = versioninfo,
                            usageinfo = usageinfo,
                            args = args}
-        val () = if null sources then errfn "Error: no input file" else ()
+
+        (* Set associated local references *)
+        (* Moved to top.sml to avoid cyclic dependencies *)
+        val () = C0Lex.warnings := Flag.isset Flags.flag_warn;
+
+        val () = if null sources then errfn "no input files " else ()
         val () = (* not (null (!runtime_args)) => Flag.isset Flag.flag_exec *)
                  if null (!Flags.runtime_args)
                     orelse Flag.isset Flags.flag_exec then ()
-                 else errfn "Error: -a in cc0 only makes sense combined with -x"
+                 else errfn "-a in cc0 only makes sense combined with -x"
 
         (* copy sources, record command line *)
         val () =
@@ -464,26 +496,39 @@ let
 
         (* Load the program into memory *)
         val {library_headers, program, oprogram, sprogram} = typecheck_and_load sources
+        
         val {library_wrappers} = finalize {library_headers = library_headers}
-        val () = if Flag.isset Flags.flag_warn
-                 then Warn.warn_program sprogram
-                 else ()
+        
+        (* Tries to check for style violations *)
+        val () = if Flag.isset Flags.flag_warn then Warn.warn_program sprogram else () 
+        (* Semantic warnings *)
+        val () = CodeWarn.warn_program sprogram
 
         val () = static_analysis oprogram
 
-        (* Check to make sure we're not trying to output a .c0 or .h0 file. *)
+        (* Check to make sure we're not trying to output a source file. *)
         val {dir = _, file = a_out_file} = OS.Path.splitDirFile (!Flags.a_out)
         val {base = _, ext = a_out_extOpt} = OS.Path.splitBaseExt a_out_file
-        val () = case a_out_extOpt of
-                    SOME "c0" => ( say ("Cannot produce .c0 files as output.\n"
-                                        ^ "This would overwrite " ^ a_out_file 
-                                        ^ " if it exists.\n") ;
-                                   raise EXIT )
-                  | SOME "h0" => ( say ("Cannot produce .h0 files as output.\n"
-                                        ^ "This would overwrite " ^ a_out_file 
-                                        ^ " if it exists.\n") ;
-                                   raise EXIT )
-                  | _ => () 
+        val () = 
+          let 
+            val source_exts = ["c0", "c1", "h0", "h1"]
+            fun is_source ext = List.exists (fn item => ext = item) source_exts
+          in 
+            case a_out_extOpt of 
+                NONE => () 
+              | SOME ext => 
+                  case (is_source ext, readable a_out_file) of 
+                      (true, true) => (
+                        sayError (
+                            "cannot produce a source file as output.\n" ^
+                            "This would overwrite '" ^ a_out_file ^ "'") ;
+                        raise EXIT)
+                    | (true, _) => 
+                        sayWarning (
+                          "output filename '" ^
+                          a_out_file ^ "' has a source file extension")
+                    | _ => () 
+          end 
 
         (* Determine output files Based on the initial files *)
         (* use last input file as name for intermediate .c and .h files *)
@@ -549,7 +594,7 @@ let
         val runtimeDir = OS.Path.concat (absBaseDir, "runtime")
 
         val cflags = 
-            " -std=c99 -g"
+            " -std=c99"
             (* Oct 26, 2011, this allows C0 int to be represented as C int *)
             (* because two's-complement arithmetic is specified *)
             ^ " -fwrapv"
@@ -568,24 +613,24 @@ let
             ^ " -I" ^ path_concat (!Flags.base_dir, "include") 
             ^ " -I" ^ path_concat (!Flags.base_dir, "runtime") 
 
-            (* add lib and runtime directories to search path *)
-            ^ " " ^ String.concatWith " " (map (fn p => "-L" ^ (abspath p)) (!Flags.search_path))
-            ^ " -L" ^ (!Flags.base_dir ^ "/runtime")
+          (* add lib and runtime directories to search path *)
+          ^ " " ^ String.concatWith " " (map (fn p => "-L" ^ (abspath p)) (!Flags.search_path))
+          ^ " -L" ^ (!Flags.base_dir ^ "/runtime")
 
-            (* Finally, use the cc0main.c file *)
-            ^ " " ^ path_concat3 (!Flags.base_dir, "lib", cc0_main)
+          (* Finally, use the cc0main.c file *)
+          ^ " " ^ path_concat3 (!Flags.base_dir, "lib", cc0_main)
 
-            (* The actual c0 main file *)
-            ^ " " ^ path_concat (out_dir, cname)
+          (* The actual c0 main file *)
+          ^ " " ^ path_concat (out_dir, cname)
 
-            (* C0 librarires *)
-            ^ " " ^ String.concatWith " " (map (fn l => "-l" ^ l) (!Flags.libraries))
-            (* Link C0 runtime *)
-            ^ " -l" ^ !Flags.runtime
-            (* Link libpng if necessary *)
-            ^ (if List.exists (fn l => l = "img") (!Flags.libraries) then " -lpng" else "")
-            (* Link gc if needed *)
-            ^ (if !Flags.runtime <> "bare" then " -lgc" else "")
+          (* C0 librarires *)
+          ^ " " ^ String.concatWith " " (map (fn l => "-l" ^ l) (!Flags.libraries))
+          (* Link C0 runtime *)
+          ^ " -l" ^ !Flags.runtime
+          (* Link libpng if necessary *)
+          ^ (if List.exists (fn l => l = "img") (!Flags.libraries) then " -lpng" else "")
+          (* Link gc if needed *)
+          ^ (if !Flags.runtime <> "bare" then " -lgc" else "")
 
         (* Invoke GCC *)
         (* gcc command for linking with dynamic libraries *)
@@ -668,17 +713,15 @@ let
       in
           status
       end
-      handle ErrorMsg.Error => ( say "Compilation failed" ; OS.Process.failure )
+      handle ErrorMsg.Error => ( sayError "compilation failed" ; OS.Process.failure )
            | EXIT => OS.Process.failure
            | FINISHED => OS.Process.success
-           | e => ( say ("Unexpected exception in cc0:\n" ^ exnMessage e ^ "\n")
+           | e => ( sayError ("unexpected exception in cc0:\n" ^ exnMessage e ^ "\n")
                   ; if false (* true: development mode, false: production *)
                     then ((*say (String.concatWith "\n" (SMLofNJ.exnHistory e));*) raise e)
                     else OS.Process.failure)
            (* Above extra bits commented out by Rob, Nov 15 2012. 
             * The compiler needs to compile with MLton! - Rob *)
           
-
   fun test s = main ("", String.tokens Char.isSpace s)
-
 end

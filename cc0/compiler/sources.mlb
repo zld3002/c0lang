@@ -6,11 +6,15 @@ $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
 util/sources.mlb
 
 local 
-   ann "nonexhaustiveMatch ignore" in 
+   top/flags.sml
 
+   ann "nonexhaustiveMatch ignore" "allowOrPats true" in 
       ast/ast.sml
 
       warn/warn.sml
+      codewarn/unused.sml
+      codewarn/unreachable_code.sml
+      codewarn/warn.sml 
 
       type/symtab.sml
       type/std-sig.sml
@@ -22,6 +26,7 @@ local
       type/std-l3.sml
       type/std-l4.sml
       type/std-l5.sml
+      type/expand_printf.sml
       type/typechecker.sml
       type/syn.sml
       type/dyn-check.sml
@@ -59,7 +64,6 @@ local
    end
 
    ../buildid.sml
-   top/flags.sml
    analysis/top.sml
    top/top.sml
 in
