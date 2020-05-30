@@ -20,6 +20,9 @@ struct
     fun location (NONE) = "_"
       | location (SOME(mark)) = Mark.show(mark)
 
+    fun location_with_name ext g = 
+        String.concat [Symbol.name g, " (", location ext, ")"]
+
     fun fun_type g = case Symtab.lookup g of
         SOME(A.Function(_, rtp, params, _, _, _, _)) => A.FunType(rtp, params)
 
@@ -36,7 +39,21 @@ struct
     val caller_var = A.Var(caller_id)
     val caller_decl = A.VarDecl(caller_id, A.String, NONE, NONE)
     val caller_decl_main = 
-        A.VarDecl(caller_id, A.String, SOME (A.StringConst "(none)"), NONE)
+        A.VarDecl(caller_id, A.String, SOME (A.StringConst "(program start)"), NONE)
+
+    (* Backtrace function symbol info 
+     * These are added to the symbol table as external functions
+     * in `contracts` *)
+    val register_func = Symbol.nsymbol Symbol.User "c0_push_callstack"
+    val deregister_func = Symbol.nsymbol Symbol.User "c0_pop_callstack"
+
+    (* These are registered before preconditions run in tfm_decl *)
+    val register_backtrace = 
+      [A.Exp (A.FunCall (register_func, [caller_var]))]
+
+    (* This is done before returning in dc_stm *)
+    val deregister_backtrace = 
+      [A.Exp (A.FunCall (deregister_func, []))]
 
     (* tfm_test env e = e'
      * Assumes env |- e : tp for some tp
@@ -181,19 +198,19 @@ struct
      * This handles multiple declarations of a function, each with
      * contracts.
      *)
-    fun fv_exp (e as A.Var _) ext = e
-      | fv_exp (e as A.IntConst _) ext = e
-      | fv_exp (e as A.StringConst _) ext = e
-      | fv_exp (e as A.CharConst _) ext = e
-      | fv_exp (e as A.True) ext = e
-      | fv_exp (e as A.False) ext = e
-      | fv_exp (e as A.Null) ext = e
-      | fv_exp (A.OpExp(oper,es)) ext =
-          A.OpExp(oper, List.map (fn e => fv_exp e ext) es)
-      | fv_exp (A.Select(e, f)) ext =
-          A.Select(fv_exp e ext, f)
-      | fv_exp (A.FunCall(g, es)) ext =
-        let val es' = List.map (fn e => fv_exp e ext) es
+    fun fv_exp (e as A.Var _) ext g = e
+      | fv_exp (e as A.IntConst _) ext g = e
+      | fv_exp (e as A.StringConst _) ext g = e
+      | fv_exp (e as A.CharConst _) ext g = e
+      | fv_exp (e as A.True) ext g = e
+      | fv_exp (e as A.False) ext g = e
+      | fv_exp (e as A.Null) ext g = e
+      | fv_exp (A.OpExp(oper,es)) ext g =
+          A.OpExp(oper, List.map (fn e => fv_exp e ext g) es)
+      | fv_exp (A.Select(e, f)) ext g =
+          A.Select(fv_exp e ext g, f)
+      | fv_exp (A.FunCall(g, es)) ext callerName =
+        let val es' = List.map (fn e => fv_exp e ext callerName) es
             val (g_last, i_last, is_extern) =
                 case Funversiontab.lookup g
                  of NONE => (g, 0, is_external_fun g)
@@ -203,65 +220,66 @@ struct
              * location in the form of a string as an additional argument *)
             A.FunCall(g_last, if is_extern orelse is_main_fn g_last
                               then es'
-                              else es' @ [A.StringConst(location(ext))])
+                              else es' @ [A.StringConst(location_with_name ext callerName)])
         end
-      | fv_exp (A.AddrOf(g)) ext =
+      | fv_exp (A.AddrOf(g)) ext callerName =
         let val (g_last, i_last, is_extern) =
                 case Funversiontab.lookup g
                  of NONE => (g, 0, is_external_fun g)
                   | SOME(g_i, i) => (g_i, i, false) (* versioned functions are not external *)
         in A.AddrOf(g_last) end
-      | fv_exp (A.Invoke(e, es)) ext =
-        let val (e'::es') = List.map (fn e => fv_exp e ext) (e::es)
+      | fv_exp (A.Invoke(e, es)) ext g =
+        let val (e'::es') = List.map (fn e => fv_exp e ext g) (e::es)
         (* external functions are wrapped; 'main' cannot be invoked *)
-        in A.Invoke(e', es' @ [A.StringConst(location(ext))]) end
-      | fv_exp (e as A.Alloc _) ext = e
-      | fv_exp (A.AllocArray(t, e)) ext =
-          A.AllocArray(t, fv_exp e ext)
-      | fv_exp (A.Cast(t, e)) ext =
-          A.Cast(t, fv_exp e ext)
-      | fv_exp (e as A.Result) ext = e
-      | fv_exp (A.Length(e)) ext =
-          A.Length(fv_exp e ext)
-      | fv_exp (A.Hastag(tp, e)) ext =
-          A.Hastag(tp, fv_exp e ext)
+        in A.Invoke(e', es' @ [A.StringConst(location_with_name ext g)]) end 
+      | fv_exp (e as A.Alloc _) ext g = e
+      | fv_exp (A.AllocArray(t, e)) ext g =
+          A.AllocArray(t, fv_exp e ext g)
+      | fv_exp (A.Cast(t, e)) ext g =
+          A.Cast(t, fv_exp e ext g)
+      | fv_exp (e as A.Result) ext g = e
+      | fv_exp (A.Length(e)) ext g =
+          A.Length(fv_exp e ext g)
+      | fv_exp (A.Hastag(tp, e)) ext g =
+          A.Hastag(tp, fv_exp e ext g)
       (* A.Old should be impossible *)
-      | fv_exp (A.Marked(marked_exp)) ext =
-          A.Marked(Mark.mark'(fv_exp (Mark.data marked_exp) (Mark.ext marked_exp),
+      | fv_exp (A.Marked(marked_exp)) ext g =
+          A.Marked(Mark.mark'(fv_exp (Mark.data marked_exp) (Mark.ext marked_exp) g,
                               Mark.ext marked_exp))
 
     (* fv_stm s ext = s', translating functions calls in
      * to add source location argument.  Contracts have already
      * been translated away. *)
-    fun fv_stm (A.Assign(oper_opt, lv, e)) ext =
-          A.Assign(oper_opt, fv_exp lv ext, fv_exp e ext)
-      | fv_stm (A.Exp(e)) ext = A.Exp(fv_exp e ext)
-      | fv_stm (A.Seq(ds, ss)) ext = 
-          A.Seq(List.map (fn d => fv_decl d) ds,
-                List.map (fn d => fv_stm d ext) ss)
-      | fv_stm (A.StmDecl d) ext = A.StmDecl (fv_decl d)
-      | fv_stm (A.If(e, s1, s2)) ext =
-          A.If(fv_exp e ext, fv_stm s1 ext, fv_stm s2 ext)
-      | fv_stm (A.While(e, invs, s)) ext = (* ignore invs *)
-          A.While(fv_exp e ext, invs, fv_stm s ext)
+    fun fv_stm (A.Assign(oper_opt, lv, e)) ext g =
+          A.Assign(oper_opt, fv_exp lv ext g, fv_exp e ext g)
+      | fv_stm (A.Exp(e)) ext g = A.Exp(fv_exp e ext g)
+      | fv_stm (A.Seq(ds, ss)) ext g = 
+          A.Seq(List.map (fn d => fv_decl d g) ds,
+                List.map (fn d => fv_stm d ext g) ss)
+      | fv_stm (A.StmDecl d) ext g = A.StmDecl (fv_decl d g)
+      | fv_stm (A.If(e, s1, s2)) ext g =
+          A.If(fv_exp e ext g, fv_stm s1 ext g, fv_stm s2 ext g)
+      | fv_stm (A.While(e, invs, s)) ext g = (* ignore invs *)
+          A.While(fv_exp e ext g, invs, fv_stm s ext g)
       (* A.For should be impossible *)
-      | fv_stm (s as A.Continue) ext = s
-      | fv_stm (s as A.Break) ext = s
-      | fv_stm (s as A.Return(NONE)) ext = s
-      | fv_stm (A.Return(SOME(e))) ext =
-          A.Return(SOME(fv_exp e ext))
-      | fv_stm (A.Assert(e1, e2s)) ext =
-          A.Assert(fv_exp e1 ext, List.map (fn e => fv_exp e ext) e2s)
-      | fv_stm (A.Error e) ext = 
-          A.Error(fv_exp e ext)
+      | fv_stm (s as A.Continue) ext g = s
+      | fv_stm (s as A.Break) ext g = s
+      | fv_stm (s as A.Return(NONE)) ext g = 
+          A.Seq([], deregister_backtrace @ [s])
+      | fv_stm (A.Return(SOME(e))) ext g =
+          A.Seq([], deregister_backtrace @ [A.Return(SOME(fv_exp e ext g))])
+      | fv_stm (A.Assert(e1, e2s)) ext g =
+          A.Assert(fv_exp e1 ext g, List.map (fn e => fv_exp e ext g) e2s)
+      | fv_stm (A.Error e) ext g = 
+          A.Error(fv_exp e ext g)
       (* A.Anno should be impossible *)
-      | fv_stm (A.Markeds(marked_stm)) ext =
-          A.Markeds(Mark.mark'(fv_stm (Mark.data marked_stm) (Mark.ext marked_stm),
+      | fv_stm (A.Markeds(marked_stm)) ext g =
+          A.Markeds(Mark.mark'(fv_stm (Mark.data marked_stm) (Mark.ext marked_stm) g,
                                Mark.ext marked_stm))
 
-    and fv_decl (d as A.VarDecl(x, t, NONE, ext)) = d
-      | fv_decl (A.VarDecl(x, t, SOME(e), ext)) =
-          A.VarDecl(x, t, SOME(fv_exp e ext), ext)
+    and fv_decl (d as A.VarDecl(x, t, NONE, ext)) g = d
+      | fv_decl (A.VarDecl(x, t, SOME(e), ext)) g =
+          A.VarDecl(x, t, SOME(fv_exp e ext g), ext)
 
     fun param_to_arg (A.VarDecl(x, t, NONE, ext)) = A.Var(x)
 
@@ -303,7 +321,7 @@ struct
      * called by coin *)
     fun contracts_interpreter env stm = 
         let val stm' = dc_stm env stm nil
-            val stm'' = fv_stm stm' NONE
+            val stm'' = fv_stm stm' NONE (Symbol.new "(coin top level)")
         in 
             stm'' 
         end
@@ -325,13 +343,17 @@ struct
             val ass2 = extract_post env1 specs
             (* ass2 = postcondition; insert before return *)
             val body' = dc_stm env1 body ass2
+            
             (* add possibly redundant (dead-code) post-condition *)
             (* to make sure it is checked in case there is no return in body s *)
+            (* If the return type is void, then we need to remove it from the backtrace 
+             * at the end as well because there might not be a return statement *)
             val body'' = case rtp
                          of A.Void => A.Seq(ds0 @ dresult,
-                                            ass1 @ [body'] @ ass2)
-                          | _ => A.Seq(ds0 @ dresult, ass1 @ [body'])
-            val body''' = fv_stm body'' ext
+                                            register_backtrace @ ass1 @ [body'] @ ass2 @ deregister_backtrace)
+                          | _ => A.Seq(ds0 @ dresult, 
+                                       register_backtrace @ ass1 @ [body'])
+            val body''' = fv_stm body'' ext g 
         in
             A.Function(g, rtp, params1, SOME(body'''), specs, is_external, ext)
         end
@@ -538,7 +560,7 @@ struct
         (* no specifications (specs = nil); transform to add argument *)
         [A.Function(g, rtp, params @ [caller_decl], NONE, nil, false, ext)]
       | dc_gdecl (d as A.Function(g, rtp, params, NONE, specs as (_::_), is_external, ext)) =
-        (* specifications; create new wrapper for g *)
+        (* specifications (function prototype with contracts but no body); create new wrapper for g *)
         let 
             val g_opt = Funversiontab.lookup g
             val (g_last, i_last) = case g_opt of NONE => (g,0) | SOME(g_i,i) => (g_i,i)
@@ -582,7 +604,19 @@ struct
      | dc_gdecls (gdecl::gdecls) =
          dc_gdecl gdecl @ dc_gdecls gdecls
 
-   fun contracts gdecls = dc_gdecls gdecls
+   fun contracts gdecls = (
+     (* Insert Symtab info for register/deregister callstack as external symbol
+      * so the names don't get mangled by the printer *)
+     Symtab.bind (register_func, 
+        A.Function(register_func, A.Void, 
+                   [A.VarDecl (Symbol.new "caller", A.String, NONE, NONE)], 
+                   NONE, [], (* is_extern = *) true, NONE));
+
+    Symtab.bind (deregister_func, 
+        A.Function(deregister_func, A.Void, [], NONE, [], true, NONE));
+
+     dc_gdecls gdecls
+   )
 
    (* dummy_def relies on the symbol table retaining the original declaration *)
    fun dummy_def (SOME(A.Function(g, rtp, params, NONE, specs, false, ext))) =
