@@ -40,7 +40,7 @@ fun reload () =
 let 
    val usageinfo = 
       GetOpt.usageInfo 
-       { header = "Usage: " ^ !name ^ " [OPTONS_AND_SOURCEFILES...]"
+       { header = "Usage: " ^ !name ^ " [OPTIONS_AND_SOURCEFILES...]"
        , options = options }
 
    (* Run the compiler's infrastructure (which calls CommandLine.args) *)

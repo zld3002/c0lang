@@ -6,7 +6,7 @@ sig
    val VerificationError : (Mark.ext option * string) -> error
    val VerificationNote : (Mark.ext option * string) -> error
    
-   val pp_error : error -> string
+   val pp_error : error -> unit
    
    (*  collect: execute a function, collecting the errors that are thrown
                 into a list, and returning the produced value.*)
@@ -36,13 +36,9 @@ struct
           | _ => e
           
    val tabToSpace = String.translate (fn #"\t" => " " | c => String.str c)
-   fun make_msg kind ext msg =
-      (Option.getOpt(Option.map (Mark.show) ext,"")) ^
-      (String.concat[":", kind, ":", msg, "\n"]) ^
-      (Option.getOpt(Option.map (tabToSpace o Mark.show_source) ext,""))
          
-   fun pp_error (VE (ext, msg)) = make_msg "error" ext msg
-     | pp_error (VN (ext, msg)) = make_msg "note" ext msg 
+   fun pp_error (VE (ext, msg)) = ErrorMsg.error ext msg 
+     | pp_error (VN (ext, msg)) = ErrorMsg.info ext msg  
      
    local 
       val l = ref ([] : error list)
