@@ -1,0 +1,7 @@
+# This is the generated library code for
+# CC0
+# The actual library headers are located in libs/
+
+*.h0
+*.c0
+*.a

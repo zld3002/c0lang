@@ -1,0 +1,9 @@
+# I think these are copied from
+# the externals directory
+# - Ishan
+
+png.h
+pngconf.h
+pnglibconf.h
+zconf.h
+zlib.h

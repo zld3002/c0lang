@@ -6,7 +6,8 @@
 #
 
 # remove CR on Cygwin
-REV=`svnversion | sed 's/\013//g'`
+#REV=`svnversion | sed 's/\013//g'`
+REV=`git rev-list --count master`
 DATE=`date`
 HOST=`hostname`
 
