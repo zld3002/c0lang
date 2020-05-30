@@ -538,9 +538,9 @@ struct
                    NONE => []
                  | SOME [] => []
                  | SOME m => [sat_error (print_model m)]
-      val _ = if !debug
-        then List.map (fn e => print_dbg (VError.pp_error e ^ "\n")) errs
-        else []
+      val () = if !debug
+        then List.app VError.pp_error errs
+        else ()
       (* Now return the stack to as it was so we can make the actual
        * assumption that we wanted to from the beginning. *)
       val _ = C.pop()
