@@ -103,10 +103,10 @@ void c0_print_callstack() {
 
 noreturn void c0_abort_mem(const char* msg);
 
-void c0_push_callstack(c0_string funcname) {
+void c0_push_callstack(c0_string c0_funcname) {
   c0_stack_size++;
 
-  const char* funcname = c0_string_tocstr(funcname);
+  const char* funcname = c0_string_tocstr(c0_funcname);
 
   if (c0_stack_size > c0_stacksize_limit) {
     print_err("Maximum callstack size exceeded (is %ld, change $" C0_STACK_LIMIT_ENV " to adjust)", c0_stacksize_limit);
