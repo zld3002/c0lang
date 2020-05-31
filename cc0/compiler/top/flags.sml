@@ -71,7 +71,6 @@ structure Flags :> FLAGS = struct
   val flag_static = Flag.flag "static"
   val flag_only_typecheck = Flag.flag "only-typecheck"
   (* Nov 2019 *)
-  val flag_features = Flag.flag "features"
   val flag_warnings = Flag.flag "warnings" (* Semantic warnings *)
 
   val base_dir = ref ""                       (* see reset_flags ()           *)
@@ -84,7 +83,6 @@ structure Flags :> FLAGS = struct
                                               (* Default is to use extension  *)
   val a_out = ref ""                          (* Output executable            *)
   val bytecode_arch = ref 64                  (* Architecture for bytecode    *)
-  val features : string list ref = ref []     (* Language extension features (e.g. printf) *)
   val warnings : string list ref = ref []     (* Compiler warnings (e.g. "unreachable-code") *)
 
   val flag_trace = Flag.flag "trace"
