@@ -16,6 +16,7 @@
 
 #define print_err(msg, ...) fprintf(stderr, ANSI_BOLDRED "c0rt: " msg ANSI_RESET "\n", ## __VA_ARGS__)
 
+// Environment variable names for configuration
 #define C0_BACKTRACE_LIMIT_ENV "C0_BACKTRACE_LIMIT"
 #define C0_STACK_LIMIT_ENV "C0_STACK_LIMIT"
 #define C0_MAX_ARRAYSIZE_ENV "C0_MAX_ARRAYSIZE"
