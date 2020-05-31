@@ -1119,7 +1119,7 @@ struct
         let
           (* returns true if the expression was a valid lvalue cast
            * returns false if it was not a cast
-           * raises exception if the cast is invalid (i.e. to void*) *)
+           * raises exception if the cast is invalid (i.e. to void* ) *)
           fun check_lval_cast e ext = case e of 
             A.Marked marked_exp => check_lval_cast (Mark.data marked_exp) (Mark.ext marked_exp) 
           | A.Cast (tp, e2) => (
