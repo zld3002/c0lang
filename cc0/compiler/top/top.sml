@@ -162,17 +162,12 @@ struct
   fun is_fundef (Ast.Function(_, _, _, SOME(s), _, _, _)) = true
     | is_fundef _ = false
   
-  fun extract_wrappers ((p as (Ast.Pragma (Ast.UseLib (library, SOME(gdecls)), _)))::libs) = (
-        verbose_say "Got to the SOME case" () ;
-        print (Ast.Print.pp_program [p]) ;
-        List.filter is_fundef gdecls @ extract_wrappers libs)
-    | extract_wrappers (Ast.Pragma (Ast.UseLib (library, NONE), _)::libs) = (
-        verbose_say "Got to the NONE case" () ; 
-        raise Fail "library error")
-    (* | extract_wrappers (_::libs) = raise Fail("internal error: library misconfiguration") *)
-    | extract_wrappers nil = (
-        verbose_say "Got to the [] case " () ;
-        nil) 
+  fun extract_wrappers (Ast.Pragma (Ast.UseLib (library, SOME(gdecls)), _)::libs) =
+        List.filter is_fundef gdecls @ extract_wrappers libs
+      (* Bug here (e.g. coin -l string -l util)
+       * occurs because util #use's string. *)
+    | extract_wrappers (_::libs) = raise Fail("internal error: library misconfiguration")
+    | extract_wrappers nil = nil
 
   val lib_file = "stdc0.h0"
   val cc0_lib = "cc0lib.h"	(* using .h *)
