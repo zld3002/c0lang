@@ -2,11 +2,12 @@
 #include <stdio.h>
 #include <signal.h>
 #include <stdnoreturn.h>
+#include <string.h> 
+#include <strings.h> // bzero 
 #include <limits.h>
 #include <errno.h>
 #include <gc.h>
 #include <c0runtime.h>
-#include <strings.h> // defines bzero(), strcmp
 
 // Terminal color codes
 #define ANSI_BOLD "\x1b[1m"
