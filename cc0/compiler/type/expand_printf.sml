@@ -80,7 +80,6 @@ end = struct
     PNonFormatted o String.implode <$> munch_string' ()
   end 
 
-  (* TODO: add more format options *)
   val munch_format: format_specifier parser = 
     char_to_format o Option.valOf <$> pop 
 
@@ -211,7 +210,6 @@ end = struct
   | Ast.Assert (exp, msgs) => Ast.Assert (expand_exp pos exp, msgs)
   | _ => s 
 
-  (* TODO: expand contracts *)
   fun expand_fdecl (Ast.Function (name, rtp, params, SOME body, contracts, is_extern, pos)) = 
         Ast.Function (name, rtp, params, SOME $ expand_stmnt pos body, List.map expand_contract contracts, is_extern, pos)
     | expand_fdecl (other as Ast.Function (name, rtp, params, NONE, contracts, is_extern, pos)) = 
