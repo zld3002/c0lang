@@ -124,6 +124,9 @@ struct
       (* all remaining operators are on integers only *)
         A.Int
     | syn_exp env (A.FunCall(g, es)) =
+      (* Note that in top.sml we add printf/format to the
+       * symbol table, so we actually don't need to do anything
+       * special *)
       (case Symtab.lookup g
          of SOME(A.Function(g', rtp, params, _, _, _, _)) => rtp)
     | syn_exp env (A.AddrOf(g)) =

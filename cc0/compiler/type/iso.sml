@@ -64,8 +64,12 @@ struct
      | maybe_unsafe_opr _ = false
 
    fun maybe_unsafe_lv (A.OpExp(A.SUB, _)) = true
+     | maybe_unsafe_lv (A.OpExp(A.DEREF, _)) = true (* could involve a cast *)
      | maybe_unsafe_lv (A.Select _) = true
-     | maybe_unsafe_lv _ = false (* A.OpExp(A.DEREF, _) safe as lhs *)
+     | maybe_unsafe_lv _ = false 
+     
+     (* TODO: what does this mean? *)
+     (* ~A.OpExp(A.DEREF, _) safe as lhs~ not anymore *)
    
    (* iso_exp env e ext = (ss, p)
     * iso_exps env es ext = (ss, ps)
@@ -350,7 +354,7 @@ struct
      *)
     and iso_assign env (opr_opt) (ss1, lv1) tp1 e2 ext1 ext =
         if maybe_unsafe_opr opr_opt    (* /, %, <<, >>, or NONE *)
-           andalso maybe_unsafe_lv lv1 (* lv1 = A[p1] or lv = lv1'.f *)
+           andalso maybe_unsafe_lv lv1 (* lv1 = A[p1] or lv = lv1'.f or deref involving a cast *)
         (* /=, %=, <<=, and >>= require transformation so that lv effect
          * precedes the potential division or shift effect, that is, the
          * arithmetic exception
