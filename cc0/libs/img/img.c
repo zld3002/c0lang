@@ -138,7 +138,8 @@ image_t image_load(c0_string path) {
   if (setjmp(png_jmpbuf(png_ptr))) {
     png_destroy_read_struct(&png_ptr, &info_ptr, &end_info);
     fclose(read);
-    c0_abort("png internal error: could not initialize IO");
+    fprintf(stderr, "png internal error: failed to open image '%s'\n",  filename);
+    c0_abort("");
   }
 
   png_init_io(png_ptr, read);

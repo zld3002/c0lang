@@ -26,8 +26,12 @@ struct
     | sizeof (A.Bool) = 1
     | sizeof (A.String) = 4 (* address of string *)
     | sizeof (A.Char) = 1
-    | sizeof (A.Pointer(t)) = 4
-    | sizeof (A.Array(t)) = 4
+    | sizeof (A.Pointer (A.FunTypeName _)) = 4 (* representing a function as an integer *)
+    | sizeof (A.Pointer (A.FunType _)) = 4
+    | sizeof (A.Pointer _) = 4
+    | sizeof (A.Array _) = 4
+    | sizeof (A.FunTypeName _) = 4 
+    | sizeof (A.FunType _) = 4 (* representing a function as an integer *)
 
   (* align tp = alignment requirement, tp != struct s, typename *)
   fun align (A.Int) = 4
@@ -48,17 +52,24 @@ struct
     | sizeof (A.Bool) = 1
     | sizeof (A.String) = 8 (* address of string *)
     | sizeof (A.Char) = 1
+    | sizeof (A.Pointer(A.FunTypeName _)) = 4 (* representing a fun ptr as an integer *)
+    | sizeof (A.Pointer(A.FunType _)) = 4
     | sizeof (A.Pointer(t)) = 8
     | sizeof (A.Array(t)) = 8
-
+    | sizeof (A.FunTypeName _) = 4 
+    | sizeof (A.FunType _) = 4 
 
   (* align tp = alignment requirement, tp != struct s, typename *)
   fun align (A.Int) = 4
     | align (A.Bool) = 1
-    | align (A.String) = 4
+    | align (A.String) = 8 (* this was 4, shouldn't it be 8? *)
     | align (A.Char) = 1
+    | align (A.Pointer(A.FunTypeName _)) = 4
+    | align (A.Pointer(A.FunType _)) = 4
     | align (A.Pointer(t)) = 8
     | align (A.Array(t)) = 8
+    | align (A.FunTypeName _) = 4 
+    | align (A.FunType _) = 4 
 
 end
 
@@ -170,6 +181,7 @@ struct
       val num_vars = ref 0
       val findex = ref 1
       val glabel = ref 0
+      val next_tag_index = ref 0 
   in
       val int_pool = Array.array(maxint16, Word32.fromInt(0))
       fun next_cindex () =
@@ -255,6 +267,23 @@ struct
                of "string_join" => new_native(g, 2, ext)
                 | _ => ( ErrorMsg.error ext ("undefined function " ^ Symbol.name(g))
                        ; raise ErrorMsg.Error ))
+
+      (* If a type is at index i in tag_pool, then that is what
+       * tag it has. *)
+      val tag_pool: A.tp list ref = ref [] 
+      fun findi p i = fn 
+        [] => NONE 
+      | x::xs => if p x then SOME i else findi p (i+1) xs 
+
+      (* Requires that t has already been expanded usning Syn.expand_all *)
+      fun tag_index (t: A.tp) = 
+        case findi (TypeChecker.tp_equal t) 0 (!tag_pool) of 
+          SOME i => i
+        | NONE => (
+            tag_pool := !tag_pool @ [t];
+            next_tag_index := !next_tag_index + 1;
+            !next_tag_index - 1
+          )
 
       fun reset () =
           ( cindex := 0 ;
@@ -485,6 +514,44 @@ struct
                 trans_exps env vlist es ext
                 @ [V.Inst(V.invokenative(c), A.Print.pp_exp(e), ext)]
             end))
+      (* Function pointers always involve dereferencing
+       * something, but we want to get rid of that
+       * since we don't store function pointers as
+       * actual pointers *)
+    | trans_exp env vlist (e as A.Invoke (f, es)) ext = 
+        let
+          fun remove_deref (A.Marked me) = remove_deref (Mark.data me)
+            | remove_deref (A.OpExp (A.DEREF, [fe])) = fe 
+            | remove_deref _ = 
+              raise Fail (
+                "Error - expected a dereference in the function pointer " ^
+                "application: " ^ A.Print.pp_exp e 
+              )
+        in 
+          trans_exps env vlist es ext 
+          @ trans_exp env vlist (remove_deref f) ext 
+          @ [V.Inst (V.invokedynamic, A.Print.pp_exp e, ext)]
+        end 
+
+    (* To fit everything into two bytes, we use the
+     * most significant bit to indicate whether 
+     * the function is native or not *)
+    | trans_exp env vlist (e as A.AddrOf f) ext = (
+        let
+          val (is_native, index) = case Funtab.lookup f of 
+            SOME index => (false, index)
+          | NONE => (true, native_index (f, ext)) 
+
+          val index = 
+            if is_native 
+              then
+                Word32.orb (Word32.fromInt index, Word32.<< (0w1, 0w31)) 
+              else 
+                Word32.fromInt index 
+        in
+          trans_exp env vlist (A.IntConst index) ext 
+        end 
+    )
     | trans_exp env vlist (e as A.Alloc(t)) ext =
       let val size = sizeof(t)
               (* Overflow should be impossible here, since it would have been caught earlier *)
@@ -505,9 +572,27 @@ struct
       in trans_exp env vlist e1 ext
          @ [V.Inst(V.newarray(size), A.Print.pp_exp(e), ext)]
       end
-    | trans_exp env vlist (e as A.Cast(t, e1)) ext =
-      ( ErrorMsg.error NONE ("cast not supported by c0vm") ;
-        raise ErrorMsg.Error )
+    | trans_exp env vlist (e as A.Cast(t, e1)) ext = (
+        case Syn.expand_all t of 
+          A.Pointer A.Void => (* ( void* )e1 *)
+              let 
+                (* Tag the pointer with e1's type *)
+                val tp' = Syn.expand_all (Syn.syn_exp env e1)
+              in
+                trans_exp env vlist e1 ext 
+                @ [V.Inst (V.addtag (tag_index tp', t), A.Print.pp_exp e, ext)]
+              end
+        | tp' => 
+              trans_exp env vlist e1 ext 
+              @ [V.Inst (V.checktag (tag_index tp', t), A.Print.pp_exp e, ext)]
+    )
+    | trans_exp env vlist (e as A.Hastag (t, e1)) ext = 
+        let
+          val tp' = Syn.expand_all t 
+        in
+          trans_exp env vlist e1 ext 
+          @ [V.Inst (V.hastag (tag_index tp', t), A.Print.pp_exp e, ext)] 
+        end 
     | trans_exp env vlist (e as A.Length(e1)) ext =
         trans_exp env vlist e1 ext
         @ [V.Inst(V.arraylength, A.Print.pp_exp(e), ext)]
@@ -788,7 +873,9 @@ struct
       (* ignore declarations in libraries *)
       ((* print("External Decl (ign): " ^ Symbol.name(g) ^ "\n") *))
     | trans_gdecl (A.TypeDef(a,t,ext)) =
-        ()                        (* ignore typedef *)
+        ()                        (* ignore typedefs *)
+    | trans_gdecl (A.FunTypeDef _) = 
+        () 
     | trans_gdecl (A.Struct(s, NONE, library, ext)) =
         ()                        (* ignore struct declaration *)
     | trans_gdecl (gdecl as A.Struct(s, SOME(fields), library, ext)) =

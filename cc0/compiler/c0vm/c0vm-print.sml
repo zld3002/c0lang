@@ -88,6 +88,10 @@ struct
     | pp_inst2 (V.amstore) = ("4F", "amstore")
     | pp_inst2 (V.cmload) = ("34", "cmload")
     | pp_inst2 (V.cmstore) = ("55", "cmstore")
+    | pp_inst2 (V.addtag (c, _)) = ("C2 " ^ u16 c, "addtag " ^ Int.toString c)
+    | pp_inst2 (V.checktag (c, _)) = ("C0 " ^ u16 c, "checktag " ^ Int.toString c)
+    | pp_inst2 (V.hastag (c, _)) = ("C1 " ^ u16 c, "hastag " ^ Int.toString c)
+    | pp_inst2 (V.invokedynamic) = ("B6", "invokedynamic")
 
   fun pp_inst inst =
       let val (code, mnemonic) = pp_inst2 inst

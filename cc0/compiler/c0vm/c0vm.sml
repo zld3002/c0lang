@@ -102,7 +102,7 @@ struct
   type field_offset = int
   type pool_index = int
   type branch_offset = int * string
-  type type_tag = int * Ast.tp
+  type type_tag = int * Ast.tp (* 16 bits unsigned *)
 
   datatype comparison =
     eq | ne | lt | ge | gt | le
@@ -196,6 +196,7 @@ struct
     | il athrow = 1
     | il assert = 1
      (* functions *)
+    | il (invokedynamic) = 1
     | il (invokestatic(c)) = 3
     | il (return) = 1
     | il (invokenative(c)) = 3
@@ -211,6 +212,11 @@ struct
     | il (amstore) = 1
     | il (cmload) = 1
     | il (cmstore) = 1
+   (* generic pointers *)
+    | il (addtag _) = 3
+    | il (checktag _) = 3 
+    | il (hastag _) = 3
+
 
   fun num_bytes (Comment(s)::bcs) i = num_bytes bcs i
     | num_bytes (Label(lab)::bcs) i = num_bytes bcs i

@@ -24,9 +24,9 @@ LDFLAGS =
 # on Windows
 # define CYGWIN so that libs/curses can use the proper location for curses.h
 ifeq ($(PLATFORM),cygwin)
-CFLAGS = -g -I$(DEPTH)/include $(patsubst %,-I../%/,$(C0LIBS)) -DCYGWIN
+CFLAGS = -g -std=c99 -I$(DEPTH)/include $(patsubst %,-I../%/,$(C0LIBS)) -DCYGWIN
 else
-CFLAGS = -g -fPIC -I$(DEPTH)/include $(patsubst %,-I../%/,$(C0LIBS))
+CFLAGS = -g -std=c99 -fPIC -I$(DEPTH)/include $(patsubst %,-I../%/,$(C0LIBS))
 endif
 
 ifeq ($(PLATFORM),osx)
