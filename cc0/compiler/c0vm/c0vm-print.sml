@@ -111,14 +111,14 @@ struct
                                    code_length = code_length,
                                    code = is})) =
       "\n#<" ^ name ^ ">\n"
-      ^ pad18(u16(num_args)) ^ "# number of arguments = " ^ Int.toString(num_args) ^ "\n"
-      ^ pad18(u16(num_vars)) ^ "# number of local variables = " ^ Int.toString(num_vars) ^ "\n"
+      ^ pad18(u8(num_args)) ^ "# number of arguments = " ^ Int.toString(num_args) ^ "\n"
+      ^ pad18(u8(num_vars)) ^ "# number of local variables = " ^ Int.toString(num_vars) ^ "\n"
       ^ pad18(u16(code_length)) ^ "# code length = " ^ Int.toString(code_length) ^ " bytes\n"
       ^ pp_bclines 0 is
     | pp_function_info (NONE) =
       "\n#<unused function>\n"
-      ^ pad18(u16(0)) ^ "# number of arguments = 0\n"
-      ^ pad18(u16(0)) ^ "# number of local variables = 0\n"
+      ^ pad18(u8(0)) ^ "# number of arguments = 0\n"
+      ^ pad18(u8(0)) ^ "# number of local variables = 0\n"
       ^ pad18(u16(0)) ^ "# code length = 0 bytes\n"
 
   fun ppfp function_pool_array i n =

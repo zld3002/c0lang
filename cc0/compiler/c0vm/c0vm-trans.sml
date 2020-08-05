@@ -825,7 +825,7 @@ struct
 *)
           val num_args = length(params)
           val _ = track_num_vars(params)
-          val _  = (if num_args < 0 orelse num_args >= maxint16
+          val _  = (if num_args < 0 orelse num_args >= maxint8
                    then ( ErrorMsg.error NONE ("too many arguments of function: " ^ (Symbol.name g)) ;
                           raise ErrorMsg.Error )
                    else ())
@@ -836,7 +836,7 @@ struct
           val env0 = Syn.syn_decls Symbol.empty params
           val is = trans_stm env0 params body' nil nil ext
           val num_vars = get_num_vars()
-          val _  = (if num_vars < 0 orelse num_vars >= maxint16
+          val _  = (if num_vars < 0 orelse num_vars >= maxint8
                    then ( ErrorMsg.error NONE ("too many variables in function: " ^ (Symbol.name g)) ;
                           raise ErrorMsg.Error )
                    else ())
