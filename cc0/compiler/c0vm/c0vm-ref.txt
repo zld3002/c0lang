@@ -15,6 +15,7 @@ Instruction operands:
 
 Stack operands:
 a : * = address ("reference")
+a : [*] = tagged pointer
 x, i, n : w32 = 32 bit word representing an int, bool, or char ("primitive")
 v = arbitrary value (v:* or v:w32)
 
@@ -89,3 +90,14 @@ Memory
 
 0x34 cmload   S, a:* -> S, x:w32   (x = (w32)(*a), a != NULL, load 1 byte)
 0x55 cmstore  S, a:*, x:w32 -> S   (*a = x & 0x7f, a != NULL, store 1 byte)
+
+0xB6 invokedynamic     S, v1, v2, ..., vn, f: i32 -> S, v
+    where least significant 31 bits of f are the function index 
+    and the most significant bit is 1 if f is native, 0 otherwise
+
+0xC0 checktag <c1,c2>  S, a:[*] -> S, a:* 
+    (cast from void*: if a has tag (c1<<8|c2), otherwise c0_memory_error)
+0xC1 hastag <c1,c2>    S, a:[*] -> S, x:i32
+    (\hastag: if a has tag (c1<<8|c2) then 1 else 0)
+0xC2 addtag <c1,c2>    S, a:* -> S, a:[*] 
+    (cast to void*: add tag (c1<<8|c2) to "a")
