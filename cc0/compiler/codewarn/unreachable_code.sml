@@ -16,7 +16,10 @@
 
  * Ishan Bhargava (ibhargav@andrew)
  *)
-structure WarnUnreachable = struct 
+structure WarnUnreachable : sig 
+  (* Prints out all unreachable code *)
+  val warn_program: Ast.program -> unit
+end = struct
   fun flip f x y = f y x 
   (* Function to use when showing a warning *)
   (* warn_func : string -> Ast.ext -> unit *)

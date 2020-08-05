@@ -1,6 +1,7 @@
 #include <c0runtime.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 int string_length(c0_string s) {
   return c0_string_length(s);

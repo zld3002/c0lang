@@ -8,7 +8,7 @@ util/sources.mlb
 local 
    top/flags.sml
 
-   ann "nonexhaustiveMatch ignore" "allowOrPats true" in 
+   ann "nonexhaustiveMatch ignore" in 
       ast/ast.sml
 
       warn/warn.sml

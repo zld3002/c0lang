@@ -1,6 +1,9 @@
 (* Warns about unused variables and also unused expressions
  * Ishan Bhargava 2020 (ibhargav@andrew) *)
-structure WarnUnused = struct 
+structure WarnUnused :> sig
+  (* Prints out all unused variable warnings *)
+  val warn_program: Ast.program -> unit
+end = struct 
   (* The SML starter kit *)
   infixr $
   fun f $ x = f x
@@ -36,7 +39,7 @@ structure WarnUnused = struct
     val mark_unused : string * Ast.ext -> map -> Ast.ext option * map
     val add : string -> Ast.ext -> map -> map 
     (* Gets all symbol locations marked as unused from the current level of the
-     * context stack *)
+     * context stack. Variables which begin with an underscore will not be reported *)
     val get_unused : map -> Ast.ext list 
 
     (* throws if no prior calls to push *)
@@ -44,10 +47,9 @@ structure WarnUnused = struct
     val push : map -> map 
 
   end = struct 
-    type entry = string * bool * Ast.ext 
-
     (* An associative list of symbol names, whether they were used,
      * and their declaration position. We also have a parent map for scopes *)
+    type entry = string * bool * Ast.ext 
     datatype map = TSMap of entry list * map option
 
     val empty: map = TSMap ([], NONE)
@@ -83,7 +85,8 @@ structure WarnUnused = struct
     fun add name pos (TSMap (map, parent)) = TSMap ((name, false, pos)::map, parent)
 
     fun get_unused (TSMap (map, parent)) = 
-      List.map (fn (_, _, pos) => pos) o List.filter (fn (_, seen, _) => not seen) $ map 
+      List.map (fn (_, _, pos) => pos) 
+        o List.filter (fn (name, seen, _) => not seen andalso String.sub (name, 0) <> #"_") $ map 
 
     fun pop (TSMap (_, SOME parent)) = parent 
       | pop t = raise Fail "INTERNAL ERROR: popping from toplevel context!" 
@@ -112,7 +115,7 @@ structure WarnUnused = struct
       let 
         val unused: Ast.ext list = TrackedSymbolMap.get_unused table
       in 
-        List.app (warn_func "value is never used") unused 
+        List.app (warn_func "variable is never used (prefix variable name with an underscore if this is intentional)") unused 
       end
     )
 
@@ -131,8 +134,10 @@ structure WarnUnused = struct
     | _ => data 
 
   fun warn_contract (c: Ast.spec) data = case c of 
-    ((Ast.Requires (e, _)) | (Ast.Ensures (e, _)) | (Ast.Assertion (e, _)) | (Ast.LoopInvariant (e, _))) => 
-      warn_expression e data 
+      Ast.Requires (e, _) => warn_expression e data 
+    | Ast.Ensures (e, _) => warn_expression e data 
+    | Ast.Assertion (e, _) => warn_expression e data 
+    | Ast.LoopInvariant (e, _) => warn_expression e data 
 
   fun warn_contracts (c: Ast.spec list) data = foldl' warn_contract data c
 
@@ -145,7 +150,7 @@ structure WarnUnused = struct
        | NONE => (table_with_var, vPos)
     end 
     
-  fun warn_statement (s: Ast.stm) (data as (table, pos)) : TrackedSymbolMap.map * Ast.ext = case s of 
+  fun warn_statement (s: Ast.stm) (data as (table, pos)): TrackedSymbolMap.map * Ast.ext = case s of 
       Ast.Markeds marked_statement => 
         warn_statement (Mark.data marked_statement) (table, Mark.ext marked_statement)
     | Ast.Exp e => (
@@ -179,7 +184,10 @@ structure WarnUnused = struct
         warn_expression test |> 
         warn_statement next |> 
         warn_statement body 
-    | (Ast.Assert (e, _) | Ast.Error e) => (* second argument to Assert is error msgs which are compiler-generated *)
+      (* second argument to Assert is error msgs which are compiler-generated *)
+    | Ast.Assert (e, _) =>
+        warn_expression e data 
+    | Ast.Error e =>
         warn_expression e data 
     | Ast.Anno cs => warn_contracts cs data 
     | Ast.Seq (decls: Ast.vardecl list, body: Ast.stm list) => (* new scope with new vars *)
