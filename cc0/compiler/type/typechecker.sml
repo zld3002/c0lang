@@ -1090,7 +1090,7 @@ struct
                                raise ErrorMsg.Error)
                     | c => (ErrorMsg.error fmt_pos (
                                  "format specifier %" ^ Char.toString c ^ " does not exist"
-                                 ^^ "valid format specifiers are %s, %c, %d, %x, %X, or use %% to print %");
+                                 ^^ "valid format specifiers are %s, %c, %d, or use %% to print %"); (* removed %x %X *)
                                raise ErrorMsg.Error)
               in tp :: tps end 
           | parse_fmt (c::cs) = parse_fmt cs (* ignore c as it is not a format char *)
