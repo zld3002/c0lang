@@ -1029,14 +1029,37 @@ fun parse_gdecls filename process_library process_file prelude token_front =
  * or there is a lexical or syntax error.
  *)
 fun parse filename process_library process_file = 
-    SafeIO.withOpenIn filename (fn instream =>
-      let val _ = PS.pushfile filename (* start at pos 0 in filename *)
-          val token_stream = C0Lex.makeLexer (fn _ => TextIO.input instream)
-          val decls = parse_gdecls filename process_library process_file true (M.force token_stream)
-          val _ = PS.popfile ()
-      in decls end)
-    handle e as IO.Io _ => ( ErrorMsg.error NONE (exnMessage e) ;
-                             raise ErrorMsg.Error )
+    SafeIO.withOpenIn filename (fn instream => 
+      let 
+        (* Check the first four bytes to make sure we aren't parsing a binary *)
+        val _ = SafeIO.withOpenIn filename (fn bytes => 
+          case TextIO.inputN (bytes, 4) of 
+              "\207\250\237\254" => ( (* 0xCF 0xFA 0xED 0xFE - Mach-O 64-bit header  *)
+                ErrorMsg.error NONE 
+                  ("file '" ^ filename ^ "' is an Apple executable\n" ^
+                  "[hint: missing -o option?]") ; 
+                raise ErrorMsg.Error)
+
+            | "\127ELF" => ( (* Linux ELF header *)
+                ErrorMsg.error NONE 
+                  ("file '" ^ filename ^ "' is a Linux executable\n" ^
+                  "[hint: missing -o option?") ;
+                raise ErrorMsg.Error)
+            | _ => () 
+        )
+
+        val _ = PS.pushfile filename (* start at pos 0 in filename *)
+        val token_stream = C0Lex.makeLexer (fn _ => TextIO.input instream)
+        val decls = parse_gdecls filename process_library process_file true (M.force token_stream)
+        val _ = PS.popfile ()
+      in 
+        decls 
+      end)
+      handle IO.Io {name, function = _, cause = OS.SysErr (msg, _)} => 
+               let val msg' = "could not open '" ^ name ^ "': " ^ msg 
+               in ErrorMsg.error NONE msg' ;
+     	            raise ErrorMsg.Error 
+               end 
 
 (* parse_stm token_front = SOME(s, token_front') where s is a complete statement,
  *                         and token_front' the remaining token stream
