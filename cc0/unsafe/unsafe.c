@@ -30,6 +30,11 @@ void c0_abort(const char *reason) {
   raise_msg(SIGABRT, reason);
 }
 
+// Technically unnecessary since backtraces
+// are not allowed in the unsafe runtime since
+// -d is not allowed 
+#define c0_push_callstack(f) ((void)sizeof(f)) 
+#define c0_pop_callstack() ((void)0)
 
 /* Arithmetic */
 

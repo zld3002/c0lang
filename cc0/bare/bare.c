@@ -28,6 +28,9 @@ void c0_abort(const char *reason) {
   raise_msg(SIGABRT, reason);
 }
 
+// Bare runtime doesn't need backtraces
+#define c0_push_callstack(f) ((void)sizeof(f)) 
+#define c0_pop_callstack() ((void)0)
 
 /* Arithmetic */
 
