@@ -2,6 +2,7 @@ $(SML_LIB)/basis/basis.mlb
 $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
 
 local
+   colors.sml 
    safe-io.sml
    mark.sml
    flag.sml
@@ -10,6 +11,7 @@ local
    word32.sml
    char.sml
 in
+   structure Color
    structure Mark
    structure Flag
    structure Symbol

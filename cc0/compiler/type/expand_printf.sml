@@ -141,7 +141,8 @@ end = struct
 
   fun is_printf_like s = 
     case Symbol.name s of 
-      ("format" | "printf") => is_native s
+      "format" => is_native s
+    | "printf" => is_native s
     | _ => false 
 
   (* If the given expression is a function,

@@ -5,6 +5,7 @@ Group is
 	$/ml-yacc-lib.cm
         ../buildid.sml
 
+        util/colors.sml 
         util/safe-io.sml
 	util/mark.sml
 	util/flag.sml
@@ -16,7 +17,12 @@ Group is
         ast/ast.sml
 
         warn/warn.sml
+        
+        codewarn/warn.sml 
+        codewarn/unused.sml
+        codewarn/unreachable_code.sml
 	
+        type/expand_printf.sml
         type/symtab.sml
         type/std-sig.sml
         type/std-c0.sml

@@ -38,6 +38,9 @@ signature FLAGS = sig
   val flag_emacs : Flag.flag
   val run_call : string option ref
 
+  (* Compiler warning test *)
+  val warning_enabled : string -> bool 
+
   val core_options : unit GetOpt.opt_descr list
   val coin_options : unit GetOpt.opt_descr list
   val compiler_options : unit GetOpt.opt_descr list
@@ -61,12 +64,14 @@ structure Flags :> FLAGS = struct
   val flag_static_check = Flag.flag "static-check"
   val flag_purity_check = Flag.flag "purity-check"
   val flag_verif_check = Flag.flag "verif-check"
-  val flag_warn = Flag.flag "warn"
+  val flag_warn = Flag.flag "warn" (* Indentation warnings *)
   val flag_save_files = Flag.flag "save-files"
   val flag_exec = Flag.flag "exec"
   val flag_bytecode = Flag.flag "bytecode"
   val flag_static = Flag.flag "static"
   val flag_only_typecheck = Flag.flag "only-typecheck"
+  (* Nov 2019 *)
+  val flag_warnings = Flag.flag "warnings" (* Semantic warnings *)
 
   val base_dir = ref ""                       (* see reset_flags ()           *)
   val search_path : string list ref = ref []  (* Search path for libraries    *)
@@ -78,6 +83,7 @@ structure Flags :> FLAGS = struct
                                               (* Default is to use extension  *)
   val a_out = ref ""                          (* Output executable            *)
   val bytecode_arch = ref 64                  (* Architecture for bytecode    *)
+  val warnings : string list ref = ref []     (* Compiler warnings (e.g. "unreachable-code") *)
 
   val flag_trace = Flag.flag "trace"
   val flag_print_codes = Flag.flag "print_codes"
@@ -124,9 +130,6 @@ structure Flags :> FLAGS = struct
           (* Set default flags *)
           List.app Flag.set [flag_purity_check];
 
-          (* Set associated local references *)
-          C0Lex.warnings := Flag.isset flag_warn;
-
           (* Set other defaults *)
           libraries := []; runtime := "c0rt"; a_out := "a.out";
           standard := NONE;
@@ -141,6 +144,15 @@ structure Flags :> FLAGS = struct
                  (* re-raise EXIT exception from top.sml *)
 
       end
+  
+  val known_warnings = [
+    "unreachable-code",
+    "unused-variable",
+    "unused-expression"
+  ]
+
+  fun warning_enabled s = 
+    Option.isSome (List.find (fn f => s = f) (!warnings))
 
   val core_options : unit GetOpt.opt_descr list = 
     [{short = "v", long=["verbose"], 
@@ -236,7 +248,18 @@ structure Flags :> FLAGS = struct
       help="Execute compiled file"},
      {short = "", long=["only-typecheck"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_only_typecheck),
-      help="Stop after typechecking"}]
+      help="Stop after typechecking"},
+     (* Nov 2019 *)
+      {short = "W", long=[],
+      desc=GetOpt.OptArg (
+              (fn NONE => warnings := known_warnings
+                | SOME "all" => warnings := known_warnings
+                | SOME "none" => warnings := []
+                | SOME s => (case List.find (fn f => s = f) known_warnings of 
+                              SOME _ => warnings := s :: !warnings 
+                            | NONE => ErrorMsg.error NONE ("unknown warning '" ^ s ^ "'"))),
+              "warning"), 
+      help="Enable warning/warning group"}]
 
   end (* local *)
 

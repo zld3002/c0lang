@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <signal.h>
 #include <limits.h>
 #include <c0runtime.h>

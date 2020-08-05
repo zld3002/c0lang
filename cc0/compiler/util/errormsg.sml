@@ -15,6 +15,8 @@ sig
   val error : Mark.ext option -> string -> unit
   (* same, but does not increment error count *)
   val warn : Mark.ext option -> string -> unit
+  (* same, but also prints "info" in blue instead *)
+  val info : Mark.ext option -> string -> unit
 
   (* generic code stopping exception *)
   exception Error
@@ -32,14 +34,26 @@ struct
      character to be one column wide. *)     
   val tabToSpace = String.translate (fn #"\t" => " " | c => String.str c)
   fun msg str ext note =
-      ( ignore (Option.map (TextIO.print o Mark.show) ext)
-      ; List.app TextIO.print [":", str, ":", note, "\n"]
+      (* Prints location (if present), then message type (ext), then note 
+       * If no location info is present, then print the compiler name *)
+      ( TextIO.print Color.bold
+      ; TextIO.print ((Option.getOpt (Option.map Mark.show ext, "cc0") ^ ": "))
+      ; List.app TextIO.print [str, ": ", note, "\n"]
       ; ignore (Option.map (TextIO.print o tabToSpace o Mark.show_source) ext)
       )
-    
-  fun error ext note = (anyErrors := true; msg "error" ext note)
-  fun warn ext note = msg "warning" ext note
-               
+
+    fun error ext note = 
+      (anyErrors := true; 
+      msg (Color.red ^ "error" ^ Color.white) 
+      ext (note ^ Color.reset))
+    fun warn ext note = 
+      msg (Color.purple ^ "warning" ^ Color.white) 
+        ext (note ^ Color.reset)
+          
+    fun info ext note = 
+        msg (Color.cyan ^ "note" ^ Color.white)
+          ext (note ^ Color.reset)
+
   (* Print the given error message and then abort compilation *)
   exception Error
 end
