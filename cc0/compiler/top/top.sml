@@ -435,7 +435,9 @@ let
         val versioninfo = "C0 reference compiler (cc0) revision "
                         ^ BuildId.revision ^ " (built " ^ BuildId.date ^ ")"
         val usageinfo = G.usageInfo {header = header, options = options}
-        val c0vm_version = 9
+        (* C0VM Bytecode Version
+         * v10 (Aug 5 2020) - C1 features, changed # of variables in a function from two bytes to one *)
+        val c0vm_version = 10
         fun errfn msg = (sayError msg ; raise EXIT)
 
         (* Reset state by reading argments; possibly display usage & exit. *) 
