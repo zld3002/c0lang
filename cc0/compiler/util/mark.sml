@@ -87,7 +87,7 @@ struct
           String.implode (List.tabulate (line_text_length, fn _ => #" ")) ^ " | "
     in 
       Color.green ^ spaces ^ "\n" ^
-      Color.green ^ line_text ^ " | " ^ Color.white ^ text ^ "\n" ^
+      Color.green ^ line_text ^ " | " ^ Color.reset ^ text ^ "\n" ^
       Color.green ^ spaces ^ indicator ^ Color.reset ^ "\n"
     end  
 

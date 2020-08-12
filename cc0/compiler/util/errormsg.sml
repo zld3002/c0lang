@@ -44,14 +44,14 @@ struct
 
     fun error ext note = 
       (anyErrors := true; 
-      msg (Color.red ^ "error" ^ Color.white) 
+      msg (Color.red ^ "error" ^ Color.reset ^ Color.bold) 
       ext (note ^ Color.reset))
     fun warn ext note = 
-      msg (Color.purple ^ "warning" ^ Color.white) 
+      msg (Color.purple ^ "warning" ^ Color.reset ^ Color.bold) 
         ext (note ^ Color.reset)
           
     fun info ext note = 
-        msg (Color.cyan ^ "note" ^ Color.white)
+        msg (Color.cyan ^ "note" ^ Color.reset ^ Color.bold)
           ext (note ^ Color.reset)
 
   (* Print the given error message and then abort compilation *)
