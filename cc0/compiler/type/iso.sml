@@ -63,8 +63,12 @@ struct
      | maybe_unsafe_opr (NONE) = true (* because the lhs could have an effect not covered by the rhs *)
      | maybe_unsafe_opr _ = false
 
+   fun is_var (A.Var _) = true
+     | is_var (A.Marked(marked_exp)) = is_var (Mark.data marked_exp)
+     | is_var _ = false
+
    fun maybe_unsafe_lv (A.OpExp(A.SUB, _)) = true
-     | maybe_unsafe_lv (A.OpExp(A.DEREF, _)) = true (* could involve a cast *)
+     | maybe_unsafe_lv (A.OpExp(A.DEREF, [lv])) = not (is_var lv) (* could involve a cast *)
      | maybe_unsafe_lv (A.Select _) = true
      | maybe_unsafe_lv _ = false 
      
