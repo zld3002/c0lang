@@ -60,7 +60,10 @@ int main() {
   testintfail("af");
   testint16("af", 175);
   testintfail("4294967296");
-  testintfail("2147483648");
+  /* allowed for consistency with C0 number syntax, Aug 2022, -ib, fp */
+  // testintfail("2147483648");
+  testint( "2147483648", 2147483648);
+  testint( "2147483648", -2147483648);
   testint( "2147483647",  2147483647);
   testint("-2147483648", -2147483648);
   testintfail("-2147483649");
