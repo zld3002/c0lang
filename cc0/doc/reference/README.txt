@@ -6,4 +6,7 @@ c0-reference.pdf
 c0-libraries.pdf
 
 % pdflatex c0-libraries.tex
+% makeindex c0-libraries
+% pdflatex c0-libraries.tex
+% pdflatex c0-libraries.tex
 % scp c0-libraries.pdf c0.typesafety.net:/home/www/c0/doc/

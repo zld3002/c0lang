@@ -1,6 +1,11 @@
 \documentclass[11pt]{article}
 \usepackage{c0}
 \usepackage{datetime}
+\usepackage{makeidx}
+
+\makeindex
+\renewcommand{\indexname}{List of C0 Library Functions}
+\newcommand{\indextt}[1]{\index{#1@\texttt{#1}}}
 
 % begin palatino.sty
 % copied from palatino.sty, except left ttdefault as CMTT
@@ -34,7 +39,8 @@
 \chead[]{}
 \rhead[\fancyplain{}{\bfseries Library}]%
       {\fancyplain{}{\bfseries C0.\thepage}}
-\lfoot[{\small\scshape 15-122 Fall 2011}]{{\small\scshape 15-122 Fall 2011}}
+%\lfoot[{\small\scshape 15-122 Fall 2011}]{{\small\scshape 15-122 Fall }}
+\lfoot[]{}
 \cfoot[]{}
 \rfoot[{\small\scshape\today}]{{\small\scshape\today}}
 
@@ -53,7 +59,9 @@
 \begin{document}
 
 \maketitle
+\tableofcontents
 
+\newpage
 \section{Introduction}
 
 This document describes the standard libraries available for use
@@ -79,19 +87,21 @@ which means output does not necessarily appear on the console
 until a newline character is printed or \lstinline'flush()' is called.
 
 \begin{lstlisting}
-void print(string s);       // print s to standard output
-void println(string s);     // print s with trailing newline
-void printint(int i);       // print i to standard output
-void printbool(bool b);     // print b to standard output
-void printchar(char c);     // print c to standard output
-void flush();               // flush standard output
+void print(string s);       // print s to standard output[*\indextt{print}*]
+void println(string s);     // print s with trailing newline[*\indextt{println}*]
+void printint(int i);       // print i to standard output[*\indextt{printint}*]
+void printbool(bool b);     // print b to standard output[*\indextt{printbool}*]
+void printchar(char c);     // print c to standard output[*\indextt{printchar}*]
+void flush();               // flush standard output[*\indextt{flush}*]
 
-bool eof();                 // test end-of-file on standard input
+bool eof();                 // test end-of-file on standard input[*\indextt{eof}*]
 
-string readline()           // read a line from standard input
+string readline()           // read a line from standard input[*\indextt{readline}*]
   /*@requires !eof(); @*/ ; // do not include the trailing newline
 \end{lstlisting}
 
+
+\newpage
 \subsection{\tt file}
 
 The \lstinline'file' library contains functions for reading files, line by
@@ -101,26 +111,26 @@ logical size of the file in byes.  File handles should be closed
 explicitly when they are no longer needed to release system resources.
 
 \begin{lstlisting}
-// typedef ______* file_t; /* file handle or NULL */
+// typedef ______* file_t; /* file handle or NULL */[*\indextt{file\_t}*]
 
 /* Test whether the given file has been closed */
-bool file_closed(file_t f)
+bool file_closed(file_t f)[*\indextt{file\_closed}*]
   /*@requires f != NULL; @*/ ;
 
 /* Create a handle for reading from the file given by the specified
  * path, NULL if the file cannot be opened for reading. */
-file_t file_read(string path)
+file_t file_read(string path)[*\indextt{file\_read}*]
   /*@ensures \result == NULL || !file_closed(\result); @*/ ;
 
 /* Release any resources associated with the file handle.  This
  * function should not be invoked twice on the same handle. */
-void file_close(file_t f)
+void file_close(file_t f)[*\indextt{file\_close}*]
   /*@requires f != NULL;       @*/
   /*@requires !file_closed(f); @*/
   /*@ensures file_closed(f);   @*/ ;
 
 /* Test if we have read the whole file. */
-bool file_eof(file_t f)
+bool file_eof(file_t f)[*\indextt{file\_eof}*]
   /*@requires f != NULL;       @*/
   /*@requires !file_closed(f); @*/ ;
 
@@ -128,7 +138,7 @@ bool file_eof(file_t f)
  * and advance the handle's internal position by one line.  The
  * contract requires that the handle is not at the end-of-file,
  * so this must be checked before (with file_eof). */
-string file_readline(file_t f)
+string file_readline(file_t f)[*\indextt{file\_readline}*]
   /*@requires f != NULL;       @*/
   /*@requires !file_closed(f); @*/
   /*@requires !file_eof(f);    @*/ ;
@@ -147,33 +157,33 @@ since it never produces an executable.
 /* Add a flag with the given name. During parsing if that flag is
  * set (with -name on the command line), it writes the value true
  * to the location given by ptr. */
-void args_flag(string name, bool *ptr)
+void args_flag(string name, bool *ptr)[*\indextt{args\_flag}*]
   /*@requires ptr != NULL; @*/ ;
 
 /* Add an integer option with the given name. During parsing if
  * that option is given (with -name <int>) it attempts to parse
  * it as an integer and write it to the location given by ptr. */
-void args_int(string name, int *ptr)
+void args_int(string name, int *ptr)[*\indextt{args\_int}*]
   /*@requires ptr != NULL; @*/ ;
 
 /* Add an string option with the given name. During parsing if
  * that option is given (with -name <string>) it write it to the
  * location given by ptr. */
-void args_string(string name, string *ptr)
+void args_string(string name, string *ptr)[*\indextt{args\_string}*]
   /*@requires ptr != NULL; @*/ ;
 
 struct args {
     int argc;
     string[] argv;
 };
-typedef struct args* args_t;
+typedef struct args* args_t;[*\indextt{args\_t}*]
 
 /* Parse the program's arguments according to any flags and options
  * set up by previous calls. Any unrecognized arguments are returned
  * in order in \result->argv.
  *
  * If there is an error, args_parse will return NULL. */
-args_t args_parse()
+args_t args_parse()[*\indextt{args\_parse}*]
   /*@ensures \result == NULL
           || \result->argc == \length(\result->argv); @*/ ;
 \end{lstlisting}
@@ -192,29 +202,29 @@ tests than user input.
 \begin{lstlisting}
 /* Attempt to parse "true" or "false from s and return a pointer to
  * the result or NULL if not of that form. */
-bool* parse_bool(string s);
+bool* parse_bool(string s);[*\indextt{parse\_bool}*]
 
 /* Attempt to parse an integer from the given string.
  * For base > 10, the letters A-Z (case insignificant) are used as
  * digits.  Return NULL if s cannot be completely parsed to an int
  * in the given base. */
-int* parse_int(string s, int base)
+int* parse_int(string s, int base)[*\indextt{parse\_int}*]
   /*@requires 2 <= base && base <= 36; @*/ ;
 
 /* Returns the number of whitespace-delimited tokens in a string */
-int num_tokens(string s);
+int num_tokens(string s);[*\indextt{num\_tokens}*]
 
 /* Returns true iff the string contains only whitespace separated
  *  ints */
-bool int_tokens(string s, int base)
+bool int_tokens(string s, int base)[*\indextt{int\_tokens}*]
   /*@requires 2 <= base && base <= 36; @*/ ;
 
 /* Parses a string as a list of whitespace-delimited tokens */
-string[] parse_tokens(string s)
+string[] parse_tokens(string s)[*\indextt{parse\_tokens}*]
   /*@ensures \length(\result) == num_tokens(s); @*/ ;
 
 /* Parses a string as list of whitespace-delimited integers */
-int[] parse_ints(string s, int base)
+int[] parse_ints(string s, int base)[*\indextt{parse\_ints}*]
   /*@requires int_tokens(s, base);              @*/
   /*@ensures \length(\result) == num_tokens(s); @*/ ;
 \end{lstlisting}
@@ -234,16 +244,16 @@ implementation.  Note that character arrays should contain a trailing
 \begin{lstlisting}
 /* Return length of s, in characters.
  * May be an O(n) operation. */
-int string_length(string s);
+int string_length(string s);[*\indextt{string\_length}*]
 
 /* Return s[idx] and abort if the idx is out of bound.
  * May be an O(n) operation. */
-char string_charat(string s, int idx)
+char string_charat(string s, int idx)[*\indextt{string\_charat}*]
   /*@requires 0 <= idx && idx < string_length(s); @*/ ;
 
 /* Return a new string that is the result of concatenating a
  * and b. */
-string string_join(string a, string b)
+string string_join(string a, string b)[*\indextt{string\_join}*]
   /*@ensures string_length(\result)
                == string_length(a) + string_length(b); @*/ ;
 
@@ -252,47 +262,48 @@ string string_join(string a, string b)
  * including the index given by end.  If end == start, the empty
  * string is returned. Aborts if start or end are out of bounds,
  * or end < start. */
-string string_sub(string a, int start, int end)
+string string_sub(string a, int start, int end)[*\indextt{string\_sub}*]
   /*@requires 0 <= start && start <= end && end <= string_length(a); @*/
   /*@ensures string_length(\result) == end - start; @*/ ;
 
 /* Compare strings lexicographically */
-bool string_equal(string a, string b);
-int string_compare(string a, string b)
+bool string_equal(string a, string b);[*\indextt{string\_equal}*]
+int string_compare(string a, string b)[*\indextt{string\_compare}*]
   /*@ensures -1 <= \result && \result <= 1; @*/ ;
 
 /* Create strings from other basic values */
-string string_fromint(int i);
-string string_frombool(bool b);
-string string_fromchar(char c)
+string string_fromint(int i);[*\indextt{string\_fromint}*]
+string string_frombool(bool b);[*\indextt{string\_frombool}*]
+string string_fromchar(char c)[*\indextt{string\_fromchar}*]
   /*@requires c != '\0';                     @*/
   /*@ensures string_length(\result) == 1;    @*/
   /*@ensures string_charat(\result, 0) == c; @*/ ;
 
 /* Convert every uppercase character A-Z to lowercase a-z */
-string string_tolower(string s);
+string string_tolower(string s);[*\indextt{string\_tolower}*]
 
 /* Check if character array is properly \0-terminated */
-bool string_terminated(char[] A, int n)
+bool string_terminated(char[] A, int n)[*\indextt{string\_terminated}*]
   /*@requires 0 <= n && n <= \length(A); @*/ ;
 
 /* Construct a '\0'-terminated character array from s */
-char[] string_to_chararray(string s)
+char[] string_to_chararray(string s)[*\indextt{string\_to\_chararray}*]
   /*@ensures \length(\result) >= string_length(s) + 1;         @*/
   /*@ensures string_terminated(\result, string_length(s) + 1); @*/ ;
 
 /* Construct a string from the the array A up to (but not
  * including) the terminating '\0' */
-string string_from_chararray(char[] A)
+string string_from_chararray(char[] A)[*\indextt{string\_from\_chararray}*]
   /*@requires string_terminated(A, \length(A));        @*/
   /*@ensures string_length(\result) + 1 <= \length(A); @*/ ;
 
 /* Convert between characters and their ASCII value */
-int char_ord(char c)
+int char_ord(char c)[*\indextt{char\_ord}*]
   /*@ensures 0 <= \result && \result <= 127; @*/ ;
-char char_chr(int n)
+char char_chr(int n)[*\indextt{char\_chr}*]
   /*@requires 0 <= n && n <= 127; @*/ ;
 \end{lstlisting}
+
 
 \section{Images}
 
@@ -306,27 +317,27 @@ are no longer needed; the garbage collector will not be able to
 free them.
 
 \begin{lstlisting}
-// typedef ______* image_t; /* image handle or NULL */
+// typedef ______* image_t; /* image handle or NULL */[*\indextt{image\_t}*]
 
 /* Retrieves the width of the given image */
-int image_width(image_t image)
+int image_width(image_t image)[*\indextt{image\_width}*]
   /*@requires image != NULL; @*/
   /*@ensures \result > 0;    @*/ ;
 
 /* Retrieves the height of the given image */
-int image_height(image_t image)
+int image_height(image_t image)[*\indextt{image\_height}*]
   /*@requires image != NULL; @*/
   /*@ensures \result > 0;    @*/ ;
 
 /* Creates an ARGB image with dimensions width * height */
-image_t image_create(int width, int height)
+image_t image_create(int width, int height)[*\indextt{image\_create}*]
   /*@requires 0 < width && 0 < height;        @*/
   /*@ensures \result != NULL;                 @*/
   /*@ensures image_width(\result) == width;   @*/
   /*@ensures image_height(\result) == height; @*/ ;
 
 /* Copies an existing image */
-image_t image_clone(image_t image)
+image_t image_clone(image_t image)[*\indextt{image\_clone}*]
   /*@requires image != NULL;                               @*/
   /*@ensures image_width(\result) == image_width(image);   @*/
   /*@ensures image_height(\result) == image_height(image); @*/ ;
@@ -335,7 +346,7 @@ image_t image_clone(image_t image)
  * image has dimensions width * height. If part of the given
  * rectangle is not contained within the given image, those pixels
  * are assumed to be transparent black.  */
-image_t image_subimage(image_t image, int x, int y, int width, int height)
+image_t image_subimage(image_t image, int x, int y, int width, int height)[*\indextt{image\_subimage}*]
   /*@requires image != NULL;                  @*/
   /*@ensures image_width(\result) == width;   @*/
   /*@ensures image_height(\result) == height; @*/ ;
@@ -343,11 +354,11 @@ image_t image_subimage(image_t image, int x, int y, int width, int height)
 /* Loads an image from the given path and convert it if need be
  * to an ARGB image.  If the file does not exist, it returns NULL.
  * Aborts if the file has the wrong format. */
-image_t image_load(string path);
+image_t image_load(string path);[*\indextt{image\_load}*]
 
 /* Saves the given image to disk, inferring the file type from the
  * file extension given in the path. */
-void image_save(image_t image, string path)
+void image_save(image_t image, string path)[*\indextt{image\_save}*]
   /*@requires image != NULL; @*/ ;
 
 /* Returns an array of pixels representing the image. The pixels
@@ -355,7 +366,7 @@ void image_save(image_t image, string path)
  * y*image_width(image) + x. Any writes to the array will be
  * reflected in calls to image_save, image_clone and image_subimage.
  * The channels are encoded as 0xAARRGGBB. */
-int[] image_data(image_t image)
+int[] image_data(image_t image)[*\indextt{image\_data}*]
   /*@requires image != NULL; @*/
   /*@ensures \length(\result)
               == image_width(image) * image_height(image); @*/ ;
@@ -372,12 +383,12 @@ the \lstinline'lib' directory.
 \subsection{\tt rand}
 
 \begin{lstlisting}
-// typedef _____* rand_t;
-rand_t init_rand (int seed)
+// typedef _____* rand_t;[*\indextt{rand\_t}*]
+rand_t init_rand (int seed)[*\indextt{init\_rand}*]
   /*@requires seed != 0;     @*/
   /*@ensures \result != NULL @*/ ;
 
-int rand(rand_t gen)
+int rand(rand_t gen)[*\indextt{rand}*]
   /*@requires gen != NULL; @*/ ;
 \end{lstlisting}
 
@@ -385,30 +396,31 @@ int rand(rand_t gen)
 
 \begin{lstlisting}
 /* C0 constants */
-int int_size() /*@ensures \result == 4;           @*/ ;
-int int_max()  /*@ensures \result == 2147483647;  @*/ ;
-int int_min()  /*@ensures \result == -2147483648; @*/ ;
+int int_size() /*@ensures \result == 4;           @*/ ;[*\indextt{int\_size}*]
+int int_max()  /*@ensures \result == 2147483647;  @*/ ;[*\indextt{int\_max}*]
+int int_min()  /*@ensures \result == -2147483648; @*/ ;[*\indextt{int\_min}*]
 
 /* Absolute value */
-int abs(int x)
+int abs(int x)[*\indextt{abs}*]
   /*@requires x > int_min();              @*/
   /*@ensures \result >= 0;                @*/
   /*@ensures \result == (x < 0 ? -x : x); @*/ ;
 
 /* Maximum of two integers */
-int max(int x, int y)
+int max(int x, int y)[*\indextt{max}*]
   /*@ensures \result == x || \result == y; @*/
   /*@ensures \result >= x && \result >= y; @*/ ;
 
 /* Minimum of two integers */
-int min(int x, int y)
+int min(int x, int y)[*\indextt{min}*]
   /*@ensures \result == x || \result == y; @*/
   /*@ensures \result <= x && \result <= y; @*/ ;
 
 /* Returns the hexidecimal representation of the given integer
  * as a string (without the leading 0x) */
-string int2hex(int x);
+string int2hex(int x);[*\indextt{int2hex}*]
 \end{lstlisting}
+
 
 \section{Updates}
 \label{sec:updates}
@@ -441,6 +453,12 @@ string int2hex(int x);
 \item[Rev. C0.0590, March 30, 2018.]%
   Reformatted documentation to use the \lstinline'listings' Latex
   package.
+\item[Rev. C0.0590, December 20, 2019.]%
+  Added the table of contents and  index.
 \end{description}
 
+
+\newpage
+\addcontentsline{toc}{section}{\indexname}
+\printindex
 \end{document}
