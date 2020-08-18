@@ -6,3 +6,9 @@
 **/*.dylib
 **/*.out
 **/*.swp
+
+# Latex files
+**/*.toc
+**/*.idx
+**/*.ilg
+**/*.ind
