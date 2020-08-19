@@ -101,16 +101,16 @@ string readline()           // read a line from standard input[*\indextt{readlin
 \end{lstlisting}
 
 The \lstinline'printf' function is also available when \lstinline'conio' is imported.
-Note that \lstinline'printf' is special - its address cannot be taken using \lstinline'&' in C1.
+The address of \lstinline'printf' cannot be taken using \lstinline'&' in C1.
 \begin{lstlisting}
-// Prints message and args to standard output.
-// 'msg' must be a string literal.
-// Available format specifiers:
-//   %s: string argument 
-//   %d: int argument 
-//   %c: char argument
-// The number and types of format specifiers must 
-// match with the arguments provided
+/* Prints message and args to standard output.
+ * 'msg' must be a string literal.
+ * Available format specifiers:
+ *   %s: string argument 
+ *   %d: int argument 
+ *   %c: char argument
+ * The number and types of format specifiers must 
+ * match with the arguments provided */
 void printf(string msg, ...args);  [*\indextt{printf}*]
 \end{lstlisting}
 
@@ -319,10 +319,17 @@ char char_chr(int n)[*\indextt{char\_chr}*]
 
 Similiar to \lstinline'conio', the \lstinline'format' function 
 is available when importing \lstinline'string'. 
+The address of \lstinline'format' cannot be taken using \lstinline'&' in C1.
 \begin{lstlisting}
-// Acts like 'printf', but returns the result as a 
-// string instead of printing it.
-// See documentation for 'printf' for details
+/* Acts like 'printf', but returns the result as a 
+ * string instead of printing it.
+ * 'msg' must be a string literal.
+ * Available format specifiers:
+ *   %s: string argument 
+ *   %d: int argument 
+ *   %c: char argument
+ * The number and types of format specifiers must 
+ * match with the arguments provided */
 string format(string msg, ...args);[*\indextt{format}*]
 \end{lstlisting}
 
