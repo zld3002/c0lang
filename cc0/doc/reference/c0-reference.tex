@@ -15,7 +15,7 @@
   linkcolor=blue,
   urlcolor=blue]{hyperref}
 
-\newcommand{\rev}{590}
+\newcommand{\rev}{707}
 
 \title{C0 Reference}
 \author{15-122: Principles of Imperative Computation \\ Frank Pfenning}
@@ -33,7 +33,7 @@
 \chead[]{}
 \rhead[\fancyplain{}{\bfseries Reference}]%
       {\fancyplain{}{\bfseries C0.\thepage}}
-\lfoot[{\small\scshape 15-122 Spring 2011}]{{\small\scshape 15-122 Spring 2011}}
+\lfoot[{\small\scshape 15-122 Fall 2020}]{{\small\scshape 15-122 Fall 2020}}
 \cfoot[]{}
 \rfoot[{\small\scshape\today}]{{\small\scshape\today}}
 
@@ -52,6 +52,10 @@
 \begin{document}
 
 \maketitle
+
+\tableofcontents
+
+\clearpage
 
 \section{Introduction}
 
@@ -241,6 +245,10 @@ description of the compiler interface.
 Expressions denoting function calls have the form \lstinline'g(e1,...,en)'.
 The arguments $e_1, \ldots, e_n$ are evaluated in sequence from
 left to right and the resulting values passed to the function $g$.
+
+Functions may recursively call themselves. As a language, C0 does not 
+specify a minimum or maximum required recursion depth. Different implementations
+may impose different limits, or no limit at all.
 
 \section{Commands}
 
@@ -961,6 +969,7 @@ the other prefix operators in the grammar
 additional construct \lstinline'\hastag(<tp>, <exp>)'.
 \begin{lstlisting}[basicstyle=\smallbasicstyle]
 <exp> ::= ... | (<tp>) <exp> | \hastag ( <tp> , <exp> )
+<lv> ::= ... | * (<tp>) <lv> 
 \end{lstlisting}
 The form \lstinline'(void*)e' casts the expression $e$ of type $t$\,\tstar\
 to be of type \lstinline'(void*)'.  Operationally, this new pointer
@@ -977,6 +986,9 @@ is terminated.
 In contracts, we can verify the value of a tag with the boolean
 expression \lstinline'\hastag(t*,e)' which is true if $e$ (which must be of
 type \lstinline'void*') has tag $t$\,\tstar\ and false otherwise.
+The tag can never be \lstinline'void*', so $t$ cannot be $\tvoid$
+
+From Fall 2020, casts are now allowed in lvalues as well. The type cannot be $\tvoid$.
 
 Casting does not affect the null pointer, which remains \vnull\ and
 serves as the default value of type \lstinline'void*'.  Therefere, we
@@ -1028,8 +1040,7 @@ data.
 \begin{lstlisting}
 /*** generic section ***/
 /* define function type 'cmp' */
-typedef
-bool cmp(void* p, void* q)
+typedef bool cmp(void* p, void* q)
 //@requires p != NULL && q != NULL;
   ;
 
