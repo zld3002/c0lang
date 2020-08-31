@@ -48,12 +48,18 @@ struct
     val deregister_func = Symbol.nsymbol Symbol.User "c0_pop_callstack"
 
     (* These are registered before preconditions run in tfm_decl *)
-    val register_backtrace = 
-      [A.Exp (A.FunCall (register_func, [caller_var]))]
+    fun register_backtrace () = 
+      (* Don't insert backtrace info when generating bytecode 
+       * as C0VM does not support it *)
+      if not (Flag.isset Flags.flag_bytecode)
+        then [A.Exp (A.FunCall (register_func, [caller_var]))]
+        else []
 
     (* This is done before returning in dc_stm *)
-    val deregister_backtrace = 
-      [A.Exp (A.FunCall (deregister_func, []))]
+    fun deregister_backtrace () = 
+      if not (Flag.isset Flags.flag_bytecode)
+        then [A.Exp (A.FunCall (deregister_func, []))]
+        else [] 
 
     (* tfm_test env e = e'
      * Assumes env |- e : tp for some tp
@@ -265,9 +271,9 @@ struct
       | fv_stm (s as A.Continue) ext g = s
       | fv_stm (s as A.Break) ext g = s
       | fv_stm (s as A.Return(NONE)) ext g = 
-          A.Seq([], deregister_backtrace @ [s])
+          A.Seq([], deregister_backtrace () @ [s])
       | fv_stm (A.Return(SOME(e))) ext g =
-          A.Seq([], deregister_backtrace @ [A.Return(SOME(fv_exp e ext g))])
+          A.Seq([], deregister_backtrace () @ [A.Return(SOME(fv_exp e ext g))])
       | fv_stm (A.Assert(e1, e2s)) ext g =
           A.Assert(fv_exp e1 ext g, List.map (fn e => fv_exp e ext g) e2s)
       | fv_stm (A.Error e) ext g = 
@@ -350,9 +356,9 @@ struct
              * at the end as well because there might not be a return statement *)
             val body'' = case rtp
                          of A.Void => A.Seq(ds0 @ dresult,
-                                            register_backtrace @ ass1 @ [body'] @ ass2 @ deregister_backtrace)
+                                            register_backtrace () @ ass1 @ [body'] @ ass2 @ deregister_backtrace ())
                           | _ => A.Seq(ds0 @ dresult, 
-                                       register_backtrace @ ass1 @ [body'])
+                                       register_backtrace () @ ass1 @ [body'])
             val body''' = fv_stm body'' ext g 
         in
             A.Function(g, rtp, params1, SOME(body'''), specs, is_external, ext)
