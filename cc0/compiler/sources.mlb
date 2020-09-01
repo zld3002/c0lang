@@ -78,6 +78,7 @@ in
    structure Parse
    structure TypeChecker
    structure DynCheck
+   structure CodeWarn
    structure Flags
    structure Top
 

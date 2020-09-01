@@ -80,6 +80,8 @@ let
     val {library_wrappers} = 
        Top.finalize {library_headers = library_headers}
     val () = Top.static_analysis oprogram
+   (* Semantic warnings *)
+    val () = CodeWarn.warn_program sprogram
 in 
  (()
 

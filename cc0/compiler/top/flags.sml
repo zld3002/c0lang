@@ -201,7 +201,18 @@ structure Flags :> FLAGS = struct
       help="Print version number and compile info"},
      {short = "n", long=["no-log"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_no_log),
-      help="Disable logging for this compile"}]
+      help="Disable logging for this compile"},
+      (* Nov 2019 *)
+      {short = "W", long=[],
+      desc=GetOpt.OptArg (
+              (fn NONE => warnings := known_warnings
+                | SOME "all" => warnings := known_warnings
+                | SOME "none" => warnings := []
+                | SOME s => (case List.find (fn f => s = f) known_warnings of 
+                              SOME _ => warnings := s :: !warnings 
+                            | NONE => ErrorMsg.error NONE ("unknown warning '" ^ s ^ "'"))),
+              "warning"), 
+      help="Enable warning/warning group"}]
 
   val coin_options : unit GetOpt.opt_descr list = 
     [{short = "t", long=["trace"],
@@ -253,18 +264,7 @@ structure Flags :> FLAGS = struct
       help="Execute compiled file"},
      {short = "", long=["only-typecheck"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_only_typecheck),
-      help="Stop after typechecking"},
-     (* Nov 2019 *)
-      {short = "W", long=[],
-      desc=GetOpt.OptArg (
-              (fn NONE => warnings := known_warnings
-                | SOME "all" => warnings := known_warnings
-                | SOME "none" => warnings := []
-                | SOME s => (case List.find (fn f => s = f) known_warnings of 
-                              SOME _ => warnings := s :: !warnings 
-                            | NONE => ErrorMsg.error NONE ("unknown warning '" ^ s ^ "'"))),
-              "warning"), 
-      help="Enable warning/warning group"}]
+      help="Stop after typechecking"}]
 
   end (* local *)
 
