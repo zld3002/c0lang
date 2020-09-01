@@ -51,13 +51,13 @@ struct
     fun register_backtrace () = 
       (* Don't insert backtrace info when generating bytecode 
        * as C0VM does not support it *)
-      if not (Flag.isset Flags.flag_bytecode)
+      if Flag.isset Flags.flag_backtrace
         then [A.Exp (A.FunCall (register_func, [caller_var]))]
         else []
 
     (* This is done before returning in dc_stm *)
     fun deregister_backtrace () = 
-      if not (Flag.isset Flags.flag_bytecode)
+      if Flag.isset Flags.flag_backtrace
         then [A.Exp (A.FunCall (deregister_func, []))]
         else [] 
 
@@ -343,7 +343,6 @@ struct
                           then (params, [caller_decl_main]) 
                           else (params @ [caller_decl], [])
             val env0 = Syn.syn_decls Symbol.empty params1
-            (* val env1 = Symbol.bind env0 (Symbol.symbol "\\result", rtp) *)
             val env1 = Symbol.bind env0 (result_id, rtp) (* replaced "\\result" -fp *)
             val ass1 = extract_pre env1 specs
             val ass2 = extract_post env1 specs

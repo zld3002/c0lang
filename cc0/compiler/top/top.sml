@@ -190,7 +190,11 @@ struct
 
   (* Read command line, get list of sources *)
   fun get_sources_set_flags {options, versioninfo, usageinfo, errfn, args} = 
-      let val sources = Flags.reset_flags options errfn args
+      let 
+        (* CC0-specific default options *)
+        val () = Flag.set Flags.flag_backtrace
+        (* Parse command line *)
+        val sources = Flags.reset_flags options errfn args
       in
           ( if Flag.isset Flags.flag_version
             then (say versioninfo ; raise FINISHED)
