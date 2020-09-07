@@ -12,12 +12,12 @@ MLTON_BASIC = mlton -default-ann "redundantMatch error" -default-ann "sequenceNo
 
 ifdef STATIC
 ifdef LIBSPLUS
-MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -Llib -Lruntime -lfile -lconio -lstring -lparse -lcurses -limg -lclock -lbare -lpng -lz /usr/lib/libcurses.a" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output 
+MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -Llib -Lruntime -lfile -lconio -lstring -lparse -lcurses -limg -lclock -lbare -lpng -lz /usr/lib/libcurses.a" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output
 else
-MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -Llib -Lruntime -lfile -lconio -lstring -lparse -lcurses -limg -lbare -lpng -lz /usr/lib/libcurses.a" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output 
+MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -Llib -Lruntime -lfile -lconio -lstring -lparse -lcurses -limg -lbare -lpng -lz /usr/lib/libcurses.a" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output
 endif
 else
-MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -rdynamic" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output 
+MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -rdynamic" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output
 endif
 
 # $EXTERNALS is set by ./configure in config.mk
@@ -126,7 +126,7 @@ ifdef NJ
 	$(COPY) compiler/bin/cc0-sml bin/cc0
 	$(COPY) compiler/bin/cc0.heap.* bin
 else
-	$(MLTON_BASIC) bin/cc0.bin compiler/sources-go.mlb 
+	$(MLTON_BASIC) bin/cc0.bin compiler/sources-go.mlb
 	$(COPY) compiler/bin/cc0-mlton bin/cc0
 endif
 	$(COPY) compiler/bin/cpfiles bin
@@ -182,7 +182,7 @@ libs: bin/wrappergen
 	$(COPY) libsc0/*.h0 libsc0/*.c0 lib
 	for l in libs/*; do $(MAKE) $$l; done
 ifdef LIBSPLUS
-	for l in libsplus/*; do $(MAKE) $$l; done  
+	for l in libsplus/*; do $(MAKE) $$l; done
 endif
 
 .PHONY: libsclean
@@ -198,14 +198,14 @@ endif
 NATIVE_CYMBOL  = bare/bare.c bare/cstr.c cymbol/sizeof.c
 NATIVE_CALLING = cymbol/extern-lib.c cymbol/extern-call.c
 NATIVE_COIN    = $(NATIVE_CYMBOL) $(NATIVE_CALLING)
-COIN_DEPS = $(CC0_DEPS) $(NATIVE_COIN) cymbol/cymbol*.cm cymbol/*.sml cymbol/*.mlb coin/coin*.cm coin/*.sml coin/*.sml 
+COIN_DEPS = $(CC0_DEPS) $(NATIVE_COIN) cymbol/cymbol*.cm cymbol/*.sml cymbol/*.mlb coin/coin*.cm coin/*.sml coin/*.sml
 
-.PHONY: coin 
+.PHONY: coin
 coin: bin/coin
 bin/coin: bin $(COIN_DEPS)
 	$(MAKE) -C compiler buildid
 ifdef NJ
-	$(MAKE) -C coin 
+	$(MAKE) -C coin
 	$(COPY) coin/coin.heap.* bin
 	$(COPY) compiler/bin/run-smlnj bin/coin
 else
@@ -236,7 +236,7 @@ endif
 CODEX_DEPS = $(CC0_DEPS) $(COIN_DEPS) codex/debug.cm codex/*.mlb codex/*.sml
 
 .PHONY: codex
-codex: bin/codex 
+codex: bin/codex
 bin/codex: bin $(CODEX_DEPS)
 	$(MAKE) -C compiler buildid
 ifdef NJ
@@ -273,7 +273,7 @@ reallyclean: clean
 
 ### Testing harnesses
 
-.PHONY: cc0-test 
+.PHONY: cc0-test
 cc0-test: bin/cc0-test
 bin/cc0-test: bin tests/drivers/*
 	$(MLTON_BASIC) $@ tests/drivers/$(notdir $@).mlb
@@ -281,12 +281,12 @@ bin/cc0-test: bin tests/drivers/*
 vm/c0vm: vm/*.h vm/*.c vm/include/*.h0
 	$(MAKE) -C vm
 
-.PHONY: c0vm-test 
+.PHONY: c0vm-test
 c0vm-test: vm/c0vm bin/c0vm-test
 bin/c0vm-test: bin tests/drivers/*
 	$(MLTON_BASIC) $@ tests/drivers/$(notdir $@).mlb
 
-.PHONY: coin-test 
+.PHONY: coin-test
 coin-test: bin/coin-test
 bin/coin-test: bin tests/drivers/*
 	$(MLTON_BASIC) $@ tests/drivers/$(notdir $@).mlb
