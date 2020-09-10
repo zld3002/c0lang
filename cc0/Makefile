@@ -343,8 +343,12 @@ install-libs:
 	mkdir -p $(PREFIX)/lib
 	$(COPY) lib/* $(PREFIX)/lib
 
+VERSION=$(shell git rev-list --count master)
 
+PACKAGE_FILES = bin/cc0 bin/cc0.bin bin/coin bin/coin.bin bin/codex bin/codex.bin 
+PACKAGE_FILES += lib/*.c0 lib/*.h0 lib/*$(DLLSUFFIX) lib/*.a 
+PACKAGE_FILES += runtime/ include
 # Packages all the necessary files for redistribution into a tarball
 package:
-	tar czvf cc0-$(PLATFORM)-$(MACHINE).tgz bin/ include/ runtime/ lib/ README_CC0.txt
+	tar czvf cc0-v$(VERSION)-$(PLATFORM)-$(MACHINE).tgz $(PACKAGE_FILES) README_CC0.txt
 	@echo Warning: make package does NOT recompile CC0!
