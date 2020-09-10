@@ -46,6 +46,7 @@ struct
       (anyErrors := true; 
       msg (Color.red ^ "error" ^ Color.reset ^ Color.bold) 
       ext (note ^ Color.reset))
+
     fun warn ext note = 
       msg (Color.purple ^ "warning" ^ Color.reset ^ Color.bold) 
         ext (note ^ Color.reset)

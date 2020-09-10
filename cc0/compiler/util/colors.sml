@@ -1,14 +1,22 @@
 (* ANSI Terminal color codes *)
-structure Color = struct 
-  val red = "\u001b[31m"
-  val purple = "\u001b[35m" (* Technically magenta... *)
-  val green = "\u001b[32m"
-  val cyan = "\u001b[36m"
-  val white = "\u001b[37m"
+structure Color = struct
+  (* Returns empty string if C0_ENABLE_BACKTRACE=0, otherwise returns s
+   * Useful for stopping colored output on output formats which don't support it
+   * e.g. Autolab *)
+  fun guardColor s = 
+    case Option.mapPartial Int.fromString (OS.Process.getEnv "C0_ENABLE_BACKTRACE") of 
+      SOME 0 => ""
+    | _ => s 
 
-  val bold = "\u001b[1m"
+  val red = guardColor "\u001b[31m"
+  val purple = guardColor "\u001b[35m"
+  val green = guardColor "\u001b[32m"
+  val cyan = guardColor "\u001b[36m"
+  val white = guardColor "\u001b[37m"
 
-  val reset = "\u001b[0m"
+  val bold = guardColor "\u001b[1m"
 
-  fun mkBold s = bold ^ s ^ reset 
+  val reset = guardColor "\u001b[0m"
+
+  fun mkBold s = bold ^ s ^ reset
 end
