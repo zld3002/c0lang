@@ -326,7 +326,7 @@ checkcoin: bin/coin-test
 # Install target -- copy contents of bin, lib, runtime, and include
 # TODO: make PREFIX configure-able
 PREFIX=../..
-.PHONY: install install-c0-mode install-libs
+.PHONY: install install-c0-mode install-libs package
 install: install-libs install-c0-mode
 	mkdir -p $(PREFIX)/bin $(PREFIX)/runtime $(PREFIX)/include
 	$(COPY) bin/* $(PREFIX)/bin
@@ -342,3 +342,9 @@ install-c0-mode:
 install-libs:
 	mkdir -p $(PREFIX)/lib
 	$(COPY) lib/* $(PREFIX)/lib
+
+
+# Packages all the necessary files for redistribution into a tarball
+package:
+	tar czvf cc0-$(PLATFORM)-$(MACHINE).tgz bin/ include/ runtime/ lib/ README_CC0.txt
+	@echo Warning: make package does NOT recompile CC0!
