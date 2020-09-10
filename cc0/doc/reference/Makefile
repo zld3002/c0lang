@@ -25,11 +25,12 @@ help:
 c0-libraries:
 	pdflatex c0-libraries.tex
 	@makeindex c0-libraries
-	@pdflatex c0-libraries.tex
-	@pdflatex c0-libraries.tex
+	@pdflatex c0-libraries.tex > /dev/null
+	@pdflatex c0-libraries.tex > /dev/null
 
 c0-reference:
 	pdflatex c0-reference.tex
+	@pdflatex c0-reference.tex > /dev/null
 
 cc0-guide:
 	pdflatex cc0-users-guide.tex
