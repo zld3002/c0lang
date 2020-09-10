@@ -15,7 +15,14 @@
 #define ANSI_BOLDBLUE ANSI_BOLD "\x1b[34m"
 #define ANSI_RESET "\x1b[0m"
 
-#define print_err(msg, ...) fprintf(stderr, ANSI_BOLDRED "c0rt: " msg ANSI_RESET "\n", ## __VA_ARGS__)
+// Variables which can be set to "" to disable
+// color printing
+static const char* ansi_bold = ANSI_BOLD;
+static const char* ansi_bold_red = ANSI_BOLDRED;
+static const char* ansi_bold_blue = ANSI_BOLDBLUE;
+static const char* ansi_reset = ANSI_RESET;
+
+#define print_err(msg, ...) fprintf(stderr, "%sc0rt: " msg "%s" "\n", ansi_bold_red, ## __VA_ARGS__, ansi_reset)
 
 // Environment variable names for configuration
 #define C0_BACKTRACE_LIMIT_ENV "C0_BACKTRACE_LIMIT"
@@ -58,6 +65,15 @@ void c0_runtime_init() {
   parse_env_with_default(C0_STACK_LIMIT_ENV, &c0_stacksize_limit);
   parse_env_with_default(C0_MAX_ARRAYSIZE_ENV, &c0_max_arraysize);
   parse_env_with_default(C0_ENABLE_BACKTRACE, &c0_enable_backtrace);
+
+  // Disable color printing if backtraces are disabled, in order to 
+  // support environments like Autolab
+  if (!c0_enable_backtrace) {
+    ansi_bold = "";
+    ansi_bold_red = "";
+    ansi_bold_blue = "";
+    ansi_reset = "";    
+  }
 }
 
 void c0_runtime_cleanup() {
@@ -92,9 +108,8 @@ void c0_print_callstack() {
 
     int func_length = strchr(current->funcname, '(') - current->funcname;
 
-    fprintf(stderr, 
-      "          " ANSI_BOLDBLUE "%.*s" ANSI_RESET "%s", 
-      func_length, current->funcname, current->funcname + func_length);
+    fprintf(stderr, "          %s%.*s%s%s", 
+      ansi_bold_blue, func_length, current->funcname, ansi_reset, current->funcname + func_length);
 
     if (current->repeat_count > 1) {
       fprintf(stderr, " (repeated %ld times)\n", current->repeat_count);
