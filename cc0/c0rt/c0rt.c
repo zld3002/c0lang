@@ -28,7 +28,7 @@ static const char* ansi_reset = ANSI_RESET;
 #define C0_BACKTRACE_LIMIT_ENV "C0_BACKTRACE_LIMIT"
 #define C0_STACK_LIMIT_ENV "C0_STACK_LIMIT"
 #define C0_MAX_ARRAYSIZE_ENV "C0_MAX_ARRAYSIZE"
-#define C0_ENABLE_BACKTRACE "C0_ENABLE_BACKTRACE"
+#define C0_ENABLE_FANCY_OUTPUT "C0_ENABLE_FANCY_OUTPUT"
 
 // Default backtrace print limit
 static long c0_backtrace_print_limit = 50;
@@ -37,9 +37,9 @@ static long c0_stacksize_limit = 0x15122;
 // Default maximum array size in bytes (includes metadata)
 static long c0_max_arraysize = 1 << 30; // 1 GB
 
-// Whether to print backtraces or not.
+// Whether to use colors and to print backtraces or not.
 // (0 = disabled, nonzero = enabled)
-static long c0_enable_backtrace = true;
+static long c0_enable_fancy_output = true;
 
 // Modifies out if parse succeeeds, leaves unchanged otherwise and prints a message
 // name is the name of the environment variable
@@ -64,11 +64,11 @@ void c0_runtime_init() {
   parse_env_with_default(C0_BACKTRACE_LIMIT_ENV, &c0_backtrace_print_limit);
   parse_env_with_default(C0_STACK_LIMIT_ENV, &c0_stacksize_limit);
   parse_env_with_default(C0_MAX_ARRAYSIZE_ENV, &c0_max_arraysize);
-  parse_env_with_default(C0_ENABLE_BACKTRACE, &c0_enable_backtrace);
+  parse_env_with_default(C0_ENABLE_FANCY_OUTPUT, &c0_enable_fancy_output);
 
   // Disable color printing if backtraces are disabled, in order to 
   // support environments like Autolab
-  if (!c0_enable_backtrace) {
+  if (!c0_enable_fancy_output) {
     ansi_bold = "";
     ansi_bold_red = "";
     ansi_bold_blue = "";
@@ -100,7 +100,7 @@ void c0_print_callstack() {
   // are not generated. So this function shouldn't run
   if (c0_backtrace_size == 0) return;
   // If backtraces are disabled, don't run as well
-  if (!c0_enable_backtrace) return;
+  if (!c0_enable_fancy_output) return;
 
   print_err("in a function called from:");
   for (long i = 0; i < c0_backtrace_print_limit && i < c0_backtrace_size; i++) {

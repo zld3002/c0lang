@@ -165,7 +165,7 @@ Invalid option values (e.g. something that's not a number or out of range) will 
   \\
   \texttt{C0\_MAX\_ARRAYSIZE} & 1 GiB & Sets the maximum C0 array allocation size. This value includes array metadata: element size, element count, and pointer to actual data. While it should be safe to set this value higher, the effects of this on the garbage collector are unknown. \\
   \\
-  \texttt{C0\_ENABLE\_BACKTRACE} & 1 & If set to a nonzero value and the program is compiled with \texttt{-d}, then a backtrace will be printed if the program crashes. Otherwise, it will not be printed. This will also disable color printing for CC0 and the runtime. \\
+  \texttt{C0\_ENABLE\_FANCY\_OUTPUT} & 1 & If set to a nonzero value and the program is compiled with \texttt{-d}, then a backtrace will be printed if the program crashes. Otherwise, it will not be printed. Setting this to 0 will also disable color printing for CC0 and the runtime. \\
   \\
   \texttt{C0\_BACKTRACE\_LIMIT} & 50 & Controls how many entries will be printed in a backtrace. Note that repeated recursive entries will be collapsed into one entry.
 \end{longtable}
