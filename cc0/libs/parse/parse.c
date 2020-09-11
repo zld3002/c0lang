@@ -138,7 +138,7 @@ c0_array parse_ints(c0_string s, int base) {
   c0_array A = c0_array_alloc(sizeof(int), len);
 
   for (int i = 0; i < len; i++) {
-    c0_string token = *c0_array_sub(tokens, i, sizeof(c0_string));
+    c0_string token = *(c0_string*)c0_array_sub(tokens, i, sizeof(c0_string));
     int* num = parse_int(token, base);
 
     if (num == NULL) {
