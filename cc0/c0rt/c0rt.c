@@ -1,7 +1,10 @@
+#define _GNU_SOURCE
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
 #include <stdnoreturn.h>
+#include <assert.h>
 #include <string.h> 
 #include <strings.h> // bzero 
 #include <limits.h>
@@ -60,6 +63,21 @@ static void parse_env_with_default(const char* name, long* out) {
   *out = result;
 }
 
+#define SIG_STACK_SIZE (4 * SIGSTKSZ)
+char signal_stack[SIG_STACK_SIZE] = { 0 };
+void segv_handler(int signal) {
+  print_err("recursion limit exceeded");
+
+  struct sigaction default_action = {
+    .sa_flags = 0,
+    .sa_handler = SIG_DFL
+  };
+  sigemptyset(&default_action.sa_mask);
+
+  sigaction(SIGSEGV, &default_action, NULL);
+  raise(SIGSEGV);
+}
+
 void c0_runtime_init() {
   GC_INIT();
 
@@ -79,7 +97,21 @@ void c0_runtime_init() {
 
   // Set up a separate stack for SIGSEGV so we can handle
   // stack overflows appropriately
-  
+  stack_t signal_stack_desc = {
+    .ss_flags = 0,
+    .ss_size = SIG_STACK_SIZE,
+    .ss_sp = signal_stack
+  };
+
+  assert(sigaltstack(&signal_stack_desc, NULL) >= 0);
+
+  struct sigaction segv_action = {
+    .sa_flags = SA_ONSTACK,
+    .sa_handler = segv_handler,
+  };
+  sigfillset(&segv_action.sa_mask);
+
+  assert(sigaction(SIGSEGV, &segv_action, NULL) >= 0);
 }
 
 static const char* prog_name = NULL;
