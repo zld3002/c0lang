@@ -9,6 +9,8 @@
 #include <gc.h>
 #include <c0runtime.h>
 
+#include "libbacktrace/backtrace.h"
+
 // Terminal color codes
 #define ANSI_BOLD "\x1b[1m"
 #define ANSI_BOLDRED ANSI_BOLD "\x1b[31m"
@@ -74,108 +76,69 @@ void c0_runtime_init() {
     ansi_bold_blue = "";
     ansi_reset = "";    
   }
+
+  // Set up a separate stack for SIGSEGV so we can handle
+  // stack overflows appropriately
+  
+}
+
+static const char* prog_name = NULL;
+static const char** sourcemap = NULL;
+static int sourcemap_length = 0;
+
+void c0_backtrace_init(const char* filename, const char** source_map, int map_length) {
+  prog_name = filename;
+  sourcemap = source_map; 
+  sourcemap_length = map_length;
 }
 
 void c0_runtime_cleanup() {
   // nothing to do for the c0rt runtime
 }
 
-struct c0_stack_info {
-  const char* funcname;
-  long repeat_count;
-};
+#define C0_EXTENSION ".c0.c"
+// Check if a file is from the generated .c0.c file
+static bool from_user_program(const char* s) {
+  size_t n = strlen(s);
+  size_t m = strlen(C0_EXTENSION);
 
-static struct c0_stack_info* c0_backtrace_stack = NULL;
-// Next available index in the array 
-// or could be equal to limit, then the array will
-// resize on the next push_callstack call.
-static long c0_backtrace_size = 0; 
-static long c0_backtrace_limit = 0;
+  return strcmp(s + n - m, C0_EXTENSION) == 0;
+}
 
-// Total recursion depth (independent of c0_backtrace size)
-static long c0_stack_size = 0;
+#define C0_FUNC_MANGLE_PREFIX "_c0_"
+// "Demangle" a C0 function name
+static const char* demangle(const char* s) {
+  return s + strlen(C0_FUNC_MANGLE_PREFIX);
+}
+
+int backtrace_callback(void* data, uintptr_t pc, const char* filename, int lineno, const char* function) {
+    if (filename == NULL || !from_user_program(filename)) {
+      // Frame is not from the C0 program
+      return 0;
+    }
+
+    // TODO: check filename ends with .c0.c instead of doing the above
+    if (lineno >= sourcemap_length) {
+      // out of bounds
+      printf("WARNING! line numer out of bounds?\n");
+      return 0;
+    }
+
+    printf(" at %s (%s)\n", demangle(function), sourcemap[lineno]);
+
+    return 0;
+}
 
 void c0_print_callstack() {
-  // If contracts are not turned on, then calls to c0_push/pop_callstack 
-  // are not generated. So this function shouldn't run
-  if (c0_backtrace_size == 0) return;
-  // If backtraces are disabled, don't run as well
-  if (!c0_enable_fancy_output) return;
-
-  print_err("in a function called from:");
-  for (long i = 0; i < c0_backtrace_print_limit && i < c0_backtrace_size; i++) {
-    const struct c0_stack_info* current = &c0_backtrace_stack[c0_backtrace_size - i - 1];
-
-    int func_length = strchr(current->funcname, '(') - current->funcname;
-
-    fprintf(stderr, "          %s%.*s%s%s", 
-      ansi_bold_blue, func_length, current->funcname, ansi_reset, current->funcname + func_length);
-
-    if (current->repeat_count > 1) {
-      fprintf(stderr, " (repeated %ld times)\n", current->repeat_count);
-    }
-    else {
-      fprintf(stderr, "\n");
-    }
-  }
-
-  if (c0_backtrace_print_limit < c0_backtrace_size) {
-    fprintf(stderr, "          (...)\n");
-    fprintf(stderr, "          backtrace truncated at %ld entries\n", c0_backtrace_print_limit);
-    fprintf(stderr, "          change $" C0_BACKTRACE_LIMIT_ENV " to increase the number of entries shown\n");
-  }
+  // TODO: error handler (3rd param)
+  struct backtrace_state* state = backtrace_create_state(prog_name, false, NULL, NULL);
+  // TODO: use state to limit backtrace length?
+  // TODO: this gets rid of our stack overflow protection
+  // Use sigaltstack to handle that?
+  backtrace_full(state, 0, backtrace_callback, NULL, NULL);
 }
 
 noreturn void c0_abort_mem(const char* msg);
-
-void c0_push_callstack(c0_string c0_funcname) {
-  c0_stack_size++;
-
-  const char* funcname = c0_string_tocstr(c0_funcname);
-
-  if (c0_stack_size > c0_stacksize_limit) {
-    print_err("Maximum callstack size exceeded (is %ld, change $" C0_STACK_LIMIT_ENV " to adjust)", c0_stacksize_limit);
-    c0_print_callstack();
-    raise(SIGSEGV);
-  }
-
-  if (c0_backtrace_size == c0_backtrace_limit) {
-    c0_backtrace_limit++;
-    c0_backtrace_limit *= 2;
-
-    c0_backtrace_stack = GC_REALLOC(c0_backtrace_stack, c0_backtrace_limit * sizeof(struct c0_stack_info));
-    if (!c0_backtrace_stack) c0_abort_mem("allocation failure");
-  }
-
-  // Performance: Technically we would only have to compare the strings
-  // until the first space (since function names can't have spaces).
-  // The rest of the string is location info
-  if (c0_backtrace_size == 0 || strcmp(c0_backtrace_stack[c0_backtrace_size - 1].funcname, funcname) != 0) {  
-    // Stack is empty or this is a different function
-    c0_backtrace_stack[c0_backtrace_size] = (struct c0_stack_info){ 
-      .funcname = funcname, 
-      .repeat_count = 1 
-    };
-    c0_backtrace_size++;
-  }
-  else {
-    // Stack is nonempty and this is the same function, so we just need to increment the count
-    c0_backtrace_stack[c0_backtrace_size - 1].repeat_count++;
-  }
-}
-
-void c0_pop_callstack() {
-  c0_stack_size--;
-  if (c0_backtrace_stack == NULL || c0_backtrace_size == 0) return;
-
-  struct c0_stack_info* top = &c0_backtrace_stack[c0_backtrace_size - 1];
-
-  if (top->repeat_count > 1) top->repeat_count--;
-  else { 
-    c0_string_freecstr(c0_backtrace_stack[c0_backtrace_size - 1].funcname);
-    c0_backtrace_size--;
-  }
-}
 
 static noreturn void raise_msg(int signal, const char* msg) {
   print_err("%s", msg);

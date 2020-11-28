@@ -100,6 +100,33 @@ struct
     and is_nops nil = true
       | is_nops (s::ss) = is_nop s andalso is_nops ss
 
+
+    (* Keep track of which line in C we are in *)
+    val line_counter = ref 1
+    fun incr_line_counter () = line_counter := !line_counter + 1
+    
+    (* An association list mapping C lines -> C0 source extents *)
+    val source_mappings: (int * Mark.ext option) list ref = ref []
+    fun add_mapping line ext = source_mappings := (line, ext) :: !source_mappings
+
+    fun pp_source_map () = 
+      let
+        val linecount_str = Int.toString (!line_counter + 1)
+        fun pp_source_mapping [] = ""
+          | pp_source_mapping ((line, ext)::rest) = 
+              String.concat ["[", Int.toString line, "] = \"", String.toCString (Mark.show' ext), "\", "]
+              ^ pp_source_mapping rest 
+      in
+        String.concat [
+          "int map_length = ", linecount_str, ";\n",
+          "const char* source_map[", 
+          linecount_str,
+          "] = { ",
+          pp_source_mapping (!source_mappings),
+          "};\n"
+        ]
+      end 
+
     (* Name mangling, to avoid conflict with C keywords and
      * with each other.  Readability of code could be improved
      * by only doing this when necessary *)
@@ -163,109 +190,121 @@ struct
      * Uses only one line and parentheses liberally to disambiguate.
      * Also uses various macros to allow safe and unsafe runtimes.
      * See c0/include/cc0lib.h and c0/include/c0rt.h *)
-    fun pp_exp env (A.Var(id)) = pp_var id
-      | pp_exp env (A.IntConst(w)) = (* bug workaround for gcc -fwrapv, Jan 22, 2012 *)
+    fun pp_exp env ext (A.Var(id)) = pp_var id
+      | pp_exp env ext (A.IntConst(w)) = (* bug workaround for gcc -fwrapv, Jan 22, 2012 *)
         if (w = Word32Signed.TMIN) then "(-2147483647-1)" else Word32Signed.toString w
-      | pp_exp env (A.StringConst(s)) = "c0_string_fromliteral(\"" ^ String.toCString s ^ "\")"
-      | pp_exp env (A.CharConst(c)) = "'" ^ Char.toCString c ^ "'"
-      | pp_exp env (A.True) = "true"
-      | pp_exp env (A.False) = "false"
-      | pp_exp env (A.Null) = "NULL"
-      | pp_exp env (A.OpExp(oper as A.DIVIDEDBY, [e1, e2])) =
+      | pp_exp env ext (A.StringConst(s)) = "c0_string_fromliteral(\"" ^ String.toCString s ^ "\")"
+      | pp_exp env ext (A.CharConst(c)) = "'" ^ Char.toCString c ^ "'"
+      | pp_exp env ext (A.True) = "true"
+      | pp_exp env ext (A.False) = "false"
+      | pp_exp env ext (A.Null) = "NULL"
+      | pp_exp env ext (A.OpExp(oper as A.DIVIDEDBY, [e1, e2])) =
         if is_safe_div e2
-        then "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
-        else "c0_idiv(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
-      | pp_exp env (A.OpExp(oper as A.MODULO, [e1, e2])) =
+        then "(" ^ pp_exp env ext e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env ext e2 ^ ")"
+        else (
+          add_mapping (!line_counter) ext;
+          "c0_idiv(" ^ pp_exp env ext e1 ^ "," ^ pp_exp env ext e2 ^ ")"
+        )
+      | pp_exp env ext (A.OpExp(oper as A.MODULO, [e1, e2])) =
         if is_safe_div e2
-        then "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
-        else "c0_imod(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
-      | pp_exp env (A.OpExp(oper as A.SHIFTLEFT, [e1, e2])) =
+        then "(" ^ pp_exp env ext e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env ext e2 ^ ")"
+        else "c0_imod(" ^ pp_exp env ext e1 ^ "," ^ pp_exp env ext e2 ^ ")"
+      | pp_exp env ext (A.OpExp(oper as A.SHIFTLEFT, [e1, e2])) =
         if is_safe_shift e2
-        then "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
-        else "c0_sal(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
-      | pp_exp env (A.OpExp(oper as A.SHIFTRIGHT, [e1, e2])) =
+        then "(" ^ pp_exp env ext e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env ext e2 ^ ")"
+        else "c0_sal(" ^ pp_exp env ext e1 ^ "," ^ pp_exp env ext e2 ^ ")"
+      | pp_exp env ext (A.OpExp(oper as A.SHIFTRIGHT, [e1, e2])) =
         if is_safe_shift e2
-        then "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
-        else "c0_sar(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
-      | pp_exp env (A.OpExp(oper as A.EQ, [e1, e2])) =
+        then "(" ^ pp_exp env ext e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env ext e2 ^ ")"
+        else "c0_sar(" ^ pp_exp env ext e1 ^ "," ^ pp_exp env ext e2 ^ ")"
+      | pp_exp env ext (A.OpExp(oper as A.EQ, [e1, e2])) =
         if is_tagged_ptr env e1 andalso is_tagged_ptr env e2
-        then "c0_tagged_eq(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
-        else "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
-      | pp_exp env (A.OpExp(oper as A.NOTEQ, [e1, e2])) =
+        then "c0_tagged_eq(" ^ pp_exp env ext e1 ^ "," ^ pp_exp env ext e2 ^ ")"
+        else "(" ^ pp_exp env ext e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env ext e2 ^ ")"
+      | pp_exp env ext (A.OpExp(oper as A.NOTEQ, [e1, e2])) =
         if is_tagged_ptr env e1 andalso is_tagged_ptr env e2
-        then "!c0_tagged_eq(" ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
-        else "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
-      | pp_exp env (A.OpExp(A.SUB, [e1,e2])) =
+        then "!c0_tagged_eq(" ^ pp_exp env ext e1 ^ "," ^ pp_exp env ext e2 ^ ")"
+        else "(" ^ pp_exp env ext e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env ext e2 ^ ")"
+      | pp_exp env ext (A.OpExp(A.SUB, [e1,e2])) =
         let val A.Array(tp) = Syn.syn_exp_expd env e1
         in
-            "cc0_array_sub(" ^ pp_tp tp ^ "," ^ pp_exp env e1 ^ "," ^ pp_exp env e2 ^ ")"
+          add_mapping (!line_counter) ext;
+          "cc0_array_sub(" ^ pp_tp tp ^ "," ^ pp_exp env ext e1 ^ "," ^ pp_exp env ext e2 ^ ")"
         end
-      | pp_exp env (A.OpExp(A.DEREF, [e1])) =
+      | pp_exp env ext (A.OpExp(A.DEREF, [e1])) =
         let val A.Pointer(tp) = Syn.syn_exp_expd env e1
-        in "cc0_deref(" ^ pp_tp tp ^ ", " ^ pp_exp env e1 ^ ")" end
-      | pp_exp env (A.OpExp(A.COND, [e1, e2, e3])) =
-        "(" ^ pp_exp env e1 ^ " ? " ^ pp_exp env e2 ^ " : " ^ pp_exp env e3 ^ ")"
-      | pp_exp env (A.OpExp(oper, [e])) =
-        pp_oper oper ^ "(" ^ pp_exp env e ^ ")"
-      | pp_exp env (A.OpExp(oper, [e1,e2])) =
-        "(" ^ pp_exp env e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env e2 ^ ")"
-      | pp_exp env (A.Select(e, f)) =
-        "(" ^ pp_exp env e ^ ")." ^ pp_field f
-      | pp_exp env (A.FunCall(id, es)) =
-          pp_fun id ^ "(" ^ pp_exps env es ^ ")"
-      | pp_exp env (A.AddrOf(id)) =
+        in 
+          add_mapping (!line_counter) ext;
+          "cc0_deref(" ^ pp_tp tp ^ ", " ^ pp_exp env ext e1 ^ ")" 
+        end
+        
+      | pp_exp env ext (A.OpExp(A.COND, [e1, e2, e3])) =
+        "(" ^ pp_exp env ext e1 ^ " ? " ^ pp_exp env ext e2 ^ " : " ^ pp_exp env ext e3 ^ ")"
+      | pp_exp env ext (A.OpExp(oper, [e])) =
+        pp_oper oper ^ "(" ^ pp_exp env ext e ^ ")"
+      | pp_exp env ext (A.OpExp(oper, [e1,e2])) =
+        "(" ^ pp_exp env ext e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env ext e2 ^ ")"
+      | pp_exp env ext (A.Select(e, f)) =
+        "(" ^ pp_exp env ext e ^ ")." ^ pp_field f
+      | pp_exp env ext (A.FunCall(id, es)) = (
+          (* Function calls should be tracked *)
+          add_mapping (!line_counter) ext;
+          pp_fun id ^ "(" ^ pp_exps env ext es ^ ")"
+        )
+      | pp_exp env ext (A.AddrOf(id)) =
          "&" ^ pp_fun id
-      | pp_exp env (A.Invoke(e, es)) =
-          "(" ^ pp_exp env e ^ ")" ^ "(" ^ pp_exps env es ^ ")"
-      | pp_exp env (A.Alloc(tp)) = "cc0_alloc(" ^ pp_tp tp ^ ")"
-      | pp_exp env (A.AllocArray(tp, e)) = "cc0_alloc_array(" ^ pp_tp tp ^ "," ^ pp_exp env e ^ ")"
-      | pp_exp env (A.Cast(tp, e)) =
+      | pp_exp env ext (A.Invoke(e, es)) =
+          "(" ^ pp_exp env ext e ^ ")" ^ "(" ^ pp_exps env ext es ^ ")"
+      | pp_exp env ext (A.Alloc(tp)) = "cc0_alloc(" ^ pp_tp tp ^ ")"
+      | pp_exp env ext (A.AllocArray(tp, e)) = "cc0_alloc_array(" ^ pp_tp tp ^ "," ^ pp_exp env ext e ^ ")"
+      | pp_exp env ext (A.Cast(tp, e)) =
         ( case (Syn.expand_all tp)
            of A.Pointer(A.Void) =>
               let val tp' = Syn.expand_all (Syn.syn_exp env e)
                   val tp_string = pp_tp tp'
               in 
-                  "cc0_tag(" ^ tp_string ^ "," ^ "\"" ^ tp_string ^ "\"" ^ "," ^ pp_exp env e ^ ")"
+                  "cc0_tag(" ^ tp_string ^ "," ^ "\"" ^ tp_string ^ "\"" ^ "," ^ pp_exp env ext e ^ ")"
               end
             | tp' =>
               let val tp_string = pp_tp tp'
               in
-                  "cc0_untag(" ^ tp_string ^ "," ^ "\"" ^ tp_string ^ "\"" ^ "," ^ pp_exp env e ^ ")"
+                  "cc0_untag(" ^ tp_string ^ "," ^ "\"" ^ tp_string ^ "\"" ^ "," ^ pp_exp env ext e ^ ")"
               end )
-      | pp_exp env (A.Result) = (* should be impossible, except in comment *)
+      | pp_exp env ext (A.Result) = (* should be impossible, except in comment *)
           "\\result"
-      | pp_exp env (A.Length(e)) = "c0_array_length(" ^ pp_exp env e ^ ")"
-      | pp_exp env (A.Hastag(tp,e)) = "c0_hastag(" ^ "\"" ^ pp_tp (Syn.expand_all tp) ^ "\""
-                                      ^ "," ^ pp_exp env e ^ ")"
-      | pp_exp env (A.Marked(marked_exp)) =
-          pp_exp env (Mark.data marked_exp)
+      | pp_exp env ext (A.Length(e)) = "c0_array_length(" ^ pp_exp env ext e ^ ")"
+      | pp_exp env ext (A.Hastag(tp,e)) = "c0_hastag(" ^ "\"" ^ pp_tp (Syn.expand_all tp) ^ "\""
+                                      ^ "," ^ pp_exp env ext e ^ ")"
+      | pp_exp env ext (A.Marked(marked_exp)) =
+          pp_exp env (Mark.ext marked_exp) (Mark.data marked_exp)
+          before print "got here\n"
 
-    and pp_exps env nil = ""
-      | pp_exps env (e::nil) = pp_exp env e
-      | pp_exps env (e::es) = pp_exp env e ^ ", " ^ pp_exps env es
+    and pp_exps env ext nil = ""
+      | pp_exps env ext (e::nil) = pp_exp env ext e
+      | pp_exps env ext (e::es) = pp_exp env ext e ^ ", " ^ pp_exps env ext es
 
-    and pp_stringlist env nil = "\"\""
-      | pp_stringlist env (e::nil) = pp_exp env e
-      | pp_stringlist env (e::es) =
-        "c0_string_join(" ^ pp_exp env e ^ ", " ^ pp_stringlist env es ^ ")"
+    and pp_stringlist env ext nil = "\"\""
+      | pp_stringlist env ext (e::nil) = pp_exp env ext e
+      | pp_stringlist env ext (e::es) =
+        "c0_string_join(" ^ pp_exp env ext e ^ ", " ^ pp_stringlist env ext es ^ ")"
 
-    fun pp_assign env (A.Assign(NONE, lv, e)) =
-          pp_exp env lv ^ " = " ^ pp_exp env e ^ ";"
-      | pp_assign env (A.Assign(SOME(A.DEREF), lv, e)) =
+    fun pp_assign env ext (A.Assign(NONE, lv, e)) =
+          pp_exp env ext lv ^ " = " ^ pp_exp env ext e ^ ";"
+      | pp_assign env ext (A.Assign(SOME(A.DEREF), lv, e)) =
           (* hack: x <*>= e means x = &e *)
-          pp_exp env lv ^ " = " ^ "&(" ^ pp_exp env e ^ ")" ^ ";"
+          pp_exp env ext lv ^ " = " ^ "&(" ^ pp_exp env ext e ^ ")" ^ ";"
       (* next four are effectful: call runtime function *)
-      | pp_assign env (A.Assign(SOME(A.DIVIDEDBY), lv, e)) =
-          pp_exp env lv ^ " = " ^ "c0_idiv(" ^ pp_exp env lv ^ "," ^ pp_exp env e ^ ");"
-      | pp_assign env (A.Assign(SOME(A.MODULO), lv, e)) =
-          pp_exp env lv ^ " = " ^ "c0_imod(" ^ pp_exp env lv ^ "," ^ pp_exp env e ^ ");"
-      | pp_assign env (A.Assign(SOME(A.SHIFTLEFT), lv, e)) =
-          pp_exp env lv ^ " = " ^ "c0_sal(" ^ pp_exp env lv ^ "," ^ pp_exp env e ^ ");"
-      | pp_assign env (A.Assign(SOME(A.SHIFTRIGHT), lv, e)) =
-          pp_exp env lv ^ " = " ^ "c0_sar(" ^ pp_exp env lv ^ "," ^ pp_exp env e ^ ");"
+      | pp_assign env ext (A.Assign(SOME(A.DIVIDEDBY), lv, e)) =
+          pp_exp env ext lv ^ " = " ^ "c0_idiv(" ^ pp_exp env ext lv ^ "," ^ pp_exp env ext e ^ ");"
+      | pp_assign env ext (A.Assign(SOME(A.MODULO), lv, e)) =
+          pp_exp env ext lv ^ " = " ^ "c0_imod(" ^ pp_exp env ext lv ^ "," ^ pp_exp env ext e ^ ");"
+      | pp_assign env ext (A.Assign(SOME(A.SHIFTLEFT), lv, e)) =
+          pp_exp env ext lv ^ " = " ^ "c0_sal(" ^ pp_exp env ext lv ^ "," ^ pp_exp env ext e ^ ");"
+      | pp_assign env ext (A.Assign(SOME(A.SHIFTRIGHT), lv, e)) =
+          pp_exp env ext lv ^ " = " ^ "c0_sar(" ^ pp_exp env ext lv ^ "," ^ pp_exp env ext e ^ ");"
       (* remaining ones are pure: map to corresponding C construct *)
-      | pp_assign env (A.Assign(SOME(oper), lv, e)) =
-          pp_exp env lv ^ " " ^ pp_oper oper ^ "= " ^ pp_exp env e ^ ";"
+      | pp_assign env ext (A.Assign(SOME(oper), lv, e)) =
+          pp_exp env ext lv ^ " " ^ pp_oper oper ^ "= " ^ pp_exp env ext e ^ ";"
 
     (* pp_stm n env s = str
      * pp_stms n env ss = str
@@ -276,78 +315,81 @@ struct
      * Assume body of while-loop and branches of conditional
      * are sequences, which is guaranteed by iso_<cat>.
      * Also, statements are free of for-loops *)
-    fun pp_stm n env (s as A.Assign (oper_opt, lv, e)) =
-          indent n (pp_assign env s)
-      | pp_stm n env (A.Exp(e)) =
+    fun pp_stm n env ext (s as A.Assign (oper_opt, lv, e)) =
+          indent n (pp_assign env ext s)
+      | pp_stm n env ext (A.Exp(e)) =
           (* effects have been isolated *)
-          indent n (pp_exp env e ^ ";")
-      | pp_stm n env (A.Seq(nil, nil)) =
+          indent n (pp_exp env ext e ^ ";")
+      | pp_stm n env ext (A.Seq(nil, nil)) =
           indent n "{ }"
-      | pp_stm n env (A.Seq(nil, [s' as A.Seq _])) =
+      | pp_stm n env ext (A.Seq(nil, [s' as A.Seq _])) =
           (* compress nested sequences *)
-          pp_stm n env s'
-      | pp_stm n env (A.Seq(ds, ss)) =
+          pp_stm n env ext s'
+      | pp_stm n env ext (A.Seq(ds, ss)) =
         let val env' = Syn.syn_decls env ds
         in
-            indent n "{\n"
+            (indent n "{\n" before incr_line_counter ())
             ^ pp_decls (n+2) env ds
-            ^ pp_stms (n+2) env' ss
+            ^ pp_stms (n+2) env' ext ss
             ^ indent n "}"
         end
-      | pp_stm n env (A.StmDecl(d)) =
+      | pp_stm n env ext (A.StmDecl(d)) =
         let val env' = Syn.syn_decls env [d]
         in
             pp_decl n env d
         end
-      | pp_stm n env (A.If(e, A.Seq([], ss1), A.Seq([], ss2))) =
-        indent n ("if (" ^ pp_exp env e ^ ") {\n")
-        ^ pp_stms (n+2) env ss1
+      | pp_stm n env ext (A.If(e, A.Seq([], ss1), A.Seq([], ss2))) =
+        (indent n ("if (" ^ pp_exp env ext e ^ ") {\n") before incr_line_counter ())
+        ^ pp_stms (n+2) env ext ss1
         ^ indent n "}"
         ^ (if is_nops ss2
            then "" (* ok, since braces delimit scope? *)
-           else " else {\n" ^ pp_stms (n+2) env ss2
+           else (" else {\n" before incr_line_counter ())
+                ^ pp_stms (n+2) env ext ss2
                 ^ indent n "}")
-      | pp_stm n env (A.While(e, _, A.Seq([], ss))) =
-        indent n ("while (" ^ pp_exp env e ^ ") {\n")
-        ^ pp_stms (n+2) env ss
+      | pp_stm n env ext (A.While(e, _, A.Seq([], ss))) =
+        (indent n ("while (" ^ pp_exp env ext e ^ ") {\n") before incr_line_counter ())
+        ^ pp_stms (n+2) env ext ss
         ^ indent n "}"
       (* no A.For *)
-      | pp_stm n env (A.Continue) = indent n "continue;"
-      | pp_stm n env (A.Break) = indent n "break;"
-      | pp_stm n env (A.Return(SOME(e))) =
-          indent n ("return " ^ pp_exp env e ^ ";")
-      | pp_stm n env (A.Return(NONE)) =
+      | pp_stm n env ext (A.Continue) = indent n "continue;"
+      | pp_stm n env ext (A.Break) = indent n "break;"
+      | pp_stm n env ext (A.Return(SOME(e))) =
+          indent n ("return " ^ pp_exp env ext e ^ ";")
+      | pp_stm n env ext (A.Return(NONE)) =
           indent n "return;"
-      | pp_stm n env (A.Assert(e1, e2s)) =
+      | pp_stm n env ext (A.Assert(e1, e2s)) =
           (* We reduce e2s to a single string by concatenation, to avoid
            * variadic functions or macros *)
-          indent n ("cc0_assert(" ^ pp_exp env e1 ^ ", " ^ pp_stringlist env e2s ^ ");")
-      | pp_stm n env (A.Error(e)) =
-          indent n ("c0_error(" ^ pp_exp env e ^ ");\n") 
+          indent n ("cc0_assert(" ^ pp_exp env ext e1 ^ ", " ^ pp_stringlist env ext e2s ^ ");")
+      | pp_stm n env ext (A.Error(e)) =
+          (indent n ("c0_error(" ^ pp_exp env ext e ^ ");\n") before incr_line_counter ())
           ^ indent n ("exit(EXIT_FAILURE);")
-      | pp_stm n env (A.Anno(specs)) = (* should not arise *)
+      | pp_stm n env ext (A.Anno(specs)) = (* should not arise *)
           indent n ";"
-      | pp_stm n env (A.Markeds(marked_stm)) =
-          pp_stm n env (Mark.data marked_stm)
+      | pp_stm n env ext (A.Markeds(marked_stm)) =
+          pp_stm n env (Mark.ext marked_stm) (Mark.data marked_stm)
 
-    and pp_stms n env nil = ""
-      | pp_stms n env (A.Seq([],ss1)::nil) =
+    and pp_stms n env ext nil = ""
+      | pp_stms n env ext (A.Seq([],ss1)::nil) =
           (* avoid spurious blocks, tail must be nil to avoid incorrect
            * mixing of scopes *)
-          pp_stms n env ss1
-      | pp_stms n env (s::ss) =
+          pp_stms n env ext ss1
+      | pp_stms n env ext (s::ss) =
           (* update environment if s is declaration d *)
-          pp_stm n env s ^ "\n"
-          ^ pp_stms n (add_stmdecl env s) ss
+          pp_stm n env ext s 
+          ^ ("\n" before incr_line_counter ())
+          ^ pp_stms n (add_stmdecl env s) ext ss
 
     and pp_decl n env (A.VarDecl(id, tp, NONE, ext)) =
           indent n (pp_tp tp ^ " " ^ pp_var id ^ ";")
       | pp_decl n env (A.VarDecl(id, tp, SOME(e), ext)) =
-          indent n (pp_tp tp ^ " " ^ pp_var id ^ " = " ^ pp_exp env e ^ ";")
+          indent n (pp_tp tp ^ " " ^ pp_var id ^ " = " ^ pp_exp env ext e ^ ";")
 
     and pp_decls n env nil = ""
       | pp_decls n env (d::ds) =
-          pp_decl n env d ^ "\n"
+          pp_decl n env d 
+          ^ ("\n" before incr_line_counter ())
           ^ pp_decls n (Syn.syn_decls env [d]) ds
 
     fun pp_param (id, tp) =
@@ -363,7 +405,7 @@ struct
     fun pp_param_structs nil = ""
       | pp_param_structs (A.VarDecl(_,tp,_,_)::params) = 
           pp_declare_structs tp ^ pp_param_structs params
-    and pp_declare_structs (A.StructName id) = pp_struct id ^ ";\n"
+    and pp_declare_structs (A.StructName id) = pp_struct id ^ (";\n" before incr_line_counter ())
       | pp_declare_structs (A.Pointer tp) = pp_declare_structs tp
       | pp_declare_structs (A.Array tp) = pp_declare_structs tp 
       | pp_declare_structs _ = "" 
@@ -371,49 +413,79 @@ struct
     (* pp_fields n fields = str, converting list of fields to string *)
     fun pp_fields n nil = ""
       | pp_fields n (A.Field(f,tp,ext)::fields) =
-          indent n (pp_tp tp ^ " " ^ pp_field f ^ ";\n")
+          indent n (
+              pp_tp tp ^ " " ^ pp_field f 
+              ^ (";\n" before incr_line_counter ())
+          )
           ^ pp_fields n fields
 
     (* pp_gdecl gdecl = str
      * pp_gdecls gdecls = str
      * converting global declaration to string *)
     fun pp_gdecl (A.Struct(s, NONE, is_external, ext)) =
-          pp_struct s ^ ";\n"
+          pp_struct s ^ (";\n" before incr_line_counter ())
       | pp_gdecl (A.Struct(s, SOME(fields), is_external, ext)) =
-          pp_struct s ^ " {\n" ^ pp_fields 2 fields ^ "};\n"
+          pp_struct s 
+          ^ (" {\n" before incr_line_counter ())
+          ^ pp_fields 2 fields 
+          ^ ("};\n" before incr_line_counter ())
+        
       | pp_gdecl (A.Function(g, result, params, NONE, specs, is_extern, ext)) =
           pp_param_structs params
           ^ (if is_extern then "extern " else "")
-          ^ pp_tp result ^ " " ^ pp_fun g ^ "(" ^ pp_params params ^ ");\n"
+          ^ pp_tp result ^ " " ^ pp_fun g 
+          ^ "(" 
+          ^ pp_params params 
+          ^ (");\n" before incr_line_counter ())
+
       | pp_gdecl (A.Function(g, rtp, params, SOME(s), _, _, ext)) =
         let
             val env = Syn.syn_decls Symbol.empty params
             val ss = Isolate.iso_stm env s
         in  (* newline before function definitions *)
-            "\n" ^ pp_param_structs params
+            ("\n" before incr_line_counter ())
+            ^ pp_param_structs params
             ^ pp_tp rtp ^ " " ^ pp_fun g ^ "("
-            ^ pp_params params ^ ") {\n"
-            ^ pp_stms 2 env ss
-            ^ "}\n"
+            ^ pp_params params 
+            ^ (") {\n" before incr_line_counter ())
+            ^ pp_stms 2 env ext ss
+            ^ ("}\n" before incr_line_counter ())
         end
       | pp_gdecl (A.TypeDef(aid, tp, ext)) =
-        "typedef " ^ pp_tp tp ^ " " ^ pp_typename aid ^ ";\n"
+        "typedef " ^ pp_tp tp ^ " " ^ pp_typename aid 
+        ^ (";\n" before incr_line_counter ())
 
       | pp_gdecl (A.FunTypeDef(fid, rtp, params, specs, ext)) =
         "typedef " ^ pp_tp rtp ^ " " ^ pp_typename fid
-        ^ "(" ^ pp_params params ^ ");\n"
+        ^ "(" 
+        ^ pp_params params 
+        ^ (");\n" before incr_line_counter ())
 
       (* pragmas are included as comments in C file *)
       | pp_gdecl (A.Pragma(A.UseLib(libname, SOME(gdecls)), ext)) =
-        "\n//#use <" ^ libname ^ ">\n"
+        ("\n" before incr_line_counter ())
+        ^ "//#use <" 
+        ^ libname 
+        ^ (">\n" before incr_line_counter ())
         ^ pp_gdecls gdecls
-        ^ "// end <" ^ libname ^ ">\n"
+        ^ "// end <" 
+        ^ libname 
+        ^ (">\n" before incr_line_counter ())
+      
       | pp_gdecl (A.Pragma(A.UseFile(filename, SOME(gdecls)), ext)) =
-        "\n//#use \"" ^ filename ^ "\"\n"
+        ("\n" before incr_line_counter ())
+        ^ "//#use \"" 
+        ^ filename 
+        ^ ("\"\n" before incr_line_counter ())
         ^ pp_gdecls gdecls
-        ^ "// end \"" ^ filename ^ "\"\n"
+        ^ "// end \"" 
+        ^ filename 
+        ^ ("\"\n" before incr_line_counter ())
+
       | pp_gdecl (A.Pragma(A.Raw(pname, pargs), ext)) =
-        "\n//" ^ pname ^ pargs ^ "\n"
+        ("\n" before incr_line_counter ())
+        ^ "//" ^ pname ^ pargs 
+        ^ ("\n" before incr_line_counter ())
 
     and pp_gdecls nil = ""
       | pp_gdecls (gdecl::gdecls) =
@@ -422,10 +494,16 @@ struct
     (* pp_program gdecls include_files = str
      * Convert program consisting of gdecls to a string, including
      * include_files. *)
-    fun pp_program gdecls include_files =
-          String.concat 
-            (map (fn include_file => "#include \"" ^ include_file ^ "\"\n")
-                 include_files)
-          ^ pp_gdecls gdecls
+    fun pp_program gdecls include_files = (
+        line_counter := 1;
+        source_mappings := [];
+        String.concat 
+          (map (fn include_file => "#include \"" 
+                                    ^ include_file 
+                                    ^ ("\"\n" before incr_line_counter ()))
+                include_files)
+        ^ pp_gdecls gdecls
+        ^ pp_source_map ()
+    ) before print ("total lines: " ^ Int.toString (!line_counter) ^ "\n")
 
 end

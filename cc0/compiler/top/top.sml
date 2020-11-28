@@ -574,12 +574,18 @@ let
                 else ()
 
         (* Output C code *)
+
+        (* Nov 2020 - This doesn't seem to be used ever? It's always blank *)
         val () = Flag.guard Flags.flag_verbose
                  (fn () => say ("Writing library headers to " ^ path_concat (out_dir, hname) ^ " ...")) ()
+        (* val () = SafeIO.withOpenOut
+                 (path_concat (out_dir, hname))
+                 (fn hstream =>
+                  TextIO.output (hstream, PrintC.pp_program library_headers [])) *)
         val () = SafeIO.withOpenOut
                  (path_concat (out_dir, hname))
                  (fn hstream =>
-                  TextIO.output (hstream, PrintC.pp_program library_headers []))
+                  TextIO.output (hstream, "// Nothing here"))
 
         val () = Flag.guard Flags.flag_verbose
                  (fn () => say ("Writing C code to " ^ path_concat (out_dir, cname) ^ " ...")) ()
@@ -595,7 +601,7 @@ let
         val runtimeDir = OS.Path.concat (absBaseDir, "runtime")
 
         val cflags = 
-            " -std=c99"
+            " -std=c99 -g"
             (* Oct 26, 2011, this allows C0 int to be represented as C int *)
             (* because two's-complement arithmetic is specified *)
             ^ " -fwrapv"
