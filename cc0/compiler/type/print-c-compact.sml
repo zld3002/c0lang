@@ -278,7 +278,6 @@ struct
                                       ^ "," ^ pp_exp env ext e ^ ")"
       | pp_exp env ext (A.Marked(marked_exp)) =
           pp_exp env (Mark.ext marked_exp) (Mark.data marked_exp)
-          before print "got here\n"
 
     and pp_exps env ext nil = ""
       | pp_exps env ext (e::nil) = pp_exp env ext e
@@ -518,6 +517,6 @@ struct
                 include_files)
         ^ pp_gdecls gdecls
         ^ pp_source_map ()
-    ) before print ("total lines: " ^ Int.toString (!line_counter) ^ "\n")
+    )
 
 end
