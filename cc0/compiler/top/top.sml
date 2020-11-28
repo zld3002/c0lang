@@ -447,8 +447,6 @@ let
                    then (say versioninfo; say usageinfo; raise EXIT)
                    else reset ()
 
-        (* CC0-specific default options *)
-        val () = Flag.set Flags.flag_backtrace
         val sources = get_sources_set_flags
                           {options = options,
                            errfn = errfn,

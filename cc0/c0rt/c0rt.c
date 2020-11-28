@@ -36,9 +36,7 @@ static const char* ansi_reset = ANSI_RESET;
 #define C0_ENABLE_FANCY_OUTPUT "C0_ENABLE_FANCY_OUTPUT"
 
 // Default backtrace print limit
-static long c0_backtrace_print_limit = 50;
-// Default max callstack depth 
-static long c0_stacksize_limit = 0x15122;
+static long c0_backtrace_print_limit = 20;
 // Default maximum array size in bytes (includes metadata)
 static long c0_max_arraysize = 1 << 30; // 1 GB
 
@@ -63,26 +61,18 @@ static void parse_env_with_default(const char* name, long* out) {
   *out = result;
 }
 
+static noreturn void raise_msg(int signal, const char* msg);
+
 #define SIG_STACK_SIZE (4 * SIGSTKSZ)
 char signal_stack[SIG_STACK_SIZE] = { 0 };
 void segv_handler(int signal) {
-  print_err("recursion limit exceeded");
-
-  struct sigaction default_action = {
-    .sa_flags = 0,
-    .sa_handler = SIG_DFL
-  };
-  sigemptyset(&default_action.sa_mask);
-
-  sigaction(SIGSEGV, &default_action, NULL);
-  raise(SIGSEGV);
+  raise_msg(SIGSEGV, "recursion limit exceeded");
 }
 
 void c0_runtime_init() {
   GC_INIT();
 
   parse_env_with_default(C0_BACKTRACE_LIMIT_ENV, &c0_backtrace_print_limit);
-  parse_env_with_default(C0_STACK_LIMIT_ENV, &c0_stacksize_limit);
   parse_env_with_default(C0_MAX_ARRAYSIZE_ENV, &c0_max_arraysize);
   parse_env_with_default(C0_ENABLE_FANCY_OUTPUT, &c0_enable_fancy_output);
 
@@ -129,12 +119,15 @@ void c0_runtime_cleanup() {
 }
 
 #define C0_EXTENSION ".c0.c"
+#define C1_EXTENSION ".c1.c"
 // Check if a file is from the generated .c0.c file
 static bool from_user_program(const char* s) {
   size_t n = strlen(s);
   size_t m = strlen(C0_EXTENSION);
 
-  return strcmp(s + n - m, C0_EXTENSION) == 0;
+  const char* extension_start = s + n - m;
+  return strcmp(extension_start, C0_EXTENSION) == 0
+      || strcmp(extension_start, C1_EXTENSION) == 0;
 }
 
 #define C0_FUNC_MANGLE_PREFIX "_c0_"
@@ -143,20 +136,33 @@ static const char* demangle(const char* s) {
   return s + strlen(C0_FUNC_MANGLE_PREFIX);
 }
 
-int backtrace_callback(void* data, uintptr_t pc, const char* filename, int lineno, const char* function) {
+int backtrace_callback(int* data, uintptr_t pc, const char* filename, int lineno, const char* function) {
+    if (*data > c0_backtrace_print_limit) {
+      print_err("stoppping after %ld entries", c0_backtrace_print_limit);
+      print_err("adjust C0_BACKTRACE_LIMIT to increase this limit");
+      return -1;
+    }
+
     if (filename == NULL || !from_user_program(filename)) {
-      // Frame is not from the C0 program
+      // Frame is not from the C0 program.
+      // Could be from the runtime, a library function,
+      // or the C runtime.
+      // Skip it
       return 0;
     }
 
-    // TODO: check filename ends with .c0.c instead of doing the above
     if (lineno >= sourcemap_length) {
-      // out of bounds
-      printf("WARNING! line numer out of bounds?\n");
+      // This shouldn't happen
+      printf(" at %s (%s: %d)", function, filename, lineno);
       return 0;
     }
 
-    printf(" at %s (%s)\n", demangle(function), sourcemap[lineno]);
+    const char* c0_location = sourcemap[lineno];
+    printf(" at %s (%s)\n", 
+      demangle(function), 
+      c0_location != NULL ? c0_location : "<unknown location>");
+    
+    (*data)++;
 
     return 0;
 }
@@ -164,15 +170,26 @@ int backtrace_callback(void* data, uintptr_t pc, const char* filename, int linen
 void c0_print_callstack() {
   // TODO: error handler (3rd param)
   struct backtrace_state* state = backtrace_create_state(prog_name, false, NULL, NULL);
-  // TODO: use state to limit backtrace length?
-  // TODO: this gets rid of our stack overflow protection
-  // Use sigaltstack to handle that?
-  backtrace_full(state, 0, backtrace_callback, NULL, NULL);
+
+  // Keep track of the number of backtrace entries printed
+  int num_printed = 0;
+  backtrace_full(state, 0, (backtrace_full_callback)backtrace_callback, NULL, &num_printed);
 }
 
 noreturn void c0_abort_mem(const char* msg);
 
+static void reset_sigsegv_handler(void) {
+  struct sigaction default_action = {
+    .sa_flags = 0,
+    .sa_handler = SIG_DFL
+  };
+  sigemptyset(&default_action.sa_mask);
+
+  sigaction(SIGSEGV, &default_action, NULL);
+}
+
 static noreturn void raise_msg(int signal, const char* msg) {
+  reset_sigsegv_handler();
   print_err("%s", msg);
   c0_print_callstack();
   fflush(stderr);

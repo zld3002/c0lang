@@ -268,6 +268,7 @@ struct
             | tp' =>
               let val tp_string = pp_tp tp'
               in
+                  add_mapping (!line_counter) ext;
                   "cc0_untag(" ^ tp_string ^ "," ^ "\"" ^ tp_string ^ "\"" ^ "," ^ pp_exp env ext e ^ ")"
               end )
       | pp_exp env ext (A.Result) = (* should be impossible, except in comment *)
@@ -293,15 +294,24 @@ struct
       | pp_assign env ext (A.Assign(SOME(A.DEREF), lv, e)) =
           (* hack: x <*>= e means x = &e *)
           pp_exp env ext lv ^ " = " ^ "&(" ^ pp_exp env ext e ^ ")" ^ ";"
+      
       (* next four are effectful: call runtime function *)
-      | pp_assign env ext (A.Assign(SOME(A.DIVIDEDBY), lv, e)) =
+      | pp_assign env ext (A.Assign(SOME(A.DIVIDEDBY), lv, e)) = (
+          add_mapping (!line_counter) ext;
           pp_exp env ext lv ^ " = " ^ "c0_idiv(" ^ pp_exp env ext lv ^ "," ^ pp_exp env ext e ^ ");"
-      | pp_assign env ext (A.Assign(SOME(A.MODULO), lv, e)) =
+        )
+      | pp_assign env ext (A.Assign(SOME(A.MODULO), lv, e)) = (
+          add_mapping (!line_counter) ext;
           pp_exp env ext lv ^ " = " ^ "c0_imod(" ^ pp_exp env ext lv ^ "," ^ pp_exp env ext e ^ ");"
-      | pp_assign env ext (A.Assign(SOME(A.SHIFTLEFT), lv, e)) =
+        ) 
+      | pp_assign env ext (A.Assign(SOME(A.SHIFTLEFT), lv, e)) = (
+          add_mapping (!line_counter) ext;
           pp_exp env ext lv ^ " = " ^ "c0_sal(" ^ pp_exp env ext lv ^ "," ^ pp_exp env ext e ^ ");"
-      | pp_assign env ext (A.Assign(SOME(A.SHIFTRIGHT), lv, e)) =
+        )
+      | pp_assign env ext (A.Assign(SOME(A.SHIFTRIGHT), lv, e)) = (
+          add_mapping (!line_counter) ext;
           pp_exp env ext lv ^ " = " ^ "c0_sar(" ^ pp_exp env ext lv ^ "," ^ pp_exp env ext e ^ ");"
+        )
       (* remaining ones are pure: map to corresponding C construct *)
       | pp_assign env ext (A.Assign(SOME(oper), lv, e)) =
           pp_exp env ext lv ^ " " ^ pp_oper oper ^ "= " ^ pp_exp env ext e ^ ";"
@@ -358,13 +368,17 @@ struct
           indent n ("return " ^ pp_exp env ext e ^ ";")
       | pp_stm n env ext (A.Return(NONE)) =
           indent n "return;"
-      | pp_stm n env ext (A.Assert(e1, e2s)) =
+      | pp_stm n env ext (A.Assert(e1, e2s)) = (
+          add_mapping (!line_counter) ext;
           (* We reduce e2s to a single string by concatenation, to avoid
            * variadic functions or macros *)
           indent n ("cc0_assert(" ^ pp_exp env ext e1 ^ ", " ^ pp_stringlist env ext e2s ^ ");")
-      | pp_stm n env ext (A.Error(e)) =
+        )
+      | pp_stm n env ext (A.Error(e)) = (
+          add_mapping (!line_counter) ext;
           (indent n ("c0_error(" ^ pp_exp env ext e ^ ");\n") before incr_line_counter ())
           ^ indent n ("exit(EXIT_FAILURE);")
+        )
       | pp_stm n env ext (A.Anno(specs)) = (* should not arise *)
           indent n ";"
       | pp_stm n env ext (A.Markeds(marked_stm)) =
