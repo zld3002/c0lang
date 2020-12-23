@@ -112,18 +112,19 @@ struct
     fun pp_source_map () = 
       let
         val linecount_str = Int.toString (!line_counter + 1)
-        fun pp_source_mapping [] = ""
-          | pp_source_mapping ((line, ext)::rest) = 
-              String.concat ["[", Int.toString line, "] = \"", String.toCString (Mark.show' ext), "\", "]
-              ^ pp_source_mapping rest 
+
+        (* pp_source_mapping_line (line, ext) => '  [line] = "location"' *)
+        fun pp_source_mapping_line (line, ext): string = 
+          String.concat ["  [", Int.toString line, "] = \"", String.toCString (Mark.show' ext), "\""]
+
+        val pp_source_mapping: (int * Mark.ext option) list -> string = 
+          String.concatWith ",\n" o List.map pp_source_mapping_line
       in
         String.concat [
           "long map_length = ", linecount_str, ";\n",
-          "const char* source_map[", 
-          linecount_str,
-          "] = { ",
-          pp_source_mapping (!source_mappings),
-          "};\n"
+          "const char* source_map[", linecount_str, "] = {\n",
+              pp_source_mapping (List.rev (!source_mappings)),
+          "\n};\n"
         ]
       end 
 
