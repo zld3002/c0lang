@@ -209,11 +209,14 @@ struct
       fun get_slength () = !slength
 
       val function_pool : V.function_info option array = Array.array(maxint16, NONE)
+
       fun track_num_vars(vlist) =
           if List.length(vlist) > !num_vars
           then num_vars := List.length(vlist)
           else ()
       fun get_num_vars() = !num_vars
+      fun reset_num_vars () = num_vars := 0
+
       fun next_findex() =
           let val i = !findex
               val _ = if !findex >= maxint16
@@ -819,12 +822,12 @@ struct
                           of NONE => next_findex()
                            | SOME(findex) => findex )
           val _ = Funtab.bind(g, findex)
-(*
-          val _ = print((if is_external then "External" else "Internal")
-                        ^ "Def: " ^ Symbol.name(g) ^ "\n")
-*)
-          val num_args = length(params)
+
+          (* Function parameters count as local variables as well *)
+          val () = reset_num_vars ()
           val _ = track_num_vars(params)
+          val num_args = length(params)
+
           val _  = (if num_args < 0 orelse num_args >= maxint8
                    then ( ErrorMsg.error NONE ("too many arguments of function: " ^ (Symbol.name g)) ;
                           raise ErrorMsg.Error )
