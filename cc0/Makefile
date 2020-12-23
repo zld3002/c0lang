@@ -266,20 +266,21 @@ endif
 
 .PHONY: clean
 clean: libsclean
-	$(MAKE) -C bare clean
-	$(MAKE) -C c0rt clean
-	$(MAKE) -C unsafe clean
-	$(MAKE) -C compiler clean
-	$(MAKE) -C coin clean
-	$(MAKE) -C codex clean
-	$(RM) -f lib/*$(DLLSUFFIX) lib/*.a lib/*.h0
-	$(RM) -rf bin runtime
+	-$(MAKE) -C bare clean
+	-$(MAKE) -C c0rt clean
+	-$(MAKE) -C unsafe clean
+	-$(MAKE) -C compiler clean
+	-$(MAKE) -C coin clean
+	-$(MAKE) -C codex clean
+	-$(RM) -f lib/*$(DLLSUFFIX) lib/*.a lib/*.h0
+	-$(RM) -rf bin runtime
 
 .PHONY: reallyclean
 reallyclean: clean
-	$(MAKE) -C $(GCDIR) distclean
-	$(MAKE) -C $(ZLIBDIR) distclean
-	$(MAKE) -C $(LIBPNGDIR) distclean
+	-$(MAKE) -C $(GCDIR) distclean
+	-$(MAKE) -C $(ZLIBDIR) distclean
+	-$(MAKE) -C $(LIBPNGDIR) distclean
+	-$(MAKE) -C $(LIBBACKTRACEDIR) distclean
 
 
 ### Testing harnesses
