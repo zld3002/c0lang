@@ -200,13 +200,30 @@ int backtrace_callback(
   return 0;
 }
 
+void backtrace_error_handler(void* data, const char* msg, int errnum) {
+  (void)data;
+  (void)errnum;
+
+  print_err("couldn't print backtrace: %s", msg);
+}
+
 void c0_print_callstack() {
-  // TODO: error handler (3rd param)
-  struct backtrace_state* state = backtrace_create_state(prog_name, false, NULL, NULL);
+  struct backtrace_state* state = 
+    backtrace_create_state(
+      prog_name, // Executable name to load symbols from
+      false, // Disable multithreading support
+      backtrace_error_handler, 
+      NULL); // data parameter to error callback
+
+  assert(state != NULL);
 
   // Keep track of the number of backtrace entries printed
   int num_printed = 0;
-  backtrace_full(state, 0, (backtrace_full_callback)backtrace_callback, NULL, &num_printed);
+  backtrace_full(
+    state,  
+    0, // Number of stack frames to skip
+    (backtrace_full_callback)backtrace_callback, backtrace_error_handler, 
+    &num_printed); // first parameter to callbacks
 }
 
 noreturn void c0_abort_mem(const char* msg);
