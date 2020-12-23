@@ -15,7 +15,8 @@ int _c0_main();
 int c0_argc;
 char **c0_argv;
 
-int map_length;
+// Defined externally by CC0
+long map_length;
 const char* source_map[0];
 
 FILE *really_fopen(const char *filename, const char *mode,
@@ -77,8 +78,7 @@ int main(int argc, char **argv) {
   char *filename = getenv("C0_RESULT_FILE");
 
   /* initialize the runtime -- possibly initializing the GC */
-  c0_runtime_init();
-  c0_backtrace_init(argv[0], source_map, map_length);
+  c0_runtime_init(argv[0], source_map, map_length);
 
   if (filename == NULL) {
     int x = _c0_main();

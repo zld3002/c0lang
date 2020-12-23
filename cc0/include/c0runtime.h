@@ -28,8 +28,17 @@ typedef struct c0_tagged_struct* c0_tagged_ptr;
 
 /* Initialization and control */
 
-// Called before program 
-void c0_runtime_init(void);
+/**
+ * Called before the C0 program starts
+ * @param filename Executable (argv[0])
+ * @param map 
+ * Source map where map[i] is a string representating the C0 source location
+ * which corresponds to line 'i' of the generated C code, or possibly NULL
+ * 
+ * @param len
+ * Source map length
+ */
+void c0_runtime_init(const char* filename, const char** map, long len);
 
 // Called after the program exits normally
 void c0_runtime_cleanup(void);
@@ -37,9 +46,6 @@ void c0_runtime_cleanup(void);
 // Abnormal termination: abort execution and notify the user of the reason
 void c0_error(const char *msg);    // error(msg)
 void c0_abort(const char *reason); // assert(false)
-
-// TODO: documentation
-void c0_backtrace_init(const char* filename, const char** map, int len);
 
 /* Primitive arithmetic operations - may raise SIGFPE */
 

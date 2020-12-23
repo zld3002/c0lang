@@ -118,7 +118,7 @@ struct
               ^ pp_source_mapping rest 
       in
         String.concat [
-          "int map_length = ", linecount_str, ";\n",
+          "long map_length = ", linecount_str, ";\n",
           "const char* source_map[", 
           linecount_str,
           "] = { ",

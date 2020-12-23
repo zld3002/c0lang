@@ -83,6 +83,17 @@ libpng: zlib lib $(LIBPNGDIR)/Makefile
 	$(COPY) $(LIBPNGDIR)/installdir/include/*.h include
 #	-$(COPY) -a $(LIBPNGDIR)/installdir/lib/*.so* lib
 
+# The backtrace library for C0RT
+LIBBACKTRACEDIR := ../externals/libbacktrace
+
+$(LIBBACKTRACEDIR)/Makefile:
+	cd $(LIBBACKTRACEDIR) && ./configure
+
+.PHONY: libbacktrace
+libbacktrace: $(LIBBACKTRACEDIR)/Makefile
+	$(MAKE) -C $(LIBBACKTRACEDIR)
+	$(COPY) $(LIBBACKTRACEDIR)/.libs/libbacktrace.a lib/
+	$(COPY) $(LIBBACKTRACEDIR)/backtrace.h c0rt/
 
 ### Runtimes
 
@@ -106,7 +117,7 @@ endef
 
 $(foreach rt,$(RUNTIMES),$(eval $(call runtime_template,$(rt))))
 
-c0rt/$(call dllname,c0rt): gc
+c0rt/$(call dllname,c0rt): gc libbacktrace
 
 unsafe/$(call dllname,unsafe): gc
 

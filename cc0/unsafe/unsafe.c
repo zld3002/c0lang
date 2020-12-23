@@ -6,7 +6,8 @@
 #include <c0runtime.h>
 #include <strings.h> // defines bzero()
 
-void c0_runtime_init() {
+void c0_runtime_init(const char* filename, const char** map, long len) {
+  (void)filename; (void)map; (void)len;
   GC_INIT();
 }
 

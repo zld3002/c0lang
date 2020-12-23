@@ -12,7 +12,7 @@
 #include <gc.h>
 #include <c0runtime.h>
 
-#include "libbacktrace/backtrace.h"
+#include "backtrace.h"
 
 // Terminal color codes
 #define ANSI_BOLD "\x1b[1m"
@@ -31,7 +31,6 @@ static const char* ansi_reset = ANSI_RESET;
 
 // Environment variable names for configuration
 #define C0_BACKTRACE_LIMIT_ENV "C0_BACKTRACE_LIMIT"
-#define C0_STACK_LIMIT_ENV "C0_STACK_LIMIT"
 #define C0_MAX_ARRAYSIZE_ENV "C0_MAX_ARRAYSIZE"
 #define C0_ENABLE_FANCY_OUTPUT "C0_ENABLE_FANCY_OUTPUT"
 
@@ -44,8 +43,19 @@ static long c0_max_arraysize = 1 << 30; // 1 GB
 // (0 = disabled, nonzero = enabled)
 static long c0_enable_fancy_output = true;
 
-// Modifies out if parse succeeeds, leaves unchanged otherwise and prints a message
-// name is the name of the environment variable
+static const char* prog_name = NULL;
+static const char** sourcemap = NULL;
+static long sourcemap_length = 0;
+
+/**
+ * Sets "out" to the environment variable "name".
+ * 
+ * If the environment variable does not exist, then
+ * nothing happens.
+ * 
+ * If the environment variable is not an integer, then
+ * a message is printed + program exits
+ */
 static void parse_env_with_default(const char* name, long* out) {
   const char* str = getenv(name);
   if (str == NULL) return;
@@ -65,11 +75,17 @@ static noreturn void raise_msg(int signal, const char* msg);
 
 #define SIG_STACK_SIZE (4 * SIGSTKSZ)
 char signal_stack[SIG_STACK_SIZE] = { 0 };
+
 void segv_handler(int signal) {
+  // NULL pointer dereferences/array accesses
+  // are handled by special functions, so the only
+  // SIGSEGV we should ever receive is from
+  // a bug in a library/runtime (hopefully unlikely)
+  // or from a stack overflow (more likely)
   raise_msg(SIGSEGV, "recursion limit exceeded");
 }
 
-void c0_runtime_init() {
+void c0_runtime_init(const char* filename, const char** source_map, long map_length) {
   GC_INIT();
 
   parse_env_with_default(C0_BACKTRACE_LIMIT_ENV, &c0_backtrace_print_limit);
@@ -85,8 +101,13 @@ void c0_runtime_init() {
     ansi_reset = "";    
   }
 
-  // Set up a separate stack for SIGSEGV so we can handle
-  // stack overflows appropriately
+  // Save source map information
+  prog_name = filename;
+  sourcemap = source_map; 
+  sourcemap_length = map_length;
+
+  // Set up a separate stack for SIGSEGV
+  // (obviously we can't reuse the main stack if a stack overflow happens)
   stack_t signal_stack_desc = {
     .ss_flags = 0,
     .ss_size = SIG_STACK_SIZE,
@@ -99,19 +120,9 @@ void c0_runtime_init() {
     .sa_flags = SA_ONSTACK,
     .sa_handler = segv_handler,
   };
-  sigfillset(&segv_action.sa_mask);
 
+  assert(sigfillset(&segv_action.sa_mask) >= 0);
   assert(sigaction(SIGSEGV, &segv_action, NULL) >= 0);
-}
-
-static const char* prog_name = NULL;
-static const char** sourcemap = NULL;
-static int sourcemap_length = 0;
-
-void c0_backtrace_init(const char* filename, const char** source_map, int map_length) {
-  prog_name = filename;
-  sourcemap = source_map; 
-  sourcemap_length = map_length;
 }
 
 void c0_runtime_cleanup() {
@@ -120,51 +131,73 @@ void c0_runtime_cleanup() {
 
 #define C0_EXTENSION ".c0.c"
 #define C1_EXTENSION ".c1.c"
-// Check if a file is from the generated .c0.c file
-static bool from_user_program(const char* s) {
-  size_t n = strlen(s);
-  size_t m = strlen(C0_EXTENSION);
+#define C0_EXTENSION_SIZE (sizeof(C0_EXTENSION) - 1)
 
-  const char* extension_start = s + n - m;
+// Check if a file is the generated .c0.c or .c1.c file
+static bool from_user_program(const char* filename) {
+  size_t n = strlen(filename);
+
+  const char* extension_start = filename + n - C0_EXTENSION_SIZE;
   return strcmp(extension_start, C0_EXTENSION) == 0
       || strcmp(extension_start, C1_EXTENSION) == 0;
 }
 
 #define C0_FUNC_MANGLE_PREFIX "_c0_"
+#define C0_FUNC_MANGLE_PREFIX_SIZE (sizeof(C0_FUNC_MANGLE_PREFIX) - 1)
+
 // "Demangle" a C0 function name
-static const char* demangle(const char* s) {
-  return s + strlen(C0_FUNC_MANGLE_PREFIX);
+static const char* demangle(const char* funcname) {
+  size_t n = strlen(funcname);
+
+  if (n < C0_FUNC_MANGLE_PREFIX_SIZE) {
+    // Technically shouldn't happen, but better to just print out the
+    // fault name instead of crashing
+    return funcname;
+  }
+
+  return funcname + C0_FUNC_MANGLE_PREFIX_SIZE;
 }
 
-int backtrace_callback(int* data, uintptr_t pc, const char* filename, int lineno, const char* function) {
-    if (*data > c0_backtrace_print_limit) {
-      print_err("stoppping after %ld entries", c0_backtrace_print_limit);
-      print_err("adjust C0_BACKTRACE_LIMIT to increase this limit");
-      return -1;
-    }
+/**
+ * Called by libbacktrace for every stack frame.
+ * 
+ * @param backtrace_count The number of frames counted so far
+ * @param pc %rip 
+ * 
+ * @returns -1 to stop backtrace, 0 to continue
+ */
+int backtrace_callback(
+  int* backtrace_count, uintptr_t pc, 
+  const char* filename, int lineno, const char* function) 
+{
+  if (*backtrace_count > c0_backtrace_print_limit) {
+    print_err("stoppping after %ld entries", c0_backtrace_print_limit);
+    print_err("adjust C0_BACKTRACE_LIMIT to increase this limit");
+    return -1;
+  }
 
-    if (filename == NULL || !from_user_program(filename)) {
-      // Frame is not from the C0 program.
-      // Could be from the runtime, a library function,
-      // or the C runtime.
-      // Skip it
-      return 0;
-    }
-
-    if (lineno >= sourcemap_length) {
-      // This shouldn't happen
-      printf(" at %s (%s: %d)", function, filename, lineno);
-      return 0;
-    }
-
-    const char* c0_location = sourcemap[lineno];
-    printf(" at %s (%s)\n", 
-      demangle(function), 
-      c0_location != NULL ? c0_location : "<unknown location>");
-    
-    (*data)++;
-
+  if (filename == NULL || !from_user_program(filename)) {
+    // Frame is not from the C0 program.
+    // Could be from the runtime, a library function,
+    // or the C runtime.
+    // Skip it
     return 0;
+  }
+
+  if (lineno >= sourcemap_length) {
+    // This shouldn't happen
+    printf(" at %s (%s: %d)", function, filename, lineno);
+    return 0;
+  }
+
+  const char* c0_location = sourcemap[lineno];
+  if (c0_location == NULL) c0_location = "<unknown location>";
+
+  printf(" at %s (%s)\n", demangle(function), c0_location);
+  
+  (*backtrace_count)++;
+
+  return 0;
 }
 
 void c0_print_callstack() {
@@ -183,22 +216,26 @@ static void reset_sigsegv_handler(void) {
     .sa_flags = 0,
     .sa_handler = SIG_DFL
   };
-  sigemptyset(&default_action.sa_mask);
 
-  sigaction(SIGSEGV, &default_action, NULL);
+  assert(sigemptyset(&default_action.sa_mask) >= 0);
+  assert(sigaction(SIGSEGV, &default_action, NULL) >= 0);
 }
 
 static noreturn void raise_msg(int signal, const char* msg) {
+  fflush(stdout);
+
   reset_sigsegv_handler();
   print_err("%s", msg);
   c0_print_callstack();
   fflush(stderr);
 
   raise(signal);
-  __builtin_unreachable(); 
+  exit(EXIT_FAILURE); 
 }
 
 noreturn void c0_error(const char *msg) {
+  fflush(stdout);
+  
   fprintf(stderr, "Error: %s\n", msg);
   fflush(stderr);
   exit(EXIT_FAILURE);
