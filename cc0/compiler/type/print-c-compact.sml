@@ -198,25 +198,37 @@ struct
       | pp_exp env ext (A.True) = "true"
       | pp_exp env ext (A.False) = "false"
       | pp_exp env ext (A.Null) = "NULL"
+
       | pp_exp env ext (A.OpExp(oper as A.DIVIDEDBY, [e1, e2])) =
         if is_safe_div e2
         then "(" ^ pp_exp env ext e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env ext e2 ^ ")"
         else (
+          (* 'unsafe' operations are stored in a source map *)
           add_mapping (!line_counter) ext;
           "c0_idiv(" ^ pp_exp env ext e1 ^ "," ^ pp_exp env ext e2 ^ ")"
         )
       | pp_exp env ext (A.OpExp(oper as A.MODULO, [e1, e2])) =
         if is_safe_div e2
         then "(" ^ pp_exp env ext e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env ext e2 ^ ")"
-        else "c0_imod(" ^ pp_exp env ext e1 ^ "," ^ pp_exp env ext e2 ^ ")"
+        else (
+          add_mapping (!line_counter) ext;
+          "c0_imod(" ^ pp_exp env ext e1 ^ "," ^ pp_exp env ext e2 ^ ")"
+        )
       | pp_exp env ext (A.OpExp(oper as A.SHIFTLEFT, [e1, e2])) =
         if is_safe_shift e2
         then "(" ^ pp_exp env ext e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env ext e2 ^ ")"
-        else "c0_sal(" ^ pp_exp env ext e1 ^ "," ^ pp_exp env ext e2 ^ ")"
+        else (
+          add_mapping (!line_counter) ext;
+          "c0_sal(" ^ pp_exp env ext e1 ^ "," ^ pp_exp env ext e2 ^ ")"
+        )
       | pp_exp env ext (A.OpExp(oper as A.SHIFTRIGHT, [e1, e2])) =
         if is_safe_shift e2
         then "(" ^ pp_exp env ext e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env ext e2 ^ ")"
-        else "c0_sar(" ^ pp_exp env ext e1 ^ "," ^ pp_exp env ext e2 ^ ")"
+        else (
+          add_mapping (!line_counter) ext;        
+          "c0_sar(" ^ pp_exp env ext e1 ^ "," ^ pp_exp env ext e2 ^ ")"
+        )
+
       | pp_exp env ext (A.OpExp(oper as A.EQ, [e1, e2])) =
         if is_tagged_ptr env e1 andalso is_tagged_ptr env e2
         then "c0_tagged_eq(" ^ pp_exp env ext e1 ^ "," ^ pp_exp env ext e2 ^ ")"
@@ -225,6 +237,7 @@ struct
         if is_tagged_ptr env e1 andalso is_tagged_ptr env e2
         then "!c0_tagged_eq(" ^ pp_exp env ext e1 ^ "," ^ pp_exp env ext e2 ^ ")"
         else "(" ^ pp_exp env ext e1 ^ " " ^ pp_oper oper ^ " " ^ pp_exp env ext e2 ^ ")"
+
       | pp_exp env ext (A.OpExp(A.SUB, [e1,e2])) =
         let val A.Array(tp) = Syn.syn_exp_expd env e1
         in
@@ -247,14 +260,15 @@ struct
       | pp_exp env ext (A.Select(e, f)) =
         "(" ^ pp_exp env ext e ^ ")." ^ pp_field f
       | pp_exp env ext (A.FunCall(id, es)) = (
-          (* Function calls should be tracked *)
           add_mapping (!line_counter) ext;
           pp_fun id ^ "(" ^ pp_exps env ext es ^ ")"
         )
       | pp_exp env ext (A.AddrOf(id)) =
          "&" ^ pp_fun id
-      | pp_exp env ext (A.Invoke(e, es)) =
+      | pp_exp env ext (A.Invoke(e, es)) = (
+          add_mapping (!line_counter) ext;
           "(" ^ pp_exp env ext e ^ ")" ^ "(" ^ pp_exps env ext es ^ ")"
+        )
       | pp_exp env ext (A.Alloc(tp)) = "cc0_alloc(" ^ pp_tp tp ^ ")"
       | pp_exp env ext (A.AllocArray(tp, e)) = "cc0_alloc_array(" ^ pp_tp tp ^ "," ^ pp_exp env ext e ^ ")"
       | pp_exp env ext (A.Cast(tp, e)) =
