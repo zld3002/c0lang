@@ -279,6 +279,7 @@ clean: libsclean
 reallyclean: clean
 	-$(MAKE) -C $(GCDIR) distclean
 	-$(MAKE) -C $(ZLIBDIR) distclean
+	rm -f $(ZLIBDIR)/Makefile
 	-$(MAKE) -C $(LIBPNGDIR) distclean
 	-$(MAKE) -C $(LIBBACKTRACEDIR) distclean
 
