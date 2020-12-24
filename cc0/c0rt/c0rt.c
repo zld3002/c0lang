@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <signal.h>
 #include <stdnoreturn.h>
@@ -77,6 +78,14 @@ static noreturn void raise_msg(int signal, const char* msg);
 char signal_stack[SIG_STACK_SIZE] = { 0 };
 
 void segv_handler(int signal) {
+  static const char* msg = "c0rt: recursion limit exceeded\n";
+
+  // Use write() instead of printf() since printf() is not
+  // re-entrant
+  write(STDERR_FILENO, ansi_bold_red, strlen(ansi_bold_red));
+  write(STDERR_FILENO, msg, strlen(msg));
+  write(STDERR_FILENO, ansi_reset, strlen(ansi_reset));
+
   // NULL pointer dereferences/array accesses
   // are handled by special functions, so the only
   // SIGSEGV we should ever receive is from
@@ -84,10 +93,10 @@ void segv_handler(int signal) {
   // or from a stack overflow (more likely)
   //
   // It's technically not safe to call raise_msg
-  // inside a signal handler since it calls
-  // printf and some other non-reentrant functions
-  // but that's a chance I'm willing to take
-  raise_msg(SIGSEGV, "recursion limit exceeded");
+  // inside a signal handler since the backtrace library
+  // calls malloc() but we already printed a message
+  // so it should be fine
+  raise_msg(SIGSEGV, NULL);
 }
 
 void c0_runtime_init(const char* filename, const char** source_map, long map_length) {
@@ -213,6 +222,8 @@ void backtrace_error_handler(void* data, const char* msg, int errnum) {
 }
 
 void c0_print_callstack() {
+  if (!c0_enable_fancy_output) return;
+
   struct backtrace_state* state = 
     backtrace_create_state(
       prog_name, // Executable name to load symbols from
@@ -247,7 +258,9 @@ static noreturn void raise_msg(int signal, const char* msg) {
   fflush(stdout);
 
   reset_sigsegv_handler();
-  print_err("%s", msg);
+  if (msg != NULL) {
+    print_err("%s", msg);
+  }
   c0_print_callstack();
   fflush(stderr);
 
