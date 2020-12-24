@@ -87,7 +87,7 @@ libpng: zlib lib $(LIBPNGDIR)/Makefile
 LIBBACKTRACEDIR := ../externals/libbacktrace
 
 $(LIBBACKTRACEDIR)/Makefile:
-	cd $(LIBBACKTRACEDIR) && ./configure
+	cd $(LIBBACKTRACEDIR) && ./configure --with-pic
 
 .PHONY: libbacktrace
 libbacktrace: $(LIBBACKTRACEDIR)/Makefile
