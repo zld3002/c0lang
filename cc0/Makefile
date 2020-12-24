@@ -338,7 +338,7 @@ checkcoin: bin/coin-test
 
 # Install target -- copy contents of bin, lib, runtime, and include
 # TODO: make PREFIX configure-able
-PREFIX=../..
+PREFIX ?= ../..
 .PHONY: install install-c0-mode install-libs package
 install: install-libs install-c0-mode
 	mkdir -p $(PREFIX)/bin $(PREFIX)/runtime $(PREFIX)/include

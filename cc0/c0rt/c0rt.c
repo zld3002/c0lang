@@ -82,6 +82,11 @@ void segv_handler(int signal) {
   // SIGSEGV we should ever receive is from
   // a bug in a library/runtime (hopefully unlikely)
   // or from a stack overflow (more likely)
+  //
+  // It's technically not safe to call raise_msg
+  // inside a signal handler since it calls
+  // printf and some other non-reentrant functions
+  // but that's a chance I'm willing to take
   raise_msg(SIGSEGV, "recursion limit exceeded");
 }
 
