@@ -1,15 +1,18 @@
 #define _GNU_SOURCE
 
 #include <stdlib.h>
-#include <unistd.h>
 #include <stdio.h>
-#include <signal.h>
+#include <stdbool.h>
 #include <stdnoreturn.h>
-#include <assert.h>
 #include <string.h> 
-#include <strings.h> // bzero 
 #include <limits.h>
+#include <assert.h>
+
+#include <unistd.h>
+#include <signal.h>
 #include <errno.h>
+#include <strings.h> // bzero 
+
 #include <gc.h>
 #include <c0runtime.h>
 
@@ -181,7 +184,7 @@ static const char* demangle(const char* funcname) {
  * @returns -1 to stop backtrace, 0 to continue
  */
 int backtrace_callback(
-  int* backtrace_count, uintptr_t pc, 
+  long* backtrace_count, uintptr_t pc, 
   const char* filename, int lineno, const char* function) 
 {
   if (*backtrace_count > c0_backtrace_print_limit) {
@@ -205,7 +208,10 @@ int backtrace_callback(
   }
 
   const char* c0_location = sourcemap[lineno];
-  if (c0_location == NULL) c0_location = "<unknown location>";
+  if (c0_location == NULL) {
+    // Could occur if the stack overflows
+    c0_location = "<unknown location>";
+  }
 
   printf(" at %s (%s)\n", demangle(function), c0_location);
   
@@ -234,7 +240,7 @@ void c0_print_callstack() {
   assert(state != NULL);
 
   // Keep track of the number of backtrace entries printed
-  int num_printed = 0;
+  long num_printed = 0;
   backtrace_full(
     state,  
     0, // Number of stack frames to skip
