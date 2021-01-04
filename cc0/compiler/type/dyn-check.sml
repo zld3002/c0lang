@@ -536,13 +536,10 @@ struct
         in (* coercion function ds come before use in d'' *)
             ds @ [d'']
         end
-      | dc_gdecl (d as A.Function(g, rtp, params, NONE, nil, true, ext)) =
-        (* external function declaration remains identical, if no contracts *)
-        [d]
       | dc_gdecl (d as A.Function(g, rtp, params, NONE, nil, false, ext)) =
         (* no specifications (specs = nil); transform to add argument *)
         [A.Function(g, rtp, params @ [caller_decl], NONE, nil, false, ext)]
-      | dc_gdecl (d as A.Function(g, rtp, params, NONE, specs as (_::_), is_external, ext)) =
+      | dc_gdecl (d as A.Function(g, rtp, params, NONE, specs, is_external, ext)) =
         (* specifications (function prototype with contracts but no body); create new wrapper for g *)
         let 
             val g_opt = Funversiontab.lookup g
