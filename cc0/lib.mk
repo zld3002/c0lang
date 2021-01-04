@@ -66,6 +66,9 @@ ifeq ($(findstring backtrace,$(REQUIRES)),backtrace)
 LIBS += -lbacktrace
 endif
 
+# Optimization flags
+CFLAGS += -O3
+
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS)

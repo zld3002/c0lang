@@ -148,31 +148,33 @@ void c0_runtime_cleanup() {
 
 #define C0_EXTENSION ".c0.c"
 #define C1_EXTENSION ".c1.c"
-#define C0_EXTENSION_SIZE (sizeof(C0_EXTENSION) - 1)
 
 // Check if a file is the generated .c0.c or .c1.c file
 static bool from_user_program(const char* filename) {
   size_t n = strlen(filename);
 
-  const char* extension_start = filename + n - C0_EXTENSION_SIZE;
+  const char* extension_start = filename + n - strlen(C0_EXTENSION);
   return strcmp(extension_start, C0_EXTENSION) == 0
       || strcmp(extension_start, C1_EXTENSION) == 0;
 }
 
 #define C0_FUNC_MANGLE_PREFIX "_c0_"
-#define C0_FUNC_MANGLE_PREFIX_SIZE (sizeof(C0_FUNC_MANGLE_PREFIX) - 1)
 
-// "Demangle" a C0 function name
+/**
+ * "Demangles" a function name by removing the _c0_ prefix.
+ * Note that the contract wrapper functions have a prefix "_c0t_".
+ * We assume those will not be relevant to a backtrace since hopefully
+ * they don't contain any safety violations :)
+ */
 static const char* demangle(const char* funcname) {
   size_t n = strlen(funcname);
 
-  if (n < C0_FUNC_MANGLE_PREFIX_SIZE) {
-    // Technically shouldn't happen, but better to just print out the
-    // fault name instead of crashing
+  if (strncmp(C0_FUNC_MANGLE_PREFIX, funcname, strlen(C0_FUNC_MANGLE_PREFIX))) {
+    // function doesn't match "_c0_*"
     return funcname;
   }
 
-  return funcname + C0_FUNC_MANGLE_PREFIX_SIZE;
+  return funcname + strlen(C0_FUNC_MANGLE_PREFIX);
 }
 
 /**
