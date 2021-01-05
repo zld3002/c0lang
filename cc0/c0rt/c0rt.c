@@ -134,11 +134,18 @@ void c0_runtime_init(const char* filename, const char** source_map, long map_len
   assert(sigaltstack(&signal_stack_desc, NULL) >= 0);
 
   struct sigaction segv_action = {
-    .sa_flags = SA_ONSTACK,
+    // SA_ONSTACK - use alternate stack for signal handling
+    // SA_RESTART - restart syscalls 
+    // SA_NODEFER - don't block SIGSEGV while we are handling it.
+    //              this enables use to re-raise it
+    .sa_flags = SA_ONSTACK | SA_RESTART | SA_NODEFER,
     .sa_handler = segv_handler,
   };
-
+  // When handling a segfault, block everything but SIGSEGV,
+  // so we can re-raise SIGSEGV
   assert(sigfillset(&segv_action.sa_mask) >= 0);
+  assert(sigdelset(&segv_action.sa_mask, SIGSEGV) >= 0);
+
   assert(sigaction(SIGSEGV, &segv_action, NULL) >= 0);
 }
 
@@ -272,8 +279,9 @@ static noreturn void raise_msg(int signal, const char* msg) {
   c0_print_callstack();
   fflush(stderr);
 
-  raise(signal);
-  exit(EXIT_FAILURE); 
+  assert(raise(signal) >= 0);
+  puts("Impossible");
+  exit(2); 
 }
 
 noreturn void c0_error(const char *msg) {

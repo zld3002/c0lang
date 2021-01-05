@@ -24,6 +24,7 @@ error           - Not a valid C0 program (compiler should give error).
 runs            - Starts without problems (no link errors)
 infloop         - Will run forever (or until an arbitrary timeout).
 segfault        - Raises an invalid memory access exception (SIGSEGV).
+abort           - assert() failure
 div-by-zero     - Raises an arithmetic exception (SIGFPE).
 return <int>    - Return the 32-bit signed integer <int>.
 return *        - Returns without an error
