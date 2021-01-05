@@ -573,39 +573,33 @@ let
 
         (* Output C code *)
 
-        (* Nov 2020 - This really could be removed since its just comments
-         * See line 343-348 of this file:
-         
-              fun pragmaify_library library = 
-                  Ast.Pragma 
-                      (Ast.UseLib (library, process_library_header' library), NONE)
-
-              val library_headers = 
-                  map pragmaify_library (!Flags.libraries)
-
-        * Library_headers is just a list of Ast.Pragma's, and PrintC.pp_program
-        * turns those all into comments.
-        *)
         val () = Flag.guard Flags.flag_verbose
                  (fn () => say ("Writing library headers to " ^ path_concat (out_dir, hname) ^ " ...")) ()
-        (* val () = SafeIO.withOpenOut
-                 (path_concat (out_dir, hname))
-                 (fn hstream =>
-                  TextIO.output (hstream, PrintC.pp_program library_headers [])) *)
         val () = SafeIO.withOpenOut
                  (path_concat (out_dir, hname))
                  (fn hstream =>
-                  TextIO.output (hstream, "// Nothing here"))
+                  let
+                    val headers = 
+                      PrintC.pp_program {gdecls=library_headers, 
+                                         include_files=[], 
+                                         sourcemap=false}
+                  in 
+                    TextIO.output (hstream, headers)
+                  end)
 
         val () = Flag.guard Flags.flag_verbose
                  (fn () => say ("Writing C code to " ^ path_concat (out_dir, cname) ^ " ...")) ()
         val () = SafeIO.withOpenOut 
                  (path_concat (out_dir, cname))
                  (fn cstream =>
-                  TextIO.output (cstream, PrintC.pp_program program
-                                         [cc0_lib,
-                                          !Flags.runtime ^ ".h",
-                                          hname]))
+                 let
+                  val c_program = 
+                    PrintC.pp_program {gdecls=program,
+                                       include_files=[cc0_lib, !Flags.runtime ^ ".h", hname],
+                                       sourcemap=true} 
+                 in 
+                  TextIO.output (cstream, c_program)
+                 end)
 
         val absBaseDir = abspath (!Flags.base_dir)
         val runtimeDir = OS.Path.concat (absBaseDir, "runtime")

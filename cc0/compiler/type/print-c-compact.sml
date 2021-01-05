@@ -6,7 +6,15 @@
 
 signature PRINT =
 sig
-    val pp_program : Ast.program -> string
+    type print_options = {
+      (* The decls to print *)
+      gdecls: Ast.program,
+      (* Additional files to #include at the top of the printed output *)
+      include_files: string list,
+      (* Whether to print the sourcemap as the final item *)
+      sourcemap: bool
+    }
+    val pp_program : print_options -> string
 end
 
 (* There are a number of semantic differences that require some care
@@ -46,7 +54,7 @@ end
  *   This is explained further in the iso_<cat> functions below.
  *)
 
-structure PrintC =
+structure PrintC :> PRINT =
 struct
 
    structure A = Ast
@@ -519,10 +527,19 @@ struct
       | pp_gdecls (gdecl::gdecls) =
           pp_gdecl gdecl ^ pp_gdecls gdecls
 
+    type print_options = {
+      (* The decls to print *)
+      gdecls: Ast.program,
+      (* Additional files to #include at the top of the printed output *)
+      include_files: string list,
+      (* Whether to print the sourcemap as the final item *)
+      sourcemap: bool
+    }
+
     (* pp_program gdecls include_files = str
      * Convert program consisting of gdecls to a string, including
      * include_files. *)
-    fun pp_program gdecls include_files = (
+    fun pp_program {gdecls, include_files, sourcemap} = (
         line_counter := 1;
         source_mappings := [];
         String.concat 
@@ -531,7 +548,7 @@ struct
                                     ^ ("\"\n" before incr_line_counter ()))
                 include_files)
         ^ pp_gdecls gdecls
-        ^ pp_source_map ()
+        ^ (if sourcemap then pp_source_map () else "")
     )
 
 end
