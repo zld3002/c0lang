@@ -87,7 +87,6 @@ int main(int argc, char **argv) {
     FILE *f = really_fopen(filename, "w", "Couldn't open $C0_RESULT_FILE");
     really_fwrite("\0", 1, 1, f, "Couldn't write to $C0_RESULT_FILE");
     int x = _c0_main();
-    /* if (getenv("C0_PRINT_RESULT") != NULL) */  printf("%d\n", x);
     really_fwrite(&x, sizeof(int), 1, f, "Couldn't write to $C0_RESULT_FILE");
     really_fclose(f, "Couldn't close $C0_RESULT_FILE");
   }

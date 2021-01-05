@@ -58,6 +58,11 @@ structure Test = Testing (struct
 
   val runtime = ref "c0rt"
 
+  (* Timeouts for how long the compiler can run
+   * and how long a test case can run, in seconds *)
+  val COMPILER_TIMEOUT = 15
+  val PROGRAM_TIMEOUT = 15
+
   fun compile files =
     let
       val compiler_args = "--verbose" :: "-r" :: (!runtime) :: "-n" :: files
@@ -69,6 +74,10 @@ structure Test = Testing (struct
           let val devnull = FS.openf ("/dev/null", FS.O_WRONLY, FS.O.append) in
             Posix.IO.dup2{old = devnull, new = FS.stdout};
             Posix.IO.dup2{old = devnull, new = FS.stderr};
+            (* Some test cases cause some versions of GCC
+             * to take an unreasonably long amount of time,
+             * so we set a timeout *)
+            ignore (Posix.Process.alarm (Time.fromSeconds COMPILER_TIMEOUT));
             P.execp (cc0, cc0 :: compiler_args)
             handle OS.SysErr _ => Posix.Process.exit 0w1
           end
@@ -79,8 +88,13 @@ structure Test = Testing (struct
         | P.W_EXITSTATUS 0w1 => false
         | P.W_EXITSTATUS w => 
           raise Failed ("Compiler exited with status " ^ Word8.toString w)
-        | P.W_SIGNALED _ => 
-          raise Failed ("Compiler exited with unexpected signal")
+        | P.W_SIGNALED signal =>
+            if signal = Posix.Signal.alrm
+              then (
+                print "Compiler timed out\n";
+                false (* Indicate compilation failure. *)
+              )
+              else raise Failed ("Compiler exited with unexpected signal")
         | P.W_STOPPED _ => 
           raise Failed ("Compiler stopped unexpectedly")
       end
@@ -116,7 +130,7 @@ structure Test = Testing (struct
             Posix.IO.dup2{old = devnull, new = FS.stdout};
             Posix.IO.dup2{old = devnull, new = FS.stderr};
             (* Set an alarm, prepare to die. *)
-            ignore (Posix.Process.alarm (Time.fromSeconds 7));
+            ignore (Posix.Process.alarm (Time.fromSeconds PROGRAM_TIMEOUT));
             P.exece ("./" ^ program, [], ["C0_RESULT_FILE=" ^ result_file])
           end
         | SOME pid => P.waitpid (P.W_CHILD pid, [])
