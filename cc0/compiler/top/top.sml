@@ -692,14 +692,26 @@ let
 
         val () = Flag.guard Flags.flag_verbose (fn () => say ("% " ^ gcc_command)) ()
         val status = OS.Process.system gcc_command
-        val () = Flag.guard Flags.flag_verbose
-                (fn () => say (if OS.Process.isSuccess status then "succeeded" else "failed")) ()
 
         val () = if Flag.isset Flags.flag_save_files then ()
                  else ( Flag.guard Flags.flag_verbose (fn () => say ("Deleting " ^ cname)) ()
                       ; OS.FileSys.remove (path_concat (out_dir, cname))
                       ; Flag.guard Flags.flag_verbose (fn () => say ("Deleting " ^ hname)) ()
                       ; OS.FileSys.remove (path_concat (out_dir, hname)) )
+        
+        val () = Flag.guard Flags.flag_verbose
+                (fn () => say (if OS.Process.isSuccess status then "succeeded" else "failed")) ()
+        val () = 
+          if OS.Process.isSuccess status then 
+            verbose_say "C compilation succeeded" ()
+          else (
+            sayError "C compilation failed!";
+            (* Use a different error code to indicate that
+             * GCC failed, so we can distinguish 
+             * an invalid C0 program from a GCC or exec error
+             * inside the testing harness *)
+            Posix.Process.exit (Word8.fromInt 2)
+          )
 
         val status =
             if Flag.isset Flags.flag_exec
