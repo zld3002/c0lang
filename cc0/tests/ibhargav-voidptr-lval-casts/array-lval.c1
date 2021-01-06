@@ -1,0 +1,14 @@
+//test return 5
+
+int main() {
+    void*[] A = alloc_array(void*, 5);
+
+    A[0] = (void*)alloc(int);
+
+    // Testing precedence for the parser
+    *(int*)A[0] = 5;
+
+    int* p = (int*)A[0];
+
+    return *p;
+}

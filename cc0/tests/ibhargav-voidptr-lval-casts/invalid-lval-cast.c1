@@ -1,0 +1,11 @@
+//test error
+
+int main() {
+    void* p = (void*)alloc(string);
+
+    // By the way, this is also illegal in C
+    // (might sound obvious but you never know)
+    (int*)p = NULL;
+
+    return 0;
+}
