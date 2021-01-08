@@ -1,0 +1,22 @@
+//test return 171
+typedef int int2int_fn(int n);
+
+int incr(int x) {
+  return x+1;
+}
+
+int double(int x) {
+  return 2*x;
+}
+
+int compose(int2int_fn* f, int2int_fn* g, int x)
+//@requires f != NULL && g != NULL;
+{
+  return (*g)((*f)(x));
+}
+
+
+int main() {
+  int i85 = compose(&double, &incr, 42);
+  return i85 + compose(&incr, &double, 42);
+}
