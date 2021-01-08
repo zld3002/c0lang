@@ -91,9 +91,11 @@ Memory
 0x34 cmload   S, a:* -> S, x:w32   (x = (w32)(*a), a != NULL, load 1 byte)
 0x55 cmstore  S, a:*, x:w32 -> S   (*a = x & 0x7f, a != NULL, store 1 byte)
 
-0xB6 invokedynamic     S, v1, v2, ..., vn, f: i32 -> S, v
-    where least significant 31 bits of f are the function index 
-    and the most significant bit is 1 if f is native, 0 otherwise
+0x16 addrof_static <c1,c2> S -> S, a:* (a = create_funptr(C0_STATIC_FUNCTION, c1<<8|c2))
+0x17 addrof_native <c1,c2> S -> S, a:* (a = create_funptr(C0_NATIVE_FUNCTION, c1<<8|c2))
+
+0xB6 invokedynamic     S, v1, v2, ..., vn, f: a:* -> S, v
+    call function as described by deref_funptr(f)
 
 0xC0 checktag <c1,c2>  S, a:[*] -> S, a:* 
     (cast from void*: if a has tag (c1<<8|c2), otherwise c0_memory_error)
