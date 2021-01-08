@@ -26,12 +26,22 @@ struct
     | sizeof (A.Bool) = 1
     | sizeof (A.String) = 4 (* address of string *)
     | sizeof (A.Char) = 1
-    | sizeof (A.Pointer (A.FunTypeName _)) = 4 (* representing a function as an integer *)
-    | sizeof (A.Pointer (A.FunType _)) = 4
+    | sizeof (A.Pointer (A.FunTypeName _)) = (
+        ErrorMsg.error NONE "Function pointers not supported on 32-bit architecture";
+        raise ErrorMsg.Error
+      )
+    | sizeof (A.Pointer (A.FunType _)) = (
+        ErrorMsg.error NONE "Function pointers not supported on 32-bit architecture";
+        raise ErrorMsg.Error
+      )
+    | sizeof (A.Pointer A.Void) = (
+        ErrorMsg.error NONE "Generic pointers not supported on 32-bit architecture";
+        raise ErrorMsg.Error
+      )
     | sizeof (A.Pointer _) = 4
     | sizeof (A.Array _) = 4
-    | sizeof (A.FunTypeName _) = 4 
-    | sizeof (A.FunType _) = 4 (* representing a function as an integer *)
+    | sizeof (A.FunTypeName _) = raise Fail "cc0 bug: Taking size of unsized type FunTypeName"
+    | sizeof (A.FunType _) = raise Fail "cc0 bug: Taking size of unsized type FunType"
 
   (* align tp = alignment requirement, tp != struct s, typename *)
   fun align (A.Int) = 4
@@ -52,20 +62,16 @@ struct
     | sizeof (A.Bool) = 1
     | sizeof (A.String) = 8 (* address of string *)
     | sizeof (A.Char) = 1
-    | sizeof (A.Pointer(A.FunTypeName _)) = 4 (* representing a fun ptr as an integer *)
-    | sizeof (A.Pointer(A.FunType _)) = 4
     | sizeof (A.Pointer(t)) = 8
     | sizeof (A.Array(t)) = 8
-    | sizeof (A.FunTypeName _) = 4 
-    | sizeof (A.FunType _) = 4 
+    | sizeof (A.FunTypeName _) = raise Fail "cc0 bug: Taking size of unsized type FunTypeName"
+    | sizeof (A.FunType _) = raise Fail "cc0 bug: Taking size of unsized type FunType"
 
   (* align tp = alignment requirement, tp != struct s, typename *)
   fun align (A.Int) = 4
     | align (A.Bool) = 1
     | align (A.String) = 8 (* this was 4, shouldn't it be 8? *)
     | align (A.Char) = 1
-    | align (A.Pointer(A.FunTypeName _)) = 4
-    | align (A.Pointer(A.FunType _)) = 4
     | align (A.Pointer(t)) = 8
     | align (A.Array(t)) = 8
     | align (A.FunTypeName _) = 4 
