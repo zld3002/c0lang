@@ -747,7 +747,7 @@ struct
         trans_exp env vlist e1 ext
         @ trans_exp env vlist e2 ext
         @ [V.Inst(V.assert, 
-                  "assert" ^ A.Print.pp_exp(e1) 
+                  "assert " ^ A.Print.pp_exp(e1) 
                   ^ " [failure message on stack]", (* ^ A.Print.pp_exp(e2) *)
                   ext)]
       end

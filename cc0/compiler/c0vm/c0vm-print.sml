@@ -42,7 +42,7 @@ struct
                  else s
   fun pad9(s) = pad(s,9)
   fun pad18(s) = pad(s,18)
-  fun pad27(s) = pad(s,27)
+  fun pad_instr(s) = pad(s,30)
 
 
   fun pp_inst2 (V.dup) = ("59","dup")
@@ -105,7 +105,7 @@ struct
     | pp_bclines n (V.Label(k, s)::bcs) = "# " ^ s ^ "\n" ^ pp_bclines n bcs
     | pp_bclines n (V.Inst(inst, anno, ext)::bcs) =
       (* "/" ^ pad(Int.toString(n),3) ^ "/ " ^ *)
-        pad27(pp_inst inst) ^ "# " ^ anno ^ "\n"
+        pad_instr(pp_inst inst) ^ "# " ^ anno ^ "\n"
         ^ pp_bclines (n+V.il(inst)) bcs
     | pp_bclines n (nil) = ""
 

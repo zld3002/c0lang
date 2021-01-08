@@ -438,8 +438,9 @@ let
                         ^ BuildId.revision ^ " (built " ^ BuildId.date ^ ")"
         val usageinfo = G.usageInfo {header = header, options = options}
         (* C0VM Bytecode Version
-         * v10 (Aug 5 2020) - C1 features, changed # of variables in a function from two bytes to one *)
-        val c0vm_version = 10
+         * v10 (Aug 5 2020) - C1 features, changed # of variables in a function from two bytes to one
+         * v11 (January 7 2021) - Added addrof_static, addrof_native *)
+        val c0vm_version = 11
         fun errfn msg = (sayError msg ; raise EXIT)
 
         (* Reset state by reading argments; possibly display usage & exit. *) 
@@ -555,7 +556,15 @@ let
         val cname = OS.Path.joinBaseExt {base = out_base, ext = SOME (sourceExt ^ ".c")}
         val hname = OS.Path.joinBaseExt {base = out_base, ext = SOME (sourceExt ^ ".h")}
         val bcfile = if !Flags.a_out = "a.out" (* if no output specified with -o *)
-                    then path_concat (out_dir, OS.Path.joinBaseExt {base = out_base, ext = SOME "bc0"})
+                    then 
+                      let
+                        val bytecode_extension = 
+                          case sourceExt of 
+                            "c1" => "bc1"
+                          | _ => "bc0"
+                      in 
+                        path_concat (out_dir, OS.Path.joinBaseExt {base = out_base, ext = SOME bytecode_extension})
+                      end 
                     else !Flags.a_out (* if specified with -o *)
         val () = if Flag.isset Flags.flag_bytecode
                 then let val () = Flag.guard Flags.flag_verbose
