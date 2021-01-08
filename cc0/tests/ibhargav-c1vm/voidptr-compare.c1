@@ -1,0 +1,8 @@
+//test return 1
+int main() {
+	void* p1 = (void*)alloc(string);
+	void* p2 = (void*)alloc(int);
+
+	return p1 == p2 ? 0 : 1;
+}
+

@@ -1,0 +1,10 @@
+//test return 0
+
+int main() {
+    int* p = alloc(int);
+
+    void* vp1 = (void*)p;
+    void* vp2 = (void*)p;
+
+    return vp1 == vp2 ? 0 : 1;
+}

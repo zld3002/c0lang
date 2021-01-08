@@ -1,0 +1,9 @@
+//test segfault
+
+typedef int fn(int x);
+
+int main() {
+    fn* f = NULL;
+
+    return (*f)(123);
+} 

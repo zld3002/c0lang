@@ -1,0 +1,13 @@
+//test abort
+
+int get_int(void* p)
+//@requires \hastag(int*, p);
+{
+    return *(int*)p;
+}
+
+int main() {
+    void* p = (void*)alloc(string);
+
+    return get_int(p);
+}

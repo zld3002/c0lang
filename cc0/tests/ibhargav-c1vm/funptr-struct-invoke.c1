@@ -1,0 +1,26 @@
+//test lib => return 5
+
+#use <string>
+
+typedef int s2i_fn(string s);
+typedef int i2i_fn(int a, int b);
+
+int add(int x, int y) { return x + y; }
+
+struct Functions {
+    s2i_fn* f1;
+    i2i_fn* f2;
+};
+
+int main() {
+    struct Functions* funcs = alloc(struct Functions);
+    funcs->f1 = &string_length;
+    funcs->f2 = &add;
+
+    int i = 0;
+
+    i += (*(funcs->f1))("Hello world"); // i == 11
+    i += (*(funcs->f2))(-5, -1);
+
+    return i;
+}
