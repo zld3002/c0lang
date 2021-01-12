@@ -166,22 +166,26 @@ static bool from_user_program(const char* filename) {
 }
 
 #define C0_FUNC_MANGLE_PREFIX "_c0_"
+#define C0_INTERNAL_MANGLE_PREFIX "_c0t_"
 
 /**
- * "Demangles" a function name by removing the _c0_ prefix.
- * Note that the contract wrapper functions have a prefix "_c0t_".
- * We assume those will not be relevant to a backtrace since hopefully
- * they don't contain any safety violations :)
+ * "Demangles" a function name by removing the _c0_ or _c0t_ prefix
  */
 static const char* demangle(const char* funcname) {
   size_t n = strlen(funcname);
 
-  if (strncmp(C0_FUNC_MANGLE_PREFIX, funcname, strlen(C0_FUNC_MANGLE_PREFIX))) {
-    // function doesn't match "_c0_*"
-    return funcname;
+  // Note strlen() gets 'constant folded' 
+  if (strncmp(C0_FUNC_MANGLE_PREFIX, funcname, strlen(C0_FUNC_MANGLE_PREFIX)) == 0) {
+    // function name is of the form _c0_*
+    return funcname + strlen(C0_FUNC_MANGLE_PREFIX);
   }
 
-  return funcname + strlen(C0_FUNC_MANGLE_PREFIX);
+  if (strncmp(C0_INTERNAL_MANGLE_PREFIX, funcname, strlen(C0_INTERNAL_MANGLE_PREFIX)) == 0) {
+    // function name is of the form _c0t_*
+    return funcname + strlen(C0_INTERNAL_MANGLE_PREFIX);
+  }
+
+  return funcname;
 }
 
 /**
