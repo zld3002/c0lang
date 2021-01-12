@@ -41,26 +41,6 @@ struct
     val caller_decl_main = 
         A.VarDecl(caller_id, A.String, SOME (A.StringConst "(program start)"), NONE)
 
-    (* Backtrace function symbol info 
-     * These are added to the symbol table as external functions
-     * in `contracts` *)
-    val register_func = Symbol.nsymbol Symbol.User "c0_push_callstack"
-    val deregister_func = Symbol.nsymbol Symbol.User "c0_pop_callstack"
-
-    (* These are registered before preconditions run in tfm_decl *)
-    fun register_backtrace () = 
-      (* Don't insert backtrace info when generating bytecode 
-       * as C0VM does not support it *)
-      if Flag.isset Flags.flag_backtrace
-        then [A.Exp (A.FunCall (register_func, [caller_var]))]
-        else []
-
-    (* This is done before returning in dc_stm *)
-    fun deregister_backtrace () = 
-      if Flag.isset Flags.flag_backtrace
-        then [A.Exp (A.FunCall (deregister_func, []))]
-        else [] 
-
     (* tfm_test env e = e'
      * Assumes env |- e : tp for some tp
      * Ensures env, _result:rtp |- t' : tp
@@ -271,9 +251,9 @@ struct
       | fv_stm (s as A.Continue) ext g = s
       | fv_stm (s as A.Break) ext g = s
       | fv_stm (s as A.Return(NONE)) ext g = 
-          A.Seq([], deregister_backtrace () @ [s])
+          A.Seq([], [s])
       | fv_stm (A.Return(SOME(e))) ext g =
-          A.Seq([], deregister_backtrace () @ [A.Return(SOME(fv_exp e ext g))])
+          A.Seq([], [A.Return(SOME(fv_exp e ext g))])
       | fv_stm (A.Assert(e1, e2s)) ext g =
           A.Assert(fv_exp e1 ext g, List.map (fn e => fv_exp e ext g) e2s)
       | fv_stm (A.Error e) ext g = 
@@ -351,13 +331,11 @@ struct
             
             (* add possibly redundant (dead-code) post-condition *)
             (* to make sure it is checked in case there is no return in body s *)
-            (* If the return type is void, then we need to remove it from the backtrace 
-             * at the end as well because there might not be a return statement *)
             val body'' = case rtp
                          of A.Void => A.Seq(ds0 @ dresult,
-                                            register_backtrace () @ ass1 @ [body'] @ ass2 @ deregister_backtrace ())
+                                            ass1 @ [body'] @ ass2)
                           | _ => A.Seq(ds0 @ dresult, 
-                                       register_backtrace () @ ass1 @ [body'])
+                                       ass1 @ [body'])
             val body''' = fv_stm body'' ext g 
         in
             A.Function(g, rtp, params1, SOME(body'''), specs, is_external, ext)
@@ -558,13 +536,10 @@ struct
         in (* coercion function ds come before use in d'' *)
             ds @ [d'']
         end
-      | dc_gdecl (d as A.Function(g, rtp, params, NONE, nil, true, ext)) =
-        (* external function declaration remains identical, if no contracts *)
-        [d]
       | dc_gdecl (d as A.Function(g, rtp, params, NONE, nil, false, ext)) =
         (* no specifications (specs = nil); transform to add argument *)
         [A.Function(g, rtp, params @ [caller_decl], NONE, nil, false, ext)]
-      | dc_gdecl (d as A.Function(g, rtp, params, NONE, specs as (_::_), is_external, ext)) =
+      | dc_gdecl (d as A.Function(g, rtp, params, NONE, specs, is_external, ext)) =
         (* specifications (function prototype with contracts but no body); create new wrapper for g *)
         let 
             val g_opt = Funversiontab.lookup g
@@ -609,19 +584,7 @@ struct
      | dc_gdecls (gdecl::gdecls) =
          dc_gdecl gdecl @ dc_gdecls gdecls
 
-   fun contracts gdecls = (
-     (* Insert Symtab info for register/deregister callstack as external symbol
-      * so the names don't get mangled by the printer *)
-     Symtab.bind (register_func, 
-        A.Function(register_func, A.Void, 
-                   [A.VarDecl (Symbol.new "caller", A.String, NONE, NONE)], 
-                   NONE, [], (* is_extern = *) true, NONE));
-
-    Symtab.bind (deregister_func, 
-        A.Function(deregister_func, A.Void, [], NONE, [], true, NONE));
-
-     dc_gdecls gdecls
-   )
+   fun contracts gdecls = dc_gdecls gdecls
 
    (* dummy_def relies on the symbol table retaining the original declaration *)
    fun dummy_def (SOME(A.Function(g, rtp, params, NONE, specs, false, ext))) =

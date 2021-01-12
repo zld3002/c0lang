@@ -3,8 +3,10 @@
 #include <signal.h>
 #include <limits.h>
 #include <c0runtime.h>
+#include <string.h>
 
-void c0_runtime_init() {
+void c0_runtime_init(const char* filename, const char** map, long len) {
+  (void)filename; (void)map; (void)len;
   // nothing to do for the bare runtime
 }
 

@@ -40,7 +40,6 @@ sig
    | athrow | assert
    (* functions *)
    | invokestatic of pool_index
-   | invokedynamic
    | return
    | invokenative of pool_index
    (* memory *)
@@ -55,6 +54,10 @@ sig
    | amstore
    | cmload
    | cmstore
+   (* function pointers *)
+   | addrof_static of pool_index
+   | addrof_native of pool_index
+   | invokedynamic
    (* generic pointers *)
    | addtag of type_tag
    | checktag of type_tag
@@ -133,7 +136,6 @@ struct
    | athrow | assert
    (* functions *)
    | invokestatic of pool_index
-   | invokedynamic
    | return
    | invokenative of pool_index
    (* memory *)
@@ -148,6 +150,10 @@ struct
    | amstore
    | cmload
    | cmstore
+   (* function pointers *)
+   | addrof_static of pool_index
+   | addrof_native of pool_index
+   | invokedynamic
    (* generic pointers *)
    | addtag of type_tag
    | checktag of type_tag
@@ -196,7 +202,6 @@ struct
     | il athrow = 1
     | il assert = 1
      (* functions *)
-    | il (invokedynamic) = 1
     | il (invokestatic(c)) = 3
     | il (return) = 1
     | il (invokenative(c)) = 3
@@ -212,6 +217,10 @@ struct
     | il (amstore) = 1
     | il (cmload) = 1
     | il (cmstore) = 1
+   (* function pointers *)
+    | il (addrof_static(_)) = 3
+    | il (addrof_native(_)) = 3
+    | il (invokedynamic) = 1
    (* generic pointers *)
     | il (addtag _) = 3
     | il (checktag _) = 3 

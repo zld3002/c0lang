@@ -6,7 +6,8 @@
 #include <c0runtime.h>
 #include <strings.h> // defines bzero()
 
-void c0_runtime_init() {
+void c0_runtime_init(const char* filename, const char** map, long len) {
+  (void)filename; (void)map; (void)len;
   GC_INIT();
 }
 
@@ -29,12 +30,6 @@ void c0_error(const char *msg) {
 void c0_abort(const char *reason) {
   raise_msg(SIGABRT, reason);
 }
-
-// Technically unnecessary since backtraces
-// are not allowed in the unsafe runtime since
-// -d is not allowed 
-#define c0_push_callstack(f) ((void)sizeof(f)) 
-#define c0_pop_callstack() ((void)0)
 
 /* Arithmetic */
 

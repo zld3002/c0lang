@@ -1,4 +1,4 @@
-//test segfault
+//test cc0 => segfault ; !cc0 => infloop
 
 int f(int* p)
 {

@@ -35,8 +35,7 @@ int *parse_int(c0_string s, int base) {
     li = (li << 32) >> 32;
   }
 
-  if (!isspace(cstr[0]) && cstr[0] != '+' /* strtol allows leading space or +,
-                                             we don't -wjl */
+  if (!isspace(cstr[0]) && cstr[0] != '+' /* strtol allows leading space or +, we don't -wjl */
       && errno == 0 && li >= INT_MIN && li <= INT_MAX && endptr != cstr
       && *endptr == '\0' /* make sure whole string was valid -wjl */) {
     result = c0_alloc(sizeof(int));
@@ -115,6 +114,8 @@ c0_array parse_tokens(c0_string s) {
 
 // XXX efficiency
 bool int_tokens(c0_string s, int base) {
+  if (base < 2 || base > 36) c0_abort("int_tokens: invalid base");
+
   int len = num_tokens(s);
   c0_array A = parse_tokens(s);
 
@@ -127,30 +128,25 @@ bool int_tokens(c0_string s, int base) {
   return true;
 }
 
-// XXX will permit something like "  +12 -16 -1 " but only without -d enabled
+// Does 3 passes through the string, but is significantly less
+// error-prone and makes the library a lot more consistent
 c0_array parse_ints(c0_string s, int base) {
-  if (base < 2 || base > 36) c0_abort("parse_int: invalid base");
+  if (base < 2 || base > 36) c0_abort("parse_ints: invalid base");
 
-  const char *str = c0_string_tocstr(s);
-  unsigned int len = count_tokens(str);
+  int len = num_tokens(s);
+  c0_array tokens = parse_tokens(s);
   c0_array A = c0_array_alloc(sizeof(int), len);
 
-  unsigned int i;
-  for (i = 0; i < len; i++) {
-    errno = 0;
-    char* end;
-    long int li = strtol(str, &end, base);
-    if (errno != 0 || li < INT_MIN || li > INT_MAX
-        || !(*end == '\0' || isspace(*end))) {
+  for (int i = 0; i < len; i++) {
+    c0_string token = *(c0_string*)c0_array_sub(tokens, i, sizeof(c0_string));
+    int* num = parse_int(token, base);
+
+    if (num == NULL) {
       c0_abort("parse_ints: invalid number");
     }
 
-    int *arraypos = c0_array_sub(A, i, sizeof(int));
-    *arraypos = (int)li;
-
-    str = end;
+    *(int*)c0_array_sub(A, i, sizeof(int)) = *num;
   }
-  
-  c0_string_freecstr(str);
-  return A;  
+
+  return A;
 }

@@ -19,7 +19,6 @@ signature FLAGS = sig
   val flag_bytecode : Flag.flag 
   val flag_static : Flag.flag
   val flag_only_typecheck : Flag.flag
-  val flag_backtrace : Flag.flag
 
   val base_dir : string ref
   val search_path : string list ref
@@ -73,11 +72,6 @@ structure Flags :> FLAGS = struct
   val flag_static = Flag.flag "static"
   val flag_only_typecheck = Flag.flag "only-typecheck"
   
-  (* Sept 2020 *)
-  val flag_backtrace = Flag.flag "backtrace" (* Controls generating C0RT backtraces. 
-                                              * Should only be set by CC0 and not coin/etc 
-                                              * Currently not controlled by any command-line option *)
-
   val base_dir = ref ""                       (* see reset_flags ()           *)
   val search_path : string list ref = ref []  (* Search path for libraries    *)
   val libraries : string list ref = ref []    (* Desired libraries            *)
@@ -244,7 +238,7 @@ structure Flags :> FLAGS = struct
       desc=GetOpt.ReqArg ((fn (s) => (runtime := s)), "<rt>"),
       help="Select a runtime (default 'c0rt')"},
      {short = "b", long=["bytecode"],
-      desc=GetOpt.NoArg (fn () => (Flag.set flag_bytecode; Flag.unset flag_backtrace)),
+      desc=GetOpt.NoArg (fn () => Flag.set flag_bytecode),
       help="Generate bytecode instead of executable"},
      {short = "m", long=["bc-arch"],
       desc=GetOpt.ReqArg ((fn (s) => (bytecode_arch := parse_bytecode_arch s)), "<arch>"),

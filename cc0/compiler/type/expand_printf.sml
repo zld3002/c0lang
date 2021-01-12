@@ -209,6 +209,7 @@ end = struct
   | Ast.Assign (opr, lhs, rhs) => Ast.Assign (opr, lhs, expand_exp pos rhs)
   | Ast.Return (SOME v) => Ast.Return (SOME $ expand_exp pos v)
   | Ast.Assert (exp, msgs) => Ast.Assert (expand_exp pos exp, msgs)
+  | Ast.Error exp => Ast.Error (expand_exp pos exp)
   | _ => s 
 
   fun expand_fdecl (Ast.Function (name, rtp, params, SOME body, contracts, is_extern, pos)) = 

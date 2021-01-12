@@ -1,0 +1,30 @@
+//test return 167
+#use <string>
+
+typedef bool char2bool_fn(char c);
+
+bool is_vowel(char c) {
+  if (c == 'a' || c == 'A') return true;
+  if (c == 'e' || c == 'E') return true;
+  if (c == 'i' || c == 'I') return true;
+  if (c == 'o' || c == 'O') return true;
+  if (c == 'u' || c == 'U') return true;
+  return false;
+}
+
+int countif(char2bool_fn* f, char[] C, int n)
+//@requires f != NULL && n == \length(C);
+{
+  int count = 0;
+  for (int i = 0; i < n; i++)
+    if ((*f)(C[i])) count++;
+
+  return count;
+}
+
+int main() {
+  string s = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
+  int n = string_length(s);
+  char[] C = string_to_chararray(s);
+  return countif(&is_vowel, C, n+1);
+}

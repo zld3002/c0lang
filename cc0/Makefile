@@ -83,6 +83,17 @@ libpng: zlib lib $(LIBPNGDIR)/Makefile
 	$(COPY) $(LIBPNGDIR)/installdir/include/*.h include
 #	-$(COPY) -a $(LIBPNGDIR)/installdir/lib/*.so* lib
 
+# The backtrace library for C0RT
+LIBBACKTRACEDIR := ../externals/libbacktrace
+
+$(LIBBACKTRACEDIR)/Makefile:
+	cd $(LIBBACKTRACEDIR) && ./configure --with-pic
+
+.PHONY: libbacktrace
+libbacktrace: $(LIBBACKTRACEDIR)/Makefile
+	$(MAKE) -C $(LIBBACKTRACEDIR)
+	$(COPY) $(LIBBACKTRACEDIR)/.libs/libbacktrace.a lib/
+	$(COPY) $(LIBBACKTRACEDIR)/backtrace.h c0rt/
 
 ### Runtimes
 
@@ -106,7 +117,7 @@ endef
 
 $(foreach rt,$(RUNTIMES),$(eval $(call runtime_template,$(rt))))
 
-c0rt/$(call dllname,c0rt): gc
+c0rt/$(call dllname,c0rt): gc libbacktrace
 
 unsafe/$(call dllname,unsafe): gc
 
@@ -255,20 +266,22 @@ endif
 
 .PHONY: clean
 clean: libsclean
-	$(MAKE) -C bare clean
-	$(MAKE) -C c0rt clean
-	$(MAKE) -C unsafe clean
-	$(MAKE) -C compiler clean
-	$(MAKE) -C coin clean
-	$(MAKE) -C codex clean
-	$(RM) -f lib/*$(DLLSUFFIX) lib/*.a lib/*.h0
-	$(RM) -rf bin runtime
+	-$(MAKE) -C bare clean
+	-$(MAKE) -C c0rt clean
+	-$(MAKE) -C unsafe clean
+	-$(MAKE) -C compiler clean
+	-$(MAKE) -C coin clean
+	-$(MAKE) -C codex clean
+	-$(RM) -f lib/*$(DLLSUFFIX) lib/*.a lib/*.h0
+	-$(RM) -rf bin runtime
 
 .PHONY: reallyclean
 reallyclean: clean
-	$(MAKE) -C $(GCDIR) distclean
-	$(MAKE) -C $(ZLIBDIR) distclean
-	$(MAKE) -C $(LIBPNGDIR) distclean
+	-$(MAKE) -C $(GCDIR) distclean
+	-$(MAKE) -C $(ZLIBDIR) distclean
+	rm -f $(ZLIBDIR)/Makefile
+	-$(MAKE) -C $(LIBPNGDIR) distclean
+	-$(MAKE) -C $(LIBBACKTRACEDIR) distclean
 
 
 ### Testing harnesses
@@ -298,7 +311,7 @@ bin/csharp-test: bin tests/drivers/*
 
 # If I add the explicit dependency, it always builds cc0-test which is probably
 # not the desired behavior most of the time
-TESTDIRS = rjs-basic fp-simple fp-basic wjl-basic lib-basic
+TESTDIRS = rjs-basic fp-simple fp-basic wjl-basic lib-basic ibhargav-c1vm
 TESTFILES = tests/*/*.c0 tests/*/*.c1 tests/*/*.test # $(patsubst %,tests/%/sources.test tests/%/*.c0,$(TESTDIRS))
 .PHONY: check checkunsafe checkc0rt checkall checkvm checkcsharp checkcoin
 check: bin/cc0-test
@@ -325,7 +338,7 @@ checkcoin: bin/coin-test
 
 # Install target -- copy contents of bin, lib, runtime, and include
 # TODO: make PREFIX configure-able
-PREFIX=../..
+PREFIX ?= ../..
 .PHONY: install install-c0-mode install-libs package
 install: install-libs install-c0-mode
 	mkdir -p $(PREFIX)/bin $(PREFIX)/runtime $(PREFIX)/include

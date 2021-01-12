@@ -9,10 +9,10 @@ CYGWIN*) SUFFIX=cygwin ;;
 *) echo "Unknown OS!" ;;
 esac
 
-MACHINE=x86
+MACHINE=amd64
 case `uname -m` in
 i*86) MACHINE=x86; ;;
-x86_64) MACHINE=x86; ;;
+x86_64) MACHINE=amd64; ;;
 *) echo "Unknown machine type! Assuming x86..." ;;
 esac
 

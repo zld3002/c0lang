@@ -1,0 +1,16 @@
+//test segfault
+
+int main() {
+    string* s = alloc(string);
+    *s = "hello world";
+
+    void* p = (void*)s;
+    // Assignments *e1 = e2 are evaluated as follows:
+    // 1. eval e1 => v1
+    // 2. eval e2 => v2
+    // 3. perform *v1 = v2 and segfault if v1 == NULL
+    // Therefore, the cast should fail first
+    *(int*)p = 1 / 0;
+
+    return 0;
+}

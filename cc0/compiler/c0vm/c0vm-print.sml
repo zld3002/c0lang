@@ -42,7 +42,7 @@ struct
                  else s
   fun pad9(s) = pad(s,9)
   fun pad18(s) = pad(s,18)
-  fun pad27(s) = pad(s,27)
+  fun pad_instr(s) = pad(s,30)
 
 
   fun pp_inst2 (V.dup) = ("59","dup")
@@ -88,10 +88,14 @@ struct
     | pp_inst2 (V.amstore) = ("4F", "amstore")
     | pp_inst2 (V.cmload) = ("34", "cmload")
     | pp_inst2 (V.cmstore) = ("55", "cmstore")
-    | pp_inst2 (V.addtag (c, _)) = ("C2 " ^ u16 c, "addtag " ^ Int.toString c)
-    | pp_inst2 (V.checktag (c, _)) = ("C0 " ^ u16 c, "checktag " ^ Int.toString c)
-    | pp_inst2 (V.hastag (c, _)) = ("C1 " ^ u16 c, "hastag " ^ Int.toString c)
+    (* function pointers *)
+    | pp_inst2 (V.addrof_static(c)) = ("16 " ^ u16 c, "addrof_static " ^ Int.toString c)
+    | pp_inst2 (V.addrof_native(c)) = ("17 " ^ u16 c, "addrof_native " ^ Int.toString c)
     | pp_inst2 (V.invokedynamic) = ("B6", "invokedynamic")
+    (* generic pointers *)
+    | pp_inst2 (V.addtag(c, _)) = ("C2 " ^ u16 c, "addtag " ^ Int.toString c)
+    | pp_inst2 (V.checktag(c, _)) = ("C0 " ^ u16 c, "checktag " ^ Int.toString c)
+    | pp_inst2 (V.hastag(c, _)) = ("C1 " ^ u16 c, "hastag " ^ Int.toString c)
 
   fun pp_inst inst =
       let val (code, mnemonic) = pp_inst2 inst
@@ -101,7 +105,7 @@ struct
     | pp_bclines n (V.Label(k, s)::bcs) = "# " ^ s ^ "\n" ^ pp_bclines n bcs
     | pp_bclines n (V.Inst(inst, anno, ext)::bcs) =
       (* "/" ^ pad(Int.toString(n),3) ^ "/ " ^ *)
-        pad27(pp_inst inst) ^ "# " ^ anno ^ "\n"
+        pad_instr(pp_inst inst) ^ "# " ^ anno ^ "\n"
         ^ pp_bclines (n+V.il(inst)) bcs
     | pp_bclines n (nil) = ""
 

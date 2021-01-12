@@ -438,8 +438,9 @@ let
                         ^ BuildId.revision ^ " (built " ^ BuildId.date ^ ")"
         val usageinfo = G.usageInfo {header = header, options = options}
         (* C0VM Bytecode Version
-         * v10 (Aug 5 2020) - C1 features, changed # of variables in a function from two bytes to one *)
-        val c0vm_version = 10
+         * v10 (Aug 5 2020) - C1 features, changed # of variables in a function from two bytes to one
+         * v11 (January 7 2021) - Added addrof_static, addrof_native *)
+        val c0vm_version = 11
         fun errfn msg = (sayError msg ; raise EXIT)
 
         (* Reset state by reading argments; possibly display usage & exit. *) 
@@ -447,8 +448,6 @@ let
                    then (say versioninfo; say usageinfo; raise EXIT)
                    else reset ()
 
-        (* CC0-specific default options *)
-        val () = Flag.set Flags.flag_backtrace
         val sources = get_sources_set_flags
                           {options = options,
                            errfn = errfn,
@@ -557,7 +556,15 @@ let
         val cname = OS.Path.joinBaseExt {base = out_base, ext = SOME (sourceExt ^ ".c")}
         val hname = OS.Path.joinBaseExt {base = out_base, ext = SOME (sourceExt ^ ".h")}
         val bcfile = if !Flags.a_out = "a.out" (* if no output specified with -o *)
-                    then path_concat (out_dir, OS.Path.joinBaseExt {base = out_base, ext = SOME "bc0"})
+                    then 
+                      let
+                        val bytecode_extension = 
+                          case sourceExt of 
+                            "c1" => "bc1"
+                          | _ => "bc0"
+                      in 
+                        path_concat (out_dir, OS.Path.joinBaseExt {base = out_base, ext = SOME bytecode_extension})
+                      end 
                     else !Flags.a_out (* if specified with -o *)
         val () = if Flag.isset Flags.flag_bytecode
                 then let val () = Flag.guard Flags.flag_verbose
@@ -574,28 +581,40 @@ let
                 else ()
 
         (* Output C code *)
+
         val () = Flag.guard Flags.flag_verbose
                  (fn () => say ("Writing library headers to " ^ path_concat (out_dir, hname) ^ " ...")) ()
         val () = SafeIO.withOpenOut
                  (path_concat (out_dir, hname))
                  (fn hstream =>
-                  TextIO.output (hstream, PrintC.pp_program library_headers []))
+                  let
+                    val headers = 
+                      PrintC.pp_program {gdecls=library_headers, 
+                                         include_files=[], 
+                                         sourcemap=false}
+                  in 
+                    TextIO.output (hstream, headers)
+                  end)
 
         val () = Flag.guard Flags.flag_verbose
                  (fn () => say ("Writing C code to " ^ path_concat (out_dir, cname) ^ " ...")) ()
         val () = SafeIO.withOpenOut 
                  (path_concat (out_dir, cname))
                  (fn cstream =>
-                  TextIO.output (cstream, PrintC.pp_program program
-                                         [cc0_lib,
-                                          !Flags.runtime ^ ".h",
-                                          hname]))
+                 let
+                  val c_program = 
+                    PrintC.pp_program {gdecls=program,
+                                       include_files=[cc0_lib, !Flags.runtime ^ ".h", hname],
+                                       sourcemap=true} 
+                 in 
+                  TextIO.output (cstream, c_program)
+                 end)
 
         val absBaseDir = abspath (!Flags.base_dir)
         val runtimeDir = OS.Path.concat (absBaseDir, "runtime")
 
         val cflags = 
-            " -std=c99"
+            " -std=c99 -g"
             (* Oct 26, 2011, this allows C0 int to be represented as C int *)
             (* because two's-complement arithmetic is specified *)
             ^ " -fwrapv"
@@ -682,14 +701,26 @@ let
 
         val () = Flag.guard Flags.flag_verbose (fn () => say ("% " ^ gcc_command)) ()
         val status = OS.Process.system gcc_command
-        val () = Flag.guard Flags.flag_verbose
-                (fn () => say (if OS.Process.isSuccess status then "succeeded" else "failed")) ()
 
         val () = if Flag.isset Flags.flag_save_files then ()
                  else ( Flag.guard Flags.flag_verbose (fn () => say ("Deleting " ^ cname)) ()
                       ; OS.FileSys.remove (path_concat (out_dir, cname))
                       ; Flag.guard Flags.flag_verbose (fn () => say ("Deleting " ^ hname)) ()
                       ; OS.FileSys.remove (path_concat (out_dir, hname)) )
+        
+        val () = Flag.guard Flags.flag_verbose
+                (fn () => say (if OS.Process.isSuccess status then "succeeded" else "failed")) ()
+        val () = 
+          if OS.Process.isSuccess status then 
+            verbose_say "C compilation succeeded" ()
+          else (
+            sayError "C compilation failed!";
+            (* Use a different error code to indicate that
+             * GCC failed, so we can distinguish 
+             * an invalid C0 program from a GCC or exec error
+             * inside the testing harness *)
+            Posix.Process.exit (Word8.fromInt 2)
+          )
 
         val status =
             if Flag.isset Flags.flag_exec

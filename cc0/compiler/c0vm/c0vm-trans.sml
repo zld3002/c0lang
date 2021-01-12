@@ -26,12 +26,22 @@ struct
     | sizeof (A.Bool) = 1
     | sizeof (A.String) = 4 (* address of string *)
     | sizeof (A.Char) = 1
-    | sizeof (A.Pointer (A.FunTypeName _)) = 4 (* representing a function as an integer *)
-    | sizeof (A.Pointer (A.FunType _)) = 4
+    | sizeof (A.Pointer (A.FunTypeName _)) = (
+        ErrorMsg.error NONE "Function pointers not supported on 32-bit architecture";
+        raise ErrorMsg.Error
+      )
+    | sizeof (A.Pointer (A.FunType _)) = (
+        ErrorMsg.error NONE "Function pointers not supported on 32-bit architecture";
+        raise ErrorMsg.Error
+      )
+    | sizeof (A.Pointer A.Void) = (
+        ErrorMsg.error NONE "Generic pointers not supported on 32-bit architecture";
+        raise ErrorMsg.Error
+      )
     | sizeof (A.Pointer _) = 4
     | sizeof (A.Array _) = 4
-    | sizeof (A.FunTypeName _) = 4 
-    | sizeof (A.FunType _) = 4 (* representing a function as an integer *)
+    | sizeof (A.FunTypeName _) = raise Fail "cc0 bug: Taking size of unsized type FunTypeName"
+    | sizeof (A.FunType _) = raise Fail "cc0 bug: Taking size of unsized type FunType"
 
   (* align tp = alignment requirement, tp != struct s, typename *)
   fun align (A.Int) = 4
@@ -52,20 +62,16 @@ struct
     | sizeof (A.Bool) = 1
     | sizeof (A.String) = 8 (* address of string *)
     | sizeof (A.Char) = 1
-    | sizeof (A.Pointer(A.FunTypeName _)) = 4 (* representing a fun ptr as an integer *)
-    | sizeof (A.Pointer(A.FunType _)) = 4
     | sizeof (A.Pointer(t)) = 8
     | sizeof (A.Array(t)) = 8
-    | sizeof (A.FunTypeName _) = 4 
-    | sizeof (A.FunType _) = 4 
+    | sizeof (A.FunTypeName _) = raise Fail "cc0 bug: Taking size of unsized type FunTypeName"
+    | sizeof (A.FunType _) = raise Fail "cc0 bug: Taking size of unsized type FunType"
 
   (* align tp = alignment requirement, tp != struct s, typename *)
   fun align (A.Int) = 4
     | align (A.Bool) = 1
     | align (A.String) = 8 (* this was 4, shouldn't it be 8? *)
     | align (A.Char) = 1
-    | align (A.Pointer(A.FunTypeName _)) = 4
-    | align (A.Pointer(A.FunType _)) = 4
     | align (A.Pointer(t)) = 8
     | align (A.Array(t)) = 8
     | align (A.FunTypeName _) = 4 
@@ -385,6 +391,21 @@ struct
                     else i
          | _ => lookup vlist (i+1) x
 
+  datatype function_index = 
+      StaticFunctionIndex of int 
+    | NativeFunctionIndex of int 
+  
+  (* find_function_index : Symbol.t -> Mark.t -> function_index
+    * Raises exception if the index would be out of bounds *)
+  fun find_function_index g ext: function_index = 
+    case Funtab.lookup g of 
+      SOME c => (if c >= maxint16
+                            then ( ErrorMsg.error NONE ("static function index too big") ;
+                                    raise ErrorMsg.Error )
+                            else ();
+                  StaticFunctionIndex(c))
+    | NONE => NativeFunctionIndex(native_index(g, ext))
+
   fun trans_exp env vlist (A.Var(x)) ext =
       let val vindex = lookup vlist 0 x
       in
@@ -501,22 +522,15 @@ struct
           @ [V.Inst(load_inst, A.Print.pp_exp e, ext)]
       end 
     | trans_exp env vlist (e as A.FunCall(g, es)) ext =
-      (case Funtab.lookup(g)
-        of SOME(c) => let val _ = if c >= maxint16
-                                  then ( ErrorMsg.error NONE ("static function index too big") ;
-                                         raise ErrorMsg.Error )
-                                  else ()
-                      in trans_exps env vlist es ext
-                         @ [V.Inst(V.invokestatic(c),
-                            A.Print.pp_exp(e), ext)]
-                      end
-         | NONE => (* should be native (library) function *)
-           (let
-                val c = native_index(g, ext)
-            in
-                trans_exps env vlist es ext
-                @ [V.Inst(V.invokenative(c), A.Print.pp_exp(e), ext)]
-            end))
+        let val instruction = 
+              case find_function_index g ext of 
+                StaticFunctionIndex(c) => V.invokestatic(c)
+              | NativeFunctionIndex(c) => V.invokenative(c)
+            val params = trans_exps env vlist es ext 
+        in 
+          params @ [V.Inst((instruction), A.Print.pp_exp(e), ext)]
+        end 
+
       (* Function pointers always involve dereferencing
        * something, but we want to get rid of that
        * since we don't store function pointers as
@@ -536,24 +550,15 @@ struct
           @ [V.Inst (V.invokedynamic, A.Print.pp_exp e, ext)]
         end 
 
-    (* To fit everything into two bytes, we use the
-     * most significant bit to indicate whether 
-     * the function is native or not *)
     | trans_exp env vlist (e as A.AddrOf f) ext = (
         let
-          val (is_native, index) = case Funtab.lookup f of 
-            SOME index => (false, index)
-          | NONE => (true, native_index (f, ext)) 
-
-          val index = 
-            if is_native 
-              then
-                Word32.orb (Word32.fromInt index, Word32.<< (0w1, 0w31)) 
-              else 
-                Word32.fromInt index 
+          val instruction = 
+            case find_function_index f ext of 
+              StaticFunctionIndex(c) => V.addrof_static(c)
+            | NativeFunctionIndex(c) => V.addrof_native(c)
         in
-          trans_exp env vlist (A.IntConst index) ext 
-        end 
+          [V.Inst(instruction, A.Print.pp_exp(e), ext)]
+        end
     )
     | trans_exp env vlist (e as A.Alloc(t)) ext =
       let val size = sizeof(t)
@@ -745,7 +750,7 @@ struct
         trans_exp env vlist e1 ext
         @ trans_exp env vlist e2 ext
         @ [V.Inst(V.assert, 
-                  "assert" ^ A.Print.pp_exp(e1) 
+                  "assert " ^ A.Print.pp_exp(e1) 
                   ^ " [failure message on stack]", (* ^ A.Print.pp_exp(e2) *)
                   ext)]
       end

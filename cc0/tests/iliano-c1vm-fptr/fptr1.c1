@@ -1,0 +1,11 @@
+//test return 5
+typedef int void2int_fn();
+
+int five() {
+  return 5;
+}
+
+int main() {
+  void2int_fn* f = &five;
+  return (*f)();
+}

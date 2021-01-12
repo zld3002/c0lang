@@ -1,0 +1,112 @@
+//test lib => return 0
+#use <conio>
+
+// return -1 if x <  y
+//         0 if x == y
+//         1 if x >  y
+typedef int compare_fn(void * x, void * y)
+/*@ensures -1 <= \result && \result <= 1; @*/ ;
+
+bool is_sorted(void*[] A, int lo, int hi, compare_fn* cmp)
+//@requires 0 <= lo && lo <= hi && hi <= \length(A);
+//@requires cmp != NULL;
+{
+  if (hi - lo <= 1) return true;
+  return (*cmp)(A[lo], A[lo+1]) != 1
+      && is_sorted(A, lo+1, hi, cmp);
+}
+
+int find_min(void*[] A, int lo, int hi, compare_fn* cmp)
+//@requires 0 <= lo && lo < hi && hi <= \length(A);
+//@requires cmp != NULL;
+//@ensures lo <= \result && \result < hi;
+{
+  int mini = lo;
+  for (int i = lo+1; i < hi; i++)
+  //@loop_invariant lo < i && i <= hi;
+  //@loop_invariant lo <= mini && mini < hi;
+  {
+    if ((*cmp)(A[i], A[mini]) == -1)
+      mini = i;
+  }
+  return mini;
+}
+
+void swap(void*[] A, int i, int j)
+//@requires 0 <= i && i < \length(A);
+//@requires 0 <= j && j < \length(A);
+{
+  void* tmp = A[i];
+  A[i] = A[j];
+  A[j] = tmp;
+}
+
+
+void selsort_generic(void*[] A, int lo, int hi, compare_fn* cmp)
+//@requires 0 <= lo && lo <= hi && hi <= \length(A);
+//@requires cmp != NULL;
+//@ensures is_sorted(A, lo, hi, cmp);
+{
+  for (int i = lo; i < hi; i++)
+    //@loop_invariant lo <= i && i <= hi;
+    //@loop_invariant is_sorted(A, lo, i, cmp);
+    {
+      int m = find_min(A, i, hi, cmp);
+      swap(A, i, m);
+    }
+}
+
+
+int compare_ints(void* x, void* y)
+//@requires x != NULL && \hastag(int*, x);
+//@requires y != NULL && \hastag(int*, y);
+{
+  if (*(int*)x < *(int*)y) return -1;
+  if (*(int*)x > *(int*)y) return 1;
+  return 0;
+}
+
+void print_intarray(int[] A, int n)
+//@requires \length(A) == n;
+{
+  printf("[");
+  for (int i = 0; i < n; i++) {
+    printf("%d", A[i]);
+    if (i < n-1) printf(", ");
+  }
+  printf("]");
+}
+
+void sort_ints(int[] A, int n)
+//@requires \length(A) == n;
+{
+  void*[] B = alloc_array(void*, n);
+  for (int i = 0; i < n; i++) {
+    int* p = alloc(int);
+    *p = A[i];
+    B[i] = (void*)p;
+  }
+  selsort_generic(B, 0, n, &compare_ints);
+
+  for (int i = 0; i < n; i++) {
+    A[i] = *(int*)B[i];
+  }
+}
+
+int main() {
+  int n = 13;
+  int m = 11;
+  int[] A = alloc_array(int, n);
+  for (int i = 0; i < n; i++)
+    A[i] = (15122 + i*i*i) % m;
+
+  print_intarray(A, n);
+  printf("\n");
+
+  sort_ints(A, n);
+
+  print_intarray(A, n);
+  printf("\n");
+
+  return 0;
+}

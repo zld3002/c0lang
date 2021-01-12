@@ -14,7 +14,6 @@ Contents:
  - runtime/     runtime libraries (C0RT, etc.)
 
 To install, copy the four folders somewhere and add bin/ to $PATH.
-Please keep the relative folder intact.
-
-
+Please keep the relative folders structure intact (e.g. bin/ include/ lib/ runtime/
+should all be next to each other) 
 

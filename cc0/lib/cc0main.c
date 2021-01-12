@@ -15,6 +15,10 @@ int _c0_main();
 int c0_argc;
 char **c0_argv;
 
+// Defined externally by CC0
+long map_length;
+const char* source_map[0];
+
 FILE *really_fopen(const char *filename, const char *mode,
                    char *error)
 {
@@ -74,7 +78,7 @@ int main(int argc, char **argv) {
   char *filename = getenv("C0_RESULT_FILE");
 
   /* initialize the runtime -- possibly initializing the GC */
-  c0_runtime_init();
+  c0_runtime_init(argv[0], source_map, map_length);
 
   if (filename == NULL) {
     int x = _c0_main();
@@ -83,7 +87,6 @@ int main(int argc, char **argv) {
     FILE *f = really_fopen(filename, "w", "Couldn't open $C0_RESULT_FILE");
     really_fwrite("\0", 1, 1, f, "Couldn't write to $C0_RESULT_FILE");
     int x = _c0_main();
-    /* if (getenv("C0_PRINT_RESULT") != NULL) */  printf("%d\n", x);
     really_fwrite(&x, sizeof(int), 1, f, "Couldn't write to $C0_RESULT_FILE");
     really_fclose(f, "Couldn't close $C0_RESULT_FILE");
   }
