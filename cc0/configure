@@ -3,6 +3,9 @@
 # simple config script for system-dependent build options
 #
 
+# Download any dependencies such as libbacktrace
+git submodule update --init
+
 # configure qmake to build a Makefile on a mac instead of an Xcode project
 case `uname -s` in
     Darwin)
