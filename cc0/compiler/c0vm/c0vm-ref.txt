@@ -17,7 +17,7 @@ Stack operands:
 a : * = address ("reference")
 a : [*] = tagged pointer
 x, i, n : w32 = 32 bit word representing an int, bool, or char ("primitive")
-v = arbitrary value (v:* or v:w32)
+v = arbitrary value (v:*, v:[*], or v:w32)
 
 
 Stack operations
