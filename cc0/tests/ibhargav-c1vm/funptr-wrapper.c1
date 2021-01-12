@@ -1,0 +1,11 @@
+//test lib => -d abort
+
+#use <parse>
+
+typedef int* parse_fn(string s, int base);
+
+int main() {
+    parse_fn* f = &parse_int;
+    // base out of range, fails contract
+    return *(*f)("asdasd", 999);
+}

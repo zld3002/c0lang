@@ -1,0 +1,10 @@
+//test lib => return 5
+#use <string>
+
+typedef int string2int_fn(string s);
+
+
+int main() {
+  string2int_fn* f = &string_length;
+  return (*f)("hello");
+}

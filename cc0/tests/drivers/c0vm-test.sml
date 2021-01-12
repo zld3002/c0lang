@@ -162,7 +162,7 @@ structure Test = Testing (struct
             {base, ext = SOME "c0"} =>
                 OS.Path.joinBaseExt {base = base, ext = SOME "bc0"}
           | {base, ext = SOME "c1"} =>
-                OS.Path.joinBaseExt {base = base, ext = SOME "bc0"}
+                OS.Path.joinBaseExt {base = base, ext = SOME "bc1"}
           | _ => bc0_file_aux fs
   fun bc0_file fs = bc0_file_aux (List.rev fs)
 

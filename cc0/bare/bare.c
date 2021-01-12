@@ -5,7 +5,8 @@
 #include <limits.h>
 #include <c0runtime.h>
 
-void c0_runtime_init() {
+void c0_runtime_init(const char* filename, const char** map, long len) {
+  (void)filename; (void)map; (void)len;
   // nothing to do for the bare runtime
 }
 
@@ -28,10 +29,6 @@ void c0_error(const char *msg) {
 void c0_abort(const char *reason) {
   raise_msg(SIGABRT, reason);
 }
-
-// Bare runtime doesn't need backtraces
-#define c0_push_callstack(f) ((void)sizeof(f)) 
-#define c0_pop_callstack() ((void)0)
 
 /* Arithmetic */
 

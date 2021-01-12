@@ -15,7 +15,7 @@ TARGET = $(call dllname,$(LIBNAME))
 endif
 
 # These libs are handled specially by this file
-NATIVELIBS = gc ncurses
+NATIVELIBS = gc ncurses backtrace
 C0LIBS = $(filter-out $(NATIVELIBS),$(REQUIRES))
 LIBS = -L$(abspath $(DEPTH)/lib) $(patsubst %,$(DEPTH)/lib/$(call dllname,%),$(C0LIBS))
 LDFLAGS = 
@@ -61,6 +61,13 @@ endif
 ifeq ($(findstring ncurses,$(REQUIRES)),ncurses)
 LIBS += -lncurses
 endif
+
+ifeq ($(findstring backtrace,$(REQUIRES)),backtrace)
+LIBS += -lbacktrace
+endif
+
+# Optimization flags
+CFLAGS += -O3
 
 all: $(TARGET)
 

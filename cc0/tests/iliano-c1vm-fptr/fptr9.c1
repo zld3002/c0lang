@@ -1,0 +1,90 @@
+//test lib => return -1
+#use <conio>
+
+// return -1 if x <  y
+//         0 if x == y
+//         1 if x >  y
+typedef int compare_fn(void * x, void * y)
+/*@ensures -1 <= \result && \result <= 1; @*/ ;
+
+typedef void print_fn(void* x)
+  /*@requires x != NULL; @*/ ;
+
+void print_array(void*[] A, int n, print_fn* f)
+//@requires \length(A) == n;
+{
+  printf("[");
+  for (int i = 0; i < n; i++) {
+    (*f)(A[i]);
+    if (i < n-1) printf(", ");
+  }
+  printf("]");
+}
+
+bool is_sorted(void*[] A, int lo, int hi, compare_fn* cmp)
+//@requires 0 <= lo && lo <= hi && hi <= \length(A);
+//@requires cmp != NULL;
+{
+  if (hi - lo <= 1) return true;
+  return (*cmp)(A[lo], A[lo+1]) != 1
+      && is_sorted(A, lo+1, hi, cmp);
+}
+
+int binsearch_generic(void * x, void*[] A, int n, compare_fn* cmp)
+//@requires 0 <= n && n <= \length(A);
+//@requires cmp != NULL;
+//@requires is_sorted(A, 0, n, cmp);
+{
+  int lo = 0;
+  int hi = n;
+  while (lo < hi)
+    //@loop_invariant 0 <= lo && lo <= hi && hi <= n;
+    //@loop_invariant lo == 0 || (*cmp)(A[lo - 1], x) == -1;
+    //@loop_invariant hi == n || (*cmp)(A[hi], x) == 1;
+    {
+      int mid = lo + (hi - lo)/2;
+      int c = (*cmp)(A[mid], x);
+      if (c == 0) return mid;
+      if (c < 0) lo = mid + 1;
+      else hi = mid;
+    }
+  return -1;
+}
+
+
+int compare_ints(void* x, void* y)
+//@requires x != NULL && \hastag(int*, x);
+//@requires y != NULL && \hastag(int*, y);
+{
+  if (*(int*)x < *(int*)y) return -1;
+  if (*(int*)x > *(int*)y) return 1;
+  return 0;
+}
+
+void* mk_int(int x)
+//@ensures \result != NULL;
+{
+  int* p = alloc(int);
+  *p = x;
+  return (void*)p;
+}
+
+void print_int(void* x)
+//@requires x != NULL && \hastag(int*, x);
+{
+  printf("%d", *(int*)x);
+}
+
+int main() {
+  int n = 13;
+  void*[] A = alloc_array(void*, n);
+  for (int i = 0; i < n; i++)
+    A[i] = mk_int(i*i*i);
+
+  print_array(A, n, &print_int);
+  printf("\n");
+
+  void* x = mk_int(12);
+  int i = binsearch_generic(x, A, n, &compare_ints);
+  return i;
+}

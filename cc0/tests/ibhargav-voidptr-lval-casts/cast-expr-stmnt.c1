@@ -1,0 +1,9 @@
+//test segfault
+
+int main() {
+    void* p = (void*)alloc(int*);
+
+    (string*)p;
+
+    return 0;
+}

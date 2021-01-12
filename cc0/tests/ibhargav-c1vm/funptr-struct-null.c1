@@ -1,0 +1,12 @@
+//test segfault
+
+typedef int i2i_fn(int x);
+
+struct Foo {
+    i2i_fn* f;
+};
+
+int main() {
+    struct Foo* foo = alloc(struct Foo);
+    return (*(foo->f))(123);
+}

@@ -1,0 +1,10 @@
+lib => return 1             ~ funptr-cmp-null.c1
+segfault                    ~ funptr-deref-null.c1
+lib => return 5             ~ funptr-struct-invoke.c1 
+segfault                    ~ funptr-struct-null.c1
+lib => abort                ~ -d funptr-wrapper.c1
+
+return 1                    ~ voidptr-compare.c1
+return 0                    ~ voidptr-equal.c1
+abort                       ~ -d voidptr-hastag.c1
+return 0                    ~ -d voidptr-null-tag.c1

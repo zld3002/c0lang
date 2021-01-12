@@ -1,0 +1,10 @@
+//test lib => return 1
+
+#use <conio>
+
+typedef void printint_fn(int i);
+
+int main() {
+    printint_fn* p = &printint;
+    return p == NULL ? -1 : 1;
+}

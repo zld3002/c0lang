@@ -1,0 +1,13 @@
+//test return 7
+typedef int string2int_fn(string s);
+
+int seven(string s) {
+  return 7;
+}
+
+int main() {
+  string2int_fn* f = &seven;
+  if (f != NULL)
+    return (*f)("world");
+  return -1;
+}

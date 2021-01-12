@@ -1,0 +1,13 @@
+//test return 456
+
+int main() {
+    int* p = alloc(int);
+    *p = 123;
+
+    void* p2 = (void*)p;
+
+    *(int*)p2 = 456;
+
+    int* p3 = (int*)p2;
+    return *p3;
+}
