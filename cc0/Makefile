@@ -359,7 +359,7 @@ install-libs:
 VERSION=$(shell git rev-list --count master)
 
 PACKAGE_FILES = bin/cc0 bin/cc0.bin bin/coin bin/coin.bin bin/codex bin/codex.bin 
-PACKAGE_FILES += lib/*.c0 lib/*.h0 lib/*$(DLLSUFFIX) lib/*.a 
+PACKAGE_FILES += lib/*.c0 lib/*.h0 lib/*$(DLLSUFFIX) lib/*.c
 PACKAGE_FILES += runtime/ include
 # Packages all the necessary files for redistribution into a tarball
 package:
