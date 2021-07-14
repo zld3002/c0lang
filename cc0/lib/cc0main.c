@@ -16,8 +16,8 @@ int c0_argc;
 char **c0_argv;
 
 // Defined externally by CC0
-long map_length;
-const char* source_map[0];
+extern long map_length;
+extern const char* source_map[0];
 
 FILE *really_fopen(const char *filename, const char *mode,
                    char *error)

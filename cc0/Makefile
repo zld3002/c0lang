@@ -45,8 +45,11 @@ runtime:
 # If you change this, you will have to change lib.mk
 GCDIR = ../externals/gc
 
-$(GCDIR)/Makefile:
-	(cd $(GCDIR); ./configure --with-pic)
+$(GCDIR)/configure:
+	(cd $(GCDIR); ./autogen.sh)
+
+$(GCDIR)/Makefile: $(GCDIR)/configure
+	(cd $(GCDIR); ./configure --disable-threads --with-pic --enable-static --disable-shared)
 
 .PHONY: gc
 gc: lib $(GCDIR)/Makefile
