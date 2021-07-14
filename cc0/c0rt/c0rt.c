@@ -16,7 +16,7 @@
 #include <gc.h>
 #include <c0runtime.h>
 
-#include "backtrace.h"
+#include <backtrace.h>
 
 // Terminal color codes
 #define ANSI_BOLD "\x1b[1m"
@@ -75,16 +75,32 @@ static void parse_env_with_default(const char* name, long* out) {
   *out = result;
 }
 
+/// Resets the signal handler for 'signal' to the default action
+static void reset_signal_handler(int signal) {
+  struct sigaction default_action = {
+    .sa_flags = 0,
+    .sa_handler = SIG_DFL
+  };
+
+  assert(sigemptyset(&default_action.sa_mask) >= 0);
+  assert(sigaction(signal, &default_action, NULL) >= 0);
+}
+
 static noreturn void raise_msg(int signal, const char* msg);
 
 #define SIG_STACK_SIZE (4 * SIGSTKSZ)
 char signal_stack[SIG_STACK_SIZE] = { 0 };
 
-void segv_handler(int signal) {
+/// Aborts with SIGSEGV after printing the 
+/// provided message (if non-NULL)
+noreturn void c0_abort_mem(const char* msg);
+
+static void segv_handler(int _signal) {
   static const char* msg = "c0rt: recursion limit exceeded\n";
 
   // Use write() instead of printf() since printf() is not
-  // re-entrant
+  // re-entrant because it allocates memory with malloc().
+  // dprintf() may or may not be signal safe so we avoid it here as well
   write(STDERR_FILENO, ansi_bold_red, strlen(ansi_bold_red));
   write(STDERR_FILENO, msg, strlen(msg));
   write(STDERR_FILENO, ansi_reset, strlen(ansi_reset));
@@ -99,7 +115,37 @@ void segv_handler(int signal) {
   // inside a signal handler since the backtrace library
   // calls malloc() but we already printed a message
   // so it should be fine
-  raise_msg(SIGSEGV, NULL);
+  c0_abort_mem(NULL);
+}
+
+static void sigint_handler(int _signal) {
+  static const char* msg = "c0rt: Interrupted\n";
+  write(STDERR_FILENO, ansi_bold_red, strlen(ansi_bold_red));
+  write(STDERR_FILENO, msg, strlen(msg));
+  write(STDERR_FILENO, ansi_reset, strlen(ansi_reset));
+
+  reset_signal_handler(SIGINT);
+  raise_msg(SIGINT, NULL);
+}
+
+/// Installs the given signal handler
+/// The signal handler will be run on a separate stack
+/// (same stack for all signals), and will also 
+/// allow the same signal to be re-raised
+static void install_signal_handler(int signal, sighandler_t handler) {
+  struct sigaction action = {
+    // SA_ONSTACK - use alternate stack for signal handling
+    // SA_RESTART - restart syscalls 
+    // SA_NODEFER - don't block the signal while we are handling it.
+    //              this enables use to re-raise it
+    .sa_flags = SA_ONSTACK | SA_RESTART | SA_NODEFER,
+    .sa_handler = handler,
+  };
+
+  // Make sure the signal is not blocked so we can re-raise it
+  assert(sigprocmask(SIG_SETMASK, NULL, &action.sa_mask) >= 0);
+  assert(sigdelset(&action.sa_mask, signal) >= 0);
+  assert(sigaction(signal, &action, NULL) >= 0);
 }
 
 void c0_runtime_init(const char* filename, const char** source_map, long map_length) {
@@ -133,20 +179,8 @@ void c0_runtime_init(const char* filename, const char** source_map, long map_len
 
   assert(sigaltstack(&signal_stack_desc, NULL) >= 0);
 
-  struct sigaction segv_action = {
-    // SA_ONSTACK - use alternate stack for signal handling
-    // SA_RESTART - restart syscalls 
-    // SA_NODEFER - don't block SIGSEGV while we are handling it.
-    //              this enables use to re-raise it
-    .sa_flags = SA_ONSTACK | SA_RESTART | SA_NODEFER,
-    .sa_handler = segv_handler,
-  };
-  // When handling a segfault, block everything but SIGSEGV,
-  // so we can re-raise SIGSEGV
-  assert(sigfillset(&segv_action.sa_mask) >= 0);
-  assert(sigdelset(&segv_action.sa_mask, SIGSEGV) >= 0);
-
-  assert(sigaction(SIGSEGV, &segv_action, NULL) >= 0);
+  install_signal_handler(SIGSEGV, segv_handler);
+  install_signal_handler(SIGINT, sigint_handler);
 }
 
 void c0_runtime_cleanup() {
@@ -196,12 +230,12 @@ static const char* demangle(const char* funcname) {
  * 
  * @returns -1 to stop backtrace, 0 to continue
  */
-int backtrace_callback(
+static int backtrace_callback(
   long* backtrace_count, uintptr_t pc, 
   const char* filename, int lineno, const char* function) 
 {
   if (*backtrace_count > c0_backtrace_print_limit) {
-    print_err("stoppping after %ld entries", c0_backtrace_print_limit);
+    print_err("stopping after %ld entries", c0_backtrace_print_limit);
     print_err("adjust C0_BACKTRACE_LIMIT to increase this limit");
     return -1;
   }
@@ -226,21 +260,21 @@ int backtrace_callback(
     c0_location = "<unknown location>";
   }
 
-  printf(" at %s (%s)\n", demangle(function), c0_location);
+  printf(" at %s%s%s (%s)\n", ansi_bold_blue, demangle(function), ansi_reset, c0_location);
   
   (*backtrace_count)++;
 
   return 0;
 }
 
-void backtrace_error_handler(void* data, const char* msg, int errnum) {
+static void backtrace_error_handler(void* data, const char* msg, int errnum) {
   (void)data;
   (void)errnum;
 
-  print_err("couldn't print backtrace: %s", msg);
+  print_err("couldn't print backtrace (error %d): %s", errnum, msg);
 }
 
-void c0_print_callstack() {
+static void c0_print_callstack() {
   if (!c0_enable_fancy_output) return;
 
   struct backtrace_state* state = 
@@ -257,26 +291,14 @@ void c0_print_callstack() {
   backtrace_full(
     state,  
     0, // Number of stack frames to skip
-    (backtrace_full_callback)backtrace_callback, backtrace_error_handler, 
+    (backtrace_full_callback)backtrace_callback, 
+    backtrace_error_handler, 
     &num_printed); // first parameter to callbacks
-}
-
-noreturn void c0_abort_mem(const char* msg);
-
-static void reset_sigsegv_handler(void) {
-  struct sigaction default_action = {
-    .sa_flags = 0,
-    .sa_handler = SIG_DFL
-  };
-
-  assert(sigemptyset(&default_action.sa_mask) >= 0);
-  assert(sigaction(SIGSEGV, &default_action, NULL) >= 0);
 }
 
 static noreturn void raise_msg(int signal, const char* msg) {
   fflush(stdout);
 
-  reset_sigsegv_handler();
   if (msg != NULL) {
     print_err("%s", msg);
   }
@@ -353,6 +375,7 @@ struct c0_array_header {
 };
 
 noreturn void c0_abort_mem(const char *reason) {
+  reset_signal_handler(SIGSEGV);  
   raise_msg(SIGSEGV, reason);
 }
 

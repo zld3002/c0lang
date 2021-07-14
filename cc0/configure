@@ -14,9 +14,9 @@ case `uname -s` in
       EXTERNALS=libpng
       ;;
     CYGWIN*)
-      PLATFORM=cygwin
-      DLLSUFFIX=.dll
-      EXTERNALS=gc
+      echo "Cygwin is no longer supported! Please use WSL instead"
+      echo "https://docs.microsoft.com/en-us/windows/wsl/install-win10"
+      exit 1
       ;;
     *)
       PLATFORM=linux
@@ -25,11 +25,11 @@ case `uname -s` in
       ;;
 esac
 
-MACHINE=x86
+MACHINE=amd64
 case `uname -m` in
 i*86) MACHINE=x86; ;;
 x86_64) MACHINE=amd64; ;;
-*) echo "Unknown machine type! Assuming x86..." ;;
+*) echo "Unknown machine type! Assuming amd64..." ;;
 esac
 
 DIR=`dirname $0`
@@ -45,8 +45,4 @@ PLATFORM = $PLATFORM
 DLLSUFFIX = $DLLSUFFIX
 MACHINE = $MACHINE
 EXTERNALS = $EXTERNALS
-
-ifeq (\$(PLATFORM),cygwin)
-STATIC=1
-endif
 EOF

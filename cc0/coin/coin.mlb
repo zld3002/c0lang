@@ -5,6 +5,7 @@ coin-core.mlb
 (* Front-end *)
 local
    $(SML_LIB)/basis/mlton.mlb
+   readline.sml
    server.sml
    coin.sml
 

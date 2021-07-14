@@ -197,9 +197,34 @@ fun restart () =
  ; ErrorMsg.reset ())
 
 fun prompt () = 
-   if !remember_lex_state = C0Lex.normal andalso isEOL ()
-   then (restart (); print "--> ")
-   else (print "... ")
+   let 
+      val prompt = 
+         if !remember_lex_state = C0Lex.normal andalso isEOL ()
+            then (restart (); "--> ")
+            else ("... ")
+
+      (* For function completions, insert the opening paren *)
+      fun symbol_to_func sym = Symbol.name sym ^ "("
+      val func_completions = List.map symbol_to_func (CodeTab.list ())
+
+      val var_completions = List.map Symbol.name (Symbol.keys (State.local_tys Exec.state))
+      val typedef_completions = List.map Symbol.name (Typetab.list ())
+
+      (* Special case for printf and format, which do not appear
+       * in any symbol tables *)
+      val printf = 
+         if Option.isSome (Libtab.lookup (Symbol.symbol "conio"))
+            then ["printf("]
+            else []
+
+      val format = 
+         if Option.isSome (Libtab.lookup (Symbol.symbol "string"))
+            then ["format("]
+            else []
+   in 
+      (prompt, func_completions @ printf @ format @ 
+               var_completions @ typedef_completions)
+   end 
 
 fun parse_available_tokens (input, pos, lex_state) =
 let

@@ -1,7 +1,7 @@
 AR = ar
 CC = gcc
 CXX = g++
-LD = g++
+LD = gcc
 RM = rm
 DEPTH ?= ../..
 
@@ -54,7 +54,7 @@ endif
 OBJECTS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SOURCES) $(FFISUPPORT)))
 
 ifeq ($(findstring gc,$(REQUIRES)),gc)
-CFLAGS += -I$(DEPTH)/../externals/gc/include
+CFLAGS += -I$(DEPTH)/../externals/bdwgc/include
 LIBS += -lgc -lpthread
 endif
 
