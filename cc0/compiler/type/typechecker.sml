@@ -764,8 +764,6 @@ struct
       ; case Symtab.lookup g
          of NONE => 
               let
-                (* TODO: extract this logic and re-use it for 
-                 * variable names and typedef names *)
                 val undeclared = Symbol.name g 
               in 
                 ErrorMsg.error ext ("undeclared function '" ^ undeclared ^ "'"); 
@@ -1624,11 +1622,6 @@ struct
    *)
   fun check_all_defined () =
       let val missing = UndefUsed.list ()
-      (* 
-          fun isNotLibrary (SOME(A.Function(_, _, _, _, _, false, _))) = true
-            | isNotLibrary _ = false
-          val missing = List.filter (isNotLibrary o Symtab.lookup) undefineds
-       *)
       in
           case missing
            of (_ :: _) => ( ErrorMsg.error NONE ("undefined functions: " ^ symbol_names missing) ;
