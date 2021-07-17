@@ -5,7 +5,11 @@ CPP     = cpp
 DEPTH = .
 SML     = sml
 MLTON_VERB = 0
-MLTON_BASIC = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -verbose $(MLTON_VERB) -output
+MLTON_FLAGS = -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error"
+# Enable and remove the 'handle _ => ' from go.sml and top.sml
+# to record backtraces (albeit very imprecise ones)
+#MLTON_FLAGS += -const 'Exn.keepHistory true'
+MLTON_BASIC = mlton $(MLTON_FLAGS) -verbose $(MLTON_VERB)  -output
 
 #Uncomment to use SMLNJ, which has significantly faster compile times than mlton
 # NJ=1
@@ -17,7 +21,14 @@ else
 MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -Llib -Lruntime -lfile -lconio -lstring -lparse -lcurses -limg -lbare -lpng -lz /usr/lib/libcurses.a" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output
 endif
 else
-MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -rdynamic" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output
+# Only this should be used, above seems deprecated
+MLTON_NATIVE := mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error"
+MLTON_NATIVE += -link-opt "-lpthread -ldl -rdynamic" -cc-opt "-Iinclude" -default-ann "allowFFI true"
+MLTON_NATIVE += -link-opt "../externals/readline/libreadline.a ../externals/readline/libhistory.a -ltinfo"
+MLTON_NATIVE += -cc-opt -Wall
+MLTON_NATIVE += -cc-opt -Wextra
+MLTON_NATIVE += -cc-opt -Werror
+MLTON_NATIVE += -output
 endif
 
 # $EXTERNALS is set by ./configure in config.mk
@@ -43,13 +54,17 @@ runtime:
 ### External libraries
 
 # If you change this, you will have to change lib.mk
-GCDIR = ../externals/gc
+GCDIR = ../externals/bdwgc
 
-$(GCDIR)/configure:
-	(cd $(GCDIR); ./autogen.sh)
+# We statically link the garbage collector into a dynamic library (libc0rt.so)
+# so it needs to be compiled with --with-pic and --enable-static.
+# --disable-threads means that the GC will not install signal handlers for
+# a bunch of signals, so we can use those signals in the test harness.
+# Note that Concurrent CC0 may need this feature of the garbage collector
+GC_CC0_CONFIG_FLAGS=--with-pic --enable-static --disable-threads
 
-$(GCDIR)/Makefile: $(GCDIR)/configure
-	(cd $(GCDIR); ./configure --disable-threads --with-pic --enable-static --disable-shared)
+$(GCDIR)/Makefile:
+	(cd $(GCDIR); ./autogen.sh; ./configure $(GC_CC0_CONFIG_FLAGS))
 
 .PHONY: gc
 gc: lib $(GCDIR)/Makefile
@@ -69,7 +84,6 @@ zlib: lib $(ZLIBDIR)/Makefile
 	$(MAKE) -C $(ZLIBDIR) install
 	$(COPY) $(ZLIBDIR)/installdir/lib/*.a lib
 	$(COPY) $(ZLIBDIR)/installdir/include/*.h include
-#	-$(COPY) -a $(ZLIBDIR)/installdir/lib/*.so* lib
 
 LIBPNGDIR = ../externals/libpng
 
@@ -84,7 +98,6 @@ libpng: zlib lib $(LIBPNGDIR)/Makefile
 	$(MAKE) -C $(LIBPNGDIR) install
 	$(COPY) $(LIBPNGDIR)/installdir/lib/*.a lib
 	$(COPY) $(LIBPNGDIR)/installdir/include/*.h include
-#	-$(COPY) -a $(LIBPNGDIR)/installdir/lib/*.so* lib
 
 # The backtrace library for C0RT
 LIBBACKTRACEDIR := ../externals/libbacktrace
@@ -97,6 +110,16 @@ libbacktrace: $(LIBBACKTRACEDIR)/Makefile
 	$(MAKE) -C $(LIBBACKTRACEDIR)
 	$(COPY) $(LIBBACKTRACEDIR)/.libs/libbacktrace.a lib/
 	$(COPY) $(LIBBACKTRACEDIR)/backtrace.h c0rt/
+
+READLINEDIR := ../externals/readline
+
+$(READLINEDIR)/Makefile:
+	cd $(READLINEDIR) && ./configure
+
+# For readline we won't copy it from externals/
+.PHONY: readline
+readline: $(READLINEDIR)/Makefile
+	$(MAKE) -C $(READLINEDIR)
 
 ### Runtimes
 
@@ -212,7 +235,12 @@ endif
 NATIVE_CYMBOL  = bare/bare.c bare/cstr.c cymbol/sizeof.c
 NATIVE_CALLING = cymbol/extern-lib.c cymbol/extern-call.c
 NATIVE_COIN    = $(NATIVE_CYMBOL) $(NATIVE_CALLING)
+
+# readline implementation
+NATIVE_COIN += coin/c0readline.c
+
 COIN_DEPS = $(CC0_DEPS) $(NATIVE_COIN) cymbol/cymbol*.cm cymbol/*.sml cymbol/*.mlb coin/coin*.cm coin/*.sml coin/*.sml
+COIN_DEPS += readline
 
 .PHONY: coin
 coin: bin/coin
@@ -285,6 +313,7 @@ reallyclean: clean
 	rm -f $(ZLIBDIR)/Makefile
 	-$(MAKE) -C $(LIBPNGDIR) distclean
 	-$(MAKE) -C $(LIBBACKTRACEDIR) distclean
+	-$(MAKE) -C $(READLINEDIR) distclean
 
 
 ### Testing harnesses
@@ -347,7 +376,7 @@ install: install-libs install-c0-mode
 	mkdir -p $(PREFIX)/bin $(PREFIX)/runtime $(PREFIX)/include
 	$(COPY) bin/* $(PREFIX)/bin
 	$(COPY) runtime/* $(PREFIX)/runtime
-	$(COPY) include/* $(PREFIX)/include
+	$(COPY) include/c0runtime.h include/cc0lib.h $(PREFIX)/include
 
 install-c0-mode:
 	mkdir -p $(PREFIX)/c0-mode
@@ -357,11 +386,11 @@ install-c0-mode:
 # without rolling out a new compiler
 install-libs:
 	mkdir -p $(PREFIX)/lib
-	$(COPY) lib/* $(PREFIX)/lib
+	$(COPY) lib/cc0main.c lib/*.c0 lib/*.h0 lib/*$(DLLSUFFIX) $(PREFIX)/lib
 
 VERSION=$(shell git rev-list --count master)
 
-PACKAGE_FILES = bin/cc0 bin/cc0.bin bin/coin bin/coin.bin bin/codex bin/codex.bin 
+PACKAGE_FILES = bin/cc0 bin/cc0.bin bin/coin bin/coin.bin bin/codex bin/codex.bin
 PACKAGE_FILES += lib/*.c0 lib/*.h0 lib/*$(DLLSUFFIX) lib/*.c
 PACKAGE_FILES += runtime/ include
 # Packages all the necessary files for redistribution into a tarball
