@@ -13,6 +13,7 @@ Group is
 	util/errormsg.sml
         util/word32.sml
         util/char.sml
+        util/string-similarity.sml
 
         ast/ast.sml
 

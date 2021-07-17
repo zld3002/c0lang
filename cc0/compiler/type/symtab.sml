@@ -10,7 +10,9 @@ sig
     val reset : unit -> unit
     val bind : Symbol.symbol * entry -> unit
     val lookup : Symbol.symbol -> entry option
+    
     val list : unit -> Symbol.symbol list
+    val elemsi : unit -> (Symbol.symbol * entry) list 
 end
 
 functor Symtab (type entrytp) :> SYMTAB where type entry = entrytp =
@@ -22,6 +24,7 @@ struct
    fun bind (id, x) = ( symtab := Symbol.bind (!symtab) (id, x) )
    fun lookup (id) = Symbol.look (!symtab) id
    fun list () = Symbol.keys (!symtab)
+   fun elemsi () = Symbol.elemsi (!symtab)
 end
 
 signature SYMSET =
