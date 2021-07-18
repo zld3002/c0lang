@@ -517,16 +517,16 @@ let
             case a_out_extOpt of 
                 NONE => () 
               | SOME ext => 
-                  case (is_source ext, readable a_out_file) of 
+                  case (is_source ext, readable (!Flags.a_out)) of 
                       (true, true) => (
                         sayError (
-                            "cannot produce a source file as output.\n" ^
+                            "cannot produce a source file as output. " ^
                             "This would overwrite '" ^ a_out_file ^ "'") ;
                         raise EXIT)
                     | (true, _) => 
                         sayWarning (
                           "output filename '" ^
-                          a_out_file ^ "' has a source file extension")
+                          (!Flags.a_out) ^ "' has a source file extension")
                     | _ => () 
           end 
 

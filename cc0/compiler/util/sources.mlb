@@ -10,6 +10,7 @@ local
    errormsg.sml
    word32.sml
    char.sml
+   string-similarity.sml
 in
    structure Color
    structure Mark
@@ -19,4 +20,5 @@ in
    structure SafeIO
    structure Word32Signed
    structure C0Char
+   structure StringSimilarity
 end
