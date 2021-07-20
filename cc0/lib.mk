@@ -63,6 +63,7 @@ LIBS += -lncurses
 endif
 
 ifeq ($(findstring backtrace,$(REQUIRES)),backtrace)
+CFLAGS += -I$(DEPTH)/../externals/libbacktrace/
 LIBS += -lbacktrace
 endif
 
