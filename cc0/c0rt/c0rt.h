@@ -2,6 +2,7 @@
 #define __C0RT_H__
 
 #define C0_HAVE_CONCRETE_RUNTIME
+#define C0_RUNTIME_IMPLEMENTS_LENGTH
 #include <c0runtime.h>
 
 // For slight speed gain, inline:
