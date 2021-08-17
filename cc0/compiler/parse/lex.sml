@@ -1,6 +1,7 @@
 (* C0 Compiler
  * Lexing 
  * Rob Simmons
+ * Cooper Pierce
  *
  * Nearly-stateless lexer. In order to smoothly integrate with the interactive 
  * top-level, this lexer takes a persistent stream and returns a token, a new 
