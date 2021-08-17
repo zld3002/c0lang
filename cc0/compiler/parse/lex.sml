@@ -105,15 +105,25 @@ fun lex_string (pos, charstream, string) : int * char M.stream * string option =
    case M.force charstream of
       M.Nil => (pos, charstream, NONE) 
       before error (pos, pos) "string constant not terminated"
-    | M.Cons (#"\"", cs) => 
+    | M.Cons (#"\"", cs) =>
       let
-         fun collect_rev (chars, str) = 
-           case chars of 
+        fun go cs p =
+          case M.force cs of
+            M.Cons (#"\"", cs') => SOME (lex_string (p + 1, cs', string))
+          | M.Cons (#"\n", cs') => (PS.newline p; go cs' (p + 1))
+          | M.Cons (c, cs') => if Char.isSpace c then go cs' (p + 1) else NONE
+          | _ => NONE
+         fun collect_rev (chars, str) =
+           case chars of
               [] => SOME (String.implode str)
             | (NONE :: _) => NONE
             | (SOME c :: cs) => collect_rev (cs, c :: str)
-      in (pos+1, cs, collect_rev (string, [])) end
-    | M.Cons (#"\n", cs) => 
+      in
+        case go cs pos of
+          SOME (p, cs, a) => (p, cs, a)
+        | NONE => (pos+1, cs, collect_rev (string, []))
+      end
+    | M.Cons (#"\n", cs) =>
       (PS.newline pos
        ; error (pos, pos+1) "illegal newline in string; use '\\n'"
        ; lex_string (pos+1, cs, NONE :: string))
