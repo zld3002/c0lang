@@ -434,7 +434,7 @@ let
             else ("cc0 [OPTION...] SOURCEFILE")
         val header = "Usage: " ^ usage ^ "\nwhere OPTION is"
         val options = Flags.core_options @ Flags.compiler_options
-        val versioninfo = "C0 reference compiler (cc0) revision "
+        val versioninfo = "C0 reference compiler (cc0) version "
                         ^ BuildId.revision ^ " (built " ^ BuildId.date ^ ")"
         val usageinfo = G.usageInfo {header = header, options = options}
         (* C0VM Bytecode Version
