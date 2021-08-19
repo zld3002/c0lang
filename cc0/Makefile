@@ -24,6 +24,7 @@ else
 # Only this should be used, above seems deprecated
 MLTON_NATIVE := mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error"
 MLTON_NATIVE += -link-opt "-lpthread -ldl -rdynamic" -cc-opt "-Iinclude" -default-ann "allowFFI true"
+MLTON_NATIVE += -cc-opt "-I../externals/"
 MLTON_NATIVE += -link-opt "../externals/readline/libreadline.a ../externals/readline/libhistory.a"
 ifeq ($(PLATFORM),osx)
 # TODO: readline flags for macos
