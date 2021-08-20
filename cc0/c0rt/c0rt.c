@@ -128,6 +128,10 @@ static void sigint_handler(int _signal) {
   raise_msg(SIGINT, NULL);
 }
 
+#ifdef __APPLE__
+typedef void (*sighandler_t)(int);
+#endif
+
 /// Installs the given signal handler
 /// The signal handler will be run on a separate stack
 /// (same stack for all signals), and will also 

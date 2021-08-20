@@ -1,0 +1,9 @@
+//test return 0
+
+int main() {
+    string s = "This "
+        "string "
+        "is split across "
+        "many " "lines";
+    return 0;
+}

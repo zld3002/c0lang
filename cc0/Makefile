@@ -1,3 +1,8 @@
+# Include the platform-specific configuration from ./configure
+include config.mk
+
+include util.mk
+
 SHELL   = /bin/sh
 RM      = rm
 COPY    = cp -p
@@ -26,10 +31,14 @@ MLTON_NATIVE := mlton -default-ann "redundantMatch error" -default-ann "sequence
 MLTON_NATIVE += -link-opt "-lpthread -ldl -rdynamic" -cc-opt "-Iinclude" -default-ann "allowFFI true"
 MLTON_NATIVE += -cc-opt "-I../externals/"
 MLTON_NATIVE += -link-opt "../externals/readline/libreadline.a ../externals/readline/libhistory.a"
+
+# libreadline dependencies
 ifeq ($(PLATFORM),osx)
-# TODO: readline flags for macos
+MLTON_NATIVE += -link-opt "-ltermcap"
 else
+# (Assuming Linux)
 MLTON_NATIVE += -link-opt "-ltinfo"
+
 endif
 MLTON_NATIVE += -cc-opt -Wall
 MLTON_NATIVE += -cc-opt -Wextra
@@ -38,12 +47,6 @@ MLTON_NATIVE += -output
 endif
 
 # $EXTERNALS is set by ./configure in config.mk
-# currently libpng for mac os x, empty for linux
-
-# Include the platform-specific configuration from ./configure
-include config.mk
-
-include util.mk
 
 all: cc0 coin codex externals libs
 
