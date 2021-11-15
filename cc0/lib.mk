@@ -73,7 +73,6 @@ CFLAGS += -O3
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
-	#for l in $(C0LIBS); do $(MAKE) -C $(DEPTH)/libs/$$l; done
 ifdef STATIC
 	$(AR) rcs $(TARGET) $(OBJECTS)
 else

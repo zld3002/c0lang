@@ -11,7 +11,7 @@ case `uname -s` in
     Darwin)
       PLATFORM=osx
       DLLSUFFIX=.dylib
-      EXTERNALS=libpng
+      EXTERNALS=
       ;;
     CYGWIN*)
       echo "Cygwin is no longer supported! Please use WSL instead"
@@ -29,6 +29,7 @@ MACHINE=amd64
 case `uname -m` in
 i*86) MACHINE=x86; ;;
 x86_64) MACHINE=amd64; ;;
+arm64) MACHINE=arm64 ;;
 *) echo "Unknown machine type! Assuming amd64..." ;;
 esac
 

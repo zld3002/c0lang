@@ -5,7 +5,7 @@ DEPTH = ../..
 
 include ../../lib.mk
 
-LIBS += -lpng -lz
+LIBS += $(shell pkg-config libpng --libs)
 
-CFLAGS += -std=c99 -pedantic
+CFLAGS += -std=c99 -pedantic $(shell pkg-config libpng --cflags)
 LDFLAGS += -L$(DEPTH)/lib

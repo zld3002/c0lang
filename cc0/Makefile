@@ -19,18 +19,11 @@ MLTON_BASIC = mlton $(MLTON_FLAGS) -verbose $(MLTON_VERB)  -output
 #Uncomment to use SMLNJ, which has significantly faster compile times than mlton
 # NJ=1
 
-ifdef STATIC
-ifdef LIBSPLUS
-MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -Llib -Lruntime -lfile -lconio -lstring -lparse -lcurses -limg -lclock -lbare -lpng -lz /usr/lib/libcurses.a" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output
-else
-MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -Llib -Lruntime -lfile -lconio -lstring -lparse -lcurses -limg -lbare -lpng -lz /usr/lib/libcurses.a" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output
-endif
-else
-# Only this should be used, above seems deprecated
 MLTON_NATIVE := mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error"
 MLTON_NATIVE += -link-opt "-lpthread -ldl -rdynamic" -cc-opt "-Iinclude" -default-ann "allowFFI true"
 MLTON_NATIVE += -cc-opt "-I../externals/"
 MLTON_NATIVE += -link-opt "../externals/readline/libreadline.a ../externals/readline/libhistory.a"
+MLTON_NATIVE += -link-opt "$(shell pkg-config libpng --libs)"
 
 # libreadline dependencies
 ifeq ($(PLATFORM),osx)
@@ -38,13 +31,12 @@ MLTON_NATIVE += -link-opt "-ltermcap"
 else
 # (Assuming Linux)
 MLTON_NATIVE += -link-opt "-ltinfo"
-
 endif
+
 MLTON_NATIVE += -cc-opt -Wall
 MLTON_NATIVE += -cc-opt -Wextra
 MLTON_NATIVE += -cc-opt -Werror
 MLTON_NATIVE += -output
-endif
 
 # $EXTERNALS is set by ./configure in config.mk
 
@@ -80,33 +72,6 @@ gc: lib $(GCDIR)/Makefile
 	$(MAKE) -C $(GCDIR)
 	$(COPY) $(GCDIR)/.libs/libgc.a lib
 
-ZLIBDIR = ../externals/zlib
-
-$(ZLIBDIR)/Makefile:
-	(cd $(ZLIBDIR); ./configure --prefix=$(abspath $(ZLIBDIR)/installdir) )
-
-# copy .a and .h files manually, so that dynamic libraries
-# are not available to the linker (for standalone binary export)
-.PHONY: zlib
-zlib: lib $(ZLIBDIR)/Makefile
-	$(MAKE) -C $(ZLIBDIR)
-	$(MAKE) -C $(ZLIBDIR) install
-	$(COPY) $(ZLIBDIR)/installdir/lib/*.a lib
-	$(COPY) $(ZLIBDIR)/installdir/include/*.h include
-
-LIBPNGDIR = ../externals/libpng
-
-$(LIBPNGDIR)/Makefile:
-	(cd $(LIBPNGDIR); ./configure --with-pic --with-zlib-prefix=$(abspath $(ZLIBDIR)/installdir) --prefix=$(abspath $(LIBPNGDIR)/installdir) )
-
-# copy .a and .h files manually, so that dynamic libraries
-# are not available to the linker (for standalone binary export)
-.PHONY: libpng
-libpng: zlib lib $(LIBPNGDIR)/Makefile
-	$(MAKE) -C $(LIBPNGDIR)
-	$(MAKE) -C $(LIBPNGDIR) install
-	$(COPY) $(LIBPNGDIR)/installdir/lib/*.a lib
-	$(COPY) $(LIBPNGDIR)/installdir/include/*.h include
 
 # The backtrace library for C0RT
 LIBBACKTRACEDIR := ../externals/libbacktrace
@@ -147,6 +112,9 @@ $(1)/$(call dllname,$(1)): $(1)/$(1).h include/c0runtime.h
 	$(MAKE) -C $(1)
 $(1): runtime $(1)/$(call dllname,$(1))
 	$(COPY) $(1)/$(call dllname,$(1)) $(1)/$(1).h runtime
+ifeq ($(PLATFORM),osx)
+	codesign -s - runtime/$(call dllname,$(1))
+endif
 endif
 endef
 
