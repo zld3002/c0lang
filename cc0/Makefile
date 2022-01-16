@@ -397,7 +397,7 @@ install-libs:
 	mkdir -p $(PREFIX)/lib
 	$(COPY) lib/cc0main.c lib/*.c0 lib/*.h0 lib/*$(DLLSUFFIX) $(PREFIX)/lib
 
-VERSION=$(shell git rev-list --count master)
+VERSION=$(shell ./get_version.sh)
 
 PACKAGE_FILES = bin/cc0 bin/cc0.bin bin/coin bin/coin.bin bin/codex bin/codex.bin
 PACKAGE_FILES += lib/*.c0 lib/*.h0 lib/*$(DLLSUFFIX) lib/*.c

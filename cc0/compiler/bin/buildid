@@ -6,7 +6,7 @@
 #
 
 #REV=`git rev-list --count master`
-REV=`date +"%Y%m%d"`
+REV=`../get_version.sh`
 DATE=`date`
 HOST=`hostname`
 
