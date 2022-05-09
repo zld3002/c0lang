@@ -324,7 +324,8 @@ in
  ; print (versioninfo ^ "\n")
  ; print ("Type `#help' for help or `#quit' to exit.\n")
  ; NONE)
-handle Top.EXIT => 
+handle Top.FINISHED => SOME OS.Process.success
+     | Top.EXIT => 
         ( Flag.guard Flags.flag_exec compilerDied ()
         ; SOME OS.Process.failure)
      | ErrorMsg.Error => 

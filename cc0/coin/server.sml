@@ -9,7 +9,8 @@
 signature SERVER = 
 sig
     
-    (* The server takes  *)
+    (* The server takes in the executable name and command line arguments.
+     * These are just passed directly to the compiler, which handles parsing flags *)
     val server : string * string list -> OS.Process.status
     val go : unit -> OS.Process.status
 

@@ -18,7 +18,9 @@ sig
   val test : string -> OS.Process.status
 
   (* External hooks *)
-  exception EXIT
+  exception EXIT  (* some error, executable should exit with failure *)
+  exception FINISHED  (* no error, executable should exit with success *)
+
   val reset : unit -> unit
   val get_sources_set_flags : 
       {options: unit GetOpt.opt_descr list,
@@ -53,8 +55,8 @@ struct
   fun path_concat3 (x, y, z) = 
       OS.Path.mkCanonical (OS.Path.concat (x, OS.Path.concat (y, z)))
 
-  exception EXIT  (* some error, exit with failure, exported *)
-  exception FINISHED  (* no error, exit with success, internal only *)
+  exception EXIT  (* some error, executable should exit with failure *)
+  exception FINISHED  (* no error, executable should exit with success *)
 
   fun readable file = OS.FileSys.access (file, [OS.FileSys.A_READ])
 
