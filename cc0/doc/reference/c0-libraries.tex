@@ -226,7 +226,8 @@ int* parse_int(string s, int base)[*\indextt{parse\_int}*]
   /*@requires 2 <= base && base <= 36; @*/ ;
 
 /* Returns the number of whitespace-delimited tokens in a string */
-int num_tokens(string s);[*\indextt{num\_tokens}*]
+int num_tokens(string s)[*\indextt{num\_tokens}*]
+  /*@ensures \result >= 0; @*/ ;
 
 /* Returns true iff the string contains only whitespace separated
  *  ints */
