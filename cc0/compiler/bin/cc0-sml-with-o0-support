@@ -24,4 +24,3 @@ export LD_LIBRARY_PATH=/usr/lib64
 IMGDIR=`dirname $0`
 CC0=sml @SMLcmdname=$0 @SMLload=$IMGDIR/cc0.heap.$MACHINE-$SUFFIX
 
-$CC0 "$@"

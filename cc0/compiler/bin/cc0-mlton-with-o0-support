@@ -7,4 +7,3 @@ export LD_LIBRARY_PATH=/usr/lib64
 
 CC0=$0.bin
 
-$CC0 "$@"

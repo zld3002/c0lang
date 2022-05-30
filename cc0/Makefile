@@ -40,7 +40,8 @@ MLTON_NATIVE += -output
 
 # $EXTERNALS is set by ./configure in config.mk
 
-all: cc0 coin codex externals libs
+#all: cc0 coin codex externals libs
+all: cc0 coin externals libs
 
 .PHONY: externals
 externals: $(EXTERNALS)
@@ -137,11 +138,15 @@ bin/cc0: bin $(CC0_DEPS)
 	$(MAKE) -C compiler buildid
 ifdef NJ
 	$(MAKE) -C compiler cc0
-	$(COPY) compiler/bin/cc0-sml bin/cc0
 	$(COPY) compiler/bin/cc0.heap.* bin
+#	$(COPY) compiler/bin/cc0-sml bin/cc0
+	$(COPY) compiler/bin/cc0-sml-with-o0-support bin/cc0
+	cat compiler/bin/cc0-o0-support >> bin/cc0
 else
 	$(MLTON_BASIC) bin/cc0.bin compiler/sources-go.mlb
-	$(COPY) compiler/bin/cc0-mlton bin/cc0
+#	$(COPY) compiler/bin/cc0-mlton bin/cc0
+	$(COPY) compiler/bin/cc0-mlton-with-o0-support bin/cc0
+	cat compiler/bin/cc0-o0-support >> bin/cc0
 endif
 	$(COPY) compiler/bin/cpfiles bin
 	chmod +x bin/cc0 bin/cpfiles
@@ -165,13 +170,17 @@ bin/wrappergen: makelibs/* bin $(CC0_DEPS)
 	$(MAKE) -C compiler buildid
 ifdef NJ
 	echo 'use "makelibs/wrappergen.sml";' | ${SML}
-	$(COPY) compiler/bin/run-smlnj bin/wrappergen
+#	$(COPY) compiler/bin/run-smlnj bin/wrappergen
+	$(COPY) compiler/bin/coin-sml bin/wrappergen
+	cat compiler/bin/coin-o0-support >> bin/wrappergen
 else
 	$(MLTON_BASIC) bin/wrappergen.bin makelibs/wrappergen.mlb
-	$(COPY) compiler/bin/run-mlton bin/wrappergen
+#	$(COPY) compiler/bin/run-mlton bin/wrappergen
+	$(COPY) compiler/bin/coin-mlton bin/wrappergen
+	cat compiler/bin/coin-o0-support >> bin/wrappergen
 endif
-	chmod +x bin/wrappergen
-	touch bin/wrappergen
+#	chmod +x bin/wrappergen
+#	touch bin/wrappergen
 
 .PHONY: libs/*
 libs/*: bin/wrappergen
@@ -226,13 +235,17 @@ bin/coin: bin $(COIN_DEPS)
 ifdef NJ
 	$(MAKE) -C coin
 	$(COPY) coin/coin.heap.* bin
-	$(COPY) compiler/bin/run-smlnj bin/coin
+#	$(COPY) compiler/bin/run-smlnj bin/coin
+	$(COPY) compiler/bin/coin-sml-with-o0-support bin/coin
+	cat compiler/bin/coin-o0-support >> bin/coin
 else
 	$(MLTON_NATIVE) bin/coin.bin coin/coin.mlb $(NATIVE_COIN)
-	$(COPY) compiler/bin/run-mlton bin/coin
+#	$(COPY) compiler/bin/run-mlton bin/coin
+	$(COPY) compiler/bin/coin-mlton-with-o0-support bin/coin
+	cat compiler/bin/coin-o0-support >> bin/coin
 endif
-	chmod +x bin/coin
-	touch bin/coin
+#	chmod +x bin/coin
+#	touch bin/coin
 
 .PHONY: coin-exec
 coin-exec: bin/coin-exec
@@ -241,13 +254,17 @@ bin/coin-exec: bin $(COIN_DEPS)
 ifdef NJ
 	$(MAKE) -C coin coin-exec
 	$(COPY) coin/coin-exec.heap.* bin
-	$(COPY) compiler/bin/run-smlnj bin/coin-exec
+#	$(COPY) compiler/bin/run-smlnj bin/coin-exec
+	$(COPY) compiler/bin/coin-sml bin/coin-exec
+	cat compiler/bin/coin-o0-support >> bin/coin-exec
 else
 	$(MLTON_NATIVE) bin/coin-exec.bin coin/coin-exec.mlb $(NATIVE_COIN)
-	$(COPY) compiler/bin/run-mlton bin/coin-exec
+#	$(COPY) compiler/bin/run-mlton bin/coin-exec
+	$(COPY) compiler/bin/coin-mlton bin/coin-exec
+	cat compiler/bin/coin-o0-support >> bin/coin-exec
 endif
-	chmod +x bin/coin-exec
-	touch bin/coin-exec
+#	chmod +x bin/coin-exec
+#	touch bin/coin-exec
 
 
 ### codex - The C0 Debugger
@@ -261,13 +278,17 @@ bin/codex: bin $(CODEX_DEPS)
 ifdef NJ
 	$(MAKE) -C codex
 	$(COPY) codex/codex.heap.* bin
-	$(COPY) compiler/bin/run-smlnj bin/codex
+#	$(COPY) compiler/bin/run-smlnj bin/codex
+	$(COPY) compiler/bin/coin-sml bin/codex
+	cat compiler/bin/coin-o0-support >> bin/codex
 else
 	$(MLTON_NATIVE) bin/codex.bin codex/debug.mlb $(NATIVE_COIN)
-	$(COPY) compiler/bin/run-mlton bin/codex
+#	$(COPY) compiler/bin/run-mlton bin/codex
+	$(COPY) compiler/bin/coin-mlton bin/codex
+	cat compiler/bin/coin-o0-support >> bin/codex
 endif
-	chmod +x bin/codex
-	touch bin/codex
+#	chmod +x bin/codex
+#	touch bin/codex
 
 
 ### Cleanup

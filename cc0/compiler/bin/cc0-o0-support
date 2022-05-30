@@ -1,0 +1,205 @@
+### Object file emulation for cc0
+### Iliano Cervesato, Spring 2022
+
+### Configuration parameters
+TMP=.tmp0
+
+### Helper functions
+THIS=$(basename $0)
+
+function display_help () {
+    # Print the regular cc0 help
+    $CC0 -h
+
+    # Print the help for the extensions
+    echo "Extended usage:"
+    echo "" $THIS "-g <file> [-o <obj_file>]    Compile <file> to an object file"
+    echo "" $THIS "-i <obj_file>                Display the interface of <obj_file>"
+    echo "" $THIS "[OPTION...] SOURCEFILES      SOURCEFILES can include object files"
+    echo "  where"
+    echo "  . <obj_file>    ends in .o0 or .o1 (C0/C1 object file)"
+    echo "  . -g <file>     has alternate syntax --genobj=<file>"
+    echo "  . -i <obj_file> has alternate syntax --interface=<obj_file>"
+    exit 0
+}
+
+function display_version () {
+    $CC0 -V
+    echo "(Object file extension)"
+    exit 0
+}
+
+function make_objectfile () {
+    local src_file=$1           # file specified by -g
+    local tgt_file=$2           # file specified by -o, if any
+
+    ## Computing bits and pieces of $src_file and $tgt_file
+    local src_name=$(basename $src_file)  # file name of $src_file
+    local tgt_path                        # path to target file
+    local tgt_name                        # file name of target file
+    if [ "$tgt_file" != "" ]; then
+        tgt_path=$(dirname $src_file)
+        tgt_name=$(basename $tgt_file)
+    else # target is based on source
+        tgt_path=$(dirname $src_file)
+        tgt_name=$src_name
+    fi
+    local tgt_root="${tgt_name%.*}"       # file name root of target file
+    local tgt_ext                         # extension for target file
+    case "${src_file##*.}" in  # always based on source file extension
+        c0)
+            tgt_ext="o0"
+            ;;
+        c1)
+            tgt_ext="o1"
+            ;;
+        *)
+            echo "Unsupported extension .$src_ext"
+            exit 1
+            ;;
+    esac
+
+    ## Actual generation of object file
+    mkdir -p $TMP
+    cp -aL $src_file $TMP
+    tar cfz $tgt_path/$tgt_root.$tgt_ext $TMP/$src_name
+    rm -rf $TMP
+    exit 0
+}
+
+function undo_objectfile () {
+    local obj_file=$1
+    tar xfz $obj_file
+    recovered_sourcefile=`tar tfz $obj_file`
+}
+
+# Expects that each interface block is enclosed between
+# - a line containing the word 'Interface'
+# - and a line containing the word 'End' -- or the end of the file
+#
+# Example 1: simple library interface at the end of a file:
+# ... any code ...
+# /*************************** Interface **************************/
+# ... interface ...
+#
+# Example 2: file with both a client and a library interface
+# ... any code ...
+# /*********************** Client Interface ***********************/
+# ... client interface ...
+# /********************* End Client Interface *********************/
+# ... any code ...
+# /*********************** Library Interface **********************/
+# ... library interface ...
+# /******************** End Library Interface *********************/
+#
+# Limitations: other occurrences of the words 'Interface' and 'End' will
+# lead to incorrect output
+function display_interface () {
+    undo_objectfile "$1"
+    awk '/Interface/,/End/' "$recovered_sourcefile" | grep -v End
+    echo ""
+    rm -rf $TMP
+    exit 0
+}
+
+
+### Handle added cc0 options
+if [[ "$@" == "" ]]; then
+    display_help
+fi
+
+
+args=("$@")  # save supplied parameters
+
+# More safety, by turning some bugs into errors.
+set -o errexit -o pipefail -o noclobber -o nounset
+
+# -allow a command to fail with !'s side effect on errexit
+# -use return value from ${PIPESTATUS[0]}, because ! hosed $?
+! getopt --test > /dev/null
+if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
+    echo 'I’m sorry, `getopt --test` failed in this environment.'
+    exit 1
+fi
+
+## Added/modified options only: other options are dealt with by cc0
+OPTS=hVg:o:i:
+LONGOPTS=help,version,genobj:output:interface:
+
+# -temporarily store output to be able to check for errors
+# -activate quoting/enhanced mode (e.g. by writing out "--options")
+# -pass arguments only via   -- "$@"   to separate them correctly
+! PARSED=$(getopt -q --options=$OPTS --longoptions=$LONGOPTS --name "$0" -- "$@")
+
+## Commented out to avoid listing explicitly the passthrough cc0 options
+#if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+    # e.g. return value is 1
+    #  then getopt has complained about wrong arguments to stdout
+#    exit 2
+#fi
+# read getopt's output this way to handle the quoting right:
+eval set -- "$PARSED"
+
+
+### Handles the added/modified options
+src_file=""
+tgt_file=""
+while true; do
+    case "$1" in
+        -h|--help)      ### Extended help
+            display_help          # Exits this script
+            ;;
+        -V|--version)   ### Extended version information
+            display_version       # Exits this script
+            ;;
+        -g|--genobj)    ### generate object file
+            src_file=$2
+            shift 2
+            ;;
+        -o|--output)    ### output object file used in conjunction with -g
+            tgt_file=$2
+            shift 2
+            ;;
+        -i|--interface) ### Display interface
+            display_interface $2  # Exits this script
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Special options are $OPTS and $LONGOPTS"
+            exit 3
+            ;;
+    esac
+done
+
+## Implement cc0 -g $src_file [-o $tgt_file]
+if [ "$src_file" != "" ]; then
+    make_objectfile "$src_file" "$tgt_file"    # Exits this script
+fi
+
+
+## Implement regular options, possibly with object files
+set -- "${args[@]}" # restore parameters
+
+ARGS=()
+
+# mkdir -p $TMP
+for arg in "${args[@]}"
+do
+    if [[ "${arg##*.}" == "o0" ||  "${arg##*.}" == "o1" ]]; then
+        undo_objectfile $arg   # return value in $recovered_sourcefile
+        ARGS+=("$recovered_sourcefile")
+     else
+        ARGS+=("$arg");
+    fi
+done
+
+## Call cc0 with recovered arguments
+$CC0 ${ARGS[*]}
+
+
+## clean up and exit
+rm -rf $TMP
+exit 0
