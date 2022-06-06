@@ -8,6 +8,16 @@ TMP=.tmp0
 ### Helper functions
 THIS=$(basename $0)
 
+# Detect the correct version of getopt to use
+if [[ $(uname -s) == "Darwin" ]]; then
+    # On MacOS, we need to use gnu-getopt instead of 
+    # the default BSD getopt
+    GETOPT=$(brew --prefix gnu-getopt)/bin/getopt
+else
+    # On other platforms, getopt should already be gnu-getopt
+    GETOPT=getopt
+fi
+
 function display_help () {
     # Print the regular coin help
     $COIN -h
@@ -40,9 +50,9 @@ set -o errexit -o pipefail -o noclobber -o nounset
 
 # -allow a command to fail with !'s side effect on errexit
 # -use return value from ${PIPESTATUS[0]}, because ! hosed $?
-! getopt --test > /dev/null
+! $GETOPT --test > /dev/null
 if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
-    echo 'I’m sorry, `getopt --test` failed in this environment.'
+    echo 'I’m sorry, `'$GETOPT '--test` failed in this environment.'
     exit 1
 fi
 
@@ -53,7 +63,7 @@ LONGOPTS=help,version
 # -temporarily store output to be able to check for errors
 # -activate quoting/enhanced mode (e.g. by writing out "--options")
 # -pass arguments only via   -- "$@"   to separate them correctly
-! PARSED=$(getopt -q --options=$OPTS --longoptions=$LONGOPTS --name "$0" -- "$@")
+! PARSED=$($GETOPT -q --options=$OPTS --longoptions=$LONGOPTS --name "$0" -- "$@")
 
 ## Commented out to avoid listing explicitly the passthrough coin options
 #if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
