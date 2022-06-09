@@ -40,6 +40,7 @@ MLTON_NATIVE += -output
 
 # $EXTERNALS is set by ./configure in config.mk
 
+## removing codex from default build
 #all: cc0 coin codex externals libs
 all: cc0 coin externals libs
 
@@ -227,10 +228,11 @@ coin: bin/coin
 bin/coin: bin $(COIN_DEPS)
 	$(MAKE) -C compiler buildid
 ifdef NJ
-	$(MAKE) -C coin
-	$(COPY) coin/coin.heap.* bin
-	$(COPY) compiler/bin/coin-sml-with-o0-support bin/coin
-	cat compiler/bin/coin-o0-support >> bin/coin
+	echo "coin is unsupported using SML/NJ -- compile with coin"
+#	$(MAKE) -C coin
+#	$(COPY) coin/coin.heap.* bin
+#	$(COPY) compiler/bin/coin-sml-with-o0-support bin/coin
+#	cat compiler/bin/coin-o0-support >> bin/coin
 else
 	$(MLTON_NATIVE) bin/coin.bin coin/coin.mlb $(NATIVE_COIN)
 	$(COPY) compiler/bin/coin-mlton-with-o0-support bin/coin
@@ -244,10 +246,11 @@ coin-exec: bin/coin-exec
 bin/coin-exec: bin $(COIN_DEPS)
 	$(MAKE) -C compiler buildid
 ifdef NJ
-	$(MAKE) -C coin coin-exec
-	$(COPY) coin/coin-exec.heap.* bin
-	$(COPY) compiler/bin/coin-sml bin/coin-exec
-	cat compiler/bin/coin-o0-support >> bin/coin-exec
+	echo "coin-exec is unsupported using SML/NJ -- compile with coin"
+#	$(MAKE) -C coin coin-exec
+#	$(COPY) coin/coin-exec.heap.* bin
+#	$(COPY) compiler/bin/coin-sml bin/coin-exec
+#	cat compiler/bin/coin-o0-support >> bin/coin-exec
 else
 	$(MLTON_NATIVE) bin/coin-exec.bin coin/coin-exec.mlb $(NATIVE_COIN)
 	$(COPY) compiler/bin/coin-mlton bin/coin-exec
@@ -266,10 +269,11 @@ codex: bin/codex
 bin/codex: bin $(CODEX_DEPS)
 	$(MAKE) -C compiler buildid
 ifdef NJ
-	$(MAKE) -C codex
-	$(COPY) codex/codex.heap.* bin
-	$(COPY) compiler/bin/coin-sml bin/codex
-	cat compiler/bin/coin-o0-support >> bin/codex
+	echo "codex is unsupported using SML/NJ -- compile with coin"
+#	$(MAKE) -C codex
+#	$(COPY) codex/codex.heap.* bin
+#	$(COPY) compiler/bin/coin-sml bin/codex
+#	cat compiler/bin/coin-o0-support >> bin/codex
 else
 	$(MLTON_NATIVE) bin/codex.bin codex/debug.mlb $(NATIVE_COIN)
 	$(COPY) compiler/bin/coin-mlton bin/codex
