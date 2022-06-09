@@ -125,6 +125,8 @@ fi
 ## Added/modified options only: other options are dealt with by cc0
 OPTS=hVg:o:i:
 LONGOPTS=help,version,genobj:output:interface:
+## cc0 -flags with arguments
+OPTS=$OPTS,l:L:a:r:m:c:
 
 # -temporarily store output to be able to check for errors
 # -activate quoting/enhanced mode (e.g. by writing out "--options")
@@ -163,11 +165,14 @@ while true; do
         -i|--interface) ### Display interface
             display_interface $2  # Exits this script
             ;;
-        --)
+        -l|-L|-a|-r|-m|-c)     ### 2-argument cc0 options
+            shift 2
+            ;;
+        --)             ### End of line
             shift
             break
             ;;
-        *)
+        *)              ### Anything else
             echo "Special options are $OPTS and $LONGOPTS"
             exit 3
             ;;
