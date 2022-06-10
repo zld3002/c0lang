@@ -269,11 +269,10 @@ codex: bin/codex
 bin/codex: bin $(CODEX_DEPS)
 	$(MAKE) -C compiler buildid
 ifdef NJ
-	echo "codex is unsupported using SML/NJ -- compile with coin"
-#	$(MAKE) -C codex
-#	$(COPY) codex/codex.heap.* bin
-#	$(COPY) compiler/bin/coin-sml bin/codex
-#	cat compiler/bin/coin-o0-support >> bin/codex
+	$(MAKE) -C codex
+	$(COPY) codex/codex.heap.* bin
+	$(COPY) compiler/bin/coin-sml bin/codex
+	cat compiler/bin/coin-o0-support >> bin/codex
 else
 	$(MLTON_NATIVE) bin/codex.bin codex/debug.mlb $(NATIVE_COIN)
 	$(COPY) compiler/bin/coin-mlton bin/codex
