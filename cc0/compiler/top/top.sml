@@ -415,7 +415,7 @@ let
                          raise FINISHED
                      end) ()
         (* Run verification condition checking *)
-        val _ = Flag.guard Flags.flag_verif_check 
+        (* val _ = Flag.guard Flags.flag_verif_check 
                    (fn () => 
                      let val verrors = AnalysisTop.verifCheck oprogram
                          val () = List.app VError.pp_error verrors
@@ -425,7 +425,7 @@ let
                      in 
                          (* Verification conditions check does not compile the program. *)
                          raise FINISHED
-                     end) ()
+                     end) () *)
   in () end	             
 
   fun main (name, args) =

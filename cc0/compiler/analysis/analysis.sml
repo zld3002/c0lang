@@ -112,9 +112,10 @@ struct
                       let val (sp, ep, _, _, _) = ssa (Ast.Assign(NONE, Ast.Var v, ex), e)
                       in (Seq(s, sp), ep, r, b, c) end
             | s' (Ast.VarDecl(v, tp, NONE, _), (s,e, r, b, c)) =
-                      let val e' = Env.inc e v in
-                      (s, e', r, b, c)
-                      end
+                      let val e' = Env.inc e v 
+                          val _ = print ("Var Decl: " ^ (Env.toString e') ^ "\n")              
+                          val _ = print "==================\n"
+                      in (s, e', r, b, c) end
       in foldl s' (Nop, env, r, b, c) decls end
    (* The main ssa calculation function.
       ssa: Ast.stm * Env.env -> (astmt * env * env list * env list * envlist)
@@ -156,6 +157,7 @@ struct
          let val (st, et, trets, tbrks, tconts) = ssa (strue, env)
              val (sf, ef, frets, fbrks, fconts) = ssa (sfalse, env)
              val (env', phis) = Env.mergeEnvs [et,ef]
+             val _ = print ("IF MergeEnv: " ^ (Env.toString env') ^ "\n")
          in
             (If ((label env e), st, sf, phis),
                  env', trets @ frets, tbrks @ fbrks, tconts @ fconts)
@@ -165,7 +167,9 @@ struct
              val (stm', env', rets, brks, conts) = ssa (stm, envdef)
              val (envExit, loopPhis, relabeling) = 
                      Env.mergeEnvsLoop envdef ([env, env'] @ conts)
+             val _ = print ("WHILE MergeEnvExit: " ^ (Env.toString envExit) ^ "\n")
              val (envOverallExit, endPhis) = Env.mergeEnvs ([envExit] @ brks)
+             val _ = print ("WHILE MergeEnvOverallExit: " ^ (Env.toString envOverallExit) ^ "\n")
          in
             (relabelStmt relabeling
             (While(loopPhis, (label envdef e),
@@ -312,14 +316,63 @@ struct
              
              val reqs' = map (labelSpec initialEnv) reqs
              val ens' = map (labelSpec initialEnv) ens
+             val _  = print ("Initial Env: " ^ (Env.toString initialEnv) ^ "\n")
              val (s, env, rets, _, _) = ssa (stmt', initialEnv)
+             val _  = print ("Final Env: " ^ (Env.toString env) ^ "\n")
              val s' = simplifySeq s
              val s'' = simplifyPhiS s'
           in
-             [Function(rtp, name, types, args, reqs', s'', ens')]
+             [Function(rtp, name, types, args, reqs', s, ens')]
           end 
      | analyzeFunc iso _ = []
-   
+
+   fun extractVarsFromStmt l stm =
+    case stm of
+        Ast.Assign (oper, var, e) => l
+      | Ast.Exp e => l	       (* e; *)
+      | Ast.Seq (vardecl_list, stm_list) => (foldr (fn (stm, vl) => extractVarsFromStmt vl stm) l stm_list) @ vardecl_list (* { ds es } *)
+      | Ast.StmDecl decl => decl::l   (* d *)
+      | Ast.If (e, s1, s2) => (extractVarsFromStmt l s1) @ (extractVarsFromStmt l s2)	(* if (e) s1 else s2 *)
+      | Ast.While (e, loop_invs, s) => extractVarsFromStmt l s            (* while (e) s, loop invs. *)
+      | _ => l (* What about Markeds? I think For loops can be safely ignored *)
+          
+   (* fun extractVars (Ast.Function(name, rtp, args, SOME stm, specs, false, ext)) = 
+       let val (stm', _) = Preprocess.preprocess iso
+                 (Ast.Function(name, rtp, args,
+                               SOME (Ast.Markeds (Mark.mark' (stmt, ext))),  (* Why do we need to annotate the function body with markeds here? *)
+                               specs, false, ext))
+       in extractVarsFromStmt args stm'
+       end
+     | extractVars _ = [] *)
+    (* for each function create a lookup table (probably using ORD_MAP) that maps basic block name/identifier to basic block (represented as Ast.Function)
+       Concerns:
+       1. need to figure out the return type
+         - what would happen if we ignore all return types? create a different type that does not keep track of return types?
+         - Something like: datatype basicblock = Block of ident * vardecl list * stm -- (block name, args, block body)
+         - needs to be put in a separate file (for purity analysis in purity.sml)
+       2. markeds issue; can we still backtrace to the location where the error occurs in the original code? *)
+    
+    fun extractBasicBlock (Ast.Function(name, rtp, args, SOME stm, specs, false, ext)) = 
+       let val (stm', _) = Preprocess.preprocess iso
+                 (Ast.Function(name, rtp, args,
+                               SOME (Ast.Markeds (Mark.mark' (stm, ext))),  (* Why do we need to annotate the function body with markeds here? *)
+                               specs, false, ext))
+            val allArgs = extractVatsFromStmt args stm'
+            (* args are all the arguments to the function (of type vardecl list) *)
+            (* args are all the arguments to the function plus all local variables defined in the function body (of type vardecl list) *)
+            (* counter would be the global counter for creating unique identifier for each basic block *)
+            (* stack would be the working stack for the basic blocks of current function (a list of basic blocks) *)
+            (* break and continue envs to be added *)
+            fun stmToBlock (stm, args, counter, stack) =
+                case stm of
+                      Ast.If (e, strue, sfalse)	    (* if (e) s1 else s2 *)
+                    | Ast.While (e, loop_invs, s)            (* while (e) s, loop invs. *)
+                    | Ast.Seq (decls, stms) 
+                    | _ => stack
+       in stmToBlock (stm', allArgs, 0, [BasicBlock(name, args, Ast.Seq([], []))])
+       end
+     | extractBasicBlock _ = []
+
    fun analyze iso prog = List.concat (map (analyzeFunc iso) prog)
 end
 

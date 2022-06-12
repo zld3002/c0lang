@@ -80,7 +80,8 @@ struct
         (fn (sym, locals) =>
             case uniqueValue locals of 
               SOME l => (NONE, SOME l)
-            | NONE => let val n = next() in
+            | NONE => let val n = next()
+                      in
                       (SOME(AAst.PhiDef(sym, n, map (fn l => getOpt(l, n)) locals)),
                        SOME n)
                       end) (liftMapList envs)

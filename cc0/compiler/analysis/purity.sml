@@ -396,7 +396,12 @@ struct
          mergeCheck[checkE mark ctx imms g, check mark ctx imms b]
      | MarkedS m => check (Mark.ext m) ctx imms (Mark.data m)
      
-  
+  fun gatherString [] = ""
+      | gatherString xs = foldl (fn (x,acc) => acc ^ ", " ^ x) (hd xs) (tl xs)
+
+  fun toStringLocalMap locals =
+      gatherString (map (fn (sym, i) => (Symbol.name sym) ^ "`" ^ (Int.toString i)) (LocalMap.listKeys locals))
+
   fun purity puremap (Function(rtp, name, tps, formals, reqs, body, ens)) =
     let fun markAndBindArg ((_, t, loc), c) =
           let val (c', et) = tp_extend_imm_rec c t
@@ -407,7 +412,9 @@ struct
            the context about something it hasn't seen before. *)
         val ctxAll = foldl (fn (name, c) => mark_struct_fresh c name)
                      ctxArgs (Structtab.list())
+        val _ = print ("ctxAll: " ^ (toStringLocalMap (#locals ctxAll)) ^ "\n")
         val ctx = buildContext ctxAll body
+        val _ = print ("ctx: " ^ (toStringLocalMap (#locals ctx)) ^ "\n")
         fun iter imms =
            let  val imms' = constraints ctx imms body
            in if IntSet.equal(imms, imms')

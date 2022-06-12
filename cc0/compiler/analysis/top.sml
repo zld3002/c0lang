@@ -31,7 +31,8 @@ struct
   fun purityCheck prog =
     let
       val funcs = (Analysis.analyze false prog)
-                           
+      val _ = print "==============================\n"
+      val _ = print (List.foldr (fn (f,s) => (AAst.Print.pp_afunc f) ^ "\n" ^ s) "" funcs ^ "\n")
       val none = ([], SymMap.empty)
       fun merge [] = none
         | merge [x] = x

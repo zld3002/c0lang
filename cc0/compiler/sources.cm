@@ -55,6 +55,7 @@ Group is
         analysis/gcl.sml
         analysis/trans.sml
         analysis/env.sml
+        analysis/basicblock.sml
         analysis/analysis.sml
         analysis/purity.sml
         analysis/modifies.sml
