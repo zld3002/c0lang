@@ -4,13 +4,18 @@
 ### Configuration parameters
 TMP=.tmp0
 
+## Shortcut when no arguments are provided
+if [[ "$@" == "" ]]; then
+    $COIN
+    exit 0
+fi
 
 ### Helper functions
 THIS=$(basename $0)
 
 # Detect the correct version of getopt to use
 if [[ $(uname -s) == "Darwin" ]]; then
-    # On MacOS, we need to use gnu-getopt instead of 
+    # On MacOS, we need to use gnu-getopt instead of
     # the default BSD getopt
     GETOPT=$(brew --prefix gnu-getopt)/bin/getopt
 else

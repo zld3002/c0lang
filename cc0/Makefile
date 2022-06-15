@@ -155,8 +155,9 @@ csharp: bin bare
 #	$(MAKE) -C compiler clean
 	$(MAKE) -C compiler buildid
 	$(MAKE) -C compiler csharp
-	$(COPY) compiler/bin/cc0-sml bin/cc0
 	$(COPY) compiler/bin/cc0.heap.* bin
+	$(COPY) compiler/bin/cc0-sml-with-o0-support bin/cc0
+	cat compiler/bin/cc0-o0-support >> bin/cc0
 	$(COPY) compiler/bin/cpfiles bin
 	chmod +x bin/cc0 bin/cpfiles
 
@@ -238,8 +239,6 @@ else
 	$(COPY) compiler/bin/coin-mlton-with-o0-support bin/coin
 	cat compiler/bin/coin-o0-support >> bin/coin
 endif
-#	chmod +x bin/coin
-#	touch bin/coin
 
 .PHONY: coin-exec
 coin-exec: bin/coin-exec
@@ -256,8 +255,6 @@ else
 	$(COPY) compiler/bin/coin-mlton bin/coin-exec
 	cat compiler/bin/coin-o0-support >> bin/coin-exec
 endif
-#	chmod +x bin/coin-exec
-#	touch bin/coin-exec
 
 
 ### codex - The C0 Debugger
@@ -278,8 +275,6 @@ else
 	$(COPY) compiler/bin/coin-mlton bin/codex
 	cat compiler/bin/coin-o0-support >> bin/codex
 endif
-#	chmod +x bin/codex
-#	touch bin/codex
 
 
 ### Cleanup
