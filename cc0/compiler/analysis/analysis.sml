@@ -322,56 +322,88 @@ struct
              val s' = simplifySeq s
              val s'' = simplifyPhiS s'
           in
-             [Function(rtp, name, types, args, reqs', s, ens')]
+             [Function(rtp, name, types, args, reqs', s'', ens')]
           end 
      | analyzeFunc iso _ = []
+    
+   (* list of vardecls to list of vars *)
+   (* this would probably be useful when passing vardecls as arguments to function/basic block tail-calls *)
+   fun vardeclsToVars vardecls = 
+       map (fn (Ast.VarDecl (ident, _, _, _)) => Ast.Var ident) vardecls
 
-   fun extractVarsFromStmt l stm =
+   (* create a new empty basic block *)
+   fun createBlock (name, rtp, args, specs) = 
+       Ast.Function (name, rtp, args, SOME (Ast.Seq ([], [])), specs, false, NONE)
+
+
+   fun collectDeclsFromStm l stm =
     case stm of
         Ast.Assign (oper, var, e) => l
       | Ast.Exp e => l	       (* e; *)
-      | Ast.Seq (vardecl_list, stm_list) => (foldr (fn (stm, vl) => extractVarsFromStmt vl stm) l stm_list) @ vardecl_list (* { ds es } *)
+      | Ast.Seq (vardecl_list, stm_list) => (foldr (fn (stm, vl) => collectDeclsFromStm vl stm) l stm_list) @ vardecl_list (* { ds es } ; can we assume that ds is empty here after preprocessing? *)
       | Ast.StmDecl decl => decl::l   (* d *)
-      | Ast.If (e, s1, s2) => (extractVarsFromStmt l s1) @ (extractVarsFromStmt l s2)	(* if (e) s1 else s2 *)
+      | Ast.If (e, s1, s2) => (collectDeclsFromStm l s1) @ (collectDeclsFromStm l s2)	(* if (e) s1 else s2 *)
       | Ast.While (e, loop_invs, s) => extractVarsFromStmt l s            (* while (e) s, loop invs. *)
       | _ => l (* What about Markeds? I think For loops can be safely ignored *)
-          
-   (* fun extractVars (Ast.Function(name, rtp, args, SOME stm, specs, false, ext)) = 
-       let val (stm', _) = Preprocess.preprocess iso
-                 (Ast.Function(name, rtp, args,
-                               SOME (Ast.Markeds (Mark.mark' (stmt, ext))),  (* Why do we need to annotate the function body with markeds here? *)
-                               specs, false, ext))
-       in extractVarsFromStmt args stm'
-       end
-     | extractVars _ = [] *)
-    (* for each function create a lookup table (probably using ORD_MAP) that maps basic block name/identifier to basic block (represented as Ast.Function)
-       Concerns:
-       1. need to figure out the return type
-         - what would happen if we ignore all return types? create a different type that does not keep track of return types?
-         - Something like: datatype basicblock = Block of ident * vardecl list * stm -- (block name, args, block body)
-         - needs to be put in a separate file (for purity analysis in purity.sml)
-       2. markeds issue; can we still backtrace to the location where the error occurs in the original code? *)
+
+   (* How to convert to SSA form? *)
+   (* The very first step we need to do is to make sure that each function call only have arguments that are constant/variable
+      To do so, we need to create a global variable counter (for naming new variables) and traverse the function body recursively:
+      whenever we encounter an FunCall, check its arguments to make sure that all arguments are constant/variable. If not, create a
+      new variable using Assign and the global counter and append it before the FunCall and replace the argument accordingly *)
+   (* After the first transformation, for each function, break it down into basic blocks recursively 
+      and add the blocks/functions to a pool (implemented as an array or a map) *)
+   (* First, we need to collect some information about the original function
+      1. function name/identifier 
+      2. return type (would be used as return types for all the subblocks)
+      3. arguments (as decls. list)
+      4. all local variables defined in the function body (also collected as decls. list) *)
+   (* Second, we need to break down its function body recursively.
+      we need to create a header/initial block for each original function using the original function name
+      Then for each statement:
+      - Assign: grab the most recent block (the one with index given by Array.bound) and add the stm to the end of the Seq
+      - Exp: same as Assign
+      - Seq: it seems that we can assume the first component of Seq is always empty after preprocessing (see line 6 in preprocess.sml);
+             thus, we can apply our function on each element of the stm list using List.app
+      - StmDecl: same as Assign
+      - If (e, strue, sfalse): 2 new blocks need to be created
+        - store the index of the current block
+        - create and put the strue header block on array then update with strue first: oldArray -> newArray
+        - create and put the sfalse header block on array then update with sfalse: newArray -> newArray'
+        - retrieve the block before, adding If statement with approrpiate block names
+      - While, Break, Continue, For: ignore these cases for now
+      - Anno: append the specs to the global spec list for the original function
+      - Assert: same as Assign
+      - Error: same as Assign
+      - Markeds: same as Assign except that we need to extract the stm inside *)
+    (* this function should have signature: stm * spec list -> unit *)
+
     
-    fun extractBasicBlock (Ast.Function(name, rtp, args, SOME stm, specs, false, ext)) = 
+    (* fun extractBasicBlock (Ast.Function(name, rtp, args, SOME stm, specs, false, ext)) = 
        let val (stm', _) = Preprocess.preprocess iso
                  (Ast.Function(name, rtp, args,
                                SOME (Ast.Markeds (Mark.mark' (stm, ext))),  (* Why do we need to annotate the function body with markeds here? *)
                                specs, false, ext))
             val allArgs = extractVatsFromStmt args stm'
             (* args are all the arguments to the function (of type vardecl list) *)
-            (* args are all the arguments to the function plus all local variables defined in the function body (of type vardecl list) *)
+            (* allArgs are all the arguments to the function plus all local variables defined in the function body (of type vardecl list) *)
             (* counter would be the global counter for creating unique identifier for each basic block *)
             (* stack would be the working stack for the basic blocks of current function (a list of basic blocks) *)
             (* break and continue envs to be added *)
-            fun stmToBlock (stm, args, counter, stack) =
+            fun stmToBlock (stm, counter, stack) =
                 case stm of
-                      Ast.If (e, strue, sfalse)	    (* if (e) s1 else s2 *)
+                      Ast.If (e, strue, sfalse)	=> let val BasicBlock (strueIdent, _, _) = stmToBlock (strue, counter, stack)
+                                                       val BasicBlock (sfalseIdent, _, _) = stmToBlock (sfalse, counter, stack)
+                                                       val ifBlock = createBlock (counter, allArgs, Ast.If (e, Ast.Return (SOME (Ast.FunCall (strueIdent, [])),
+                                                                                                               Ast.Return (SOME (Ast.FunCall (sfalseIdent, []))))))
+                                                   in   (* if (e) s1 else s2 *)
+                                                   end
                     | Ast.While (e, loop_invs, s)            (* while (e) s, loop invs. *)
                     | Ast.Seq (decls, stms) 
                     | _ => stack
        in stmToBlock (stm', allArgs, 0, [BasicBlock(name, args, Ast.Seq([], []))])
        end
-     | extractBasicBlock _ = []
+     | extractBasicBlock _ = [] *)
 
    fun analyze iso prog = List.concat (map (analyzeFunc iso) prog)
 end
