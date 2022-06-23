@@ -111,7 +111,7 @@ struct
       let fun s' (Ast.VarDecl(v, tp, SOME ex, _), (s, e, r, b, c)) =
                       let val (sp, ep, _, _, _) = ssa (Ast.Assign(NONE, Ast.Var v, ex), e)
                       in (Seq(s, sp), ep, r, b, c) end
-            | s' (Ast.VarDecl(v, tp, NONE, _), (s,e, r, b, c)) =
+            | s' (Ast.VarDecl(v, tp, NONE, _), (s, e, r, b, c)) =
                       let val e' = Env.inc e v 
                           val _ = print ("Var Decl: " ^ (Env.toString e') ^ "\n")              
                           val _ = print "==================\n"
@@ -345,6 +345,86 @@ struct
       | Ast.If (e, s1, s2) => (collectDeclsFromStm l s1) @ (collectDeclsFromStm l s2)	(* if (e) s1 else s2 *)
       | Ast.While (e, loop_invs, s) => extractVarsFromStmt l s            (* while (e) s, loop invs. *)
       | _ => l (* What about Markeds? I think For loops can be safely ignored *)
+
+   datatype basicBlock = Block of ident * tp * vardecl list * stm option * spec list * bool * ext
+   type ssafunc = basicBlock DynamicArray.array
+   fun addBlock ssaf bb =
+      let
+         val index = DynamicArray.bound ssaf
+         val () = DynamicArray.update (ssaf, index + 1, bb)
+      in
+         index + 1
+      end
+   
+   (* combine two statments in order using Ast.Seq*)
+   fun combineStmt stm1 stm2 : stm =
+     case (stm1, stm2)
+       of (Ast.Seq (vl1, sl1), Ast.Seq (vl2, sl2)) => Ast.Seq (vl1 @ vl2, sl1 @ sl2)
+        | (Ast.Seq (vl1, sl1), _) => Ast.Seq (vl1, sl1 @ [stm2])
+        | (_, Ast.Seq (vl2, sl2)) => Ast.Seq (vl1, stm1 :: sl2)
+        | (_, _) => Ast.Seq ([], [stm1, stm2])
+
+   fun processRightSideExp e
+
+   fun processOneStmt (newStmt, (processedStmt, types)) = 
+     let val (newStmt', types') = simplifyArgs (newStmt, types)
+     in (combineStmt processedStmt newStmt', types')
+     end
+
+   (* simplifyArgs expects preprocessing *)
+   and simplifyArgs (stmt, types) : stm * tp SymMap.map =
+      case stmt
+        of Ast.Seq (x::xs, _) => raise Fail ("simplifyArgs expects preprocessed statements")
+         | Ast.Seq ([], slist) => foldl processOneStmt (Ast.Seq([], []), types) slist
+         | Ast.Assign (o, e1, e2) => 
+         | Ast.Exp e => 
+         | Ast.StmDecl _ => (stmt, types)
+         | Ast.Return NONE => (stmt, types)
+         | Ast.Return (SOME e) => 
+         | _ => (stmt, types)
+
+         (*
+         | Ast.Assign of oper option * exp * exp     (* lv = e; or lv op= e; *)
+         | Ast.Exp of exp			    (* e; *)
+         | Ast.StmDecl of vardecl		    (* d *)
+         | Ast.If of exp * stm * stm		    (* if (e) s1 else s2 *)
+         | Ast.While of exp * spec list * stm            (* while (e) s, loop invs. *)
+         | Ast.For of stm * exp * stm * spec list * stm  (* for (s1; e; s2) s3, loop invs. *)
+         | Ast.Continue				    (* continue; *)
+         | Ast.Break				    (* break; *)
+         | Ast.Return of exp option		    (* return [e]; *)
+         | Ast.Assert of exp * exp list              (* assert(e); error msgs) *)
+         | Ast.Error of exp                          (* error(e); *)
+         | Ast.Anno of spec list		            (* @assert or @loop_invariant *)
+         | Ast.Markeds of stm Mark.marked*)
+
+
+   fun analyzeFuncNew iso (Ast.Function(name, rtp, args, SOME stmt, specs, false, ext)) = 
+          let
+             val (stmt', types) = Preprocess.preprocess iso
+                 (Ast.Function(name, rtp, args,
+                               SOME (Ast.Markeds (Mark.mark' (stmt, ext))),
+                               specs, false, ext))
+             
+             (*
+             val _ = typeContext := Symbol.digest (SymMap.listItemsi (SymMap.insert(types, Symbol.symbol "\\result", rtp)))dat
+             val (_, initialEnv, _, _, _) = ssaVarDecl (args, Env.empty, [], [], [])
+             val args = analyzeArgs initialEnv args
+             val reqs = List.filter (fn Ast.Requires _ => true | _ => false) specs
+             val ens = List.filter (fn Ast.Ensures _ => true | _ => false) specs
+             
+             val reqs' = map (labelSpec initialEnv) reqs
+             val ens' = map (labelSpec initialEnv) ens
+             val _  = print ("Initial Env: " ^ (Env.toString initialEnv) ^ "\n")
+             val (s, env, rets, _, _) = ssa (stmt', initialEnv)
+             val _  = print ("Final Env: " ^ (Env.toString env) ^ "\n")
+             val s' = simplifySeq s
+             val s'' = simplifyPhiS s'
+             *)
+          in
+             (*[Function(rtp, name, types, args, reqs', s'', ens')]*)
+          end 
+     | analyzeFuncNew iso _ = []
 
    (* How to convert to SSA form? *)
    (* The very first step we need to do is to make sure that each function call only have arguments that are constant/variable
