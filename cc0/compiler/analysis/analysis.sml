@@ -10,10 +10,11 @@ end
 
 structure Analysis :> ANALYSIS =
 struct
-   
+   exception NotVarDecl
+   exception ToBeImplemented
+   exception Impossible
    structure Env = SSAEnvironment
-   open AAst
-   
+   structure SVAREnv = SSAVarEnvironment
    val typeContext = ref (Symbol.empty: Ast.tp Symbol.table)
    fun labelVar env v =
      case Env.lookup env v of
@@ -331,10 +332,6 @@ struct
    fun vardeclsToVars vardecls = 
        map (fn (Ast.VarDecl (ident, _, _, _)) => Ast.Var ident) vardecls
 
-   (* create a new empty basic block *)
-   fun createBlock (name, rtp, args, specs) = 
-       Ast.Function (name, rtp, args, SOME (Ast.Seq ([], [])), specs, false, NONE)
-
 
    fun collectDeclsFromStm l stm =
     case stm of
@@ -346,9 +343,18 @@ struct
       | Ast.While (e, loop_invs, s) => extractVarsFromStmt l s            (* while (e) s, loop invs. *)
       | _ => l (* What about Markeds? I think For loops can be safely ignored *)
 
-   datatype basicBlock = Block of ident * tp * vardecl list * stm option * spec list * bool * ext
-   type ssafunc = basicBlock DynamicArray.array
-   fun addBlock ssaf bb =
+  
+  structure DA = DynamicArray
+
+  datatype basicblock = Block of VAst.ident * VAst.tp * VAst.svardecl list * VAst.stm * VAst.spec list 
+                      | Empty
+  
+  type ssafunc = basicblock DA.array
+
+
+  fun newSsafunc size = DA.array (size, Empty)
+
+  fun addBlock ssaf bb =
       let
          val index = DynamicArray.bound ssaf
          val () = DynamicArray.update (ssaf, index + 1, bb)
@@ -356,75 +362,141 @@ struct
          index + 1
       end
    
-   (* combine two statments in order using Ast.Seq*)
-   fun combineStmt stm1 stm2 : stm =
-     case (stm1, stm2)
-       of (Ast.Seq (vl1, sl1), Ast.Seq (vl2, sl2)) => Ast.Seq (vl1 @ vl2, sl1 @ sl2)
-        | (Ast.Seq (vl1, sl1), _) => Ast.Seq (vl1, sl1 @ [stm2])
-        | (_, Ast.Seq (vl2, sl2)) => Ast.Seq (vl1, stm1 :: sl2)
-        | (_, _) => Ast.Seq ([], [stm1, stm2])
+   (* combineStmt : VAst.stm * VAst.stm -> VAst.stm *)
+   (* combine two statments in order using VAst.Seq*)
+   fun combineStmt (stm1, stm2) =
+     case (stm1, stm2) of 
+          (VAst.Seq (sl1), VAst.Seq (sl2)) => VAst.Seq (sl1 @ sl2)
+        | (VAst.Seq (sl1), _) => VAst.Seq (sl1 @ [stm2])
+        | (_, VAst.Seq (sl2)) => VAst.Seq (stm1 :: sl2)
+        | (_, _) => VAst.Seq ([stm1, stm2])
 
-   fun processRightSideExp e
+   (* fun translateArgVardecl decl =
+     case decl of
+         Ast.VarDecl (id, tp, init, ext) => VAst.VarDecl (id, 0, tp, init, ext)
+       | _ => raise NotVarDecl *)
+   
 
-   fun processOneStmt (newStmt, (processedStmt, types)) = 
-     let val (newStmt', types') = simplifyArgs (newStmt, types)
-     in (combineStmt processedStmt newStmt', types')
-     end
+   fun addArgsVer decls ver =
+      map (fn decl => case decl of 
+                          Ast.VarDecl (id, tp, init, ext) => VAst.SVarDecl (id, ver, translateArgsTp tp, init, ext)
+                        | _ => raise NotVarDecl) decls
+   
 
-   (* simplifyArgs expects preprocessing *)
-   and simplifyArgs (stmt, types) : stm * tp SymMap.map =
-      case stmt
-        of Ast.Seq (x::xs, _) => raise Fail ("simplifyArgs expects preprocessed statements")
-         | Ast.Seq ([], slist) => foldl processOneStmt (Ast.Seq([], []), types) slist
-         | Ast.Assign (o, e1, e2) => 
-         | Ast.Exp e => 
-         | Ast.StmDecl _ => (stmt, types)
-         | Ast.Return NONE => (stmt, types)
-         | Ast.Return (SOME e) => 
-         | _ => (stmt, types)
+   (* add all decls to the env *)
+   fun gatherArgs decls env = 
+      let fun helper (decl, env) =
+             case decl of 
+               Ast.VarDecl (id, tp, _, _) => SVAREnv.addVar env id (translateTp tp)
+             | _ => env 
+      in foldl helper env decls end
 
-         (*
-         | Ast.Assign of oper option * exp * exp     (* lv = e; or lv op= e; *)
-         | Ast.Exp of exp			    (* e; *)
-         | Ast.StmDecl of vardecl		    (* d *)
-         | Ast.If of exp * stm * stm		    (* if (e) s1 else s2 *)
-         | Ast.While of exp * spec list * stm            (* while (e) s, loop invs. *)
-         | Ast.For of stm * exp * stm * spec list * stm  (* for (s1; e; s2) s3, loop invs. *)
-         | Ast.Continue				    (* continue; *)
-         | Ast.Break				    (* break; *)
-         | Ast.Return of exp option		    (* return [e]; *)
-         | Ast.Assert of exp * exp list              (* assert(e); error msgs) *)
-         | Ast.Error of exp                          (* error(e); *)
-         | Ast.Anno of spec list		            (* @assert or @loop_invariant *)
-         | Ast.Markeds of stm Mark.marked*)
+   (* appendToCurrent: ssafunc * VAst.stm -> unit *)
+   (* append stmNew to end of current block in ssaf*)
+   fun appendToCurrent (ssaf, stmNew) = 
+      let
+         val currentIndex = DA.bound ssaf
+         val currentBlock = DA.sub (ssaf, currentIndex)
+      in
+         case currentBlock of
+              Block (id, rtp, svardecls, stm, specs) =>
+                 let
+                    val newBlock = Block (id, rtp, svardecls, combineStmt (stm, stmNew), specs)
+                 in
+                    DA.update (ssaf, index, newBlock)
+                 end
+            | Empty => raise Impossible
+      end
+   (* stmtHelper: Ast.stm * svarenv -> VAst.stm * svarenv *)
+   (* stmHelper: Ast.stm * svarenv * ssafunc -> svarenv *)
+   fun stmtHelper (stmt, env) =
+       case stmt of 
+            Ast.Assign (oper, lv, e) => case oper of
+                                             NONE => let val e' = expHelper (e, env)
+                                                     in case lv of
+                                                             Ast.Var id => let val (env', ver, tp) = SVAREnv.updateVar env id
+                                                                           in VAst.SVarDecl (id, ver, tp, SOME e', NONE) end                               
+                                                           | _ => (VAst.Assign (NONE, expHelper (lv, env), e'), env) 
+                                                     end
+                                             (* simplify lv oper= e to lv = lv oper e *)
+                                           | SOME oper => stmtHelper (Ast.Assign (NONE, lv, Ast.OpExp (oper, [lv, e])), env)
+          | Ast.Exp e => (VAst.Exp (expHelper (e, env)), env)
+          | Ast.Seq (_, slist) => let val init = ([], env)
+                                      val (rslist', env') = foldl (fn (s, (rslist, e)) => 
+                                                                      let val (s', e') = stmtHelper (s, e)
+                                                                      in (s'::rslist, e') end) 
+                                                                  ([], env) 
+                                                                  slist
+                                       val slist' = rev rslist' (* need to reverse since the first translated stmt 
+                                                                   gets added to the stack first *)
+                                  in (VAst.Seq (slist'), env') end
+          | Ast.StmDecl decl => let val Ast.VarDecl (id, tp, init, ext) = decl
+                                    val init' = case init of 
+                                                     NONE => NONE 
+                                                   | SOME e => SOME (expHelper (e, env))
+                                    val env' = SVAREnv.addVar env id tp
+                                in (VAst.StmDecl (VAst.SVarDecl (id, 0, tp, init', ext)), env') end
+          | Ast.If (e, strue, sfalse) => raise ToBeImplemented
+          | Ast.While (e, loop_invs, s) => raise ToBeImplemented
+          | Ast.Continue => raise ToBeImplemented
+          | Ast.Break => raise ToBeImplemented
+          | Ast.Return e => case e of
+                                 NONE => (VAst.Return (NONE), env)
+                               | SOME e => (VAst.Return (expHelper (e, env)), env)
+          | Ast.Assert _ => raise ToBeImplemented
+          | Ast.Error e => (VAst.Error (expHelper (e, env)), env)
+          | Ast.Anno _ => raise ToBeImplemented
+          | Ast.Markeds _ => raise ToBeImplemented
+
+   (* expHelper: Ast.exp * svarenv -> VAst.exp *)
+   (* exp only involves use (not def) of a variable? *)
+   (* does that mean the svarenv must be the same as we passed in? *)
+   (* i.e. no need to output env *)
+   fun expHelper (e, env) = 
+       case e of
+            Ast.Var id => VAst.SVar (id, SVAREnv.getVersion env id)
+          | Ast.IntConst i => VAst.IntConst i
+          | Ast.StringConst s => VAst.StringConst s
+          | Ast.CharConst c => VAst.CharConst c
+          | Ast.True => VAst.True
+          | Ast.False => VAst.False
+          | Ast.Null => VAst.Null
+          | Ast.OpExp (oper, elist) => let val elist' = map (fn e => expHelper (e, env)) elist
+                                       in VAst.OpExp (oper, elist')
+                                       end
+          | Ast.Select (e, id) => VAst.Select (expHelper (e, env), id)
+          | Ast.FunCall (id, elist) => let val elist' = map (fn e => expHelper (e, env)) elist
+                                       in VAst.FunCall (id, elist')
+                                       end
+         | Ast.AddrOf id => VAst.AddrOf id
+         | Ast.Invoke (e, elist) => let val elist' = map (fn e => expHelper (e, env)) elist
+                                    in VAst.Invoke (expHelper (e, env), elist')
+                                    end
+         | Ast.Alloc tp => VAst.Alloc tp
+         | Ast.AllocArray (tp, e) => VAst.AllocArray (tp, expHelper (e, env))
+         | Ast.Cast (tp, e) => VAst.Cast (tp, expHelper (e, env))
+         | Ast.Result => VAst.Result
+         | Ast.Length e => VAst.Length (expHelper (e, env))
+         | Ast.Hastag (tp, e) => VAst.Hastag (tp, expHelper (e, env))
+         | Ast.Marked x => VAst.Marked x
 
 
-   fun analyzeFuncNew iso (Ast.Function(name, rtp, args, SOME stmt, specs, false, ext)) = 
+   fun analyzeFuncNew (Ast.Function(name, rtp, args, SOME stmt, specs, false, ext)) = 
           let
-             val (stmt', types) = Preprocess.preprocess iso
+             val (stmt', types) = Preprocess.preprocess true
                  (Ast.Function(name, rtp, args,
                                SOME (Ast.Markeds (Mark.mark' (stmt, ext))),
                                specs, false, ext))
-             
-             (*
-             val _ = typeContext := Symbol.digest (SymMap.listItemsi (SymMap.insert(types, Symbol.symbol "\\result", rtp)))dat
-             val (_, initialEnv, _, _, _) = ssaVarDecl (args, Env.empty, [], [], [])
-             val args = analyzeArgs initialEnv args
-             val reqs = List.filter (fn Ast.Requires _ => true | _ => false) specs
-             val ens = List.filter (fn Ast.Ensures _ => true | _ => false) specs
-             
-             val reqs' = map (labelSpec initialEnv) reqs
-             val ens' = map (labelSpec initialEnv) ens
-             val _  = print ("Initial Env: " ^ (Env.toString initialEnv) ^ "\n")
-             val (s, env, rets, _, _) = ssa (stmt', initialEnv)
-             val _  = print ("Final Env: " ^ (Env.toString env) ^ "\n")
-             val s' = simplifySeq s
-             val s'' = simplifyPhiS s'
-             *)
+             val args' = addArgsVer args 0
+             val ssaf = newSsafunc 10
+             val initBlock = Block (name, rtp, args', VAst.Seq [], specs)
+             val _ = addBlock ssaf initBlock
+             val env = gatherArgs args (SVAREnv.empty)
+             val (stmt'', env') = stmtHelper (stmt', env)
           in
-             (*[Function(rtp, name, types, args, reqs', s'', ens')]*)
+             ssaf
           end 
-     | analyzeFuncNew iso _ = []
+     | analyzeFuncNew _ = raise Impossible
 
    (* How to convert to SSA form? *)
    (* The very first step we need to do is to make sure that each function call only have arguments that are constant/variable
