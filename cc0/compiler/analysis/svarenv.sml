@@ -15,7 +15,18 @@ sig
    val addVar : env -> symbol -> tp -> env
 
    (* called when encountering a redef *)
+   (* requires var to be already in the env *)
    val updateVar : env -> symbol -> env * int * tp
+
+   (* called when entering a new basic block; increment all variable version counter by 1 *)
+   val updateAll : env -> env
+
+   (* convert the env to a list of svardecls *)
+   val toSVarDecls : env -> VAst.svardecl list
+
+   (* update args to the latest version in env *)
+   val updateArgs : env * VAst.svardecl list -> VAst.svardecl list
+
    
    (* val toString: env -> string *)
 end
@@ -49,6 +60,16 @@ struct
           val env' = T.insertWith (fn (old, new) => new) (env, sym, (v + 1, t))
       in (env', v + 1, t) end
 
+   fun updateAll env = 
+       T.map (fn (v, t) => (v + 1, tp)) env
+
+   fun toSVarDecls env =
+       let val expanded = T.listItemsi env
+       in map (fn (id, (v, t)) => VAst.SVarDecl (id, v, tp, NONE, NONE)) expanded end
+
+   fun updateArgs (env, args) = 
+       map (fn VAst.SVarDecl (id, _, tp, _, _) => VAst.SVarDecl (id, getVersion env id, tp, NONE, NONE)) args
+   
   (* fun toString env =
      AAst.Print.commas "," (map (fn (l, i) => Symbol.nameFull l ^ " -> "^ Int.toString i) (T.listItemsi env)) *)
 end
