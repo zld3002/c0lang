@@ -412,17 +412,26 @@ struct
                in
                   DA.update (ssaf, index, newBlock)
                end
-            (* block cannot be empty since we always insert a header/lead block into ssafunc first *)
           | Empty => raise Impossible 
    (* appendToCurrent: ssafunc * VAst.stm -> unit *)
    (* append stmNew to end of current block in ssaf*)
    fun appendToCurrent (ssaf, stmNew) = 
        let val index = DA.bound ssaf
        in appendToIndex (ssaf, index, stmNew) end
+
+   fun updateBlockArgs (ssaf, index, newArgs) = 
+       case DA.sub (ssaf, index) of
+            Block (id, rtp, _, stm, specs) =>
+               let
+                  val newBlock = Block (id, rtp, newArgs, stm, specs)
+               in
+                  DA.update (ssaf, index, newBlock)
+               end
+          | Empty => raise Impossible
    
    (* old stmtHelper: Ast.stm * svarenv -> VAst.stm * svarenv *)
-   (* new stmHelper: Ast.stm * svarenv * ssafunc * symbol -> VAst.stm * svarenv *)
-   fun stmtHelper (stmt, env, ssaf, fname, rtp) =
+   (* new stmHelper: Ast.stm * svarenv * ssafunc * symbol * tp * (symbol * svardecl list) * (symbol * svardecl list) -> VAst.stm * svarenv *)
+   fun stmtHelper (stmt, env, ssaf, fname, rtp, contInfo, breakInfo) =
        case stmt of 
             Ast.Assign (oper, lv, e) => case oper of
                                              NONE => let val e' = expHelper (e, env)
@@ -437,14 +446,14 @@ struct
                                                                   in (stmt', env) end
                                                      end
                                              (* simplify lv oper= e to lv = lv oper e *)
-                                           | SOME oper => stmtHelper (Ast.Assign (NONE, lv, Ast.OpExp (oper, [lv, e])), env, ssaf, fname, rtp, args)
+                                           | SOME oper => stmtHelper (Ast.Assign (NONE, lv, Ast.OpExp (oper, [lv, e])), env, ssaf, fname, rtp, args, contInfo, breakInfo)
           | Ast.Exp e => let val stmt' = VAst.Exp (expHelper (e, env))
                              val () = appendToCurrent (ssaf, stmt')
                          in (stmt', env) end
           | Ast.Seq (_, slist) => case slist of
                                        [] => (VAst.Seq ([]), env)
-                                     | s::rest => let val (_, env') = stmtHelper (s, env, ssaf, fname, rtp)
-                                                  in stmtHelper (Ast.Seq (rest), env', ssaf, fname, rtp) end
+                                     | s::rest => let val (_, env') = stmtHelper (s, env, ssaf, fname, rtp, contInfo, breakInfo)
+                                                  in stmtHelper (Ast.Seq (rest), env', ssaf, fname, rtp, contInfo, breakInfo) end
           | Ast.StmDecl decl => let val Ast.VarDecl (id, tp, init, ext) = decl
                                     val init' = case init of 
                                                      NONE => NONE 
@@ -457,7 +466,7 @@ struct
                                              val prevArgs = SVAREnv.toSVarDecls env
                                              val env' = SVAREnv.updateAll env
                                              val args' = SVAREnv.toSVarDecls env'
-                                             val (strue', env'') = stmtHelper (strue, env', ssaf, fname, rtp)
+                                             val (strue', env'') = stmtHelper (strue, env', ssaf, fname, rtp, contInfo, breakInfo)
                                              (* make new block id only after the recursive call since the recursive call may modify ssaf *)
                                              val trueBlockName = makeBlockName (fname, ssaf)
                                              val trueBlock = Block (trueBlockName, rtp, args', strue', [])
@@ -465,23 +474,52 @@ struct
                                              (* Now moving to the false block *)
                                              val env''' = SVAREnv.updateAll env''
                                              val args'' = SVAREnv.toSVarDecls env'''
-                                             val (sfalse', env'''') = stmtHelper (sfalse, env''', ssaf, fname, rtp)
+                                             val (sfalse', env'''') = stmtHelper (sfalse, env''', ssaf, fname, rtp, contInfo, breakInfo)
                                              val falseBlockName = makeBlockName (fname, ssaf)
                                              val falseBlock = Block (falseBlockName, rtp, args'', sfalse', [])
                                              val falseIndex = addBlock (ssaf, falseBlock)
                                              val stmt' = VAst.If (expHelper (e, env), makeFunCall (trueBlockName, prevArgs), makeFunCall (falseBlockName, prevArgs))
                                              val () = appendToIndex (ssaf, prevIndex, stmt')
                                              val nextEnv = SVAREnv.updateAll env''''
-                                             val nextArgs = updateArgs (nextEnv, prevArgs) (* what if the conditional introduced inconsisteny between clauses? *)
+                                             val nextArgs = updateArgs (nextEnv, prevArgs)
                                              val nextName = makeBlockName (fname, ssaf)
                                              val nextBlock = Block (nextName, rtp, nextArgs, VAst.Seq ([]), [])
                                              val _ = addBlock (ssaf, nextBlock)
                                              val () = appendToIndex (ssaf, trueIndex, makeFunCall (nextName, updateArgs (env'', prevArgs)))
                                              val () = appendToIndex (ssaf, falseIndex, makeFunCall (nextName, updateArgs (env'''', prevArgs)))
                                          in (stmt', nextEnv) end
-          | Ast.While (e, loop_invs, s) => raise ToBeImplemented
-          | Ast.Continue => raise ToBeImplemented
-          | Ast.Break => raise ToBeImplemented
+          | Ast.While (cond, loopInvs, loopBody) => let val prevIndex = DA.bound ssaf
+                                                        val prevArgs = SVAREnv.toSVarDecls env
+                                                        val env' = SVAREnv.updateAll env
+                                                        val args' = SVAREnv.toSVarDecls env'
+                                                        (* We need loop and next placeholder be created and placed first for conInfo'/breakInfo' in the
+                                                           recursive call *)
+                                                        val loopName = makeBlockName (fname, ssaf)
+                                                        val loopBlock = Block (loopName, rtp, args', VAst.Seq([]), loopInvs?)
+                                                        val loopIndex = addBlock (ssaf, loopBlock)
+                                                        val nextName = makeBlockName (fname, ssaf)
+                                                        val nextBlock = Block (nextName, rtp, [], VAst.Seq([]), [])
+                                                        val nextIndex = addBlock (ssaf, nextBlock)
+                                                        
+                                                        val stmt' = makeFunCall (loopName, prevArgs)
+                                                        val contInfo' = (loopName, prevArgs)
+                                                        val breakInfo' = (nextName, prevArgs)
+                                                        val (loopBody', env'') = stmtHelper (loopBody, env', ssaf, fname, rtp, contInfo', breakInfo')
+                                                        val cond' = expHelper (cond, env')
+                                                        val contLoop = makeFunCall (loopName, updateArgs (env'', prevArgs))
+                                                        val exitLoop = makeFunCall (nextName, updateArgs (env', prevArgs))
+                                                        val body = VAst.If (cond', Vast.Seq ([body', contLoop]), exitLoop)                                       
+                                                        val () = appendToIndex (ssaf, loopIndex, body)
+                                                        val nextEnv = SVAREnv.updateAll env''
+                                                        val nextArgs = updateArgs (nextEnv, prevArgs)
+                                                        val () = updateBlockArgs (ssaf, nextIndex, nextArgs)
+                                             in (stmt', nextEnv) end
+          | Ast.Continue => let val (loopName, args) = contInfo
+                                val stmt' = makeFunCall (loopName, updateArgs (env, args))
+                            in (stmt', env) end
+          | Ast.Break => let val (nextName, args) = breakInfo
+                            val stmt' = makeFunCall (nextName, updateArgs (env, args))
+                        in (stmt', env) end
           | Ast.Return e => case e of
                                  NONE => let val stmt' = VAst.Return (NONE)
                                              val () = appendToCurrent (ssaf, stmt')
