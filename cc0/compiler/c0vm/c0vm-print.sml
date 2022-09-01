@@ -105,8 +105,12 @@ struct
     | pp_bclines n (V.Label(k, s)::bcs) = "# " ^ s ^ "\n" ^ pp_bclines n bcs
     | pp_bclines n (V.Inst(inst, anno, ext)::bcs) =
       (* "/" ^ pad(Int.toString(n),3) ^ "/ " ^ *)
-        pad_instr(pp_inst inst) ^ "# " ^ anno ^ "\n"
-        ^ pp_bclines (n+V.il(inst)) bcs
+      if Flag.isset Flags.flag_bytecode_ext
+      then pad_instr(pp_inst inst) ^ "# " ^ (Mark.show' ext) ^ "\n"
+           ^ pp_bclines (n+V.il(inst)) bcs
+      else 
+          pad_instr(pp_inst inst) ^ "# " ^ anno ^ "\n"
+          ^ pp_bclines (n+V.il(inst)) bcs
     | pp_bclines n (nil) = ""
 
   fun pp_function_info (SOME(V.FI {name = name,

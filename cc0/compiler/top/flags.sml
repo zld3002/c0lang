@@ -16,7 +16,8 @@ signature FLAGS = sig
   val flag_warn : Flag.flag
   val flag_save_files : Flag.flag
   val flag_exec : Flag.flag
-  val flag_bytecode : Flag.flag 
+  val flag_bytecode : Flag.flag
+  val flag_bytecode_ext : Flag.flag
   val flag_static : Flag.flag
   val flag_only_typecheck : Flag.flag
 
@@ -69,6 +70,7 @@ structure Flags :> FLAGS = struct
   val flag_save_files = Flag.flag "save-files"
   val flag_exec = Flag.flag "exec"
   val flag_bytecode = Flag.flag "bytecode"
+  val flag_bytecode_ext = Flag.flag "bytecode-ext"
   val flag_static = Flag.flag "static"
   val flag_only_typecheck = Flag.flag "only-typecheck"
   
@@ -123,6 +125,7 @@ structure Flags :> FLAGS = struct
           List.app Flag.unset [flag_verbose, flag_help,
                                flag_version, flag_no_log,
                                flag_ast, flag_dyn_check, flag_exec, flag_bytecode, 
+                               flag_bytecode_ext,
                                flag_static_check, flag_verif_check,
                                flag_warn, flag_save_files,
                                flag_trace, flag_print_codes];
@@ -240,6 +243,9 @@ structure Flags :> FLAGS = struct
      {short = "b", long=["bytecode"],
       desc=GetOpt.NoArg (fn () => Flag.set flag_bytecode),
       help="Generate bytecode instead of executable"},
+     {short = "", long=["bytecode-ext"],
+      desc=GetOpt.NoArg (fn () => Flag.set flag_bytecode_ext),
+      help="Generate bytecode annotated with source extents"},
      {short = "m", long=["bc-arch"],
       desc=GetOpt.ReqArg ((fn (s) => (bytecode_arch := parse_bytecode_arch s)), "<arch>"),
       help="Set bytecode architecture: 64 (default) or 32"},
