@@ -1,7 +1,7 @@
 AR = ar
 CC = gcc
 CXX = g++
-LD = g++
+LD = gcc
 RM = rm
 DEPTH ?= ../..
 
@@ -54,7 +54,7 @@ endif
 OBJECTS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SOURCES) $(FFISUPPORT)))
 
 ifeq ($(findstring gc,$(REQUIRES)),gc)
-CFLAGS += -I$(DEPTH)/../externals/gc/include
+CFLAGS += -I$(DEPTH)/../externals/bdwgc/include
 LIBS += -lgc -lpthread
 endif
 
@@ -63,6 +63,7 @@ LIBS += -lncurses
 endif
 
 ifeq ($(findstring backtrace,$(REQUIRES)),backtrace)
+CFLAGS += -I$(DEPTH)/../externals/libbacktrace/
 LIBS += -lbacktrace
 endif
 
@@ -72,7 +73,6 @@ CFLAGS += -O3
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
-	#for l in $(C0LIBS); do $(MAKE) -C $(DEPTH)/libs/$$l; done
 ifdef STATIC
 	$(AR) rcs $(TARGET) $(OBJECTS)
 else

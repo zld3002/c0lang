@@ -1,3 +1,8 @@
+# Include the platform-specific configuration from ./configure
+include config.mk
+
+include util.mk
+
 SHELL   = /bin/sh
 RM      = rm
 COPY    = cp -p
@@ -5,30 +10,39 @@ CPP     = cpp
 DEPTH = .
 SML     = sml
 MLTON_VERB = 0
-MLTON_BASIC = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -verbose $(MLTON_VERB) -output
+MLTON_FLAGS = -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error"
+# Enable and remove the 'handle _ => ' from go.sml and top.sml
+# to record backtraces (albeit very imprecise ones)
+#MLTON_FLAGS += -const 'Exn.keepHistory true'
+MLTON_BASIC = mlton $(MLTON_FLAGS) -verbose $(MLTON_VERB)  -output
 
 #Uncomment to use SMLNJ, which has significantly faster compile times than mlton
 # NJ=1
 
-ifdef STATIC
-ifdef LIBSPLUS
-MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -Llib -Lruntime -lfile -lconio -lstring -lparse -lcurses -limg -lclock -lbare -lpng -lz /usr/lib/libcurses.a" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output
+MLTON_NATIVE := mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error"
+MLTON_NATIVE += -link-opt "-lpthread -ldl -rdynamic" -cc-opt "-Iinclude" -default-ann "allowFFI true"
+MLTON_NATIVE += -cc-opt "-I../externals/"
+MLTON_NATIVE += -link-opt "../externals/readline/libreadline.a ../externals/readline/libhistory.a"
+MLTON_NATIVE += -link-opt "$(shell pkg-config libpng --libs)"
+
+# libreadline dependencies
+ifeq ($(PLATFORM),osx)
+MLTON_NATIVE += -link-opt "-ltermcap"
 else
-MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -Llib -Lruntime -lfile -lconio -lstring -lparse -lcurses -limg -lbare -lpng -lz /usr/lib/libcurses.a" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output
+# (Assuming Linux)
+MLTON_NATIVE += -link-opt "-ltinfo"
 endif
-else
-MLTON_NATIVE = mlton -default-ann "redundantMatch error" -default-ann "sequenceNonUnit error" -link-opt "-lpthread -ldl -rdynamic" -cc-opt "-Iinclude" -default-ann "allowFFI true" -output
-endif
+
+MLTON_NATIVE += -cc-opt -Wall
+MLTON_NATIVE += -cc-opt -Wextra
+MLTON_NATIVE += -cc-opt -Werror
+MLTON_NATIVE += -output
 
 # $EXTERNALS is set by ./configure in config.mk
-# currently libpng for mac os x, empty for linux
 
-# Include the platform-specific configuration from ./configure
-include config.mk
-
-include util.mk
-
-all: cc0 coin codex externals libs
+## removing codex from default build
+#all: cc0 coin codex externals libs
+all: cc0 coin externals libs
 
 .PHONY: externals
 externals: $(EXTERNALS)
@@ -43,45 +57,23 @@ runtime:
 ### External libraries
 
 # If you change this, you will have to change lib.mk
-GCDIR = ../externals/gc
+GCDIR = ../externals/bdwgc
+
+# We statically link the garbage collector into a dynamic library (libc0rt.so)
+# so it needs to be compiled with --with-pic and --enable-static.
+# --disable-threads means that the GC will not install signal handlers for
+# a bunch of signals, so we can use those signals in the test harness.
+# Note that Concurrent CC0 may need this feature of the garbage collector
+GC_CC0_CONFIG_FLAGS=--with-pic --enable-static --disable-threads
 
 $(GCDIR)/Makefile:
-	(cd $(GCDIR); ./configure --with-pic)
+	(cd $(GCDIR); ./autogen.sh; ./configure $(GC_CC0_CONFIG_FLAGS))
 
 .PHONY: gc
 gc: lib $(GCDIR)/Makefile
 	$(MAKE) -C $(GCDIR)
 	$(COPY) $(GCDIR)/.libs/libgc.a lib
 
-ZLIBDIR = ../externals/zlib
-
-$(ZLIBDIR)/Makefile:
-	(cd $(ZLIBDIR); ./configure --prefix=$(abspath $(ZLIBDIR)/installdir) )
-
-# copy .a and .h files manually, so that dynamic libraries
-# are not available to the linker (for standalone binary export)
-.PHONY: zlib
-zlib: lib $(ZLIBDIR)/Makefile
-	$(MAKE) -C $(ZLIBDIR)
-	$(MAKE) -C $(ZLIBDIR) install
-	$(COPY) $(ZLIBDIR)/installdir/lib/*.a lib
-	$(COPY) $(ZLIBDIR)/installdir/include/*.h include
-#	-$(COPY) -a $(ZLIBDIR)/installdir/lib/*.so* lib
-
-LIBPNGDIR = ../externals/libpng
-
-$(LIBPNGDIR)/Makefile:
-	(cd $(LIBPNGDIR); ./configure --with-pic --with-zlib-prefix=$(abspath $(ZLIBDIR)/installdir) --prefix=$(abspath $(LIBPNGDIR)/installdir) )
-
-# copy .a and .h files manually, so that dynamic libraries
-# are not available to the linker (for standalone binary export)
-.PHONY: libpng
-libpng: zlib lib $(LIBPNGDIR)/Makefile
-	$(MAKE) -C $(LIBPNGDIR)
-	$(MAKE) -C $(LIBPNGDIR) install
-	$(COPY) $(LIBPNGDIR)/installdir/lib/*.a lib
-	$(COPY) $(LIBPNGDIR)/installdir/include/*.h include
-#	-$(COPY) -a $(LIBPNGDIR)/installdir/lib/*.so* lib
 
 # The backtrace library for C0RT
 LIBBACKTRACEDIR := ../externals/libbacktrace
@@ -94,6 +86,16 @@ libbacktrace: $(LIBBACKTRACEDIR)/Makefile
 	$(MAKE) -C $(LIBBACKTRACEDIR)
 	$(COPY) $(LIBBACKTRACEDIR)/.libs/libbacktrace.a lib/
 	$(COPY) $(LIBBACKTRACEDIR)/backtrace.h c0rt/
+
+READLINEDIR := ../externals/readline
+
+$(READLINEDIR)/Makefile:
+	cd $(READLINEDIR) && ./configure
+
+# For readline we won't copy it from externals/
+.PHONY: readline
+readline: $(READLINEDIR)/Makefile
+	$(MAKE) -C $(READLINEDIR)
 
 ### Runtimes
 
@@ -112,6 +114,9 @@ $(1)/$(call dllname,$(1)): $(1)/$(1).h include/c0runtime.h
 	$(MAKE) -C $(1)
 $(1): runtime $(1)/$(call dllname,$(1))
 	$(COPY) $(1)/$(call dllname,$(1)) $(1)/$(1).h runtime
+ifeq ($(PLATFORM),osx)
+	codesign -s - runtime/$(call dllname,$(1))
+endif
 endif
 endef
 
@@ -134,11 +139,13 @@ bin/cc0: bin $(CC0_DEPS)
 	$(MAKE) -C compiler buildid
 ifdef NJ
 	$(MAKE) -C compiler cc0
-	$(COPY) compiler/bin/cc0-sml bin/cc0
 	$(COPY) compiler/bin/cc0.heap.* bin
+	$(COPY) compiler/bin/cc0-sml-with-o0-support bin/cc0
+	cat compiler/bin/cc0-o0-support >> bin/cc0
 else
 	$(MLTON_BASIC) bin/cc0.bin compiler/sources-go.mlb
-	$(COPY) compiler/bin/cc0-mlton bin/cc0
+	$(COPY) compiler/bin/cc0-mlton-with-o0-support bin/cc0
+	cat compiler/bin/cc0-o0-support >> bin/cc0
 endif
 	$(COPY) compiler/bin/cpfiles bin
 	chmod +x bin/cc0 bin/cpfiles
@@ -148,8 +155,9 @@ csharp: bin bare
 #	$(MAKE) -C compiler clean
 	$(MAKE) -C compiler buildid
 	$(MAKE) -C compiler csharp
-	$(COPY) compiler/bin/cc0-sml bin/cc0
 	$(COPY) compiler/bin/cc0.heap.* bin
+	$(COPY) compiler/bin/cc0-sml-with-o0-support bin/cc0
+	cat compiler/bin/cc0-o0-support >> bin/cc0
 	$(COPY) compiler/bin/cpfiles bin
 	chmod +x bin/cc0 bin/cpfiles
 
@@ -162,13 +170,13 @@ bin/wrappergen: makelibs/* bin $(CC0_DEPS)
 	$(MAKE) -C compiler buildid
 ifdef NJ
 	echo 'use "makelibs/wrappergen.sml";' | ${SML}
-	$(COPY) compiler/bin/run-smlnj bin/wrappergen
+	$(COPY) compiler/bin/coin-sml bin/wrappergen
+	cat compiler/bin/coin-o0-support >> bin/wrappergen
 else
 	$(MLTON_BASIC) bin/wrappergen.bin makelibs/wrappergen.mlb
-	$(COPY) compiler/bin/run-mlton bin/wrappergen
+	$(COPY) compiler/bin/coin-mlton bin/wrappergen
+	cat compiler/bin/coin-o0-support >> bin/wrappergen
 endif
-	chmod +x bin/wrappergen
-	touch bin/wrappergen
 
 .PHONY: libs/*
 libs/*: bin/wrappergen
@@ -209,37 +217,44 @@ endif
 NATIVE_CYMBOL  = bare/bare.c bare/cstr.c cymbol/sizeof.c
 NATIVE_CALLING = cymbol/extern-lib.c cymbol/extern-call.c
 NATIVE_COIN    = $(NATIVE_CYMBOL) $(NATIVE_CALLING)
+
+# readline implementation
+NATIVE_COIN += coin/c0readline.c
+
 COIN_DEPS = $(CC0_DEPS) $(NATIVE_COIN) cymbol/cymbol*.cm cymbol/*.sml cymbol/*.mlb coin/coin*.cm coin/*.sml coin/*.sml
+COIN_DEPS += readline
 
 .PHONY: coin
 coin: bin/coin
 bin/coin: bin $(COIN_DEPS)
 	$(MAKE) -C compiler buildid
 ifdef NJ
-	$(MAKE) -C coin
-	$(COPY) coin/coin.heap.* bin
-	$(COPY) compiler/bin/run-smlnj bin/coin
+	echo "coin is unsupported using SML/NJ -- compile with coin"
+#	$(MAKE) -C coin
+#	$(COPY) coin/coin.heap.* bin
+#	$(COPY) compiler/bin/coin-sml-with-o0-support bin/coin
+#	cat compiler/bin/coin-o0-support >> bin/coin
 else
 	$(MLTON_NATIVE) bin/coin.bin coin/coin.mlb $(NATIVE_COIN)
-	$(COPY) compiler/bin/run-mlton bin/coin
+	$(COPY) compiler/bin/coin-mlton-with-o0-support bin/coin
+	cat compiler/bin/coin-o0-support >> bin/coin
 endif
-	chmod +x bin/coin
-	touch bin/coin
 
 .PHONY: coin-exec
 coin-exec: bin/coin-exec
 bin/coin-exec: bin $(COIN_DEPS)
 	$(MAKE) -C compiler buildid
 ifdef NJ
-	$(MAKE) -C coin coin-exec
-	$(COPY) coin/coin-exec.heap.* bin
-	$(COPY) compiler/bin/run-smlnj bin/coin-exec
+	echo "coin-exec is unsupported using SML/NJ -- compile with coin"
+#	$(MAKE) -C coin coin-exec
+#	$(COPY) coin/coin-exec.heap.* bin
+#	$(COPY) compiler/bin/coin-sml bin/coin-exec
+#	cat compiler/bin/coin-o0-support >> bin/coin-exec
 else
 	$(MLTON_NATIVE) bin/coin-exec.bin coin/coin-exec.mlb $(NATIVE_COIN)
-	$(COPY) compiler/bin/run-mlton bin/coin-exec
+	$(COPY) compiler/bin/coin-mlton bin/coin-exec
+	cat compiler/bin/coin-o0-support >> bin/coin-exec
 endif
-	chmod +x bin/coin-exec
-	touch bin/coin-exec
 
 
 ### codex - The C0 Debugger
@@ -253,13 +268,13 @@ bin/codex: bin $(CODEX_DEPS)
 ifdef NJ
 	$(MAKE) -C codex
 	$(COPY) codex/codex.heap.* bin
-	$(COPY) compiler/bin/run-smlnj bin/codex
+	$(COPY) compiler/bin/coin-sml bin/codex
+	cat compiler/bin/coin-o0-support >> bin/codex
 else
 	$(MLTON_NATIVE) bin/codex.bin codex/debug.mlb $(NATIVE_COIN)
-	$(COPY) compiler/bin/run-mlton bin/codex
+	$(COPY) compiler/bin/coin-mlton bin/codex
+	cat compiler/bin/coin-o0-support >> bin/codex
 endif
-	chmod +x bin/codex
-	touch bin/codex
 
 
 ### Cleanup
@@ -282,6 +297,7 @@ reallyclean: clean
 	rm -f $(ZLIBDIR)/Makefile
 	-$(MAKE) -C $(LIBPNGDIR) distclean
 	-$(MAKE) -C $(LIBBACKTRACEDIR) distclean
+	-$(MAKE) -C $(READLINEDIR) distclean
 
 
 ### Testing harnesses
@@ -344,7 +360,7 @@ install: install-libs install-c0-mode
 	mkdir -p $(PREFIX)/bin $(PREFIX)/runtime $(PREFIX)/include
 	$(COPY) bin/* $(PREFIX)/bin
 	$(COPY) runtime/* $(PREFIX)/runtime
-	$(COPY) include/* $(PREFIX)/include
+	$(COPY) include/c0runtime.h include/cc0lib.h $(PREFIX)/include
 
 install-c0-mode:
 	mkdir -p $(PREFIX)/c0-mode
@@ -354,11 +370,11 @@ install-c0-mode:
 # without rolling out a new compiler
 install-libs:
 	mkdir -p $(PREFIX)/lib
-	$(COPY) lib/* $(PREFIX)/lib
+	$(COPY) lib/cc0main.c lib/*.c0 lib/*.h0 lib/*$(DLLSUFFIX) $(PREFIX)/lib
 
-VERSION=$(shell git rev-list --count master)
+VERSION=$(shell ./get_version.sh)
 
-PACKAGE_FILES = bin/cc0 bin/cc0.bin bin/coin bin/coin.bin bin/codex bin/codex.bin 
+PACKAGE_FILES = bin/cc0 bin/cc0.bin bin/coin bin/coin.bin bin/codex bin/codex.bin
 PACKAGE_FILES += lib/*.c0 lib/*.h0 lib/*$(DLLSUFFIX) lib/*.c
 PACKAGE_FILES += runtime/ include
 # Packages all the necessary files for redistribution into a tarball

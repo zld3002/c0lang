@@ -1,0 +1,130 @@
+### Object file emulation for cc0
+### Iliano Cervesato, Spring 2022
+
+### Configuration parameters
+TMP=.tmp0
+
+## Shortcut when no arguments are provided
+if [[ "$@" == "" ]]; then
+    $COIN
+    exit 0
+fi
+
+### Helper functions
+THIS=$(basename $0)
+
+# Detect the correct version of getopt to use
+if [[ $(uname -s) == "Darwin" ]]; then
+    # On MacOS, we need to use gnu-getopt instead of
+    # the default BSD getopt
+    GETOPT=$(brew --prefix gnu-getopt)/bin/getopt
+else
+    # On other platforms, getopt should already be gnu-getopt
+    GETOPT=getopt
+fi
+
+function display_help () {
+    # Print the regular coin help
+    $COIN -h
+
+    # Print the help for the extensions
+    echo "Extended usage:"
+    echo "" $THIS "[OPTION...] SOURCEFILES      SOURCEFILES can include object files"
+    echo "  where"
+    echo "  . <obj_file>    ends in .o0 or .o1 (C0/C1 object file)"
+    exit 0
+}
+
+function display_version () {
+    $COIN -V
+    echo "(Object file extension)"
+    exit 0
+}
+
+function undo_objectfile () {
+    local obj_file=$1
+    tar xfz $obj_file
+    recovered_sourcefile=`tar tfz $obj_file`
+}
+
+
+args=("$@")  # save supplied parameters (if any)
+
+# More safety, by turning some bugs into errors.
+set -o errexit -o pipefail -o noclobber -o nounset
+
+# -allow a command to fail with !'s side effect on errexit
+# -use return value from ${PIPESTATUS[0]}, because ! hosed $?
+! $GETOPT --test > /dev/null
+if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
+    echo 'I’m sorry, `'$GETOPT '--test` failed in this environment.'
+    exit 1
+fi
+
+## Added/modified options only: other options are dealt with by coin
+OPTS=hV
+LONGOPTS=help,version
+## cc0 -flags with arguments
+OPTS=$OPTS,l:L:a:
+
+# -temporarily store output to be able to check for errors
+# -activate quoting/enhanced mode (e.g. by writing out "--options")
+# -pass arguments only via   -- "$@"   to separate them correctly
+! PARSED=$($GETOPT -q --options=$OPTS --longoptions=$LONGOPTS --name "$0" -- "$@")
+
+## Commented out to avoid listing explicitly the passthrough coin options
+#if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+    # e.g. return value is 1
+    #  then getopt has complained about wrong arguments to stdout
+#    exit 2
+#fi
+# read getopt's output this way to handle the quoting right:
+eval set -- "$PARSED"
+
+
+### Handles the added/modified options
+while true; do
+    case "$1" in
+        -h|--help)      ### Extended help
+            display_help          # Exits this script
+            ;;
+        -V|--version)   ### Extended version information
+            display_version       # Exits this script
+            ;;
+        -l|-L|-a)       ### 2-argument coin options
+            shift 2
+            ;;
+        --)             ### End of line
+            shift
+            break
+            ;;
+        *)              ### Anything else
+            echo "Special options are $OPTS and $LONGOPTS"
+            exit 3
+            ;;
+    esac
+done
+
+
+## Implement regular options, possibly with object files
+set -- "${args[@]}" # restore parameters
+
+ARGS=()
+
+for arg in "${args[@]}"
+do
+    if [[ "${arg##*.}" == "o0" ||  "${arg##*.}" == "o1" ]]; then
+        undo_objectfile $arg   # return value in $recovered_sourcefile
+        ARGS+=("$recovered_sourcefile")
+     else
+        ARGS+=("$arg");
+    fi
+done
+
+## Call coin with recovered arguments
+$COIN ${ARGS[*]}
+
+
+## clean up and exit
+rm -rf $TMP
+exit 0

@@ -32,7 +32,7 @@ val fullname = ref "coin"
 val args = ref [ "--verbose" ]
 val options = Flags.core_options @ Flags.coin_options
 val versioninfo = 
-   ("C0 interpreter (coin) "^Version.version^" (r"^BuildId.revision^", "^BuildId.date^")")
+   ("C0 interpreter (coin) "^Version.version^" (v"^BuildId.revision^", "^BuildId.date^")")
 val errfn = fn msg => (print (msg ^ "\n"); ignore (raise Top.EXIT))
 
 (* Completely resets the interpreter's state; goes so far as to reload files. *)
@@ -197,9 +197,34 @@ fun restart () =
  ; ErrorMsg.reset ())
 
 fun prompt () = 
-   if !remember_lex_state = C0Lex.normal andalso isEOL ()
-   then (restart (); print "--> ")
-   else (print "... ")
+   let 
+      val prompt = 
+         if !remember_lex_state = C0Lex.normal andalso isEOL ()
+            then (restart (); "--> ")
+            else ("... ")
+
+      (* For function completions, insert the opening paren *)
+      fun symbol_to_func sym = Symbol.name sym ^ "("
+      val func_completions = List.map symbol_to_func (CodeTab.list ())
+
+      val var_completions = List.map Symbol.name (Symbol.keys (State.local_tys Exec.state))
+      val typedef_completions = List.map Symbol.name (Typetab.list ())
+
+      (* Special case for printf and format, which do not appear
+       * in any symbol tables *)
+      val printf = 
+         if Option.isSome (Libtab.lookup (Symbol.symbol "conio"))
+            then ["printf("]
+            else []
+
+      val format = 
+         if Option.isSome (Libtab.lookup (Symbol.symbol "string"))
+            then ["format("]
+            else []
+   in 
+      (prompt, func_completions @ printf @ format @ 
+               var_completions @ typedef_completions)
+   end 
 
 fun parse_available_tokens (input, pos, lex_state) =
 let
@@ -299,7 +324,8 @@ in
  ; print (versioninfo ^ "\n")
  ; print ("Type `#help' for help or `#quit' to exit.\n")
  ; NONE)
-handle Top.EXIT => 
+handle Top.FINISHED => SOME OS.Process.success
+     | Top.EXIT => 
         ( Flag.guard Flags.flag_exec compilerDied ()
         ; SOME OS.Process.failure)
      | ErrorMsg.Error => 

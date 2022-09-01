@@ -31,7 +31,7 @@ let
          errfn = fn msg => die COMPILER_ERROR,
          versioninfo = 
             "CoinExec " ^ Version.version 
-            ^ " (r" ^ BuildId.revision ^ ", " ^ BuildId.date ^ ")",
+            ^ " (v" ^ BuildId.revision ^ ", " ^ BuildId.date ^ ")",
          usageinfo = 
          GetOpt.usageInfo 
            {header = "Usage: " ^ name

@@ -48,6 +48,16 @@ fun ts_toString (nil) = ""
 fun ^^(s1,s2) = s1 ^ "\n[Hint: " ^ s2 ^ "]"
 infix ^^
 
+(* Gets all type names in scopes,
+ * including the built in types.
+ * This is used for providing 'did you mean' suggestions *)
+fun get_typenames () = 
+let 
+  val primitives = List.map Symbol.symbol ["string", "int", "bool", "void", "char"]
+in 
+  primitives @ Typetab.list ()
+end 
+
 fun parse_error (region, s) =
     ( ErrorMsg.error (PS.ext region) s
     ; raise ErrorMsg.Error )
@@ -665,10 +675,14 @@ and p_tp ST = case first ST of
   | T.STRUCT => ST |> shift >> p_ident >> reduce r_tp >> p_tp1
   | T.IDENT(s) =>
     let val id = Symbol.symbol(s)
-    in if is_typename (Symbol.symbol s)
+    in if is_typename id
        (* only shift valid type names, signal error otherwise *)
        then ST |> shift >> reduce r_tp >> p_tp1
-       else parse_error (here ST, "expected a type, found identifier " ^ t_toString (T.IDENT(s)))
+       else (
+          ErrorMsg.error (PS.ext (here ST)) ("expected a type, found identifier " ^ t_toString (T.IDENT(s)));
+          StringSimilarity.did_you_mean (id, get_typenames ());
+          raise ErrorMsg.Error
+        )
     end
   | t => parse_error (here ST, "expected a type, found " ^ t_toString(t))
 
@@ -714,14 +728,20 @@ and p_exp_or_tp ST =
 and c_follows_nonexp (ST as (S,_)) = case (S, first ST) of
     (S $ Stms _ $ Exp(e,r), T.IDENT(s)) =>
     (case var_name e
-      of SOME(id) => parse_error (join r (here ST), "consecutive expressions"
-                                  ^^ "undeclared type name '" ^ id ^ "'?")
+      of SOME(id) => (
+          ErrorMsg.error (PS.ext (join r (here ST))) ("consecutive expressions" ^^ "undeclared type name '" ^ id ^ "'?");
+          StringSimilarity.did_you_mean (Symbol.symbol id, get_typenames ());
+          raise ErrorMsg.Error 
+        )
        | NONE => e_follows_nonexp r ST)
   | (Bot $ Exp(e,r), T.IDENT(s)) =>
     (* when called from coin, where stms are at top level *)
     (case var_name e
-      of SOME(id) => parse_error (join r (here ST), "consecutive expressions"
-                                  ^^ "undeclared type name '" ^ id ^ "'?")
+      of SOME(id) => (
+          ErrorMsg.error (PS.ext (join r (here ST))) ("consecutive expressions" ^^ "undeclared type name '" ^ id ^ "'?");
+          StringSimilarity.did_you_mean (Symbol.symbol id, get_typenames ());
+          raise ErrorMsg.Error 
+        )
        | NONE => e_follows_nonexp r ST)
   | (S $ Exp(e,r), _) => e_follows_nonexp r ST
   | (S, t) => ST

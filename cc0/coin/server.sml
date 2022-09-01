@@ -9,7 +9,8 @@
 signature SERVER = 
 sig
     
-    (* The server takes  *)
+    (* The server takes in the executable name and command line arguments.
+     * These are just passed directly to the compiler, which handles parsing flags *)
     val server : string * string list -> OS.Process.status
     val go : unit -> OS.Process.status
 
@@ -27,7 +28,8 @@ sig
     val start : string * string list -> OS.Process.status option
     val restart : unit -> unit
 
-    val prompt : unit -> unit
+    (* Gets the prompt + current completion list *)
+    val prompt : unit -> (string * string list) 
     val runline : string -> status
 
 end (* signature RUNLINE *)
@@ -53,14 +55,19 @@ functor Server
   exception Done of OS.Process.status
 
   fun issue status = 
-      case status of 
-	  Runline.CONTINUE => ()
-	| Runline.EXIT(status) => (print("Goodbye!\n"); raise Done(status))
+    case status of 
+        Runline.CONTINUE => ()
+      | Runline.EXIT(status) => (print("Goodbye!\n"); raise Done(status))
 
   fun serveLine() = 
-      case (Runline.prompt(); TextIO.inputLine (TextIO.stdIn)) of
-	  NONE => Runline.EXIT(OS.Process.success)
-	| SOME s => Runline.runline(s)
+  let 
+    val (prompt, completions) = Runline.prompt ()
+    val input = C0ReadLine.readline prompt completions
+  in 
+    case input of
+      NONE => Runline.EXIT(OS.Process.success)
+    | SOME s => Runline.runline(s)
+  end 
 
   fun serve() = (issue(serveLine()); serve())
 
@@ -97,6 +104,10 @@ functor Server
   fun hstr s = (print (s ^ "\n"); OS.Process.failure)
 
   fun server(name,args) = 
+  let 
+    val () = C0ReadLine.init ()
+
+    val result = 
       (case Runline.start(name,args) of
          NONE => 
          (SigINT.interruptLoop (fn () => (Runline.restart(); serveTop ()));
@@ -111,6 +122,11 @@ functor Server
            | (Error.Internal s) => 
              hstr("Error (INTERNAL, PLEASE REPORT): \"" ^ s ^ "\"")
            | (Done status) => OS.Process.success 
+
+    val () = C0ReadLine.finish ()
+  in 
+    result 
+  end 
 
   fun go() = server(CommandLine.name (), CommandLine.arguments ())
 	

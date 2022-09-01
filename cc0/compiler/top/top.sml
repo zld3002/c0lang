@@ -18,7 +18,9 @@ sig
   val test : string -> OS.Process.status
 
   (* External hooks *)
-  exception EXIT
+  exception EXIT  (* some error, executable should exit with failure *)
+  exception FINISHED  (* no error, executable should exit with success *)
+
   val reset : unit -> unit
   val get_sources_set_flags : 
       {options: unit GetOpt.opt_descr list,
@@ -53,8 +55,8 @@ struct
   fun path_concat3 (x, y, z) = 
       OS.Path.mkCanonical (OS.Path.concat (x, OS.Path.concat (y, z)))
 
-  exception EXIT  (* some error, exit with failure, exported *)
-  exception FINISHED  (* no error, exit with success, internal only *)
+  exception EXIT  (* some error, executable should exit with failure *)
+  exception FINISHED  (* no error, executable should exit with success *)
 
   fun readable file = OS.FileSys.access (file, [OS.FileSys.A_READ])
 
@@ -434,7 +436,7 @@ let
             else ("cc0 [OPTION...] SOURCEFILE")
         val header = "Usage: " ^ usage ^ "\nwhere OPTION is"
         val options = Flags.core_options @ Flags.compiler_options
-        val versioninfo = "C0 reference compiler (cc0) revision "
+        val versioninfo = "C0 reference compiler (cc0) version "
                         ^ BuildId.revision ^ " (built " ^ BuildId.date ^ ")"
         val usageinfo = G.usageInfo {header = header, options = options}
         (* C0VM Bytecode Version
@@ -517,16 +519,16 @@ let
             case a_out_extOpt of 
                 NONE => () 
               | SOME ext => 
-                  case (is_source ext, readable a_out_file) of 
+                  case (is_source ext, readable (!Flags.a_out)) of 
                       (true, true) => (
                         sayError (
-                            "cannot produce a source file as output.\n" ^
+                            "cannot produce a source file as output. " ^
                             "This would overwrite '" ^ a_out_file ^ "'") ;
                         raise EXIT)
                     | (true, _) => 
                         sayWarning (
                           "output filename '" ^
-                          a_out_file ^ "' has a source file extension")
+                          (!Flags.a_out) ^ "' has a source file extension")
                     | _ => () 
           end 
 

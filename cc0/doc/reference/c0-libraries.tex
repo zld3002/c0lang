@@ -226,7 +226,8 @@ int* parse_int(string s, int base)[*\indextt{parse\_int}*]
   /*@requires 2 <= base && base <= 36; @*/ ;
 
 /* Returns the number of whitespace-delimited tokens in a string */
-int num_tokens(string s);[*\indextt{num\_tokens}*]
+int num_tokens(string s)[*\indextt{num\_tokens}*]
+  /*@ensures \result >= 0; @*/ ;
 
 /* Returns true iff the string contains only whitespace separated
  *  ints */
@@ -282,8 +283,11 @@ string string_sub(string a, int start, int end)[*\indextt{string\_sub}*]
 
 /* Compare strings lexicographically */
 bool string_equal(string a, string b);[*\indextt{string\_equal}*]
-int string_compare(string a, string b)[*\indextt{string\_compare}*]
-  /*@ensures -1 <= \result && \result <= 1; @*/ ;
+/* string_compare(a, b) returns
+ *   \result  < 0 if a comes lexicographically before b
+ *   \result == 0 if a and b are the same string
+ *   \result  > 0 if a comes lexicographically after  b */
+int string_compare(string a, string b);[*\indextt{string\_compare}*]
 
 /* Create strings from other basic values */
 string string_fromint(int i);[*\indextt{string\_fromint}*]
@@ -329,7 +333,7 @@ The address of \lstinline'format' cannot be taken using \lstinline'&' in C1.
  *   %s: string argument
  *   %d: int argument
  *   %c: char argument
- *   %%: literal % sign 
+ *   %%: literal % sign
  * The number and types of format specifiers must
  * match with the arguments provided */
 string format(string msg, ...args);[*\indextt{format}*]

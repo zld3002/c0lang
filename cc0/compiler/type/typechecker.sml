@@ -95,6 +95,7 @@ struct
       (case Structtab.lookup sid
         of NONE => 
              ( ErrorMsg.error ext ("'struct " ^ Symbol.name sid ^ "' not declared or defined")
+             ; StringSimilarity.did_you_mean (sid, Structtab.list ())
              ; raise ErrorMsg.Error )
          | SOME (A.Struct(sid', NONE, _, ext')) =>
              ( ErrorMsg.error ext ("'struct " ^ Symbol.name sid ^ "' declared, but not defined")
@@ -725,6 +726,7 @@ struct
       (case Symbol.look env id
         of NONE => ( case Symtab.lookup id
                       of NONE => ( ErrorMsg.error ext ("undeclared variable '" ^ Symbol.name id ^ "'")
+                                 ; StringSimilarity.did_you_mean (id, Symbol.keys env)
                                  ; raise ErrorMsg.Error )
                        | SOME(A.TypeDef _) => 
                          ( ErrorMsg.error ext ("cannot use type name '" ^ Symbol.name id ^ "' like a variable\n")
@@ -760,8 +762,16 @@ struct
                           | _ => () (* error caught below *) )
           | _ => ()
       ; case Symtab.lookup g
-         of NONE => ( ErrorMsg.error ext ("undeclared function '" ^ Symbol.name g ^ "'")
-                    ; raise ErrorMsg.Error )
+         of NONE => 
+              let
+                val undeclared = Symbol.name g 
+              in 
+                ErrorMsg.error ext ("undeclared function '" ^ undeclared ^ "'"); 
+                StringSimilarity.did_you_mean (g, List.mapPartial 
+                              (fn (g, A.Function _) => SOME g | _ => NONE)
+                              (Symtab.elemsi ()));
+                raise ErrorMsg.Error
+              end 
           | SOME(A.Function(g', rtp, params, bodyOpt, _, _, _)) =>
             (* if bodyOpt = NONE, then g has been used, but is not yet defined *)
             ( case bodyOpt of NONE => ( if UndefUnused.member g (* external functions will not be in this set *)
@@ -1612,11 +1622,6 @@ struct
    *)
   fun check_all_defined () =
       let val missing = UndefUsed.list ()
-      (* 
-          fun isNotLibrary (SOME(A.Function(_, _, _, _, _, false, _))) = true
-            | isNotLibrary _ = false
-          val missing = List.filter (isNotLibrary o Symtab.lookup) undefineds
-       *)
       in
           case missing
            of (_ :: _) => ( ErrorMsg.error NONE ("undefined functions: " ^ symbol_names missing) ;
@@ -1625,6 +1630,3 @@ struct
       end
 
 end
-
-
-
