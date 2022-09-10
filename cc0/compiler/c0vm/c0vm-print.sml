@@ -106,9 +106,10 @@ struct
     | pp_bclines n (V.Inst(inst, anno, ext)::bcs) =
       (* "/" ^ pad(Int.toString(n),3) ^ "/ " ^ *)
       if Flag.isset Flags.flag_bytecode_ext
-      then pad_instr(pp_inst inst) ^ "# " ^ (Mark.show' ext) ^ "\n"
+      then pad_instr(pp_inst inst) ^ "# " ^ pad(anno,50)
+           ^ "# " ^ (Mark.show' ext) ^ "\n"
            ^ pp_bclines (n+V.il(inst)) bcs
-      else 
+      else
           pad_instr(pp_inst inst) ^ "# " ^ anno ^ "\n"
           ^ pp_bclines (n+V.il(inst)) bcs
     | pp_bclines n (nil) = ""
@@ -192,5 +193,5 @@ struct
       ^ pad18(u16(List.length(nilist))) ^ "# native count\n"
       ^ "# native pool\n"
       ^ String.concat (List.map pp_native_info nilist) ^ "\n"
-        
+
 end

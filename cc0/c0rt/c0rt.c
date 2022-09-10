@@ -4,14 +4,14 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdnoreturn.h>
-#include <string.h> 
+#include <string.h>
 #include <limits.h>
 #include <assert.h>
 
 #include <unistd.h>
 #include <signal.h>
 #include <errno.h>
-#include <strings.h> // bzero 
+#include <strings.h> // bzero
 
 #include <gc.h>
 #include <c0runtime.h>
@@ -53,10 +53,10 @@ static long sourcemap_length = 0;
 
 /**
  * Sets "out" to the environment variable "name".
- * 
+ *
  * If the environment variable does not exist, then
  * nothing happens.
- * 
+ *
  * If the environment variable is not an integer, then
  * a message is printed + program exits
  */
@@ -66,7 +66,7 @@ static void parse_env_with_default(const char* name, long* out) {
 
   errno = 0;
   char* end;
-  long result = strtol(str, &end, 10); 
+  long result = strtol(str, &end, 10);
   // None of our config options can be negative
   if (end == str || *end != '\0' || errno == ERANGE || result < 0) {
     print_err("invalid value '%s' for '%s'", str, name);
@@ -89,21 +89,22 @@ static void reset_signal_handler(int signal) {
 static noreturn void raise_msg(int signal, const char* msg);
 
 #define SIG_STACK_SIZE (4 * SIGSTKSZ)
-char signal_stack[SIG_STACK_SIZE] = { 0 };
+char* signal_stack;
 
-/// Aborts with SIGSEGV after printing the 
+/// Aborts with SIGSEGV after printing the
 /// provided message (if non-NULL)
 noreturn void c0_abort_mem(const char* msg);
 
 static void segv_handler(int _signal) {
   static const char* msg = "c0rt: recursion limit exceeded\n";
 
+  size_t _ignore; /* avoid warn_unused_result warning */
   // Use write() instead of printf() since printf() is not
   // re-entrant because it allocates memory with malloc().
   // dprintf() may or may not be signal safe so we avoid it here as well
-  write(STDERR_FILENO, ansi_bold_red, strlen(ansi_bold_red));
-  write(STDERR_FILENO, msg, strlen(msg));
-  write(STDERR_FILENO, ansi_reset, strlen(ansi_reset));
+  _ignore = write(STDERR_FILENO, ansi_bold_red, strlen(ansi_bold_red));
+  _ignore = write(STDERR_FILENO, msg, strlen(msg));
+  _ignore = write(STDERR_FILENO, ansi_reset, strlen(ansi_reset));
 
   // NULL pointer dereferences/array accesses
   // are handled by special functions, so the only
@@ -120,9 +121,10 @@ static void segv_handler(int _signal) {
 
 static void sigint_handler(int _signal) {
   static const char* msg = "c0rt: Interrupted\n";
-  write(STDERR_FILENO, ansi_bold_red, strlen(ansi_bold_red));
-  write(STDERR_FILENO, msg, strlen(msg));
-  write(STDERR_FILENO, ansi_reset, strlen(ansi_reset));
+  size_t _ignore; /* avoid warn_unused_result warning */
+  _ignore = write(STDERR_FILENO, ansi_bold_red, strlen(ansi_bold_red));
+  _ignore = write(STDERR_FILENO, msg, strlen(msg));
+  _ignore = write(STDERR_FILENO, ansi_reset, strlen(ansi_reset));
 
   reset_signal_handler(SIGINT);
   raise_msg(SIGINT, NULL);
@@ -134,12 +136,12 @@ typedef void (*sighandler_t)(int);
 
 /// Installs the given signal handler
 /// The signal handler will be run on a separate stack
-/// (same stack for all signals), and will also 
+/// (same stack for all signals), and will also
 /// allow the same signal to be re-raised
 static void install_signal_handler(int signal, sighandler_t handler) {
   struct sigaction action = {
     // SA_ONSTACK - use alternate stack for signal handling
-    // SA_RESTART - restart syscalls 
+    // SA_RESTART - restart syscalls
     // SA_NODEFER - don't block the signal while we are handling it.
     //              this enables use to re-raise it
     .sa_flags = SA_ONSTACK | SA_RESTART | SA_NODEFER,
@@ -159,22 +161,23 @@ void c0_runtime_init(const char* filename, const char** source_map, long map_len
   parse_env_with_default(C0_MAX_ARRAYSIZE_ENV, &c0_max_arraysize);
   parse_env_with_default(C0_ENABLE_FANCY_OUTPUT, &c0_enable_fancy_output);
 
-  // Disable color printing if backtraces are disabled, in order to 
+  // Disable color printing if backtraces are disabled, in order to
   // support environments like Autolab
   if (!c0_enable_fancy_output) {
     ansi_bold = "";
     ansi_bold_red = "";
     ansi_bold_blue = "";
-    ansi_reset = "";    
+    ansi_reset = "";
   }
 
   // Save source map information
   prog_name = filename;
-  sourcemap = source_map; 
+  sourcemap = source_map;
   sourcemap_length = map_length;
 
   // Set up a separate stack for SIGSEGV
   // (obviously we can't reuse the main stack if a stack overflow happens)
+  signal_stack = calloc(SIG_STACK_SIZE, sizeof(char));
   stack_t signal_stack_desc = {
     .ss_flags = 0,
     .ss_size = SIG_STACK_SIZE,
@@ -188,7 +191,7 @@ void c0_runtime_init(const char* filename, const char** source_map, long map_len
 }
 
 void c0_runtime_cleanup() {
-  // nothing to do for the c0rt runtime
+  free(signal_stack);
 }
 
 #define C0_EXTENSION ".c0.c"
@@ -212,7 +215,7 @@ static bool from_user_program(const char* filename) {
 static const char* demangle(const char* funcname) {
   size_t n = strlen(funcname);
 
-  // Note strlen() gets 'constant folded' 
+  // Note strlen() gets 'constant folded'
   if (strncmp(C0_FUNC_MANGLE_PREFIX, funcname, strlen(C0_FUNC_MANGLE_PREFIX)) == 0) {
     // function name is of the form _c0_*
     return funcname + strlen(C0_FUNC_MANGLE_PREFIX);
@@ -228,15 +231,15 @@ static const char* demangle(const char* funcname) {
 
 /**
  * Called by libbacktrace for every stack frame.
- * 
+ *
  * @param backtrace_count The number of frames counted so far
- * @param pc %rip 
- * 
+ * @param pc %rip
+ *
  * @returns -1 to stop backtrace, 0 to continue
  */
 static int backtrace_callback(
-  long* backtrace_count, uintptr_t pc, 
-  const char* filename, int lineno, const char* function) 
+  long* backtrace_count, uintptr_t pc,
+  const char* filename, int lineno, const char* function)
 {
   if (*backtrace_count > c0_backtrace_print_limit) {
     print_err("stopping after %ld entries", c0_backtrace_print_limit);
@@ -265,7 +268,7 @@ static int backtrace_callback(
   }
 
   printf(" at %s%s%s (%s)\n", ansi_bold_blue, demangle(function), ansi_reset, c0_location);
-  
+
   (*backtrace_count)++;
 
   return 0;
@@ -281,11 +284,11 @@ static void backtrace_error_handler(void* data, const char* msg, int errnum) {
 static void c0_print_callstack() {
   if (!c0_enable_fancy_output) return;
 
-  struct backtrace_state* state = 
+  struct backtrace_state* state =
     backtrace_create_state(
       prog_name, // Executable name to load symbols from
       false, // Disable multithreading support
-      backtrace_error_handler, 
+      backtrace_error_handler,
       NULL); // data parameter to error callback
 
   assert(state != NULL);
@@ -293,10 +296,10 @@ static void c0_print_callstack() {
   // Keep track of the number of backtrace entries printed
   long num_printed = 0;
   backtrace_full(
-    state,  
+    state,
     0, // Number of stack frames to skip
-    (backtrace_full_callback)backtrace_callback, 
-    backtrace_error_handler, 
+    (backtrace_full_callback)backtrace_callback,
+    backtrace_error_handler,
     &num_printed); // first parameter to callbacks
 }
 
@@ -311,12 +314,12 @@ static noreturn void raise_msg(int signal, const char* msg) {
 
   assert(raise(signal) >= 0);
   puts("Impossible");
-  exit(2); 
+  exit(2);
 }
 
 noreturn void c0_error(const char *msg) {
   fflush(stdout);
-  
+
   fprintf(stderr, "Error: %s\n", msg);
   fflush(stderr);
   exit(EXIT_FAILURE);
@@ -342,7 +345,7 @@ c0_int c0_idiv(c0_int x, c0_int y) {
 c0_int c0_imod(c0_int x, c0_int y) {
   if(y == 0) c0_abort_arith("modulo by 0");
   if(y == -1 && x == INT_MIN) c0_abort_arith("modulo causes overflow");
-  return x % y;  
+  return x % y;
 }
 
 c0_int c0_sal(c0_int x, c0_int y) {
@@ -361,7 +364,7 @@ c0_int c0_sar(c0_int x, c0_int y) {
 /* Arrays are represented as EITHER a null pointer or an array with
  * three fields: count, elt_size, and elems.  Elems is a void pointer
  * pointing to the array data.
- * 
+ *
  * In fact, this pointer always actually points one past the end of
  * the struct:        _
  *                  / \
@@ -379,7 +382,7 @@ struct c0_array_header {
 };
 
 noreturn void c0_abort_mem(const char *reason) {
-  reset_signal_handler(SIGSEGV);  
+  reset_signal_handler(SIGSEGV);
   raise_msg(SIGSEGV, reason);
 }
 
