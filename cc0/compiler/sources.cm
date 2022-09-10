@@ -64,6 +64,9 @@ Group is
         analysis/funsummary.sml
         analysis/vcgen.sml
         analysis/top.sml
+        analysis/vast.sml
+        analysis/svarenv.sml
+        
 
         c0vm/c0vm.sml
         c0vm/c0vm-c0ffi.sml

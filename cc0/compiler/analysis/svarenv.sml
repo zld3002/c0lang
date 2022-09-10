@@ -61,11 +61,11 @@ struct
       in (env', v + 1, t) end
 
    fun updateAll env = 
-       T.map (fn (v, t) => (v + 1, tp)) env
+       T.map (fn (v, tp) => (v + 1, tp)) env
 
    fun toSVarDecls env =
        let val expanded = T.listItemsi env
-       in map (fn (id, (v, t)) => VAst.SVarDecl (id, v, tp, NONE, NONE)) expanded end
+       in map (fn (id, (v, tp)) => VAst.SVarDecl (id, v, tp, NONE, NONE)) expanded end
 
    fun updateArgs (env, args) = 
        map (fn VAst.SVarDecl (id, _, tp, _, _) => VAst.SVarDecl (id, getVersion env id, tp, NONE, NONE)) args
