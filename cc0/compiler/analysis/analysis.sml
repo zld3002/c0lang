@@ -19,7 +19,7 @@ struct
   type ssafunc = VAst.basicblock DA.array
 
 
-  fun newSsafunc size = DA.array (size, VAst.Empty)
+  fun newSSAFunc size = DA.array (size, VAst.Empty)
 
   fun addBlock (ssaf : ssafunc, bb : VAst.basicblock) : int =
       let
@@ -29,9 +29,9 @@ struct
          index + 1
       end
    
-   (* combineStmt : VAst.stm * VAst.stm -> VAst.stm *)
+   (* combineStm : VAst.stm * VAst.stm -> VAst.stm *)
    (* combine two statments in order using VAst.Seq*)
-   fun combineStmt (stm1, stm2) =
+   fun combineStm (stm1, stm2) =
      case (stm1, stm2) of 
           (VAst.Seq (sl1), VAst.Seq (sl2)) => VAst.Seq (sl1 @ sl2)
         | (VAst.Seq (sl1), _) => VAst.Seq (sl1 @ [stm2])
@@ -68,7 +68,7 @@ struct
        case DA.sub (ssaf, index) of
             VAst.Block (id, rtp, svardecls, stm, specs) =>
                (let
-                  val newBlock = VAst.Block (id, rtp, svardecls, combineStmt (stm, stmNew), specs)
+                  val newBlock = VAst.Block (id, rtp, svardecls, combineStm (stm, stmNew), specs)
                 in
                   DA.update (ssaf, index, newBlock)
                 end)
@@ -246,7 +246,7 @@ struct
              val args' = addArgsVer args 0
              (* Here we use args rather than args' since the version init. would be handled by gatherArgs *)
              val env = gatherArgs args (SVAREnv.empty)
-             val ssaf = newSsafunc 10
+             val ssaf = newSSAFunc 10
              val leadBlock = VAst.Block (name, rtp, args', VAst.Seq [], map (fn spec => specHelper (spec, env)) specs)
              val _ = addBlock (ssaf, leadBlock)
              (* Note that we are at the top level; therefore there is no cont/break info*)
