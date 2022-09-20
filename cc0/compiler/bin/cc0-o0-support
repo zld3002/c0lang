@@ -9,7 +9,7 @@ THIS=$(basename $0)
 
 # Detect the correct version of getopt to use
 if [[ $(uname -s) == "Darwin" ]]; then
-    # On MacOS, we need to use gnu-getopt instead of 
+    # On MacOS, we need to use gnu-getopt instead of
     # the default BSD getopt
     GETOPT=$(brew --prefix gnu-getopt)/bin/getopt
 else
@@ -43,6 +43,13 @@ function make_objectfile () {
     local src_file=$1           # file specified by -g
     local tgt_file=$2           # file specified by -o, if any
 
+    local error="$THIS: error:"           # error message prefix
+    if [[ ! -f $src_file ]]; then
+        echo "$error could not open '$src_file': No such file or directory"
+        echo "$error compilation failed"
+        exit 1
+    fi
+
     ## Computing bits and pieces of $src_file and $tgt_file
     local src_name=$(basename $src_file)  # file name of $src_file
     local tgt_path                        # path to target file
@@ -64,7 +71,7 @@ function make_objectfile () {
             tgt_ext="o1"
             ;;
         *)
-            echo "Unsupported extension .$src_ext"
+            echo "$error Unsupported extension .$src_ext"
             exit 1
             ;;
     esac
@@ -78,9 +85,22 @@ function make_objectfile () {
 }
 
 function undo_objectfile () {
-    local obj_file=$1
-    tar xfz $obj_file
+    local obj_file=$1                     # putative object file
+    local error="$THIS: error:"           # error message prefix
+    if [[ ! -f $obj_file ]]; then
+        echo "$error could not open '$obj_file': No such file or directory"
+        echo "$error compilation failed"
+        exit 1
+    fi
+    set +e                                # don't abort script if command fails
+    tar xfz $obj_file 2> /dev/null
+    if [ $? -ne 0 ]; then                 # check exit code
+        echo "$error '$obj_file' is not a valid object file"
+        echo "$error compilation failed"
+        exit 1
+    fi
     recovered_sourcefile=`tar tfz $obj_file`
+    set -e
 }
 
 # Expects that each interface block is enclosed between

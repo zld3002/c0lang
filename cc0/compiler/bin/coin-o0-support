@@ -42,9 +42,22 @@ function display_version () {
 }
 
 function undo_objectfile () {
-    local obj_file=$1
-    tar xfz $obj_file
+    local obj_file=$1                     # putative object file
+    local error="$THIS: error:"           # error message prefix
+    if [[ ! -f $obj_file ]]; then
+        echo "$error could not open '$obj_file': No such file or directory"
+        echo "$error compilation failed"
+        exit 1
+    fi
+    set +e                                # don't abort script if command fails
+    tar xfz $obj_file 2> /dev/null
+    if [ $? -ne 0 ]; then                 # check exit code
+        echo "$error '$obj_file' is not a valid object file"
+        echo "$error compilation failed"
+        exit 1
+    fi
     recovered_sourcefile=`tar tfz $obj_file`
+    set -e
 }
 
 
