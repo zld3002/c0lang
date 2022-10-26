@@ -1,0 +1,8 @@
+- Passing system libraries to coin in some orders can cause failure:
+	ladigue:code> coin -l util -l string
+	C0 interpreter (coin) 1.0.0 'Quarter' (v20210822, Sun Aug 22 11:15:15 EDT 2021)
+	Type `#help' for help or `#quit' to exit.
+	-->
+	Goodbye!
+	ladigue:code> coin -l string -l util
+	unhandled exception: Fail: internal error: library misconfiguration
