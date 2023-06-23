@@ -229,7 +229,7 @@ coin: bin/coin
 bin/coin: bin $(COIN_DEPS)
 	$(MAKE) -C compiler buildid
 ifdef NJ
-	echo "coin is unsupported using SML/NJ -- compile with coin"
+	echo "coin is unsupported using SML/NJ -- compile with MLton"
 #	$(MAKE) -C coin
 #	$(COPY) coin/coin.heap.* bin
 #	$(COPY) compiler/bin/coin-sml-with-o0-support bin/coin
@@ -245,7 +245,7 @@ coin-exec: bin/coin-exec
 bin/coin-exec: bin $(COIN_DEPS)
 	$(MAKE) -C compiler buildid
 ifdef NJ
-	echo "coin-exec is unsupported using SML/NJ -- compile with coin"
+	echo "coin-exec is unsupported using SML/NJ -- compile with MLton"
 #	$(MAKE) -C coin coin-exec
 #	$(COPY) coin/coin-exec.heap.* bin
 #	$(COPY) compiler/bin/coin-sml bin/coin-exec

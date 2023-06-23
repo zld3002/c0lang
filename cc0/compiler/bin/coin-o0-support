@@ -2,11 +2,11 @@
 ### Iliano Cervesato, Spring 2022
 
 ### Configuration parameters
-TMP=.tmp0
+TMP=`mktemp -d`
 
 ## Shortcut when no arguments are provided
 if [[ "$@" == "" ]]; then
-    $COIN
+    ${COIN}
     exit 0
 fi
 
@@ -25,38 +25,53 @@ fi
 
 function display_help () {
     # Print the regular coin help
-    $COIN -h
+    ${COIN} -h
 
     # Print the help for the extensions
     echo "Extended usage:"
-    echo "" $THIS "[OPTION...] SOURCEFILES      SOURCEFILES can include object files"
+    echo "" ${THIS} "[OPTION...] SOURCEFILES      SOURCEFILES can include object files"
     echo "  where"
     echo "  . <obj_file>    ends in .o0 or .o1 (C0/C1 object file)"
     exit 0
 }
 
 function display_version () {
-    $COIN -V
+    ${COIN} -V
     echo "(Object file extension)"
     exit 0
 }
 
 function undo_objectfile () {
     local obj_file=$1                     # putative object file
-    local error="$THIS: error:"           # error message prefix
-    if [[ ! -f $obj_file ]]; then
-        echo "$error could not open '$obj_file': No such file or directory"
-        echo "$error compilation failed"
+    local error="${THIS}: error:"           # error message prefix
+    if [[ ! -f ${obj_file} ]]; then
+        echo "${error} could not open '${obj_file}': No such file or directory"
+        echo "${error} compilation failed"
         exit 1
     fi
     set +e                                # don't abort script if command fails
-    tar xfz $obj_file 2> /dev/null
-    if [ $? -ne 0 ]; then                 # check exit code
-        echo "$error '$obj_file' is not a valid object file"
-        echo "$error compilation failed"
+
+    tar xz -C ${TMP} -f ${obj_file} 2> /dev/null
+    local tar_exit_code=$?
+    # Check exit code and see if last byte is a newline
+            # Remove null bytes to avoid bash warning if it isn't a newline
+    if [ ${tar_exit_code} -ne 0 -a \
+        $(tail -c1 ${obj_file}     \
+            | tr -d '\0')          \
+        -eq $(printf "\n") ]; then
+
+        # Remove trailing newline (sometimes added by students' editors.)
+        truncate -s -1 ${obj_file}
+        tar xz -C ${TMP} -f ${obj_file} 2> /dev/null
+        tar_exit_code=$?
+    fi
+
+    if [ ${tar_exit_code} -ne 0 ]; then               # check exit code
+        echo "${error} '${obj_file}' is not a valid object file"
+        echo "${error} compilation failed"
         exit 1
     fi
-    recovered_sourcefile=`tar tfz $obj_file`
+    recovered_sourcefile="${TMP}/`tar tfz ${obj_file}`"
     set -e
 }
 
@@ -68,9 +83,9 @@ set -o errexit -o pipefail -o noclobber -o nounset
 
 # -allow a command to fail with !'s side effect on errexit
 # -use return value from ${PIPESTATUS[0]}, because ! hosed $?
-! $GETOPT --test > /dev/null
+! ${GETOPT} --test > /dev/null
 if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
-    echo 'I’m sorry, `'$GETOPT '--test` failed in this environment.'
+    echo 'I’m sorry, `'${GETOPT} '--test` failed in this environment.'
     exit 1
 fi
 
@@ -78,12 +93,12 @@ fi
 OPTS=hV
 LONGOPTS=help,version
 ## cc0 -flags with arguments
-OPTS=$OPTS,l:L:a:
+OPTS=${OPTS},l:L:a:
 
 # -temporarily store output to be able to check for errors
 # -activate quoting/enhanced mode (e.g. by writing out "--options")
 # -pass arguments only via   -- "$@"   to separate them correctly
-! PARSED=$($GETOPT -q --options=$OPTS --longoptions=$LONGOPTS --name "$0" -- "$@")
+! PARSED=$(${GETOPT} -q --options=${OPTS} --longoptions=${LONGOPTS} --name "$0" -- "$@")
 
 ## Commented out to avoid listing explicitly the passthrough coin options
 #if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
@@ -92,7 +107,7 @@ OPTS=$OPTS,l:L:a:
 #    exit 2
 #fi
 # read getopt's output this way to handle the quoting right:
-eval set -- "$PARSED"
+eval set -- "${PARSED}"
 
 
 ### Handles the added/modified options
@@ -112,7 +127,7 @@ while true; do
             break
             ;;
         *)              ### Anything else
-            echo "Special options are $OPTS and $LONGOPTS"
+            echo "Special options are ${OPTS} and ${LONGOPTS}"
             exit 3
             ;;
     esac
@@ -127,17 +142,17 @@ ARGS=()
 for arg in "${args[@]}"
 do
     if [[ "${arg##*.}" == "o0" ||  "${arg##*.}" == "o1" ]]; then
-        undo_objectfile $arg   # return value in $recovered_sourcefile
-        ARGS+=("$recovered_sourcefile")
+        undo_objectfile ${arg}   # return value in ${recovered_sourcefile}
+        ARGS+=("${recovered_sourcefile}")
      else
-        ARGS+=("$arg");
+        ARGS+=("${arg}");
     fi
 done
 
 ## Call coin with recovered arguments
-$COIN ${ARGS[*]}
+${COIN} ${ARGS[*]}
 
 
 ## clean up and exit
-rm -rf $TMP
+rm -rf ${TMP}
 exit 0

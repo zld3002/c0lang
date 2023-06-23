@@ -2,7 +2,7 @@
 ### Iliano Cervesato, Spring 2022
 
 ### Configuration parameters
-TMP=.tmp0
+TMP=`mktemp -d`
 
 ### Helper functions
 THIS=$(basename $0)
@@ -19,13 +19,13 @@ fi
 
 function display_help () {
     # Print the regular cc0 help
-    $CC0 -h
+    ${CC0} -h
 
     # Print the help for the extensions
     echo "Extended usage:"
-    echo "" $THIS "-g <file> [-o <obj_file>]    Compile <file> to an object file"
-    echo "" $THIS "-i <obj_file>                Display the interface of <obj_file>"
-    echo "" $THIS "[OPTION...] SOURCEFILES      SOURCEFILES can include object files"
+    echo "" ${THIS} "-g <file> [-o <obj_file>]    Compile <file> to an object file"
+    echo "" ${THIS} "-i <obj_file>                Display the interface of <obj_file>"
+    echo "" ${THIS} "[OPTION...] SOURCEFILES      SOURCEFILES can include object files"
     echo "  where"
     echo "  . <obj_file>    ends in .o0 or .o1 (C0/C1 object file)"
     echo "  . -g <file>     has alternate syntax --genobj=<file>"
@@ -34,7 +34,7 @@ function display_help () {
 }
 
 function display_version () {
-    $CC0 -V
+    ${CC0} -V
     echo "(Object file extension)"
     exit 0
 }
@@ -43,27 +43,27 @@ function make_objectfile () {
     local src_file=$1           # file specified by -g
     local tgt_file=$2           # file specified by -o, if any
 
-    local error="$THIS: error:"           # error message prefix
-    if [[ ! -f $src_file ]]; then
-        echo "$error could not open '$src_file': No such file or directory"
-        echo "$error compilation failed"
+    local error="${THIS}: error:"           # error message prefix
+    if [[ ! -f ${src_file} ]]; then
+        echo "${error} could not open '${src_file}': No such file or directory"
+        echo "${error} compilation failed"
         exit 1
     fi
 
-    ## Computing bits and pieces of $src_file and $tgt_file
-    local src_name=$(basename $src_file)  # file name of $src_file
-    local tgt_path                        # path to target file
-    local tgt_name                        # file name of target file
-    if [ "$tgt_file" != "" ]; then
-        tgt_path=$(dirname $src_file)
-        tgt_name=$(basename $tgt_file)
+    ## Computing bits and pieces of ${src_file} and ${tgt_file}
+    local src_name=$(basename ${src_file})  # file name of ${src_file}
+    local tgt_path                          # path to target file
+    local tgt_name                          # file name of target file
+    if [ "${tgt_file}" != "" ]; then
+        tgt_path=$(dirname ${src_file})
+        tgt_name=$(basename ${tgt_file})
     else # target is based on source
-        tgt_path=$(dirname $src_file)
+        tgt_path=$(dirname ${src_file})
         tgt_name=$src_name
     fi
-    local tgt_root="${tgt_name%.*}"       # file name root of target file
-    local tgt_ext                         # extension for target file
-    case "${src_file##*.}" in  # always based on source file extension
+    local tgt_root="${tgt_name%.*}"         # file name root of target file
+    local tgt_ext                           # extension for target file
+    case "${src_file##*.}" in   # always based on source file extension
         c0)
             tgt_ext="o0"
             ;;
@@ -71,35 +71,49 @@ function make_objectfile () {
             tgt_ext="o1"
             ;;
         *)
-            echo "$error Unsupported extension .$src_ext"
+            echo "${error} Unsupported extension .${src_ext}"
             exit 1
             ;;
     esac
 
     ## Actual generation of object file
-    mkdir -p $TMP
-    cp -aL $src_file $TMP
-    tar cfz $tgt_path/$tgt_root.$tgt_ext $TMP/$src_name
-    rm -rf $TMP
+    cp -aL ${src_file} ${TMP}
+    tar cfz ${tgt_path}/${tgt_root}.${tgt_ext} -C ${TMP} ${src_name}
+    rm -rf ${TMP}
     exit 0
 }
 
 function undo_objectfile () {
-    local obj_file=$1                     # putative object file
-    local error="$THIS: error:"           # error message prefix
-    if [[ ! -f $obj_file ]]; then
-        echo "$error could not open '$obj_file': No such file or directory"
-        echo "$error compilation failed"
+    local obj_file=$1                       # putative object file
+    local error="${THIS}: error:"           # error message prefix
+    if [[ ! -f ${obj_file} ]]; then
+        echo "${error} could not open '${obj_file}': No such file or directory"
+        echo "${error} compilation failed"
         exit 1
     fi
-    set +e                                # don't abort script if command fails
-    tar xfz $obj_file 2> /dev/null
-    if [ $? -ne 0 ]; then                 # check exit code
-        echo "$error '$obj_file' is not a valid object file"
-        echo "$error compilation failed"
+    set +e                                  # don't abort script if command fails
+
+    tar xz -C ${TMP} -f ${obj_file} 2> /dev/null
+    local tar_exit_code=$?
+    # Check exit code and see if last byte is a newline
+            # Remove null bytes to avoid bash warning if it isn't a newline
+    if [ ${tar_exit_code} -ne 0 -a \
+        $(tail -c1 ${obj_file}     \
+            | tr -d '\0')          \
+        -eq $(printf "\n") ]; then
+
+        # Remove trailing newline (sometimes added by students' editors.)
+        truncate -s -1 ${obj_file}
+        tar xz -C ${TMP} -f ${obj_file} 2> /dev/null
+        tar_exit_code=$?
+    fi
+
+    if [ ${tar_exit_code} -ne 0 ]; then               # check exit code
+        echo "${error} '${obj_file}' is not a valid object file"
+        echo "${error} compilation failed"
         exit 1
     fi
-    recovered_sourcefile=`tar tfz $obj_file`
+    recovered_sourcefile="${TMP}/`tar tfz ${obj_file}`"
     set -e
 }
 
@@ -126,9 +140,9 @@ function undo_objectfile () {
 # lead to incorrect output
 function display_interface () {
     undo_objectfile "$1"
-    awk '/Interface/,/End/' "$recovered_sourcefile" | grep -v End
+    awk '/Interface/,/End/' "${recovered_sourcefile}" | grep -v End
     echo ""
-    rm -rf $TMP
+    rm -rf ${TMP}
     exit 0
 }
 
@@ -146,9 +160,9 @@ set -o errexit -o pipefail -o noclobber -o nounset
 
 # -allow a command to fail with !'s side effect on errexit
 # -use return value from ${PIPESTATUS[0]}, because ! hosed $?
-! $GETOPT --test > /dev/null
+! ${GETOPT} --test > /dev/null
 if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
-    echo 'I’m sorry, `'$GETOPT '--test` failed in this environment.'
+    echo 'I’m sorry, `'${GETOPT} '--test` failed in this environment.'
     exit 1
 fi
 
@@ -156,12 +170,12 @@ fi
 OPTS=hVg:o:i:
 LONGOPTS=help,version,genobj:output:interface:
 ## cc0 -flags with arguments
-OPTS=$OPTS,l:L:a:r:m:c:
+OPTS=${OPTS},l:L:a:r:m:c:
 
 # -temporarily store output to be able to check for errors
 # -activate quoting/enhanced mode (e.g. by writing out "--options")
 # -pass arguments only via   -- "$@"   to separate them correctly
-! PARSED=$($GETOPT -q --options=$OPTS --longoptions=$LONGOPTS --name "$0" -- "$@")
+! PARSED=$(${GETOPT} -q --options=${OPTS} --longoptions=${LONGOPTS} --name "$0" -- "$@")
 
 ## Commented out to avoid listing explicitly the passthrough cc0 options
 #if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
@@ -170,7 +184,7 @@ OPTS=$OPTS,l:L:a:r:m:c:
 #    exit 2
 #fi
 # read getopt's output this way to handle the quoting right:
-eval set -- "$PARSED"
+eval set -- "${PARSED}"
 
 
 ### Handles the added/modified options
@@ -178,40 +192,40 @@ src_file=""
 tgt_file=""
 while true; do
     case "$1" in
-        -h|--help)      ### Extended help
+        -h|--help)          ### Extended help
             display_help          # Exits this script
             ;;
-        -V|--version)   ### Extended version information
+        -V|--version)       ### Extended version information
             display_version       # Exits this script
             ;;
-        -g|--genobj)    ### generate object file
+        -g|--genobj)        ### generate object file
             src_file=$2
             shift 2
             ;;
-        -o|--output)    ### output object file used in conjunction with -g
+        -o|--output)        ### output object file used in conjunction with -g
             tgt_file=$2
             shift 2
             ;;
-        -i|--interface) ### Display interface
+        -i|--interface)     ### Display interface
             display_interface $2  # Exits this script
             ;;
-        -l|-L|-a|-r|-m|-c)     ### 2-argument cc0 options
+        -l|-L|-a|-r|-m|-c)  ### 2-argument cc0 options
             shift 2
             ;;
-        --)             ### End of line
+        --)                 ### End of line
             shift
             break
             ;;
-        *)              ### Anything else
-            echo "Special options are $OPTS and $LONGOPTS"
+        *)                  ### Anything else
+            echo "Special options are ${OPTS} and ${LONGOPTS}"
             exit 3
             ;;
     esac
 done
 
-## Implement cc0 -g $src_file [-o $tgt_file]
-if [ "$src_file" != "" ]; then
-    make_objectfile "$src_file" "$tgt_file"    # Exits this script
+## Implement cc0 -g ${src_file} [-o ${tgt_file}]
+if [ "${src_file}" != "" ]; then
+    make_objectfile "${src_file}" "${tgt_file}"  # Exits this script
 fi
 
 
@@ -220,21 +234,20 @@ set -- "${args[@]}" # restore parameters
 
 ARGS=()
 
-# mkdir -p $TMP
 for arg in "${args[@]}"
 do
     if [[ "${arg##*.}" == "o0" ||  "${arg##*.}" == "o1" ]]; then
-        undo_objectfile $arg   # return value in $recovered_sourcefile
-        ARGS+=("$recovered_sourcefile")
+        undo_objectfile ${arg}   # return value in ${recovered_sourcefile}
+        ARGS+=("${recovered_sourcefile}")
      else
-        ARGS+=("$arg");
+        ARGS+=("${arg}");
     fi
 done
 
 ## Call cc0 with recovered arguments
-$CC0 ${ARGS[*]}
+${CC0} ${ARGS[*]}
 
 
 ## clean up and exit
-rm -rf $TMP
+rm -rf ${TMP}
 exit 0
