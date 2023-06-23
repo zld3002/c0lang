@@ -4,10 +4,15 @@
 ### Configuration parameters
 TMP=`mktemp -d`
 
+function clean_exit () {
+    rm -rf ${TMP}
+    exit $1
+}
+
 ## Shortcut when no arguments are provided
 if [[ "$@" == "" ]]; then
     ${COIN}
-    exit 0
+    clean_exit 0
 fi
 
 ### Helper functions
@@ -32,13 +37,13 @@ function display_help () {
     echo "" ${THIS} "[OPTION...] SOURCEFILES      SOURCEFILES can include object files"
     echo "  where"
     echo "  . <obj_file>    ends in .o0 or .o1 (C0/C1 object file)"
-    exit 0
+    clean_exit 0
 }
 
 function display_version () {
     ${COIN} -V
     echo "(Object file extension)"
-    exit 0
+    clean_exit 0
 }
 
 function undo_objectfile () {
@@ -47,7 +52,7 @@ function undo_objectfile () {
     if [[ ! -f ${obj_file} ]]; then
         echo "${error} could not open '${obj_file}': No such file or directory"
         echo "${error} compilation failed"
-        exit 1
+        clean_exit 1
     fi
     set +e                                # don't abort script if command fails
 
@@ -69,7 +74,7 @@ function undo_objectfile () {
     if [ ${tar_exit_code} -ne 0 ]; then               # check exit code
         echo "${error} '${obj_file}' is not a valid object file"
         echo "${error} compilation failed"
-        exit 1
+        clean_exit 1
     fi
     recovered_sourcefile="${TMP}/`tar tfz ${obj_file}`"
     set -e
@@ -86,7 +91,7 @@ set -o errexit -o pipefail -o noclobber -o nounset
 ! ${GETOPT} --test > /dev/null
 if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
     echo 'I’m sorry, `'${GETOPT} '--test` failed in this environment.'
-    exit 1
+    clean_exit 1
 fi
 
 ## Added/modified options only: other options are dealt with by coin
@@ -104,7 +109,7 @@ OPTS=${OPTS},l:L:a:
 #if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
     # e.g. return value is 1
     #  then getopt has complained about wrong arguments to stdout
-#    exit 2
+#    clean_exit 2
 #fi
 # read getopt's output this way to handle the quoting right:
 eval set -- "${PARSED}"
@@ -128,7 +133,7 @@ while true; do
             ;;
         *)              ### Anything else
             echo "Special options are ${OPTS} and ${LONGOPTS}"
-            exit 3
+            clean_exit 3
             ;;
     esac
 done
@@ -154,5 +159,4 @@ ${COIN} ${ARGS[*]}
 
 
 ## clean up and exit
-rm -rf ${TMP}
-exit 0
+clean_exit 0
