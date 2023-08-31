@@ -2,12 +2,14 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <c0runtime.h>
 
+/*
 // Interpreter FFI (from c0runtime.h)
 enum c0_val_kind { C0_INTEGER, C0_POINTER };
 
 typedef struct c0_value {
-  enum c0_val_kind kind; 
+  enum c0_val_kind kind;
   union {
     uint32_t i;
     void *p;
@@ -37,6 +39,7 @@ static inline void *val2ptr(c0_value v) {
   if (v.kind != C0_POINTER) c0_abort("Invalid cast from c0_value to integer");
   return v.payload.p;
 }
+*/
 
 // Functions used by ML
 typedef c0_value* argsbuilder;
@@ -79,7 +82,7 @@ int32_t cast_bool(c0_value* x) {
   int32_t b = val2int(*x);
   free(x);
   return b;
-} 
+}
 
 uint32_t cast_int(c0_value* x) {
   //printf("cast_int (c)\n");
@@ -91,7 +94,7 @@ uint8_t cast_char(c0_value* x) {
   //printf("cast_char (c)\n");
   uint8_t c = val2int(*x);
   free(x);
-  return c; } 
+  return c; }
 
 void* cast_ptr(c0_value* x) {
   void* p = val2ptr(*x);
@@ -106,7 +109,3 @@ void *apply(native_fn f, argsbuilder args) {
   *ret = (*f)(args);
   return ret;
 }
-
-
-
-
