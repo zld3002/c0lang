@@ -1,7 +1,7 @@
 ;;; c0-mode.el --- C0 mode derived mode
 
 ;; Author:     2010 Jakob Max Uecker
-;; Maintainer: 
+;; Maintainer:
 ;; Created:    August 2010
 ;; Modified:   August 2010
 ;; Version:    0.1
@@ -11,12 +11,12 @@
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation; either version 2 of the License, or
 ;; (at your option) any later version.
-;; 
+;;
 ;; This program is distributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ;; GNU General Public License for more details.
-;; 
+;;
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program; see the file COPYING.  If not, write to
 ;; the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
@@ -87,8 +87,10 @@
   c0 '("struct"))
 
 ;; C0 has no type modifier keywords. (e.g. "const")
-(c-lang-defconst c-type-modifier-kwds
-  c0 nil)
+;; NOTE: disabled because this causes font-lock to hang on modern Gnu
+;;       Emacs installations
+; (c-lang-defconst c-type-modifier-kwds
+;  c0 nil)
 
 ;; C0 has no classes, but for syntax highlighting purposes,
 ;; structs are classes
@@ -169,7 +171,10 @@
 ;; (c-lang-defconst c-opt-cpp-prefix
 ;;   c0 nil)
 (c-lang-defconst c-opt-cpp-prefix
-  c0 "##")
+  c0 "#")
+;; Reverted: seems not to be an issue any more
+; (c-lang-defconst c-opt-cpp-prefix
+;   c0 "##")
 (c-lang-defconst c-cpp-message-directives
   c0 nil)
 (c-lang-defconst c-cpp-include-directives
@@ -271,7 +276,7 @@ Key bindings:
   ;; analysis and similar things working.
   (set 'compile-command (concat cc0-path " " (file-relative-name buffer-file-name)))
   (c-common-init 'c0-mode)
-  (c-run-mode-hooks 'c-mode-common-hook) ; 'awk-mode-hook 
+  (c-run-mode-hooks 'c-mode-common-hook) ; 'awk-mode-hook
   (c-update-modeline))
 
 (provide 'c0-mode)
